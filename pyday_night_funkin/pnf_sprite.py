@@ -1,4 +1,6 @@
 
+import typing as t
+
 from pyglet.sprite import Sprite
 from pyglet.gl import GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
 
@@ -42,5 +44,5 @@ class PNFSprite(Sprite):
 		super().__init__(img, x, y, blend_src, blend_dest, batch, group, usage, subpixel)
 		self._animations = {}
 
-	def add_animation(self):
-		pass
+	def add_animation(self, name: str, frames: t.Sequence[OffsetAnimationFrame]):
+		self._animations[name] = frames

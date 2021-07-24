@@ -23,7 +23,7 @@ def load_image(path: Path) -> pyglet.image.AbstractImage:
 		_IMAGE_CACHE[cache_key] = pyglet.image.load(str(path))
 	return _IMAGE_CACHE[cache_key]
 
-def load_animations_from_xml(xml_path: Path, fps: float = 24.0) -> t.Dict[str, Animation]:
+def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[Texture]]:
 
 	with xml_path.open("r", encoding = "utf-8") as fp:
 		et = ElementTree.parse(fp)
@@ -79,11 +79,10 @@ def load_animations_from_xml(xml_path: Path, fps: float = 24.0) -> t.Dict[str, A
 				x, atlas_surface.height - h - y,
 				w, h,
 			)
-		texture_region = texture_region_cache[region]
 		frame_vars = tuple(None if e is None else int(e) for e in frame_vars)
 		has_frame_vars = frame_vars[0] is not None
-		frame_sequences[animation_name].append(OffsetAnimationFrame(texture_region, 1 / fps))
+		frame_sequences[animation_name].append(texture_region_cache[region])
 
-	return {name: Animation(frames) for name, frames in frame_sequences.items()}
+	return frame_sequences
 
 

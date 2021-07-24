@@ -5,7 +5,7 @@ import typing as t
 import pyglet
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.image_loader import load_animations_from_xml, load_image
+from pyday_night_funkin.image_loader import load_animation_frames_from_xml, load_image
 from pyday_night_funkin.week import Level
 
 if t.TYPE_CHECKING:
@@ -37,14 +37,14 @@ class Week1Level(Level):
 			load_image(Path(CNST.ASSETS, "shared/images/stagefront.png")),
 		)
 
-		gf_anims = load_animations_from_xml(Path(CNST.ASSETS, "shared/images/GF_assets.xml"))
-		self.gf = game_scene.create_sprite("girlfriend", (400, 130), gf_anims["GF Dancing Beat"])
+		gf_anims = load_animation_frames_from_xml(Path(CNST.ASSETS, "shared/images/GF_assets.xml"))
+		self.gf = game_scene.create_sprite("girlfriend", (400, 130), None)
 
-		bf_anims = load_animations_from_xml(Path(CNST.ASSETS, "shared/images/BOYFRIEND.xml"))
-		self.bf = game_scene.create_sprite("stage", (770, 450), bf_anims["BF idle dance"])
+		bf_anims = load_animation_frames_from_xml(Path(CNST.ASSETS, "shared/images/BOYFRIEND.xml"))
+		self.bf = game_scene.create_sprite("stage", (770, 450), None)
 
-		op_anims = load_animations_from_xml(Path(CNST.ASSETS, "shared/images/DADDY_DEAREST.xml"))
-		self.opponent = game_scene.create_sprite("stage", (100, 100), op_anims["Dad idle dance"])
+		op_anims = load_animation_frames_from_xml(Path(CNST.ASSETS, "shared/images/DADDY_DEAREST.xml"))
+		self.opponent = game_scene.create_sprite("stage", (100, 100), None)
 
 		game_scene.create_sprite(
 			"curtains",
