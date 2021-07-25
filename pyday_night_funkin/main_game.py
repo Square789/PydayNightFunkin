@@ -1,18 +1,20 @@
 
 import pyglet
 
-from pyday_night_funkin.constants import GAME_DIMENSIONS
+from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.scenes import InGame
 from pyday_night_funkin.levels import WEEKS
+
 
 class Game():
 	def __init__(self) -> None:
 		self.main_batch = pyglet.graphics.Batch()
 		self.active_scene = InGame(self, WEEKS[0], WEEKS[0].levels[0])
+		self.debug = True
 
 		self.window = pyglet.window.Window(
-			width = GAME_DIMENSIONS[0],
-			height = GAME_DIMENSIONS[1],
+			width = GAME_WIDTH,
+			height = GAME_HEIGHT,
 			resizable = True,
 		)
 		self.window.push_handlers(on_resize = self.on_window_resize)
@@ -25,5 +27,5 @@ class Game():
 		self.active_scene.on_window_resize(new_width, new_height)
 
 	def run(self) -> None:
-		pyglet.clock.schedule_interval(self.update , 1 / 60.0)
+		pyglet.clock.schedule_interval(self.update, 1 / 60.0)
 		pyglet.app.run()

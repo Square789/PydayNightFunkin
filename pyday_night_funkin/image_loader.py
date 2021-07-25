@@ -17,13 +17,30 @@ _IMAGE_CACHE = {}
 
 RE_SPLIT_ANIMATION_NAME = re.compile(r"^(.*)(\d{4})$")
 
+class FrameInfoTexture():
+	"""
+	Composite class to store the special per-frame offsets found in
+	the xml files alongside a Texture (or TextureRegion).
+	"""
+	def __init__(
+		self,
+		texture: Texture,
+		has_frame_info: bool,
+		# dumb type but should make the intended use clear
+		frame_info: t.Union[t.Tuple[int, int, int, int], t.Any] = None,
+	) -> None:
+		self.texture = texture
+		self.has_frame_info = has_frame_info
+		self.frame_info = frame_info if has_frame_info else (0, 0, texture.width, texture.height)
+
+
 def load_image(path: Path) -> pyglet.image.AbstractImage:
 	cache_key = str(path)
 	if cache_key not in _IMAGE_CACHE:
 		_IMAGE_CACHE[cache_key] = pyglet.image.load(str(path))
 	return _IMAGE_CACHE[cache_key]
 
-def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[Texture]]:
+def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[FrameInfoTexture]]:
 
 	with xml_path.open("r", encoding = "utf-8") as fp:
 		et = ElementTree.parse(fp)
@@ -74,14 +91,16 @@ def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[Texture
 			)
 
 		x, y, w, h = region = (int(e) for e in region)
+		frame_vars = tuple(None if e is None else int(e) for e in frame_vars)
 		if region not in texture_region_cache:
 			texture_region_cache[region] = atlas_surface.get_region(
 				x, atlas_surface.height - h - y,
 				w, h,
 			)
-		frame_vars = tuple(None if e is None else int(e) for e in frame_vars)
 		has_frame_vars = frame_vars[0] is not None
-		frame_sequences[animation_name].append(texture_region_cache[region])
+		frame_sequences[animation_name].append(
+			FrameInfoTexture(texture_region_cache[region], has_frame_vars, frame_vars)
+		)
 
 	return frame_sequences
 

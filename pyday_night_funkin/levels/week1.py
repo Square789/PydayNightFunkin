@@ -39,12 +39,15 @@ class Week1Level(Level):
 
 		gf_anims = load_animation_frames_from_xml(Path(CNST.ASSETS, "shared/images/GF_assets.xml"))
 		self.gf = game_scene.create_sprite("girlfriend", (400, 130), None)
+		self.gf.add_animation("idle_bop", gf_anims["GF Dancing Beat"], 24, True)
 
 		bf_anims = load_animation_frames_from_xml(Path(CNST.ASSETS, "shared/images/BOYFRIEND.xml"))
 		self.bf = game_scene.create_sprite("stage", (770, 450), None)
+		self.bf.add_animation("idle_bop", bf_anims["BF idle dance"], 24, True)
 
 		op_anims = load_animation_frames_from_xml(Path(CNST.ASSETS, "shared/images/DADDY_DEAREST.xml"))
 		self.opponent = game_scene.create_sprite("stage", (100, 100), None)
+		self.opponent.add_animation("idle_bop", op_anims["Dad idle dance"], 24, True)
 
 		game_scene.create_sprite(
 			"curtains",
@@ -53,7 +56,6 @@ class Week1Level(Level):
 		)
 
 	def on_start(self) -> None:
-		pass
-		# self.gf.play_animation("idle_bop")
-		# self.bf.play_animation("idle_bop")
-		# self.opponent.play_animation("idle_bop")
+		self.gf.play_animation("idle_bop")
+		self.bf.play_animation("idle_bop")
+		self.opponent.play_animation("idle_bop")

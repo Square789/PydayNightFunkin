@@ -1,3 +1,3 @@
 
-def undumb_coord(x, y, height, window_height):
-	return (x, window_height - height - y)
+def clamp(value, min_, max_):
+	return min_ if value < min_ else (max_ if value > max_ else value)
