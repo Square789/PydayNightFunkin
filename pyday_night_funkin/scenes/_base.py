@@ -7,9 +7,10 @@ from loguru import logger
 import pyglet
 from pyglet.graphics import OrderedGroup
 from pyglet.image import AbstractImage
-from pyglet.shapes import Line
+from pyglet.window import key as KEY
 
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.camera import Camera
 from pyday_night_funkin.pnf_sprite import PNFSprite, PNFAnimation
 
 if t.TYPE_CHECKING:
@@ -18,17 +19,19 @@ if t.TYPE_CHECKING:
 
 class BaseScene():
 
-	def __init__(self, game: "Game", layer_names: t.Sequence[str]):
+	def __init__(self, game: "Game", layer_names: t.Sequence[str], camera_names: t.Sequence[str]):
 		self.game = game
 		self.batch = game.main_batch
 		self.layers = OrderedDict((name, OrderedGroup(i)) for i, name in enumerate(layer_names))
-		self._sprites = []
+		self.cameras = {name: Camera() for name in camera_names}
+		self._sprites: t.List[PNFSprite] = []
 
 	def create_sprite(
 		self,
 		layer: str,
 		position: t.Tuple[int, int],
-		image: t.Optional[t.Union[AbstractImage, PNFAnimation]],
+		image: t.Optional[t.Union[AbstractImage, PNFAnimation]] = None,
+		camera: t.Optional[str] = None,
 	) -> PNFSprite:
 
 		sprite = PNFSprite(
@@ -38,16 +41,46 @@ class BaseScene():
 			batch = self.batch,
 			group = self.layers[layer],
 		)
-
 		self._sprites.append(sprite)
+		if camera is not None:
+			self.cameras[camera].add_sprite(sprite)
+			sprite.force_camera_update()
 
 		return sprite
 
+	def on_key_press(self, keysym: int, modifiers: int) -> None:
+		"""
+		Called on any key press.
+		"""
+		if "main" not in self.cameras:
+			return
+		cam = self.cameras["main"]
+		if keysym == KEY.UP:
+			cam.y -= 50
+		elif keysym == KEY.RIGHT:
+			cam.x -= 50
+		elif keysym == KEY.DOWN:
+			cam.y += 50
+		elif keysym == KEY.LEFT:
+			cam.x += 50
+
+	def on_leave(self) -> None:
+		"""
+		Called when scene is about to be switched away from.
+		"""
+		pass
+
 	def on_window_resize(self, new_w: int, new_h: int) -> None:
-		logger.debug(f"Window resized: ({new_w}, {new_h})")
+		"""
+		Called when the game window resized.
+		"""
+		pass
+		# logger.debug(f"Window resized: ({new_w}, {new_h})")
 
 	def update(self, dt: float):
 		stime = time()
+		for cam in self.cameras.values():
+			cam.update()
 		self.batch.draw()
 		if self.game.debug:
 			debug_batch = pyglet.graphics.Batch()
@@ -59,23 +92,10 @@ class BaseScene():
 				y = 4,
 				batch = debug_batch
 			)
-			_shape_refs = [] # Need to keep references i guess? Otherwise shapes will be deleted before
-			# they can be drawn
+			# Need to keep references, otherwise shapes will be deleted before they can be drawn
+			_refs = []
 			for sprite in self._sprites:
-				x, y, w, h = sprite.x, sprite.y, sprite.width, sprite.height
-				t = Line(x, y + h, x + w, y + h, color = CNST.RED[0:3], batch = debug_batch)
-				l = Line(x + w, y + h, x + w, y, color = CNST.RED[0:3], batch = debug_batch)
-				b = Line(x + w, y, x, y, color = CNST.RED[0:3], batch = debug_batch)
-				r = Line(x, y, x, y + h, color = CNST.RED[0:3], batch = debug_batch)
-				pyglet.text.Label(
-					f"X:{x} Y:{y} W:{w} H:{h}",
-					font_name = "Consolas",
-					font_size = 14,
-					x = x,
-					y = y + h - 14,
-					batch = debug_batch
-				)
-				_shape_refs.extend((t, l, b, r))
+				_refs.append(sprite.get_debug_rect(color = CNST.RED[0:3], batch = debug_batch))
 			debug_batch.draw()
-			del _shape_refs
+			del _refs
 

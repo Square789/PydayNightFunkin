@@ -1,16 +1,21 @@
 
 import typing as t
+from loguru import logger
+
+from pyglet.gl import GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
 from pyglet.image import AbstractImage
 from pyglet.image.animation import Animation
-
+from pyglet.shapes import Line
 from pyglet.sprite import Sprite
-from pyglet.gl import GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
+from pyglet.text import Label
 
 import pyday_night_funkin.constants as CNST
 
 if t.TYPE_CHECKING:
+	from pyglet.graphics import Batch, Group
 	from pyglet.image import Texture
 	from pyday_night_funkin.image_loader import FrameInfoTexture
+	from pyday_night_funkin.camera import Camera
 
 
 class OffsetAnimationFrame():
@@ -21,18 +26,24 @@ class OffsetAnimationFrame():
 	the frame.
 	"""
 
-	__slots__ = ("image", "duration", "coord_offset", "name")
+	__slots__ = ("image", "duration", "frame_info", "name")
 
-	def __init__(self, image, duration, coord_offset, name = "?") -> None:
+	def __init__(
+		self,
+		image: "Texture",
+		duration: float,
+		frame_info: t.Tuple[int, int, int, int],
+		name: str = "?"
+	) -> None:
 		self.image = image
 		self.duration = duration
-		self.coord_offset = coord_offset
+		self.frame_info = frame_info
 		self.name = name
 
 	def __repr__(self):
 		return (
 			f"AnimationFrame({self.image}, duration={self.duration}, "
-			f"coord_offset={self.coord_offset})"
+			f"frame_info={self.frame_info})"
 		)
 
 
@@ -48,59 +59,63 @@ class PNFAnimation(Animation):
 
 class PNFSprite(Sprite):
 	"""
+	TODO doc
+
+	IMPORTANT: If you want to move, scale or rotate this sprite, be
+	sure to modify i.e. its `world_x` and NOT its `x` attribute,
+	otherwise you will directly modify screen coordinates which is sure
+	to mess up when any amount of camera movement is involved.
+
 	WARNING: This subclass meddles with many underscore-prepended
 	attributes of the standard pyglet Sprite, which may completely
 	break it in any other pyglet releases.
 	"""
 	def __init__(
 		self,
-		image: t.Union[PNFAnimation, AbstractImage] = None,
+		image: t.Optional[t.Union[PNFAnimation, AbstractImage]] = None,
 		x: int = 0,
 		y: int = 0,
-		# TODO: types below maybe idk
 		blend_src = GL_SRC_ALPHA,
 		blend_dest = GL_ONE_MINUS_SRC_ALPHA,
 		batch = None,
 		group = None,
 		usage = "dynamic",
 		subpixel = False,
-		# program = None,
 	) -> None:
+
 		if image is None:
 			image = CNST.ERROR_TEXTURE
 
-		if isinstance(image, PNFAnimation):
-			mh = image.frames[0].image.height
-		else:
-			mh = image.height
-
-		bly = 720 - y - mh
-		super().__init__(image, x, bly, blend_src, blend_dest, batch, group, usage, subpixel)
+		super().__init__(image, 0, 0, blend_src, blend_dest, batch, group, usage, subpixel)
 
 		self._animations = {}
 		self._animation_offset = (0, 0)
+		self.camera: t.Optional["Camera"] = None
+		# The `world_` variables below are meant to hold the sprite's position
+		# (top left because lmao), scale and rotation non-influenced by any camera operations
+		# that may modify them for the actual rendering superclass sprite's set of these variables.
+		self._world_x = x
+		self._world_y = y
+		self._world_scale = 1.0
+		self._world_scale_x = 1.0
+		self._world_scale_y = 1.0
+		self._world_rotation = 0
+		self._scroll_factor = (1.0, 1.0)
+		self._zoom_factor = 1.0
 
 	def _animate(self, dt: float) -> None:
-		"""
-		Disgusting override of underscore method, required to set the
-		sprite's position on animation.
-		"""
+		# Disgusting override of underscore method, required to set the
+		# sprite's position on animation.
 		super()._animate(dt)
-		fx, fy = frame_offset = self._animation.frames[self._frame_index].coord_offset[0:2]
+		fx, fy = frame_offset = self._animation.frames[self._frame_index].frame_info[0:2]
 		if frame_offset != self._animation_offset:
 			cfx, cfy = self._animation_offset
-			self.x += cfx
-			self.x -= fx
-			self.y -= cfy
-			self.y += fy
+			self._world_x += cfx
+			self._world_x -= fx
+			self._world_y += cfy
+			self._world_y -= fy
 			self._animation_offset = frame_offset
-
-	def _set_texture(self, texture: "Texture") -> None:
-		# Overridden to keep the illusion of the sprite growing from the top left.
-		prev_h = self._texture.height
-		super()._set_texture(texture)
-		dif = self._texture.height - prev_h
-		self.y -= dif
+			self.force_camera_update()
 
 	def add_animation(
 		self,
@@ -120,5 +135,115 @@ class PNFSprite(Sprite):
 				[OffsetAnimationFrame(tex.texture, spf, tex.frame_info, name) for tex in anim_data], loop
 			)
 
+	def get_debug_rect(
+		self,
+		width:int = 1,
+		color: t.Tuple[int, int, int] = (255, 255, 255),
+		batch: "Batch" = None,
+		group: "Group" = None
+	) -> t.Tuple[Line, Line, Line, Line, Label, Label]:
+		"""
+		Returns a 5-Tuple of 4 lines surrounding this sprite as
+		dictated by its screen `x`, `y`, `width` and `height`
+		properties and a label describing these coordinates.
+		"""
+		x, y, w, h = self.x, self.y, self.width, self.height
+		wx, wy = self.world_x, self.world_y
+		return (
+			Line(x, y + h, x + w, y + h, width, color, batch, group),
+			Line(x + w, y + h, x + w, y, width, color, batch, group),
+			Line(x + w, y, x, y, width, color, batch, group),
+			Line(x, y, x, y + h, width, color, batch, group),
+			Label(
+				f"S X:{x} Y:{y} W:{w} H:{h}",
+				font_name = "Consolas",
+				font_size = 14,
+				x = x,
+				y = y + h - 14,
+				batch = batch
+			),
+			Label(
+				f"W X:{wx} Y:{wy}",
+				font_name = "Consolas",
+				font_size = 14,
+				x = x,
+				y = y + h - 30,
+				batch = batch
+			),
+		)
+
+	def force_camera_update(self):
+		if self.camera is not None:
+			self.camera.apply_camera_attributes(self)
+
 	def play_animation(self, name: str) -> None:
 		self.image = self._animations[name]
+
+	# PNFSprite properties
+
+	@property
+	def scroll_factor(self) -> t.Tuple[float, float]:
+		return self._scroll_factor
+
+	@scroll_factor.setter
+	def scroll_factor(self, sf: t.Tuple[float, float]) -> None:
+		self._scroll_factor = sf
+
+	@property
+	def world_position(self) -> t.Tuple[int, int]:
+		return self._world_x, self._world_y
+
+	@world_position.setter
+	def world_position(self, pos: t.Tuple[int, int]) -> None:
+		self._world_x, self._world_y = pos
+		self.force_camera_update()
+
+	@property
+	def world_x(self) -> int:
+		return self._world_x
+
+	@world_x.setter
+	def world_x(self, new_x: int) -> None:
+		self._world_x = new_x
+		self.force_camera_update()
+
+	@property
+	def world_y(self) -> int:
+		return self._world_y
+
+	@world_y.setter
+	def world_y(self, new_y: int) -> None:
+		self._world_y = new_y
+		self.force_camera_update()
+
+	@property
+	def world_rotation(self) -> float:
+		return self._world_rotation
+
+	@world_rotation.setter
+	def world_rotation(self, new_rot: float) -> None:
+		self._world_rotation = new_rot
+
+	@property
+	def world_scale(self) -> float:
+		return self._world_scale
+
+	@world_scale.setter
+	def world_scale(self, new_scale: float) -> None:
+		self._world_scale = new_scale
+
+	@property
+	def world_scale_x(self) -> float:
+		return self._world_scale_x
+
+	@world_scale_x.setter
+	def world_scale_x(self, new_scale_x: float) -> None:
+		self._world_scale_x = new_scale_x
+
+	@property
+	def world_scale_y(self) -> float:
+		return self._world_scale_y
+
+	@world_scale_y.setter
+	def world_scale_y(self, new_scale_y: float) -> None:
+		self._world_scale_y = new_scale_y

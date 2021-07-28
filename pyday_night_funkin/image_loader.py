@@ -7,10 +7,7 @@ from xml.etree import ElementTree
 
 from loguru import logger
 import pyglet
-from pyglet.image.animation import Animation
 from pyglet.image import Texture
-
-from pyday_night_funkin.pnf_sprite import OffsetAnimationFrame
 
 
 _IMAGE_CACHE = {}
@@ -27,11 +24,13 @@ class FrameInfoTexture():
 		texture: Texture,
 		has_frame_info: bool,
 		# dumb type but should make the intended use clear
-		frame_info: t.Union[t.Tuple[int, int, int, int], t.Any] = None,
+		frame_info: t.Optional[t.Tuple[int, int, int, int]] = None,
 	) -> None:
 		self.texture = texture
 		self.has_frame_info = has_frame_info
-		self.frame_info = frame_info if has_frame_info else (0, 0, texture.width, texture.height)
+		self.frame_info = frame_info \
+			if has_frame_info and frame_info is not None \
+			else (0, 0, texture.width, texture.height)
 
 
 def load_image(path: Path) -> pyglet.image.AbstractImage:
@@ -54,7 +53,7 @@ def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[FrameIn
 	logger.debug(xml_path)
 	for sub_texture in texture_atlas:
 		if sub_texture.tag != "SubTexture":
-			logger.warning(f"Expected 'SubTexture' tag, got {sub_texture.tag}. Skipping.")
+			logger.warning(f"Expected 'SubTexture' tag, got {sub_texture.tag!r}. Skipping.")
 			continue
 
 		name, x, y, w, h, fx, fy, fw, fh = (

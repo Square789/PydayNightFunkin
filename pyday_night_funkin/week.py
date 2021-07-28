@@ -19,6 +19,9 @@ class Level:
 	def __init__(self, name: str) -> None:
 		self.name = name
 
+	def get_camera_names(self) -> t.Sequence[str]:
+		return ()
+
 	def get_layer_names(self) -> t.Sequence[str]:
 		return ()
 

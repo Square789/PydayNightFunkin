@@ -12,7 +12,7 @@ if t.TYPE_CHECKING:
 
 class InGame(BaseScene):
 	def __init__(self, game: "Game", week: Week, level: Level):
-		super().__init__(game, level.get_layer_names())
+		super().__init__(game, level.get_layer_names(), level.get_camera_names())
 
 		level.load_sprites(self)
 		level.on_start()
