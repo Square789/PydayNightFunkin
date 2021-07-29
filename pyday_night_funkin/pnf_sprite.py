@@ -256,3 +256,12 @@ class PNFSprite(Sprite):
 	@world_scale_y.setter
 	def world_scale_y(self, new_scale_y: float) -> None:
 		self._world_scale_y = new_scale_y
+
+	@property
+	def scroll_factor(self) -> t.Tuple[float, float]:
+		return self._scroll_factor
+
+	@scroll_factor.setter
+	def scroll_factor(self, new_sf: t.Tuple[float, float]) -> None:
+		self._scroll_factor = new_sf
+		self.update_camera()

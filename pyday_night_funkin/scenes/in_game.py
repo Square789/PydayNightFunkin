@@ -5,7 +5,7 @@ from pyday_night_funkin.scenes._base import BaseScene
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
-from pyday_night_funkin.week import Level, Week
+	from pyday_night_funkin.week import Level, Week
 
 
 class InGame(BaseScene):
@@ -13,4 +13,4 @@ class InGame(BaseScene):
 		super().__init__(game, level.get_layer_names(), level.get_camera_names())
 
 		level.load_sprites(self)
-		level.on_start()
+		level.on_start(self)

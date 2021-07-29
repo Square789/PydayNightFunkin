@@ -36,16 +36,11 @@ class Camera():
 			# Rotate
 			# Translate
 			bl_world_x = sprite.world_x
-			# Figuring this out took me significantly longer than I'd like to admit
+			# Figuring this out took significantly longer than I'd like to admit
 			bl_world_y = GAME_HEIGHT - sprite.world_y - sprite._texture.height
-			screen_x = int(
-				(bl_world_x - (view_target_x - CENTER_X)) +
-				((bl_world_x - view_target_x) * (self._zoom - 1))
-			)
-			screen_y = int(
-				(bl_world_y - (view_target_y - CENTER_Y)) +
-				((bl_world_y - view_target_y) * (self._zoom - 1))
-			)
+			sf_x, sf_y = sprite.scroll_factor
+			screen_x = int((bl_world_x - view_target_x * sf_x) * self._zoom) + CENTER_X
+			screen_y = int((bl_world_y - view_target_y * sf_y) * self._zoom) + CENTER_Y
 			sprite.update(scale = screen_scale, x = screen_x, y = screen_y)
 
 	def update(self):

@@ -22,21 +22,25 @@ class Week1Level(Level):
 		"""
 		Loads sprites for all week 1 levels.
 		"""
-		game_scene.create_sprite(
+		stageback = game_scene.create_sprite(
 			"background0",
 			(-600, -100),
 			load_image(Path(CNST.ASSETS, "shared/images/stageback.png")),
 			"main"
 		)
-		game_scene.create_sprite(
+		stageback.scroll_factor = (.9, .9)
+		stagefront = game_scene.create_sprite(
 			"background1",
 			(-650, 600),
 			load_image(Path(CNST.ASSETS, "shared/images/stagefront.png")),
 			"main"
 		)
+		stagefront.scroll_factor = (.9, .9)
+		stagefront.world_scale = 1.1
 
 		gf_anims = load_animation_frames_from_xml(Path(CNST.ASSETS, "shared/images/GF_assets.xml"))
 		self.gf = game_scene.create_sprite("girlfriend", (400, 130), None, "main")
+		self.gf.scroll_factor = (.95, .95)
 		self.gf.add_animation("idle_bop", gf_anims["GF Dancing Beat"], 24, True)
 
 		bf_anims = load_animation_frames_from_xml(Path(CNST.ASSETS, "shared/images/BOYFRIEND.xml"))
@@ -47,14 +51,17 @@ class Week1Level(Level):
 		self.opponent = game_scene.create_sprite("stage", (100, 100), None, "main")
 		self.opponent.add_animation("idle_bop", op_anims["Dad idle dance"], 24, True)
 
-		game_scene.create_sprite(
+		stagecurtains = game_scene.create_sprite(
 			"curtains",
 			(-500, -300),
 			load_image(Path(CNST.ASSETS, "shared/images/stagecurtains.png")),
 			"main"
 		)
+		stagecurtains.scroll_factor = (1.3, 1.3)
+		stagecurtains.world_scale = 0.9
 
-	def on_start(self) -> None:
+	def on_start(self, game_scene: "InGame") -> None:
+		game_scene.cameras["main"].zoom = 0.9
 		self.gf.play_animation("idle_bop")
 		self.bf.play_animation("idle_bop")
 		self.opponent.play_animation("idle_bop")

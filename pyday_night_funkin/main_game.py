@@ -1,5 +1,4 @@
 
-from collections import deque
 import typing as t
 
 from loguru import logger
@@ -15,7 +14,7 @@ from pyday_night_funkin.scenes import BaseScene, InGame
 
 class Game():
 	def __init__(self) -> None:
-		self.debug = True
+		self.debug = False
 		logger.remove(0)
 		if self.debug:
 			self.debug_pane_batch = Batch()
@@ -26,7 +25,7 @@ class Game():
 		self.window = pyglet.window.Window(
 			width = GAME_WIDTH,
 			height = GAME_HEIGHT,
-			resizable = False, # totally am gonna do this later and fucking die trying
+			resizable = True, # totally am gonna do this later and fucking die trying
 		)
 		self.window.push_handlers(self.ksh)
 
