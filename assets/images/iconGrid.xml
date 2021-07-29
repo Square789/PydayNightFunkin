@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="iconGrid.png">
+	<!-- Created with my own fingers version 1.0 -->
+	<SubTexture name="bf0000"                x=   "0" y=   "0" width="150" height="150"/>
+	<SubTexture name="bf0001"                x= "150" y=   "0" width="150" height="150"/>
+	<SubTexture name="spooky0000"            x= "300" y=   "0" width="150" height="150"/>
+	<SubTexture name="spooky0001"            x= "450" y=   "0" width="150" height="150"/>
+	<SubTexture name="pico0000"              x= "600" y=   "0" width="150" height="150"/>
+	<SubTexture name="pico0001"              x= "750" y=   "0" width="150" height="150"/>
+	<SubTexture name="mom0000"               x= "900" y=   "0" width="150" height="150"/>
+	<SubTexture name="mom0001"               x="1050" y=   "0" width="150" height="150"/>
+	<SubTexture name="tankman0000"           x="1200" y=   "0" width="150" height="150"/>
+	<SubTexture name="tankman0001"           x="1350" y=   "0" width="150" height="150"/>
+	<SubTexture name="face0000"              x=   "0" y= "150" width="150" height="150"/>
+	<SubTexture name="face0001"              x= "150" y= "150" width="150" height="150"/>
+	<SubTexture name="dad0000"               x= "300" y= "150" width="150" height="150"/>
+	<SubTexture name="dad0001"               x= "450" y= "150" width="150" height="150"/>
+	<SubTexture name="bf-old0000"            x= "600" y= "150" width="150" height="150"/>
+	<SubTexture name="bf-old0001"            x= "750" y= "150" width="150" height="150"/>
+	<SubTexture name="gf0000"                x= "900" y= "150" width="150" height="150"/>
+	<SubTexture name="gf0001"                x= "900" y= "150" width="150" height="150"/>
+	<SubTexture name="parents-christmas0000" x="1050" y= "150" width="150" height="150"/>
+	<SubTexture name="parents-christmas0001" x="1200" y= "150" width="150" height="150"/>
+	<SubTexture name="monster-christmas0000" x="1350" y= "150" width="150" height="150"/>
+	<SubTexture name="monster-christmas0001" x=   "0" y= "300" width="150" height="150"/>
+	<SubTexture name="bf-pixel0000"          x= "150" y= "300" width="150" height="150"/>
+	<SubTexture name="bf-pixel0001"          x= "150" y= "300" width="150" height="150"/>
+	<SubTexture name="senpai0000"            x= "300" y= "300" width="150" height="150"/>
+	<SubTexture name="senpai0001"            x= "300" y= "300" width="150" height="150"/>
+	<SubTexture name="spirit0000"            x= "450" y= "300" width="150" height="150"/>
+	<SubTexture name="spirit0001"            x= "450" y= "300" width="150" height="150"/>
+</TextureAtlas>

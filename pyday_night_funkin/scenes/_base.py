@@ -42,11 +42,14 @@ class BaseScene():
 			batch = self.batch,
 			group = self.layers[layer],
 		)
+		self.register_sprite(sprite, camera)
+
+		return sprite
+
+	def register_sprite(self, sprite: PNFSprite, camera: t.Optional[str] = None) -> None:
 		self._sprites.append(sprite)
 		if camera is not None:
 			self.cameras[camera].add_sprite(sprite)
-
-		return sprite
 
 	def on_key_press(self, keysym: int, modifiers: int) -> None:
 		"""
@@ -87,13 +90,14 @@ class BaseScene():
 		self.batch.draw()
 		if self.game.debug:
 			debug_batch = pyglet.graphics.Batch()
-			# Need to keep references, otherwise shapes will be deleted before they can be drawn
-			_refs = []
-			for sprite in self._sprites:
-				_refs.append(sprite.get_debug_rect(color = CNST.RED[0:3], batch = debug_batch))
+			# # Need to keep references, otherwise shapes will be deleted before they can be drawn
+			# _refs = []
+			# for sprite in self._sprites:
+			# 	_refs.append(sprite.get_debug_rect(color = CNST.RED[0:3], batch = debug_batch))
 			self._fps_bump()
+			draw_time = (time() - stime) * 1000
 			pyglet.text.Label(
-				f"FPS: {self._fps[2]}; Draw time {(time() - stime)*1000:.6f} ms; Cam X:{self.cameras['main'].x} Y:{self.cameras['main'].y}",
+				f"FPS: {self._fps[2]}; Draw time {draw_time:.6f} ms",
 				font_name = "Consolas",
 				font_size = 14,
 				x = 0,
@@ -101,7 +105,7 @@ class BaseScene():
 				batch = debug_batch
 			)
 			debug_batch.draw()
-			del _refs
+			# del _refs
 
 	def _fps_bump(self):
 		self._fps[1] += 1

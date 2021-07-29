@@ -135,45 +135,45 @@ class PNFSprite(Sprite):
 				[OffsetAnimationFrame(tex.texture, spf, tex.frame_info, name) for tex in anim_data], loop
 			)
 
-	def get_debug_rect(
-		self,
-		width:int = 1,
-		color: t.Tuple[int, int, int] = (255, 255, 255),
-		batch: "Batch" = None,
-		group: "Group" = None
-	) -> t.Tuple[Line, Line, Line, Line, Label, Label]:
-		"""
-		Returns a 6-Tuple of 4 lines surrounding this sprite as
-		dictated by its screen `x`, `y`, `width` and `height`
-		properties and two labels describing these coordinates,
-		one for screen values, one for the world position.
-		"""
-		x, y, w, h = self.x, self.y, self.width, self.height
-		wx, wy = self.world_x, self.world_y
-		return (
-			Line(x, y + h, x + w, y + h, width, color, batch, group),
-			Line(x + w, y + h, x + w, y, width, color, batch, group),
-			Line(x + w, y, x, y, width, color, batch, group),
-			Line(x, y, x, y + h, width, color, batch, group),
-			# LABELS ARE INSANELY EXPENSIVE!!!
-			# (Well i guess creating them every single frame is)
-			# Label(
-			# 	f"S X:{x} Y:{y} W:{w} H:{h}",
-			# 	font_name = "Consolas",
-			# 	font_size = 12,
-			# 	x = x,
-			# 	y = y + h - 12,
-			# 	batch = batch
-			# ),
-			# Label(
-			# 	f"W X:{wx} Y:{wy}",
-			# 	font_name = "Consolas",
-			# 	font_size = 12,
-			# 	x = x,
-			# 	y = y + h - 26,
-			# 	batch = batch
-			# ),
-		)
+	# def get_debug_rect(
+	# 	self,
+	# 	width:int = 1,
+	# 	color: t.Tuple[int, int, int] = (255, 255, 255),
+	# 	batch: "Batch" = None,
+	# 	group: "Group" = None
+	# ) -> t.Tuple[Line, Line, Line, Line, Label, Label]:
+	# 	"""
+	# 	Returns a 6-Tuple of 4 lines surrounding this sprite as
+	# 	dictated by its screen `x`, `y`, `width` and `height`
+	# 	properties and two labels describing these coordinates,
+	# 	one for screen values, one for the world position.
+	# 	"""
+	# 	x, y, w, h = self.x, self.y, self.width, self.height
+	# 	wx, wy = self.world_x, self.world_y
+	# 	return (
+	# 		Line(x, y + h, x + w, y + h, width, color, batch, group),
+	# 		Line(x + w, y + h, x + w, y, width, color, batch, group),
+	# 		Line(x + w, y, x, y, width, color, batch, group),
+	# 		Line(x, y, x, y + h, width, color, batch, group),
+	# 		# LABELS ARE INSANELY EXPENSIVE!!!
+	# 		# (Well i guess creating them every single frame is)
+	# 		Label(
+	# 			f"S X:{x} Y:{y} W:{w} H:{h}",
+	# 			font_name = "Consolas",
+	# 			font_size = 12,
+	# 			x = x,
+	# 			y = y + h - 12,
+	# 			batch = batch
+	# 		),
+	# 		Label(
+	# 			f"W X:{wx} Y:{wy}",
+	# 			font_name = "Consolas",
+	# 			font_size = 12,
+	# 			x = x,
+	# 			y = y + h - 26,
+	# 			batch = batch
+	# 		),
+	# 	)
 
 	def update_camera(self):
 		if self.camera is not None:
@@ -195,8 +195,9 @@ class PNFSprite(Sprite):
 		return self._scroll_factor
 
 	@scroll_factor.setter
-	def scroll_factor(self, sf: t.Tuple[float, float]) -> None:
-		self._scroll_factor = sf
+	def scroll_factor(self, new_sf: t.Tuple[float, float]) -> None:
+		self._scroll_factor = new_sf
+		self.update_camera()
 
 	@property
 	def world_position(self) -> t.Tuple[int, int]:
@@ -256,12 +257,3 @@ class PNFSprite(Sprite):
 	@world_scale_y.setter
 	def world_scale_y(self, new_scale_y: float) -> None:
 		self._world_scale_y = new_scale_y
-
-	@property
-	def scroll_factor(self) -> t.Tuple[float, float]:
-		return self._scroll_factor
-
-	@scroll_factor.setter
-	def scroll_factor(self, new_sf: t.Tuple[float, float]) -> None:
-		self._scroll_factor = new_sf
-		self.update_camera()

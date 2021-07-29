@@ -14,7 +14,7 @@ from pyday_night_funkin.scenes import BaseScene, InGame
 
 class Game():
 	def __init__(self) -> None:
-		self.debug = False
+		self.debug = True
 		logger.remove(0)
 		if self.debug:
 			self.debug_pane_batch = Batch()
@@ -32,7 +32,7 @@ class Game():
 		self.main_batch = pyglet.graphics.Batch()
 		self.active_scene = BaseScene(self, (), ())
 
-		self.switch_scene(InGame, WEEKS[0], WEEKS[0].levels[0])
+		self.switch_scene(InGame, WEEKS[1], 0)
 
 	def run(self) -> None:
 		pyglet.clock.schedule_interval(self.update, 1 / 120.0)
