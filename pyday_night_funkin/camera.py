@@ -12,28 +12,41 @@ class Camera():
 	def __init__(self):
 		self._sprites: t.List["PNFSprite"] = []
 		self._zoom = 1.0
-		self._position = list(CENTER)
+		self._view_target = list(CENTER)
 		self._dirty = False
 
 	def add_sprite(self, *sprites: "PNFSprite"):
 		for sprite in sprites:
 			sprite.camera = self
 		self._sprites.extend(sprites)
-		self.apply_camera_attributes(*sprites)
+		self._dirty = True
 
 	def apply_camera_attributes(self, *sprites: "PNFSprite"):
 		"""
 		Applies all of the camera's attributes (position, zoom,
-		scale, rotation etc.) to the given sprites' screen attributes.
+		scale, rotation etc.) to the given sprites' screen attributes,
+		leaving each sprite's `world_` attributes untouched.
 		"""
+		view_target_x = self._view_target[0]
+		view_target_y = GAME_HEIGHT - self._view_target[1]
 		for sprite in sprites:
 			# SCALE -> ROTATE -> TRANSLATE
 			# Scale
+			screen_scale = self._zoom
 			# Rotate
 			# Translate
-			sprite.x = sprite.world_x - (CENTER_X - self._position[0])
-			# Origin TL -> BL conversion
-			sprite.y = (GAME_HEIGHT - sprite.world_y - sprite.height) - (CENTER_Y - self._position[1])
+			bl_world_x = sprite.world_x
+			# Figuring this out took me significantly longer than I'd like to admit
+			bl_world_y = GAME_HEIGHT - sprite.world_y - sprite._texture.height
+			screen_x = int(
+				(bl_world_x - (view_target_x - CENTER_X)) +
+				((bl_world_x - view_target_x) * (self._zoom - 1))
+			)
+			screen_y = int(
+				(bl_world_y - (view_target_y - CENTER_Y)) +
+				((bl_world_y - view_target_y) * (self._zoom - 1))
+			)
+			sprite.update(scale = screen_scale, x = screen_x, y = screen_y)
 
 	def update(self):
 		"""
@@ -47,20 +60,30 @@ class Camera():
 
 	@property
 	def x(self) -> int:
-		return self._position[0]
+		return self._view_target[0]
 
 	@x.setter
 	def x(self, new_x: int) -> None:
-		if new_x != self._position[0]:
-			self._position[0] = new_x
+		if new_x != self._view_target[0]:
+			self._view_target[0] = new_x
 			self._dirty = True
 
 	@property
 	def y(self) -> int:
-		return self._position[1]
+		return self._view_target[1]
 
 	@y.setter
 	def y(self, new_y: int) -> None:
-		if new_y != self._position[1]:
-			self._position[1] = new_y
+		if new_y != self._view_target[1]:
+			self._view_target[1] = new_y
+			self._dirty = True
+
+	@property
+	def zoom(self) -> float:
+		return self._zoom
+
+	@zoom.setter
+	def zoom(self, new_zoom: float) -> None:
+		if new_zoom != self._zoom:
+			self._zoom = new_zoom
 			self._dirty = True

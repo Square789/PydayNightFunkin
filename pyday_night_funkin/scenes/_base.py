@@ -7,7 +7,7 @@ from loguru import logger
 import pyglet
 from pyglet.graphics import OrderedGroup
 from pyglet.image import AbstractImage
-from pyglet.window import key as KEY
+from pyglet.window import key
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.camera import Camera
@@ -25,6 +25,7 @@ class BaseScene():
 		self.layers = OrderedDict((name, OrderedGroup(i)) for i, name in enumerate(layer_names))
 		self.cameras = {name: Camera() for name in camera_names}
 		self._sprites: t.List[PNFSprite] = []
+		self._fps = [time() * 1000, 0, "?"]
 
 	def create_sprite(
 		self,
@@ -44,7 +45,6 @@ class BaseScene():
 		self._sprites.append(sprite)
 		if camera is not None:
 			self.cameras[camera].add_sprite(sprite)
-			sprite.force_camera_update()
 
 		return sprite
 
@@ -52,17 +52,6 @@ class BaseScene():
 		"""
 		Called on any key press.
 		"""
-		if "main" not in self.cameras:
-			return
-		cam = self.cameras["main"]
-		if keysym == KEY.UP:
-			cam.y -= 50
-		elif keysym == KEY.RIGHT:
-			cam.x -= 50
-		elif keysym == KEY.DOWN:
-			cam.y += 50
-		elif keysym == KEY.LEFT:
-			cam.x += 50
 
 	def on_leave(self) -> None:
 		"""
@@ -79,23 +68,45 @@ class BaseScene():
 
 	def update(self, dt: float):
 		stime = time()
+		if "main" in self.cameras:
+			cam = self.cameras["main"]
+			if self.game.ksh[key.UP]:
+				cam.y -= 10
+			elif self.game.ksh[key.RIGHT]:
+				cam.x += 10
+			elif self.game.ksh[key.DOWN]:
+				cam.y += 10
+			elif self.game.ksh[key.LEFT]:
+				cam.x -= 10
+			elif self.game.ksh[key.PLUS]:
+				cam.zoom += 0.05
+			elif self.game.ksh[key.MINUS]:
+				cam.zoom -= 0.05
 		for cam in self.cameras.values():
 			cam.update()
 		self.batch.draw()
 		if self.game.debug:
 			debug_batch = pyglet.graphics.Batch()
+			# Need to keep references, otherwise shapes will be deleted before they can be drawn
+			_refs = []
+			for sprite in self._sprites:
+				_refs.append(sprite.get_debug_rect(color = CNST.RED[0:3], batch = debug_batch))
+			self._fps_bump()
 			pyglet.text.Label(
-				f"FPS: {pyglet.clock.get_fps():>6.2f}; Draw time {(time() - stime)*1000:.6f} ms",
+				f"FPS: {self._fps[2]}; Draw time {(time() - stime)*1000:.6f} ms; Cam X:{self.cameras['main'].x} Y:{self.cameras['main'].y}",
 				font_name = "Consolas",
 				font_size = 14,
 				x = 0,
 				y = 4,
 				batch = debug_batch
 			)
-			# Need to keep references, otherwise shapes will be deleted before they can be drawn
-			_refs = []
-			for sprite in self._sprites:
-				_refs.append(sprite.get_debug_rect(color = CNST.RED[0:3], batch = debug_batch))
 			debug_batch.draw()
 			del _refs
 
+	def _fps_bump(self):
+		self._fps[1] += 1
+		t = time() * 1000
+		if t - self._fps[0] >= 1000:
+			self._fps[0] = t
+			self._fps[2] = str(self._fps[1])
+			self._fps[1] = 0

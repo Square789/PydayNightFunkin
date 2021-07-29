@@ -5,6 +5,7 @@ import typing as t
 from loguru import logger
 import pyglet
 from pyglet.graphics import Batch
+from pyglet.window import key
 
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
@@ -21,18 +22,21 @@ class Game():
 			self.debug_pane = DebugPane(10, self.debug_pane_batch)
 			logger.add(self.debug_pane.add_message)
 
-		self.main_batch = pyglet.graphics.Batch()
-		self.active_scene = BaseScene(self, (), ())
-
+		self.ksh = key.KeyStateHandler()
 		self.window = pyglet.window.Window(
 			width = GAME_WIDTH,
 			height = GAME_HEIGHT,
 			resizable = False, # totally am gonna do this later and fucking die trying
 		)
+		self.window.push_handlers(self.ksh)
+
+		self.main_batch = pyglet.graphics.Batch()
+		self.active_scene = BaseScene(self, (), ())
+
 		self.switch_scene(InGame, WEEKS[0], WEEKS[0].levels[0])
 
 	def run(self) -> None:
-		pyglet.clock.schedule_interval(self.update, 1 / 60.0)
+		pyglet.clock.schedule_interval(self.update, 1 / 120.0)
 		pyglet.app.run()
 
 	def switch_scene(self, scene_class: t.Type[BaseScene], *args, **kwargs) -> None:

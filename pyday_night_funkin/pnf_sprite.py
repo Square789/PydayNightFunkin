@@ -115,7 +115,7 @@ class PNFSprite(Sprite):
 			self._world_y += cfy
 			self._world_y -= fy
 			self._animation_offset = frame_offset
-			self.force_camera_update()
+			self.update_camera()
 
 	def add_animation(
 		self,
@@ -143,9 +143,10 @@ class PNFSprite(Sprite):
 		group: "Group" = None
 	) -> t.Tuple[Line, Line, Line, Line, Label, Label]:
 		"""
-		Returns a 5-Tuple of 4 lines surrounding this sprite as
+		Returns a 6-Tuple of 4 lines surrounding this sprite as
 		dictated by its screen `x`, `y`, `width` and `height`
-		properties and a label describing these coordinates.
+		properties and two labels describing these coordinates,
+		one for screen values, one for the world position.
 		"""
 		x, y, w, h = self.x, self.y, self.width, self.height
 		wx, wy = self.world_x, self.world_y
@@ -154,30 +155,38 @@ class PNFSprite(Sprite):
 			Line(x + w, y + h, x + w, y, width, color, batch, group),
 			Line(x + w, y, x, y, width, color, batch, group),
 			Line(x, y, x, y + h, width, color, batch, group),
-			Label(
-				f"S X:{x} Y:{y} W:{w} H:{h}",
-				font_name = "Consolas",
-				font_size = 14,
-				x = x,
-				y = y + h - 14,
-				batch = batch
-			),
-			Label(
-				f"W X:{wx} Y:{wy}",
-				font_name = "Consolas",
-				font_size = 14,
-				x = x,
-				y = y + h - 30,
-				batch = batch
-			),
+			# LABELS ARE INSANELY EXPENSIVE!!!
+			# (Well i guess creating them every single frame is)
+			# Label(
+			# 	f"S X:{x} Y:{y} W:{w} H:{h}",
+			# 	font_name = "Consolas",
+			# 	font_size = 12,
+			# 	x = x,
+			# 	y = y + h - 12,
+			# 	batch = batch
+			# ),
+			# Label(
+			# 	f"W X:{wx} Y:{wy}",
+			# 	font_name = "Consolas",
+			# 	font_size = 12,
+			# 	x = x,
+			# 	y = y + h - 26,
+			# 	batch = batch
+			# ),
 		)
 
-	def force_camera_update(self):
+	def update_camera(self):
 		if self.camera is not None:
 			self.camera.apply_camera_attributes(self)
 
 	def play_animation(self, name: str) -> None:
 		self.image = self._animations[name]
+
+	def _set_center_to(self, x: int, y: int) -> None:
+		"""
+		Sets the sprite's screen coordinates so that these are at its center
+		"""
+		self.position = (x - self.width // 2, y + self.height // 2)
 
 	# PNFSprite properties
 
@@ -196,7 +205,7 @@ class PNFSprite(Sprite):
 	@world_position.setter
 	def world_position(self, pos: t.Tuple[int, int]) -> None:
 		self._world_x, self._world_y = pos
-		self.force_camera_update()
+		self.update_camera()
 
 	@property
 	def world_x(self) -> int:
@@ -205,7 +214,7 @@ class PNFSprite(Sprite):
 	@world_x.setter
 	def world_x(self, new_x: int) -> None:
 		self._world_x = new_x
-		self.force_camera_update()
+		self.update_camera()
 
 	@property
 	def world_y(self) -> int:
@@ -214,7 +223,7 @@ class PNFSprite(Sprite):
 	@world_y.setter
 	def world_y(self, new_y: int) -> None:
 		self._world_y = new_y
-		self.force_camera_update()
+		self.update_camera()
 
 	@property
 	def world_rotation(self) -> float:

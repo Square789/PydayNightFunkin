@@ -2,8 +2,6 @@
 from pathlib import Path
 import typing as t
 
-import pyglet
-
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.image_loader import load_animation_frames_from_xml, load_image
 from pyday_night_funkin.week import Level
