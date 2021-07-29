@@ -1,4 +1,5 @@
 
+from pyday_night_funkin.health_bar import HealthBar
 import typing as t
 
 import pyday_night_funkin.constants as CNST
@@ -12,7 +13,9 @@ class Week1Level(Level):
 		return ("main", "ui")
 
 	def get_layer_names(self) -> t.Sequence[str]:
-		return ("background0", "background1", "girlfriend", "stage", "curtains", "ui")
+		return (
+			"background0", "background1", "girlfriend", "stage", "curtains", "ui0", "ui1", "ui2"
+		)
 
 	def load_sprites(self) -> None:
 		"""
@@ -59,7 +62,11 @@ class Week1Level(Level):
 		stagecurtains.world_scale = 0.9
 
 	def load_ui(self):
-		note_sprites = load_animation_frames_from_xml(CNST.ASSETS / "shared/images/NOTE_assets.xml")
+		note_sprites = load_animation_frames_from_xml(
+			CNST.ASSETS / "shared/images/NOTE_assets.xml"
+		)
+		self.health_bar = HealthBar(self.game_scene, "ui", "dad", "bf", ("ui0", "ui1", "ui2"))
+		self.health_bar.update(self.game_scene.health)
 
 	def on_start(self) -> None:
 		self.gf.play_animation("idle_bop")

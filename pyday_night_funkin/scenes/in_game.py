@@ -1,6 +1,8 @@
 
 import typing as t
 
+from pyglet.window import key
+
 from pyday_night_funkin.conductor import Conductor
 from pyday_night_funkin.scenes._base import BaseScene
 
@@ -18,6 +20,17 @@ class InGame(BaseScene):
 		self.conductor = Conductor()
 		# The tiniest conductor
 
+		self.health = 0.5
+
 		self.level.load_sprites()
 		self.level.load_ui()
 		self.level.on_start()
+
+	def update(self, dt: float):
+		super().update(dt)
+		if self.game.ksh[key.Q]:
+			self.health += 0.05
+			self.level.health_bar.update(self.health)
+		elif self.game.ksh[key.E]:
+			self.health -= 0.05
+			self.level.health_bar.update(self.health)

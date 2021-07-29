@@ -42,14 +42,12 @@ class BaseScene():
 			batch = self.batch,
 			group = self.layers[layer],
 		)
-		self.register_sprite(sprite, camera)
 
-		return sprite
-
-	def register_sprite(self, sprite: PNFSprite, camera: t.Optional[str] = None) -> None:
 		self._sprites.append(sprite)
 		if camera is not None:
 			self.cameras[camera].add_sprite(sprite)
+
+		return sprite
 
 	def on_key_press(self, keysym: int, modifiers: int) -> None:
 		"""
