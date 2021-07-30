@@ -12,7 +12,13 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGame
 
 
+ICON_X_DISPLACEMENT = 124
+
 class HealthBar():
+	"""
+	Class that registers and contains a few sprites to render a game's
+	health bar to the screen.
+	"""
 	def __init__(
 		self,
 		scene: "InGame",
@@ -20,9 +26,14 @@ class HealthBar():
 		opponent_icon: str,
 		player_icon: str,
 		layers: t.Tuple[str, str, str],
-		opponent_color: t.Union[t.Tuple[int, int, int, int], int] = (255, 0, 0, 255),
-		player_color: t.Union[t.Tuple[int, int, int, int], int] = (10, 10, 200, 255),
+		ded_icon_threshold: float = 0.2,
+		opponent_color: t.Union[t.Tuple[int, int, int, int], int] = 0xFF0000FF,
+		player_color: t.Union[t.Tuple[int, int, int, int], int] = 0x66FF33FF,
 	) -> None:
+		"""
+		"""
+
+		self.ded_icon_threshold = ded_icon_threshold
 
 		bg_layer, bar_layer, icon_layer = layers
 
@@ -67,6 +78,13 @@ class HealthBar():
 		return ImageData(1, height, "RGBA", to_rgba_bytes(color) * height).get_texture()
 
 	def update(self, new_health: float) -> None:
+		"""
+		Update the HealthBar with new health. It is clamped to the
+		range of 0..1, will size the bars and reposition the icons
+		accordingly and change the icons to their ded state if
+		below the respective threshold.
+		"""
+		# this function really sucks and i do not like it
 		bar_width = self.health_bar._texture.width - 8
 		opponent_bar_x = self.health_bar.world_x + 4
 		opponent_bar_width = int((1.0 - clamp(new_health, 0.0, 1.0)) * bar_width)
@@ -77,7 +95,17 @@ class HealthBar():
 		self.opponent_bar.world_scale_x = opponent_bar_width
 		self.player_bar.world_x = player_bar_x
 		self.player_bar.world_scale_x = player_bar_width
-		self.opponent_sprite.world_x = \
-			(opponent_bar_x + opponent_bar_width) - self.opponent_sprite._texture.width
-		self.player_sprite.world_x = \
-			(opponent_bar_x + opponent_bar_width) + self.opponent_sprite._texture.width
+		self.opponent_sprite.world_x = player_bar_x - ICON_X_DISPLACEMENT
+		self.player_sprite.world_x = player_bar_x + ICON_X_DISPLACEMENT
+
+		if new_health > (1.0 - self.ded_icon_threshold):
+			if self.opponent_sprite.image != self.opponent_icons[1]:
+				self.opponent_sprite.image = self.opponent_icons[1]
+		elif new_health < self.ded_icon_threshold:
+			if self.player_sprite.image != self.player_icons[1]:
+				self.player_sprite.image = self.player_icons[1]
+		else:
+			if self.player_sprite.image != self.player_icons[0]:
+				self.player_sprite.image = self.player_icons[0]
+			if self.opponent_sprite.image != self.opponent_icons[0]:
+				self.opponent_sprite.image = self.opponent_icons[0]

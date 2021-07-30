@@ -27,10 +27,10 @@ class InGame(BaseScene):
 		self.level.on_start()
 
 	def update(self, dt: float):
-		super().update(dt)
 		if self.game.ksh[key.Q]:
 			self.health += 0.05
 			self.level.health_bar.update(self.health)
 		elif self.game.ksh[key.E]:
 			self.health -= 0.05
 			self.level.health_bar.update(self.health)
+		super().update(dt)

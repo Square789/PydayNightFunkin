@@ -182,11 +182,12 @@ class PNFSprite(Sprite):
 	def play_animation(self, name: str) -> None:
 		self.image = self._animations[name]
 
-	def _set_center_to(self, x: int, y: int) -> None:
+	def world_update(self, ):
 		"""
-		Sets the sprite's screen coordinates so that these are at its center
+		Updates multiple attributes at once and only pokes a
+		potentially associated camera once to update them all.
 		"""
-		self.position = (x - self.width // 2, y + self.height // 2)
+		# TODO
 
 	# PNFSprite properties
 
@@ -233,6 +234,7 @@ class PNFSprite(Sprite):
 	@world_rotation.setter
 	def world_rotation(self, new_rot: float) -> None:
 		self._world_rotation = new_rot
+		self.update_camera()
 
 	@property
 	def world_scale(self) -> float:
@@ -241,6 +243,7 @@ class PNFSprite(Sprite):
 	@world_scale.setter
 	def world_scale(self, new_scale: float) -> None:
 		self._world_scale = new_scale
+		self.update_camera()
 
 	@property
 	def world_scale_x(self) -> float:
@@ -249,6 +252,7 @@ class PNFSprite(Sprite):
 	@world_scale_x.setter
 	def world_scale_x(self, new_scale_x: float) -> None:
 		self._world_scale_x = new_scale_x
+		self.update_camera()
 
 	@property
 	def world_scale_y(self) -> float:
@@ -257,3 +261,4 @@ class PNFSprite(Sprite):
 	@world_scale_y.setter
 	def world_scale_y(self, new_scale_y: float) -> None:
 		self._world_scale_y = new_scale_y
+		self.update_camera()
