@@ -23,7 +23,6 @@ class InGame(BaseScene):
 		self.health = 0.5
 
 		self.level.load_sprites()
-		self.level.load_ui()
 		self.level.on_start()
 
 	def update(self, dt: float):

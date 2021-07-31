@@ -1,10 +1,16 @@
 
+from loguru import logger
 from pyday_night_funkin.health_bar import HealthBar
 import typing as t
 
+import pyglet.clock
+from pyglet.media import Player, StaticSource, load
+
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.pnf_sprite import TWEEN_ATTR
 from pyday_night_funkin.image_loader import load_animation_frames_from_xml, load_image
 from pyday_night_funkin.levels import Level
+from pyday_night_funkin.tweens import TWEEN
 
 
 class Week1Level(Level):
@@ -14,7 +20,8 @@ class Week1Level(Level):
 
 	def get_layer_names(self) -> t.Sequence[str]:
 		return (
-			"background0", "background1", "girlfriend", "stage", "curtains", "ui0", "ui1", "ui2"
+			"background0", "background1", "girlfriend", "stage", "curtains",
+			"ui0", "ui1", "ui2", "ui3"
 		)
 
 	def load_sprites(self) -> None:
@@ -23,6 +30,7 @@ class Week1Level(Level):
 		"""
 		self.game_scene.cameras["main"].zoom = 0.9
 
+		# SPRITES
 		stageback = self.game_scene.create_sprite(
 			"background0",
 			(-600, -100),
@@ -61,14 +69,56 @@ class Week1Level(Level):
 		stagecurtains.scroll_factor = (1.3, 1.3)
 		stagecurtains.world_scale = 0.9
 
-	def load_ui(self):
 		note_sprites = load_animation_frames_from_xml(
 			CNST.ASSETS / "shared/images/NOTE_assets.xml"
 		)
 		self.health_bar = HealthBar(self.game_scene, "ui", "dad", "bf", ("ui0", "ui1", "ui2"))
 		self.health_bar.update(self.game_scene.health)
 
+		countdown_textures = (
+			load_image(CNST.ASSETS / "shared/images/ready.png"),
+			load_image(CNST.ASSETS / "shared/images/set.png"),
+			load_image(CNST.ASSETS / "shared/images/go.png"),
+		)
+		self.countdown_sprites = [
+			self.game_scene.create_sprite(
+				"ui0",
+				((CNST.GAME_WIDTH - tex.width) // 2, (CNST.GAME_HEIGHT - tex.height) // 2),
+				tex,
+				"ui",
+			) for tex in countdown_textures
+		]
+		for sprite in self.countdown_sprites:
+			sprite.visible = False
+
+		# SOUNDS
+		song_dir = CNST.ASSETS / self.info.song_dir
+		# self.snd_instrumental = StaticSource(load(str(song_dir / "Inst.wav")))
+		# self.snd_voices = StaticSource(load(str(song_dir / "Voices.wav")))
+
+
 	def on_start(self) -> None:
 		self.gf.play_animation("idle_bop")
 		self.bf.play_animation("idle_bop")
 		self.opponent.play_animation("idle_bop")
+
+		self._countdown_stage = 0
+		pyglet.clock.schedule_interval(self.countdown, 1.0)
+
+	def countdown(self, _dt: float) -> None:
+		if self._countdown_stage == 3:
+			self.start_song()
+		else:
+			# self._countdown_stage will be changed once hide is called
+			sprite_idx = self._countdown_stage
+			def hide():
+				self.countdown_sprites[sprite_idx].visible = False
+			self.countdown_sprites[sprite_idx].visible = True
+			self.countdown_sprites[sprite_idx].tween(
+				TWEEN.IN_OUT_CUBIC, TWEEN_ATTR.OPACITY, 0, 1.0, hide
+			)
+
+			self._countdown_stage += 1
+
+	def start_song(self) -> None:
+		pass

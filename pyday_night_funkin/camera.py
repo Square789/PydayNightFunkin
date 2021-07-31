@@ -6,6 +6,7 @@ from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.pnf_sprite import PNFSprite
 
+
 CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
 
 class Camera():
@@ -33,7 +34,9 @@ class Camera():
 			# SCALE -> ROTATE -> TRANSLATE
 			# Scale
 			screen_scale = self._zoom * sprite._world_scale
+
 			# Rotate
+
 			# Translate
 			bl_world_x = sprite.world_x
 			# Figuring this out took significantly longer than I'd like to admit
@@ -41,6 +44,7 @@ class Camera():
 			sf_x, sf_y = sprite.scroll_factor
 			screen_x = int((bl_world_x - view_target_x * sf_x) * screen_scale) + CENTER_X
 			screen_y = int((bl_world_y - view_target_y * sf_y) * screen_scale) + CENTER_Y
+
 			sprite.update(
 				scale = screen_scale,
 				x = screen_x,

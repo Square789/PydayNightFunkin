@@ -41,6 +41,7 @@ class Level:
 @dataclass
 class LevelBlueprint:
 	name: str
+	song_dir: str
 	class_: t.Type[Level]
 
 	def create_level(self, game_scene: "InGame") -> Level:

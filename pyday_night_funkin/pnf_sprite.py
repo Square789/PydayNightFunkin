@@ -1,7 +1,10 @@
 
+from enum import IntEnum
+from pyday_night_funkin.tweens import TWEEN, TWEENS
+from time import time
 import typing as t
-from loguru import logger
 
+import pyglet.clock
 from pyglet.gl import GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
 from pyglet.image import AbstractImage
 from pyglet.image.animation import Animation
@@ -10,12 +13,18 @@ from pyglet.sprite import Sprite
 from pyglet.text import Label
 
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
-	from pyglet.graphics import Batch, Group
 	from pyglet.image import Texture
 	from pyday_night_funkin.image_loader import FrameInfoTexture
 	from pyday_night_funkin.camera import Camera
+
+
+class TWEEN_ATTR(IntEnum):
+	X = 0
+	Y = 1
+	OPACITY = 2
 
 
 class OffsetAnimationFrame():
@@ -101,7 +110,6 @@ class PNFSprite(Sprite):
 		self._world_scale_y = 1.0
 		self._world_rotation = 0
 		self._scroll_factor = (1.0, 1.0)
-		self._zoom_factor = 1.0
 
 	def _animate(self, dt: float) -> None:
 		# Disgusting override of underscore method, required to set the
@@ -182,12 +190,65 @@ class PNFSprite(Sprite):
 	def play_animation(self, name: str) -> None:
 		self.image = self._animations[name]
 
-	def world_update(self, ):
+	def tween(
+		self,
+		tween_type: TWEEN,
+		attribute, # TODO: make this work for all int/float attributes of a sprite!!!
+		target_value: t.Union[int, float],
+		duration: float,
+		on_complete: t.Callable = None,
+	) -> None:
+		"""
+		# TODO write some very cool doc
+		"""
+		start_time = time()
+		stop_time = start_time + duration
+		time_difference = stop_time - start_time
+		initial_value = self._opacity
+		value_difference = target_value - initial_value
+		tween_func = TWEENS[tween_type]
+		cur_time = start_time
+
+		def tween_schedule_func(dt: float):
+			nonlocal cur_time
+			cur_time += dt
+			progress = (clamp(cur_time, start_time, stop_time) - start_time) / time_difference
+			self.opacity = initial_value + (value_difference * tween_func(progress))
+			if cur_time >= stop_time:
+				pyglet.clock.unschedule(tween_schedule_func)
+				if on_complete is not None:
+					on_complete()
+
+		pyglet.clock.schedule(tween_schedule_func)
+
+	def world_update(self,
+		x: int = None,
+		y: int = None,
+		rotation: float = None,
+		scale: float = None,
+		scale_x: float = None,
+		scale_y: float = None,
+		scroll_factor: t.Tuple[int, int] = None,
+	):
 		"""
 		Updates multiple attributes at once and only pokes a
 		potentially associated camera once to update them all.
 		"""
-		# TODO
+		if x is not None:
+			self._world_x = x
+		if y is not None:
+			self._world_y = y
+		if rotation is not None:
+			self._world_rotation = rotation
+		if scale is not None:
+			self._world_scale = scale
+		if scale_x is not None:
+			self._world_scale_x = scale_x
+		if scale_y is not None:
+			self._world_scale_y = scale_y
+		if scroll_factor is not None:
+			self._scroll_factor = scroll_factor
+		self.update_camera()
 
 	# PNFSprite properties
 
