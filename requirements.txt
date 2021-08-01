@@ -1,3 +1,2 @@
 loguru
 pyglet==1.5.18
-pyogg==0.6.14a1

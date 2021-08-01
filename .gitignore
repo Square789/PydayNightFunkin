@@ -116,3 +116,5 @@ dmypy.json
 
 # VSCode settings and stuff
 .vscode/
+
+pyday_night_funkin/stb_vorbis/*.dll
