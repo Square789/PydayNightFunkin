@@ -93,8 +93,16 @@ class Week1Level(Level):
 
 		# SOUNDS
 		song_dir = CNST.ASSETS / self.info.song_dir
-		# self.snd_instrumental = StaticSource(load(str(song_dir / "Inst.wav")))
-		# self.snd_voices = StaticSource(load(str(song_dir / "Voices.wav")))
+		self.snd_instrumental = load(song_dir / "Inst.ogg")
+		self.snd_voices = load(song_dir / "Voices.ogg")
+
+		self.countdown_sounds = [
+			StaticSource(load(CNST.ASSETS / "shared/sounds/intro2.ogg")),
+			StaticSource(load(CNST.ASSETS / "shared/sounds/intro1.ogg")),
+			StaticSource(load(CNST.ASSETS / "shared/sounds/introGo.ogg")),
+			None,
+		]
+		logger.debug("end of resource creation")
 
 
 	def on_start(self) -> None:
@@ -117,6 +125,9 @@ class Week1Level(Level):
 			self.countdown_sprites[sprite_idx].tween(
 				TWEEN.IN_OUT_CUBIC, TWEEN_ATTR.OPACITY, 0, 1.0, hide
 			)
+			if self.countdown_sounds[sprite_idx] is not None:
+				self.game_scene.game.player.queue(self.countdown_sounds[sprite_idx])
+				self.game_scene.game.player.play()
 
 			self._countdown_stage += 1
 

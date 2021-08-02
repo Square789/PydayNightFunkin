@@ -17,7 +17,7 @@ ICON_X_DISPLACEMENT = 124
 class HealthBar():
 	"""
 	Class that registers and contains a few sprites to render a game's
-	health bar to the screen.
+	health bar with two icons to the screen.
 	"""
 	def __init__(
 		self,
@@ -38,7 +38,6 @@ class HealthBar():
 		bg_layer, bar_layer, icon_layer = layers
 
 		bar_image = load_image(CNST.ASSETS / "shared/images/healthBar.png")
-
 		self.health_bar = scene.create_sprite(
 			bg_layer,
 			((CNST.GAME_WIDTH - bar_image.width) // 2, int(CNST.GAME_HEIGHT * 0.9)),
@@ -64,8 +63,7 @@ class HealthBar():
 		self.opponent_icons = [fi_tex.texture for fi_tex in healthbar_icons[opponent_icon]]
 		self.player_icons = [fi_tex.texture for fi_tex in healthbar_icons[player_icon]]
 		# This assumes all opponent and player icons are of same height (i mean, they are)
-		icon_y = self.health_bar.world_y + (bar_image.height // 2) - \
-			(self.opponent_icons[0].height // 2)
+		icon_y = self.health_bar.world_y + (bar_image.height - self.opponent_icons[0].height) // 2
 		self.opponent_sprite = scene.create_sprite(
 			icon_layer, (0, icon_y), self.opponent_icons[0], camera
 		)
@@ -79,22 +77,19 @@ class HealthBar():
 
 	def update(self, new_health: float) -> None:
 		"""
-		Update the HealthBar with new health. It is clamped to the
-		range of 0..1, will size the bars and reposition the icons
-		accordingly and change the icons to their ded state if
-		below the respective threshold.
+		Updates the HealthBar with new_health, clamped to the range
+		of 0..1. Bar size and icon position will be changed
+		accordingly and icons will be changed to their ded state if
+		below the health bar's ded threshold.
 		"""
-		# this function really sucks and i do not like it
 		bar_width = self.health_bar._texture.width - 8
 		opponent_bar_x = self.health_bar.world_x + 4
 		opponent_bar_width = int((1.0 - clamp(new_health, 0.0, 1.0)) * bar_width)
 		player_bar_x = opponent_bar_x + opponent_bar_width
 		player_bar_width = bar_width - opponent_bar_width
 
-		self.opponent_bar.world_x = opponent_bar_x
-		self.opponent_bar.world_scale_x = opponent_bar_width
-		self.player_bar.world_x = player_bar_x
-		self.player_bar.world_scale_x = player_bar_width
+		self.opponent_bar.world_update(x = opponent_bar_x, scale_x = opponent_bar_width)
+		self.player_bar.world_update(x = player_bar_x, scale_x = player_bar_width)
 		self.opponent_sprite.world_x = player_bar_x - ICON_X_DISPLACEMENT
 		self.player_sprite.world_x = player_bar_x + ICON_X_DISPLACEMENT
 

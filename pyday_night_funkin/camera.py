@@ -12,8 +12,9 @@ CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
 class Camera():
 	def __init__(self):
 		self._sprites: t.List["PNFSprite"] = []
-		self._zoom = 1.0
 		self._view_target = list(CENTER)
+		self._opacity_multiplier = 1.0
+		self._zoom = 1.0
 		self._dirty = False
 
 	def add_sprite(self, *sprites: "PNFSprite"):
@@ -45,10 +46,11 @@ class Camera():
 			screen_x = int((bl_world_x - view_target_x * sf_x) * screen_scale) + CENTER_X
 			screen_y = int((bl_world_y - view_target_y * sf_y) * screen_scale) + CENTER_Y
 
+			sprite.opacity = sprite._world_opacity * self._opacity_multiplier
 			sprite.update(
-				scale = screen_scale,
 				x = screen_x,
 				y = screen_y,
+				scale = screen_scale,
 				scale_x = sprite._world_scale_x,
 				scale_y = sprite._world_scale_y,
 			)

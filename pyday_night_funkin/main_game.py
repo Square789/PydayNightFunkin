@@ -4,16 +4,23 @@ import typing as t
 from loguru import logger
 import pyglet
 from pyglet.graphics import Batch
+import pyglet.media
+from pyglet.media import Player
 from pyglet.window import key
 
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.levels import WEEKS
+from pyday_night_funkin import ogg_decoder
 from pyday_night_funkin.scenes import BaseScene, InGame
 
 
 class Game():
 	def __init__(self) -> None:
+
+		if ogg_decoder not in pyglet.media.get_decoders():
+			pyglet.media.add_decoders(ogg_decoder)
+
 		self.debug = True
 		logger.remove(0)
 		if self.debug:
@@ -28,6 +35,8 @@ class Game():
 			resizable = True, # totally am gonna do this later and fucking die trying
 		)
 		self.window.push_handlers(self.ksh)
+
+		self.player = Player()
 
 		self.main_batch = pyglet.graphics.Batch()
 		self.active_scene = BaseScene(self, (), ())

@@ -4,6 +4,7 @@ from ctypes import (
 	c_uint, c_uint16, c_uint32, c_uint8, c_void_p, cast, create_string_buffer, sizeof
 )
 from pathlib import Path
+import typing as t
 
 c_uchar = c_ubyte # don't like the name. it reminds me of java. *shudders*
 
@@ -80,6 +81,7 @@ class stb_vorbis_comment(Structure):
 		("comment_list_length", c_int),
 		("comment_list", POINTER(c_char_p)),
 	]
+
 
 codetype = c_float
 
@@ -396,7 +398,11 @@ class STBVorbis():
 		if hasattr(self, "_stb_vorbis") and self._stb_vorbis:
 			stb_vorbis_lib.stb_vorbis_close(self._stb_vorbis)
 
-	def get_info(self) -> dict:
+	def get_info(self) -> t.Dict[str, t.Any]:
+		"""
+		Returns a dict mapping the stb_vorbis_info field names to the
+		concrete values of this stb_vorbis struct.
+		"""
 		info = stb_vorbis_lib.stb_vorbis_get_info(self._stb_vorbis)
 		if not info:
 			raise RuntimeError(
@@ -404,20 +410,39 @@ class STBVorbis():
 			)
 		return {field: getattr(info, field) for field, _ in stb_vorbis_info._fields_}
 
-	def get_samples_short_interleaved(self, time: float) -> bytes:
+	def get_sample_offset(self):
 		"""
-		Returns bytes representing short (16bit) samples for the given
-		time period for all channels on the stb_vorbis struct.
+		Returns the sample offset in the file
 		"""
-		sample_amount = int(time * self.sample_rate)
-		buf = create_string_buffer(sizeof(c_short) * sample_amount)
+		return stb_vorbis_lib.stb_vorbis_get_sample_offset(self._stb_vorbis)
+
+	def get_samples_short_interleaved(self, samples: int) -> t.Tuple[int, bytes]:
+		"""
+		Returns a tuple of the samples per channel as returned by the
+		stb_vorbis library and at most `samples` shorts (16 bit) in a
+		bytes object for all channels on the stb_vorbis struct, less if
+		the data source is exhausted.
+		"""
+		buf = create_string_buffer(sizeof(c_short) * samples)
 		cast_buf = cast(buf, POINTER(c_short))
 
 		samples_per_channel = stb_vorbis_lib.stb_vorbis_get_samples_short_interleaved(
-			self._stb_vorbis, self.channel_amount, cast_buf, sample_amount
+			self._stb_vorbis, self.channel_amount, cast_buf, samples
 		)
-		print("#", samples_per_channel)
-		return buf.raw
+
+		return (samples_per_channel, buf.raw)
+
+	def get_sample_amount(self):
+		"""
+		Returns the total stream length in samples.
+		"""
+		return stb_vorbis_lib.stb_vorbis_get_stream_length_in_samples(self._stb_vorbis)
+
+	def get_duration(self):
+		"""
+		Returns the total stream length in seconds.
+		"""
+		return stb_vorbis_lib.stb_vorbis_stream_length_in_seconds(self._stb_vorbis)
 
 	def seek(self, target_sample: int) -> None:
 		"""

@@ -24,7 +24,22 @@ if t.TYPE_CHECKING:
 class TWEEN_ATTR(IntEnum):
 	X = 0
 	Y = 1
-	OPACITY = 2
+	ROTATION = 2
+	OPACITY = 3
+	SCALE = 4
+	SCALE_X = 5
+	SCALE_Y = 6
+
+
+_TWEEN_ATTR_NAME_MAP = {
+	TWEEN_ATTR.X: "_world_x",
+	TWEEN_ATTR.Y: "_world_y",
+	TWEEN_ATTR.ROTATION: "_world_rotation",
+	TWEEN_ATTR.OPACITY: "_world_opacity",
+	TWEEN_ATTR.SCALE: "_world_scale",
+	TWEEN_ATTR.SCALE_X: "_world_scale_x",
+	TWEEN_ATTR.SCALE_Y: "_world_scale_y",
+}
 
 
 class OffsetAnimationFrame():
@@ -105,10 +120,11 @@ class PNFSprite(Sprite):
 		# that may modify them for the actual rendering superclass sprite's set of these variables.
 		self._world_x = x
 		self._world_y = y
+		self._world_rotation = 0
+		self._world_opacity = 255
 		self._world_scale = 1.0
 		self._world_scale_x = 1.0
 		self._world_scale_y = 1.0
-		self._world_rotation = 0
 		self._scroll_factor = (1.0, 1.0)
 
 	def _animate(self, dt: float) -> None:
@@ -193,7 +209,7 @@ class PNFSprite(Sprite):
 	def tween(
 		self,
 		tween_type: TWEEN,
-		attribute, # TODO: make this work for all int/float attributes of a sprite!!!
+		attribute: TWEEN_ATTR,
 		target_value: t.Union[int, float],
 		duration: float,
 		on_complete: t.Callable = None,
@@ -201,19 +217,22 @@ class PNFSprite(Sprite):
 		"""
 		# TODO write some very cool doc
 		"""
+		attr_name = _TWEEN_ATTR_NAME_MAP[attribute]
 		start_time = time()
 		stop_time = start_time + duration
 		time_difference = stop_time - start_time
-		initial_value = self._opacity
+		initial_value = getattr(self, attr_name)
 		value_difference = target_value - initial_value
 		tween_func = TWEENS[tween_type]
 		cur_time = start_time
 
+		# NOTE: maybe implement multiple attribute tweening later
 		def tween_schedule_func(dt: float):
 			nonlocal cur_time
 			cur_time += dt
 			progress = (clamp(cur_time, start_time, stop_time) - start_time) / time_difference
-			self.opacity = initial_value + (value_difference * tween_func(progress))
+			setattr(self, attr_name, initial_value + (value_difference * tween_func(progress)))
+			self.update_camera()
 			if cur_time >= stop_time:
 				pyglet.clock.unschedule(tween_schedule_func)
 				if on_complete is not None:
@@ -225,6 +244,7 @@ class PNFSprite(Sprite):
 		x: int = None,
 		y: int = None,
 		rotation: float = None,
+		opacity: int = None,
 		scale: float = None,
 		scale_x: float = None,
 		scale_y: float = None,
@@ -240,6 +260,8 @@ class PNFSprite(Sprite):
 			self._world_y = y
 		if rotation is not None:
 			self._world_rotation = rotation
+		if opacity is not None:
+			self._world_opacity = opacity
 		if scale is not None:
 			self._world_scale = scale
 		if scale_x is not None:
@@ -259,15 +281,6 @@ class PNFSprite(Sprite):
 	@scroll_factor.setter
 	def scroll_factor(self, new_sf: t.Tuple[float, float]) -> None:
 		self._scroll_factor = new_sf
-		self.update_camera()
-
-	@property
-	def world_position(self) -> t.Tuple[int, int]:
-		return self._world_x, self._world_y
-
-	@world_position.setter
-	def world_position(self, pos: t.Tuple[int, int]) -> None:
-		self._world_x, self._world_y = pos
 		self.update_camera()
 
 	@property
@@ -295,6 +308,15 @@ class PNFSprite(Sprite):
 	@world_rotation.setter
 	def world_rotation(self, new_rot: float) -> None:
 		self._world_rotation = new_rot
+		self.update_camera()
+
+	@property
+	def world_opacity(self) -> float:
+		return self._world_opacity
+
+	@world_opacity.setter
+	def world_opacity(self, new_opac: float) -> None:
+		self._world_opacity = new_opac
 		self.update_camera()
 
 	@property
