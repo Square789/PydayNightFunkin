@@ -44,7 +44,7 @@ class Game():
 		self.switch_scene(InGame, WEEKS[1], 0)
 
 	def run(self) -> None:
-		pyglet.clock.schedule_interval(self.update, 1 / 120.0)
+		pyglet.clock.schedule_interval(self.update, 1 / 160.0)
 		pyglet.app.run()
 
 	def switch_scene(self, scene_class: t.Type[BaseScene], *args, **kwargs) -> None:
@@ -52,12 +52,15 @@ class Game():
 			self.active_scene.on_leave()
 		self.active_scene = scene_class(self, *args, **kwargs)
 		self.window.push_handlers(
-			on_resize = self.active_scene.on_window_resize,
+			on_draw = self.draw,
 			on_key_press = self.active_scene.on_key_press,
+			on_resize = self.active_scene.on_window_resize,
 		)
 
-	def update(self, dt) -> None:
-		self.window.clear()
-		self.active_scene.update(dt)
+	def draw(self) -> None:
+		self.active_scene.draw()
 		if self.debug:
 			self.debug_pane_batch.draw()
+
+	def update(self, dt) -> None:
+		self.active_scene.update(dt)

@@ -1,8 +1,4 @@
 
-import typing as t
-
-from pathlib import Path
-
 from pyglet.image import CheckerImagePattern, Texture
 
 
@@ -10,9 +6,6 @@ PINK =  (0xFF, 0x00, 0xFF, 0xFF)
 BLACK = (0x00, 0x00, 0x00, 0xFF)
 WHITE = (0xFF, 0xFF, 0xFF, 0xFF)
 RED =   (0xAA, 0x00, 0x00, 0xFF)
-
-# TODO: replace with pyglet.resource
-ASSETS = Path.cwd() / "assets"
 
 GAME_WIDTH, GAME_HEIGHT = GAME_DIMENSIONS = (1280, 720)
 

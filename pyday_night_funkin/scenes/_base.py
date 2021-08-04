@@ -68,23 +68,25 @@ class BaseScene():
 		# logger.debug(f"Window resized: ({new_w}, {new_h})")
 
 	def update(self, dt: float):
-		stime = time()
 		if "main" in self.cameras:
 			cam = self.cameras["main"]
 			if self.game.ksh[key.UP]:
 				cam.y -= 10
-			elif self.game.ksh[key.RIGHT]:
+			if self.game.ksh[key.RIGHT]:
 				cam.x += 10
-			elif self.game.ksh[key.DOWN]:
+			if self.game.ksh[key.DOWN]:
 				cam.y += 10
-			elif self.game.ksh[key.LEFT]:
+			if self.game.ksh[key.LEFT]:
 				cam.x -= 10
-			elif self.game.ksh[key.PLUS]:
+			if self.game.ksh[key.PLUS]:
 				cam.zoom += 0.05
-			elif self.game.ksh[key.MINUS]:
+			if self.game.ksh[key.MINUS]:
 				cam.zoom -= 0.05
 		for cam in self.cameras.values():
 			cam.update()
+
+	def draw(self):
+		stime = time()
 		self.batch.draw()
 		if self.game.debug:
 			debug_batch = pyglet.graphics.Batch()

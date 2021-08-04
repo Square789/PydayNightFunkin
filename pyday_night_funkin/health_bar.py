@@ -3,6 +3,7 @@ import typing as t
 
 from pyglet.image import ImageData, Texture
 
+from pyday_night_funkin.asset_system import ASSETS
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.image_loader import load_animation_frames_from_xml, load_image
 from pyday_night_funkin.pnf_sprite import PNFSprite
@@ -37,7 +38,7 @@ class HealthBar():
 
 		bg_layer, bar_layer, icon_layer = layers
 
-		bar_image = load_image(CNST.ASSETS / "shared/images/healthBar.png")
+		bar_image = ASSETS.IMG.HEALTH_BAR.load()
 		self.health_bar = scene.create_sprite(
 			bg_layer,
 			((CNST.GAME_WIDTH - bar_image.width) // 2, int(CNST.GAME_HEIGHT * 0.9)),
@@ -59,7 +60,7 @@ class HealthBar():
 			camera,
 		)
 
-		healthbar_icons = load_animation_frames_from_xml(CNST.ASSETS / "images/iconGrid.xml")
+		healthbar_icons = ASSETS.XML.ICON_GRID.load()
 		self.opponent_icons = [fi_tex.texture for fi_tex in healthbar_icons[opponent_icon]]
 		self.player_icons = [fi_tex.texture for fi_tex in healthbar_icons[player_icon]]
 		# This assumes all opponent and player icons are of same height (i mean, they are)

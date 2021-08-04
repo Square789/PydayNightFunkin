@@ -10,31 +10,15 @@ WEEKS: t.Sequence[Week] = (
 	Week(
 		"TUTORIAL",
 		[
-			LevelBlueprint(
-				"Tutorial",
-				"songs/test",
-				Week1Level
-			),
+			LevelBlueprint("Tutorial", Week1Level),
 		]
 	),
 	Week(
 		"WEEK 1",
 		[
-			LevelBlueprint(
-				"Bopeebo",
-				"songs/test",
-				Week1Level
-			),
-			LevelBlueprint(
-				"Fresh",
-				"songs/test",
-				Week1Level
-			),
-			LevelBlueprint(
-				"Dad Battle",
-				"songs/test",
-				Week1Level
-			),
+			LevelBlueprint("Bopeebo", Week1Level),
+			LevelBlueprint("Fresh", Week1Level),
+			LevelBlueprint("Dad Battle", Week1Level),
 		]
 	),
 )

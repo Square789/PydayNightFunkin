@@ -5,6 +5,7 @@ import typing as t
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGame
 
+
 class Level:
 	"""
 	Class to contain everything relating to a level.
@@ -25,7 +26,7 @@ class Level:
 	def get_layer_names(self) -> t.Sequence[str]:
 		return ()
 
-	def load_sprites(self) -> None:
+	def load_resources(self) -> None:
 		"""
 		This function will be called by the game scene in an early
 		state of level setup # TODO DOC. Override it in a subclass!
@@ -41,7 +42,6 @@ class Level:
 @dataclass
 class LevelBlueprint:
 	name: str
-	song_dir: str
 	class_: t.Type[Level]
 
 	def create_level(self, game_scene: "InGame") -> Level:

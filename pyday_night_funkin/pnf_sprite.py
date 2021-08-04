@@ -1,6 +1,5 @@
 
 from enum import IntEnum
-from pyday_night_funkin.tweens import TWEEN, TWEENS
 from time import time
 import typing as t
 
@@ -208,7 +207,7 @@ class PNFSprite(Sprite):
 
 	def tween(
 		self,
-		tween_type: TWEEN,
+		tween_func: t.Callable[[float], float],
 		attribute: TWEEN_ATTR,
 		target_value: t.Union[int, float],
 		duration: float,
@@ -223,7 +222,6 @@ class PNFSprite(Sprite):
 		time_difference = stop_time - start_time
 		initial_value = getattr(self, attr_name)
 		value_difference = target_value - initial_value
-		tween_func = TWEENS[tween_type]
 		cur_time = start_time
 
 		# NOTE: maybe implement multiple attribute tweening later
