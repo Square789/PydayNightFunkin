@@ -5,8 +5,6 @@ from pyglet.image import ImageData, Texture
 
 from pyday_night_funkin.asset_system import ASSETS
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.image_loader import load_animation_frames_from_xml, load_image
-from pyday_night_funkin.pnf_sprite import PNFSprite
 from pyday_night_funkin.utils import clamp, to_rgba_bytes
 
 if t.TYPE_CHECKING:
@@ -33,7 +31,6 @@ class HealthBar():
 	) -> None:
 		"""
 		"""
-
 		self.ded_icon_threshold = ded_icon_threshold
 
 		bg_layer, bar_layer, icon_layer = layers

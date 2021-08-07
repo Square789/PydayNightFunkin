@@ -94,7 +94,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-venv_pyglet2/
 
 # Spyder project settings
 .spyderproject
@@ -117,4 +116,8 @@ dmypy.json
 # VSCode settings and stuff
 .vscode/
 
+# No binary on github
 pyday_night_funkin/stb_vorbis/*.dll
+
+# Some local test files, mostly profiling. Root directory only. 
+/_*

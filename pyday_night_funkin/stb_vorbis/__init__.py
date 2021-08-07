@@ -3,6 +3,7 @@ from ctypes import (
 	Structure, POINTER, Union, byref, c_char_p, c_float, c_int, c_int16, c_int32, c_short, c_ubyte,
 	c_uint, c_uint16, c_uint32, c_uint8, c_void_p, cast, create_string_buffer, sizeof
 )
+from enum import IntEnum
 from pathlib import Path
 import typing as t
 
@@ -30,27 +31,30 @@ STB_VORBIS_FAST_HUFFMAN_LENGTH = 10
 FAST_HUFFMAN_TABLE_SIZE = 1 << STB_VORBIS_FAST_HUFFMAN_LENGTH
 FAST_HUFFMAN_TABLE_MASK = FAST_HUFFMAN_TABLE_SIZE - 1
 
-VORBIS__no_error = 0
-VORBIS_need_more_data = 1
-VORBIS_invalid_api_mixing = 2
-VORBIS_outofmem = 3
-VORBIS_feature_not_supported = 4
-VORBIS_too_many_channels = 5
-VORBIS_file_open_failure = 6
-VORBIS_seek_without_length = 7
-VORBIS_unexpected_eof = 10
-VORBIS_seek_invalid = 11
-VORBIS_invalid_setup = 20
-VORBIS_invalid_stream = 21
-VORBIS_missing_capture_pattern = 30
-VORBIS_invalid_stream_structure_version = 31
-VORBIS_continued_packet_flag_invalid = 32
-VORBIS_incorrect_stream_serial_number = 33
-VORBIS_invalid_first_page = 34
-VORBIS_bad_packet_type = 35
-VORBIS_cant_find_last_page = 36
-VORBIS_seek_failed = 37
-VORBIS_ogg_skeleton_not_supported = 38
+class STB_VORBIS_ERR(IntEnum):
+	_no_error = 0
+	need_more_data = 1
+	invalid_api_mixing = 2
+	outofmem = 3
+	feature_not_supported = 4
+	too_many_channels = 5
+	file_open_failure = 6
+	seek_without_length = 7
+	unexpected_eof = 10
+	seek_invalid = 11
+	invalid_setup = 20
+	invalid_stream = 21
+	missing_capture_pattern = 30
+	invalid_stream_structure_version = 31
+	continued_packet_flag_invalid = 32
+	incorrect_stream_serial_number = 33
+	invalid_first_page = 34
+	bad_packet_type = 35
+	cant_find_last_page = 36
+	seek_failed = 37
+	ogg_skeleton_not_supported = 38
+
+STB_VORBIS_ERR_VALUES = frozenset(v.value for v in STB_VORBIS_ERR.__members__.values())
 
 
 class stb_vorbis(Structure):
@@ -374,6 +378,10 @@ stb_vorbis_lib.stb_vorbis_get_samples_short.argtypes = [POINTER(stb_vorbis), c_i
 stb_vorbis_lib.stb_vorbis_get_samples_short.restype = c_int
 
 
+class STBVorbisException(Exception):
+	pass
+
+
 class STBVorbis():
 	"""
 	Python class managing a stb_vorbis struct.
@@ -389,14 +397,26 @@ class STBVorbis():
 
 		self._stb_vorbis = stb_vorbis_lib.stb_vorbis_open_filename(cstr, byref(error), alloc)
 		if not self._stb_vorbis:
-			raise RuntimeError(f"Failure creating STBVorbis struct; Error code {error}.")
-		# These shouldn't change, probably
+			raise STBVorbisException(
+				f"Error creating stb_vorbis struct: {self._get_error_string()}."
+			)
+
+		# These better don't change midway through a file
 		self.channel_amount = self._stb_vorbis.contents.channels
 		self.sample_rate = self._stb_vorbis.contents.sample_rate
 
 	def __del__(self) -> None:
 		if hasattr(self, "_stb_vorbis") and self._stb_vorbis:
 			stb_vorbis_lib.stb_vorbis_close(self._stb_vorbis)
+
+	def _get_error_string(self) -> str:
+		"""
+		Returns a formatted error string of the current error and its
+		name as assigned in the STB_VORBIS_ERR enum.
+		"""
+		err = self._stb_vorbis.contents.error.value
+		name = STB_VORBIS_ERR(err).name if err in STB_VORBIS_ERR_VALUES else "?"
+		return f"{err} ({name!r})"
 
 	def get_info(self) -> t.Dict[str, t.Any]:
 		"""
@@ -405,8 +425,8 @@ class STBVorbis():
 		"""
 		info = stb_vorbis_lib.stb_vorbis_get_info(self._stb_vorbis)
 		if not info:
-			raise RuntimeError(
-				f"Getting info failed. stb_vorbis struct error: {self._stb_vorbis.contents.error}"
+			raise STBVorbisException(
+				f"Getting info failed. stb_vorbis struct error: {self._get_error_string()}"
 			)
 		return {field: getattr(info, field) for field, _ in stb_vorbis_info._fields_}
 
@@ -432,13 +452,13 @@ class STBVorbis():
 
 		return (samples_per_channel, buf.raw)
 
-	def get_sample_amount(self):
+	def get_sample_amount(self) -> int:
 		"""
 		Returns the total stream length in samples.
 		"""
 		return stb_vorbis_lib.stb_vorbis_get_stream_length_in_samples(self._stb_vorbis)
 
-	def get_duration(self):
+	def get_duration(self) -> float:
 		"""
 		Returns the total stream length in seconds.
 		"""

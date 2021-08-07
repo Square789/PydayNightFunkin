@@ -46,7 +46,6 @@ class OggVorbisStreamingSource(StreamingSource):
 			return None
 
 		if read_bytes != len(data):
-			logger.debug(f"{read_bytes=} != {len(data)=}, trimming audio buffer")
 			# NOTE: this probably involves copying the entire audio buffer just to trim it
 			data = data[0 : read_bytes]
 
@@ -72,6 +71,7 @@ class OggVorbisDecoder(MediaDecoder):
 		else:
 			return StaticSource(src)
 
+_ogg_decoder = OggVorbisDecoder()
 
 def get_decoders():
-	return [OggVorbisDecoder()]
+	return [_ogg_decoder]

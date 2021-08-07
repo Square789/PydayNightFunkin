@@ -1,11 +1,16 @@
 
 from collections import OrderedDict
+from pyday_night_funkin.sfx_ring import SFXRing
 from time import time
 import typing as t
 
 from loguru import logger
 import pyglet
-from pyglet.graphics import OrderedGroup
+if pyglet.version.startswith("2.0"):
+	from pyglet.graphics import Group
+	OrderedGroup = lambda o, parent = None: Group(o, parent)
+else:
+	from pyglet.graphics import OrderedGroup
 from pyglet.image import AbstractImage
 from pyglet.window import key
 
@@ -18,14 +23,35 @@ if t.TYPE_CHECKING:
 
 
 class BaseScene():
+	"""
+	A scene holds a number of sprites and cameras, functions to
+	manipulate these in a way appropiate to the scene's nature and
+	event handlers to call these functions.
+	"""
 
-	def __init__(self, game: "Game", layer_names: t.Sequence[str], camera_names: t.Sequence[str]):
+	def __init__(
+		self,
+		game: "Game",
+		layer_names: t.Sequence[str],
+		camera_names: t.Sequence[str],
+	) -> None:
+		"""
+		Initializes the base scene.
+
+		:param game: The `Game` the scene belongs to.
+		:param layer_names: String sequence of layers to create. Each
+			sprite can be held by one layer and they will be drawn
+			first layer in this sequence first.
+		:param camera_names: String sequence of cameras to create.
+			Each sprite's screen position can be manipulated by one
+			camera.
+		"""
 		self.game = game
 		self.batch = game.main_batch
 		self.layers = OrderedDict((name, OrderedGroup(i)) for i, name in enumerate(layer_names))
 		self.cameras = {name: Camera() for name in camera_names}
 		self._sprites: t.List[PNFSprite] = []
-		self._fps = [time() * 1000, 0, "?"]
+		self.sfx_ring = SFXRing(CNST.SFX_RING_SIZE)
 
 	def create_sprite(
 		self,
@@ -34,7 +60,14 @@ class BaseScene():
 		image: t.Optional[t.Union[AbstractImage, PNFAnimation]] = None,
 		camera: t.Optional[str] = None,
 	) -> PNFSprite:
-
+		"""
+		Creates a sprite on the given layer at the given position.
+		Optionally an image may be specified which will be given
+		directly to the `PNFSprite` constructor.
+		If a camera name is specified (and the camera exists in the
+		scene), the sprite will be registered with it and its
+		transformations immediatedly applied.
+		"""
 		sprite = PNFSprite(
 			image,
 			position[0],
@@ -65,7 +98,6 @@ class BaseScene():
 		Called when the game window resized.
 		"""
 		pass
-		# logger.debug(f"Window resized: ({new_w}, {new_h})")
 
 	def update(self, dt: float):
 		if "main" in self.cameras:
@@ -86,31 +118,4 @@ class BaseScene():
 			cam.update()
 
 	def draw(self):
-		stime = time()
 		self.batch.draw()
-		if self.game.debug:
-			debug_batch = pyglet.graphics.Batch()
-			# # Need to keep references, otherwise shapes will be deleted before they can be drawn
-			# _refs = []
-			# for sprite in self._sprites:
-			# 	_refs.append(sprite.get_debug_rect(color = CNST.RED[0:3], batch = debug_batch))
-			self._fps_bump()
-			draw_time = (time() - stime) * 1000
-			pyglet.text.Label(
-				f"FPS: {self._fps[2]}; Draw time {draw_time:.6f} ms",
-				font_name = "Consolas",
-				font_size = 14,
-				x = 0,
-				y = 4,
-				batch = debug_batch
-			)
-			debug_batch.draw()
-			# del _refs
-
-	def _fps_bump(self):
-		self._fps[1] += 1
-		t = time() * 1000
-		if t - self._fps[0] >= 1000:
-			self._fps[0] = t
-			self._fps[2] = str(self._fps[1])
-			self._fps[1] = 0

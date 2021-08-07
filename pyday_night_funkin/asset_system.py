@@ -7,15 +7,24 @@ modding scene's lifetime.
 
 from enum import IntEnum
 from pathlib import Path
+import json
 import typing as t
 
 from pyglet.image import AbstractImage
 from pyglet.media import load as load_media, Source
 
+from pyday_night_funkin.constants import DIFFICULTY
 from pyday_night_funkin.image_loader import (
 	FrameInfoTexture, load_animation_frames_from_xml, load_image
 )
-from pyday_night_funkin.ogg_decoder import OggVorbisDecoder
+import pyday_night_funkin.ogg_decoder
+
+
+# NOTE: Instead of having the complete assets be an ASSETS class with Resources,
+# these resources having different paths for each asset, create each asset system
+# as its own class having each resource registered with exactly one path each.
+# That would also allow for cool modding where one could supply an incomplete asset
+# system with a higher priority than an existing one, replacing specific resources.
 
 
 class ASSET_SYSTEM(IntEnum):
@@ -109,36 +118,58 @@ class Image(Resource):
 		return load_image(self.get_path())
 
 
-class OggVorbisSound(Resource):
+class OggVorbis(Resource):
+
+	_decoder = pyday_night_funkin.ogg_decoder.get_decoders()[0]
+
+	def _load(self, path: Path, streaming_source: bool) -> Source:
+		return load_media(str(path), None, streaming_source, self._decoder)
+
+
+class OggVorbisSound(OggVorbis):
 	def load(self, streaming_source: bool = False) -> Source:
-		return load_media(str(self.get_path()), None, streaming_source, OggVorbisDecoder())
+		return self._load(self.get_path(), streaming_source)
 
 
-class OggVorbisSong(Resource):
-	def __init__(self, song_dir: "AssetPath", *args, **kwargs) -> None:
+class OggVorbisSong(OggVorbis):
+	def __init__(self, song_dir: "AssetPath", data_dir: "AssetPath", *args, **kwargs) -> None:
 		"""
 		Creates a song resource. They are handled differently than the
-		other resources and need a song directory `AssetPath` resource
-		that will be used to resolve the song directory.
+		other resources, needing a song directory `AssetPath` resource
+		in the constructor, which will be used to resolve the song
+		directory, as well as a data directory, used for opening the
+		song's json file.
 		The per-asset system paths here must be fragments and will be
-		appended to the song directory path.
+		appended to the song directory path. They should be strings
+		as they will be concatted to build json file names.
+		Some songs may only consist out of an instrumental, in which
+		case `load`'s 2nd return value will be `None`.
 		"""
 		super().__init__(*args, **kwargs)
 		self.song_dir = song_dir
+		self.data_dir = data_dir
 
 	def get_path(self) -> str:
 		return str(self.paths[_asm.active_asset_system])
 
-	def load(self) -> None:
-		raise NotImplementedError("Use `load_voices` and `load_instrumental` instead!")
+	def load(
+		self,
+		stream: t.Tuple[bool, bool],
+		difficulty: DIFFICULTY
+	) -> t.Tuple[Source, t.Optional[Source], t.Dict[str, t.Any]]:
+		json_file = str(self.get_path()) + difficulty.to_json_str() + ".json"
+		json_path = self.data_dir.load() / self.get_path() / json_file
+		song_path = self.song_dir.load() / self.get_path() / "Inst.ogg"
+		voic_path = self.song_dir.load() / self.get_path() / "Voices.ogg"
+		with open(json_path, "r") as json_handle:
+			# TODO verify integrity of song dict
+			data = json.load(json_handle)
+		inst = self._load(song_path, stream[0])
+		voic = None
+		if data["song"]["needsVoices"]:  # Should be more like "hasVoices":
+			voic = self._load(voic_path, stream[1])
 
-	def load_instrumental(self, streaming_source: bool = False) -> Source:
-		abs_path = self.song_dir.load() / self.get_path() / "Inst.ogg"
-		return load_media(str(abs_path), None, streaming_source, OggVorbisDecoder())
-
-	def load_voices(self, streaming_source: bool = False) -> Source:
-		abs_path = self.song_dir.load() / self.get_path() / "Voices.ogg"
-		return load_media(str(abs_path), None, streaming_source, OggVorbisDecoder())
+		return (inst, voic, data)
 
 
 class AssetPath(Resource):
@@ -147,6 +178,7 @@ class AssetPath(Resource):
 
 
 _SONG_DIR = AssetPath("songs/")
+_DATA_DIR = AssetPath("preload/data/")
 
 class ASSETS:
 	"""
@@ -161,6 +193,7 @@ class ASSETS:
 		GIRLFRIEND = XmlTextureAtlas("shared/images/GF_assets.xml")
 		DADDY_DEAREST = XmlTextureAtlas("shared/images/DADDY_DEAREST.xml")
 		ICON_GRID = XmlTextureAtlas("preload/images/iconGrid.xml")
+		NOTES = XmlTextureAtlas("shared/images/NOTE_assets.xml")
 
 	class IMG:
 		STAGE_BACK = Image("shared/images/stageback.png")
@@ -181,10 +214,10 @@ class ASSETS:
 		SONGS = _SONG_DIR
 
 	class SONG:
-		TUTORIAL = OggVorbisSong(_SONG_DIR, "tutorial")
-		BOPEEBO = OggVorbisSong(_SONG_DIR, "bopeebo")
-		FRESH = OggVorbisSong(_SONG_DIR, "fresh")
-		DAD_BATTLE = OggVorbisSong(_SONG_DIR, "dadbattle")
+		TUTORIAL = OggVorbisSong(_SONG_DIR, _DATA_DIR, "tutorial")
+		BOPEEBO = OggVorbisSong(_SONG_DIR, _DATA_DIR, "bopeebo")
+		FRESH = OggVorbisSong(_SONG_DIR, _DATA_DIR, "fresh")
+		DAD_BATTLE = OggVorbisSong(_SONG_DIR, _DATA_DIR, "dadbattle")
 
 
 SONGS = {

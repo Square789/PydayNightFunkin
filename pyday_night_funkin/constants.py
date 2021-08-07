@@ -1,4 +1,6 @@
 
+from enum import IntEnum
+
 from pyglet.image import CheckerImagePattern, Texture
 
 
@@ -11,3 +13,18 @@ GAME_WIDTH, GAME_HEIGHT = GAME_DIMENSIONS = (1280, 720)
 
 ERROR_TEXTURE = CheckerImagePattern(PINK, BLACK).create_image(32, 32).create_texture(Texture)
 
+SFX_RING_SIZE = 8
+
+class DIFFICULTY(IntEnum):
+	EASY = 0
+	NORMAL = 1
+	HARD = 2
+
+	def to_json_str(self) -> str:
+		if self is self.EASY:
+			return "-easy"
+		elif self is self.NORMAL:
+			return ""
+		elif self is self.HARD:
+			return "-hard"
+		return ""

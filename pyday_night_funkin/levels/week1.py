@@ -14,10 +14,12 @@ from pyday_night_funkin.tweens import in_out_cubic
 
 class Week1Level(Level):
 
-	def get_camera_names(self) -> t.Sequence[str]:
+	@staticmethod
+	def get_camera_names() -> t.Sequence[str]:
 		return ("main", "ui")
 
-	def get_layer_names(self) -> t.Sequence[str]:
+	@staticmethod
+	def get_layer_names() -> t.Sequence[str]:
 		return (
 			"background0", "background1", "girlfriend", "stage", "curtains",
 			"ui0", "ui1", "ui2", "ui3"
@@ -59,9 +61,7 @@ class Week1Level(Level):
 		stagecurtains.scroll_factor = (1.3, 1.3)
 		stagecurtains.world_scale = 0.9
 
-		#note_sprites = load_animation_frames_from_xml(
-		#	asset_dir / "shared/images/NOTE_assets.xml"
-		#)
+		note_sprites = ASSETS.XML.NOTES.load()
 		self.health_bar = HealthBar(self.game_scene, "ui", "dad", "bf", ("ui0", "ui1", "ui2"))
 		self.health_bar.update(self.game_scene.health)
 
@@ -86,10 +86,6 @@ class Week1Level(Level):
 			sprite.visible = False
 			self.countdown_sprites.append(sprite)
 
-		# SOUNDS
-		self.snd_instrumental = SONGS[self.info.name].load_instrumental()
-		self.snd_voices = SONGS[self.info.name].load_voices()
-
 		self.countdown_sounds = (
 			ASSETS.SOUND.INTRO_3.load(),
 			ASSETS.SOUND.INTRO_2.load(),
@@ -104,7 +100,7 @@ class Week1Level(Level):
 		self.opponent.play_animation("idle_bop")
 
 		self._countdown_stage = 0
-		pyglet.clock.schedule_interval(self.countdown, 0.5)
+		pyglet.clock.schedule_interval(self.countdown, self.game_scene.conductor.beat_duration)
 
 	def countdown(self, _dt: float) -> None:
 		if self._countdown_stage == 4:
@@ -121,14 +117,10 @@ class Week1Level(Level):
 				)
 
 			if self.countdown_sounds[sprite_idx] is not None:
-				self.game_scene.game.player.queue(self.countdown_sounds[sprite_idx])
-				self.game_scene.game.player.play()
+				self.game_scene.sfx_ring.play(self.countdown_sounds[sprite_idx])
 
 			self._countdown_stage += 1
 
 	def start_song(self) -> None:
-		self.game_scene.inst_player.queue(self.snd_instrumental)
-		self.game_scene.voice_player.queue(self.snd_voices)
-		self.game_scene.inst_player.play()
-		self.game_scene.voice_player.play()
+		pass
 

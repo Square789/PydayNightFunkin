@@ -1,12 +1,25 @@
 
+import typing as t
+
+# The tiniest conductor
 class Conductor():
 	# https://ninjamuffin99.newgrounds.com/news/post/1124589
 	# -> https://www.reddit.com/r/gamedev/comments/2fxvk4/
 	#    heres_a_quick_and_dirty_guide_i_just_wrote_how_to/
 	# Very awesome tutorial, many thanks
 
-	def __init__(self, ) -> None:
-		self.beat = 0
+	def __init__(self) -> None:
+		self._bpm = None
+		self.beat_duration = None
+		self.song_position = 0.0
 
-	def change_bpm(self, x) -> None:
-		pass
+	@property
+	def bpm(self) -> t.Optional[float]:
+		return self._bpm
+
+	@bpm.setter
+	def bpm(self, new_bpm: float) -> None:
+		if new_bpm <= 0:
+			raise ValueError("Bpm can't be lower than or equal to zero!")
+		self._bpm = new_bpm
+		self.beat_duration = 60.0 / new_bpm

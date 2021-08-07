@@ -1,8 +1,5 @@
 # https://easings.net cool site
 
-from enum import Enum
-
-
 def linear(x: float) -> float:
 	return x
 

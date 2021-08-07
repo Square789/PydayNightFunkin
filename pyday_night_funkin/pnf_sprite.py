@@ -7,9 +7,7 @@ import pyglet.clock
 from pyglet.gl import GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
 from pyglet.image import AbstractImage
 from pyglet.image.animation import Animation
-from pyglet.shapes import Line
 from pyglet.sprite import Sprite
-from pyglet.text import Label
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.utils import clamp
@@ -105,7 +103,6 @@ class PNFSprite(Sprite):
 		usage = "dynamic",
 		subpixel = False,
 	) -> None:
-
 		if image is None:
 			image = CNST.ERROR_TEXTURE
 
@@ -157,46 +154,6 @@ class PNFSprite(Sprite):
 			self._animations[name] = PNFAnimation(
 				[OffsetAnimationFrame(tex.texture, spf, tex.frame_info, name) for tex in anim_data], loop
 			)
-
-	# def get_debug_rect(
-	# 	self,
-	# 	width:int = 1,
-	# 	color: t.Tuple[int, int, int] = (255, 255, 255),
-	# 	batch: "Batch" = None,
-	# 	group: "Group" = None
-	# ) -> t.Tuple[Line, Line, Line, Line, Label, Label]:
-	# 	"""
-	# 	Returns a 6-Tuple of 4 lines surrounding this sprite as
-	# 	dictated by its screen `x`, `y`, `width` and `height`
-	# 	properties and two labels describing these coordinates,
-	# 	one for screen values, one for the world position.
-	# 	"""
-	# 	x, y, w, h = self.x, self.y, self.width, self.height
-	# 	wx, wy = self.world_x, self.world_y
-	# 	return (
-	# 		Line(x, y + h, x + w, y + h, width, color, batch, group),
-	# 		Line(x + w, y + h, x + w, y, width, color, batch, group),
-	# 		Line(x + w, y, x, y, width, color, batch, group),
-	# 		Line(x, y, x, y + h, width, color, batch, group),
-	# 		# LABELS ARE INSANELY EXPENSIVE!!!
-	# 		# (Well i guess creating them every single frame is)
-	# 		Label(
-	# 			f"S X:{x} Y:{y} W:{w} H:{h}",
-	# 			font_name = "Consolas",
-	# 			font_size = 12,
-	# 			x = x,
-	# 			y = y + h - 12,
-	# 			batch = batch
-	# 		),
-	# 		Label(
-	# 			f"W X:{wx} Y:{wy}",
-	# 			font_name = "Consolas",
-	# 			font_size = 12,
-	# 			x = x,
-	# 			y = y + h - 26,
-	# 			batch = batch
-	# 		),
-	# 	)
 
 	def update_camera(self):
 		if self.camera is not None:

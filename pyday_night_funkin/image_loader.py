@@ -40,7 +40,6 @@ def load_image(path: Path) -> pyglet.image.AbstractImage:
 	return _IMAGE_CACHE[cache_key]
 
 def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[FrameInfoTexture]]:
-
 	with xml_path.open("r", encoding = "utf-8") as fp:
 		et = ElementTree.parse(fp)
 
@@ -102,5 +101,3 @@ def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[FrameIn
 		)
 
 	return frame_sequences
-
-
