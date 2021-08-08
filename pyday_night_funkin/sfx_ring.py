@@ -6,6 +6,7 @@ from pyglet.media import Player
 if t.TYPE_CHECKING:
 	from pyglet.media import Source
 
+
 class SFXRingFullException(RuntimeError):
 	pass
 

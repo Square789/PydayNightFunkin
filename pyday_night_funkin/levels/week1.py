@@ -1,14 +1,16 @@
 
-from loguru import logger
-from pyday_night_funkin.health_bar import HealthBar
+from itertools import product
 import typing as t
 
 import pyglet.clock
 
 from pyday_night_funkin.asset_system import ASSETS, SONGS
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.pnf_sprite import TWEEN_ATTR
+from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.levels import Level
+from pyday_night_funkin.note import NOTE_TYPE
+from pyday_night_funkin.pnf_sprite import TWEEN_ATTR
+from pyday_night_funkin.scenes.in_game import IN_GAME_STATE
 from pyday_night_funkin.tweens import in_out_cubic
 
 
@@ -33,7 +35,7 @@ class Week1Level(Level):
 
 		# SPRITES
 		stageback = self.game_scene.create_sprite(
-			"background0", (-600, -100), ASSETS.IMG.STAGE_BACK.load(), "main"
+			"background0", (-600, -200), ASSETS.IMG.STAGE_BACK.load(), "main"
 		)
 		stageback.scroll_factor = (.9, .9)
 		stagefront = self.game_scene.create_sprite(
@@ -50,6 +52,7 @@ class Week1Level(Level):
 		bf_anims = ASSETS.XML.BOYFRIEND.load()
 		self.bf = self.game_scene.create_sprite("stage", (770, 450), None, "main")
 		self.bf.add_animation("idle_bop", bf_anims["BF idle dance"], 24, True)
+		# self.bf.scroll_factor = (0, 0)
 
 		op_anims = ASSETS.XML.DADDY_DEAREST.load()
 		self.opponent = self.game_scene.create_sprite("stage", (100, 100), None, "main")
@@ -62,6 +65,19 @@ class Week1Level(Level):
 		stagecurtains.world_scale = 0.9
 
 		note_sprites = ASSETS.XML.NOTES.load()
+		self.arrow_sprites = [{}, {}]
+		for i, note_type in product((0, 1), NOTE_TYPE):
+			atlas_names = note_type.get_atlas_names()
+			arrow_width = note_sprites[atlas_names[0]][0].texture.width
+			x = 50 + (CNST.GAME_WIDTH // 2) * i + (note_type.get_order() * arrow_width * .7)
+			y = CNST.STATIC_ARROW_Y
+			arrow_sprite = self.game_scene.create_sprite("ui0", (x, y), None)
+			for anim_name, atlas_name in zip(("static", "pressed", "confirm"), atlas_names):
+				arrow_sprite.add_animation(anim_name, note_sprites[atlas_name], 24, False)
+			arrow_sprite.world_scale = .7
+			arrow_sprite.play_animation("static")
+			self.arrow_sprites[i][note_type] = arrow_sprite
+
 		self.health_bar = HealthBar(self.game_scene, "ui", "dad", "bf", ("ui0", "ui1", "ui2"))
 		self.health_bar.update(self.game_scene.health)
 
@@ -100,11 +116,14 @@ class Week1Level(Level):
 		self.opponent.play_animation("idle_bop")
 
 		self._countdown_stage = 0
+		self.game_scene.state = IN_GAME_STATE.COUNTDOWN
+		self.game_scene.conductor.song_position = -3
 		pyglet.clock.schedule_interval(self.countdown, self.game_scene.conductor.beat_duration)
 
 	def countdown(self, _dt: float) -> None:
 		if self._countdown_stage == 4:
-			self.start_song()
+			self.game_scene.start_song()
+			pyglet.clock.unschedule(self.countdown)
 		else:
 			# self._countdown_stage will be changed once hide is called
 			sprite_idx = self._countdown_stage
@@ -120,7 +139,4 @@ class Week1Level(Level):
 				self.game_scene.sfx_ring.play(self.countdown_sounds[sprite_idx])
 
 			self._countdown_stage += 1
-
-	def start_song(self) -> None:
-		pass
 

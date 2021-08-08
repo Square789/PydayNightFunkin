@@ -1,5 +1,4 @@
 
-from pyday_night_funkin.scenes.in_game import InGameInfo
 from time import time
 import typing as t
 
@@ -7,14 +6,15 @@ from loguru import logger
 import pyglet
 from pyglet.graphics import Batch
 import pyglet.media
-from pyglet.media import Player
 from pyglet.window import key
 
+from pyday_night_funkin.config import Config
 from pyday_night_funkin.constants import DIFFICULTY, GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin import ogg_decoder
 from pyday_night_funkin.scenes import BaseScene, InGame
+from pyday_night_funkin.scenes.in_game import InGameInfo
 
 
 class Game():
@@ -25,9 +25,10 @@ class Game():
 		self.debug = True
 		logger.remove(0)
 		if self.debug:
+			self._update_time = 0
 			self._fps = [time() * 1000, 0, "?"]
 			self.debug_batch = Batch()
-			self.debug_pane = DebugPane(16, self.debug_batch)
+			self.debug_pane = DebugPane(4, self.debug_batch)
 			logger.add(self.debug_pane.add_message)
 
 		self.ksh = key.KeyStateHandler()
@@ -38,7 +39,7 @@ class Game():
 		)
 		self.window.push_handlers(self.ksh)
 
-		self.player = Player()
+		self.config = Config(1.0)
 
 		self.main_batch = pyglet.graphics.Batch()
 		self.active_scene = BaseScene(self, (), ())
@@ -47,7 +48,7 @@ class Game():
 
 	def run(self) -> None:
 		logger.debug(f"Game started, pyglet version {pyglet.version}")
-		pyglet.clock.schedule_interval(self.update, 1 / 160.0)
+		pyglet.clock.schedule_interval(self.update, 1 / 80.0)
 		pyglet.app.run()
 
 	def switch_scene(self, scene_class: t.Type[BaseScene], *args, **kwargs) -> None:
@@ -68,11 +69,13 @@ class Game():
 			self.debug_batch.draw()
 			self._fps_bump()
 			draw_time = (time() - stime) * 1000
-			self.debug_pane.update_fps_label(self._fps[2], draw_time)
+			self.debug_pane.update_fps_label(self._fps[2], draw_time, self._update_time)
 			# self.debug_pane.fps_label.draw() # Just print x-1's draw time in frame x, who cares
 
 	def update(self, dt: float) -> None:
+		stime = time()
 		self.active_scene.update(dt)
+		self._update_time = (time() - stime) * 1000
 
 	def _fps_bump(self):
 		self._fps[1] += 1

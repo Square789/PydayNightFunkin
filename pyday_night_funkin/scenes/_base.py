@@ -1,7 +1,5 @@
 
 from collections import OrderedDict
-from pyday_night_funkin.sfx_ring import SFXRing
-from time import time
 import typing as t
 
 from loguru import logger
@@ -17,6 +15,7 @@ from pyglet.window import key
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.camera import Camera
 from pyday_night_funkin.pnf_sprite import PNFSprite, PNFAnimation
+from pyday_night_funkin.sfx_ring import SFXRing
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
@@ -49,8 +48,9 @@ class BaseScene():
 		self.game = game
 		self.batch = game.main_batch
 		self.layers = OrderedDict((name, OrderedGroup(i)) for i, name in enumerate(layer_names))
+		self._default_camera = Camera()
 		self.cameras = {name: Camera() for name in camera_names}
-		self._sprites: t.List[PNFSprite] = []
+		self._sprites: t.Dict[int, PNFSprite] = {}
 		self.sfx_ring = SFXRing(CNST.SFX_RING_SIZE)
 
 	def create_sprite(
@@ -66,7 +66,9 @@ class BaseScene():
 		directly to the `PNFSprite` constructor.
 		If a camera name is specified (and the camera exists in the
 		scene), the sprite will be registered with it and its
-		transformations immediatedly applied.
+		transformations immediatedly applied. If no camera name is
+		specified, the sprite will be attached to a default camera
+		that is never moved.
 		"""
 		sprite = PNFSprite(
 			image,
@@ -76,11 +78,25 @@ class BaseScene():
 			group = self.layers[layer],
 		)
 
-		self._sprites.append(sprite)
+		self._sprites[id(sprite)] = sprite
 		if camera is not None:
 			self.cameras[camera].add_sprite(sprite)
+		else:
+			self._default_camera.add_sprite(sprite)
 
 		return sprite
+
+	def remove_sprite(self, sprite: PNFSprite) -> None:
+		"""
+		Removes a sprite from this scene's sprite registry and its
+		associated camera.
+		If the sprite is unknown to the scene, does nothing.
+		"""
+		i = id(sprite)
+		if i in self._sprites:
+			if sprite.camera is not None:
+				sprite.camera.remove_sprite(sprite)
+			self._sprites.pop(i)
 
 	def on_key_press(self, keysym: int, modifiers: int) -> None:
 		"""
@@ -99,23 +115,10 @@ class BaseScene():
 		"""
 		pass
 
-	def update(self, dt: float):
-		if "main" in self.cameras:
-			cam = self.cameras["main"]
-			if self.game.ksh[key.UP]:
-				cam.y -= 10
-			if self.game.ksh[key.RIGHT]:
-				cam.x += 10
-			if self.game.ksh[key.DOWN]:
-				cam.y += 10
-			if self.game.ksh[key.LEFT]:
-				cam.x -= 10
-			if self.game.ksh[key.PLUS]:
-				cam.zoom += 0.05
-			if self.game.ksh[key.MINUS]:
-				cam.zoom -= 0.05
+	def update(self, dt: float) -> None:
+		self._default_camera.update()
 		for cam in self.cameras.values():
 			cam.update()
 
-	def draw(self):
+	def draw(self) -> None:
 		self.batch.draw()

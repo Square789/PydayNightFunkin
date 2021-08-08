@@ -49,7 +49,6 @@ def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[FrameIn
 	atlas_surface: Texture = load_image(spritesheet_path).get_texture() # type: ignore
 
 	frame_sequences = defaultdict(lambda: [])
-	logger.debug(xml_path)
 	for sub_texture in texture_atlas:
 		if sub_texture.tag != "SubTexture":
 			logger.warning(f"Expected 'SubTexture' tag, got {sub_texture.tag!r}. Skipping.")
@@ -80,7 +79,6 @@ def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[FrameIn
 
 		animation_name = match_res[1]
 		frame_id = int(match_res[2])
-
 		if frame_id > len(frame_sequences[animation_name]):
 			logger.warning(
 				f"Frames for animation {animation_name!r} inconsistent: current is "

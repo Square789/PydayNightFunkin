@@ -80,10 +80,14 @@ class DebugPane():
 		self.labels[self.insert_index].text = log_message
 		self.insert_index += 1
 
-	def update_fps_label(self, fps: int, draw_time: float):
+	def update_fps_label(self, fps: int, draw_time: float, update_time: float) -> None:
 		"""
 		Sets the fps label's text to a readable string built from the
-		supplied fps and draw time.
+		supplied fps, draw time and update time.
 		Does not redraw the label.
 		"""
-		self.fps_label.text = f"FPS: {fps:>4}; Draw time: {draw_time:.1f} ms"
+		frame_time = draw_time + update_time
+		self.fps_label.text = (
+			f"FPS: {fps:>4}; Frame time {frame_time:>5.1f} ms (Draw {draw_time:>5.1f}, "
+			f"Update {update_time:>5.1f}) "
+		)

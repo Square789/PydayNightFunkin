@@ -11,6 +11,8 @@ RED =   (0xAA, 0x00, 0x00, 0xFF)
 
 GAME_WIDTH, GAME_HEIGHT = GAME_DIMENSIONS = (1280, 720)
 
+STATIC_ARROW_Y = 50
+
 ERROR_TEXTURE = CheckerImagePattern(PINK, BLACK).create_image(32, 32).create_texture(Texture)
 
 SFX_RING_SIZE = 8
