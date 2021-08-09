@@ -117,8 +117,10 @@ class Week1Level(Level):
 
 		self._countdown_stage = 0
 		self.game_scene.state = IN_GAME_STATE.COUNTDOWN
-		self.game_scene.conductor.song_position = -3
-		pyglet.clock.schedule_interval(self.countdown, self.game_scene.conductor.beat_duration)
+		self.game_scene.conductor.song_position = self.game_scene.conductor.beat_duration * -5
+		pyglet.clock.schedule_interval(
+			self.countdown, self.game_scene.conductor.beat_duration / 1000
+		)
 
 	def countdown(self, _dt: float) -> None:
 		if self._countdown_stage == 4:
@@ -132,7 +134,11 @@ class Week1Level(Level):
 					self.countdown_sprites[sprite_idx].visible = False
 				self.countdown_sprites[sprite_idx].visible = True
 				self.countdown_sprites[sprite_idx].tween(
-					in_out_cubic, TWEEN_ATTR.OPACITY, 0, 1.0, hide
+					in_out_cubic,
+					TWEEN_ATTR.OPACITY,
+					0,
+					self.game_scene.conductor.beat_duration / 1000,
+					hide
 				)
 
 			if self.countdown_sounds[sprite_idx] is not None:

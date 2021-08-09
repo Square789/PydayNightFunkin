@@ -1,17 +1,17 @@
 
 from dataclasses import dataclass
 from enum import IntEnum
-import typing as t
 from loguru import logger
+import math
+import typing as t
 
 from pyglet.media import Player
 from pyglet.media.player import PlayerGroup
-from pyglet.window import key
 
 from pyday_night_funkin.asset_system import ASSETS
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.conductor import Conductor
-from pyday_night_funkin.note import NOTE_TYPE, Note
+from pyday_night_funkin.note import NOTE_TYPE, SUSTAIN_STAGE, Note
 from pyday_night_funkin.scenes._base import BaseScene
 
 if t.TYPE_CHECKING:
@@ -51,15 +51,30 @@ class InGame(BaseScene):
 		self._notes: t.List[Note] = []
 		note_assets = ASSETS.XML.NOTES.load()
 		self.note_sprites = {
-			NOTE_TYPE.LEFT: note_assets["purple"][0],
-			NOTE_TYPE.DOWN: note_assets["blue"][0],
-			NOTE_TYPE.UP: note_assets["green"][0],
-			NOTE_TYPE.RIGHT: note_assets["red"][0],
+			SUSTAIN_STAGE.NONE: {
+				NOTE_TYPE.LEFT: note_assets["purple"][0],
+				NOTE_TYPE.DOWN: note_assets["blue"][0],
+				NOTE_TYPE.UP: note_assets["green"][0],
+				NOTE_TYPE.RIGHT: note_assets["red"][0],
+			},
+			SUSTAIN_STAGE.TRAIL: {
+				NOTE_TYPE.LEFT: note_assets["purple hold piece"][0],
+				NOTE_TYPE.DOWN: note_assets["blue hold piece"][0],
+				NOTE_TYPE.UP: note_assets["green hold piece"][0],
+				NOTE_TYPE.RIGHT: note_assets["red hold piece"][0],
+			},
+			SUSTAIN_STAGE.END: {
+				# this is the worst naming of anything i have ever seen
+				NOTE_TYPE.LEFT: note_assets["pruple end hold"][0],
+				NOTE_TYPE.DOWN: note_assets["blue hold end"][0],
+				NOTE_TYPE.UP: note_assets["green hold end"][0],
+				NOTE_TYPE.RIGHT: note_assets["red hold end"][0],
+			},
 		}
 		self.song_data = None
 		self.scroll_speed = self.game.config.scroll_speed
 		self.conductor = Conductor()
-		self._warned_about_conductor_desync = False
+		self._updates_since_desync_warn = 999
 		self._setup_song()
 		self.health = 0.5
 
@@ -81,16 +96,24 @@ class InGame(BaseScene):
 			self.voice_player.queue(voices)
 
 		self.song_data = song_data
+		self.scroll_speed *= song_data["song"]["speed"]
+		self.conductor.bpm = song_data["song"]["bpm"]
 		for section in song_data["song"]["notes"]:
 			singer = int(section["mustHitSection"]) # 0: opponent, 1: bf
 			for time_, type_, sustain in section["sectionNotes"]:
 				if type_ >= len(NOTE_TYPE): # Note is sung by other character
 					type_ %= len(NOTE_TYPE)
 					singer ^= 1
-				self._notes.append(Note(singer, time_ / 1000, NOTE_TYPE(type_), sustain))
+				type_ = NOTE_TYPE(type_)
+				note = Note(singer, time_, type_, sustain, SUSTAIN_STAGE.NONE)
+				self._notes.append(note)
+				trail_notes = math.ceil(sustain / self.conductor.beat_step_duration)
+				for i in range(trail_notes): # 0 and effectless for non-sustain notes.
+					sust_time = time_ + (self.conductor.beat_step_duration * (i + 1))
+					stage = SUSTAIN_STAGE.END if i == trail_notes - 1 else SUSTAIN_STAGE.TRAIL
+					sust_note = Note(singer, sust_time, type_, sustain, stage)
+					self._notes.append(sust_note)
 		self._notes.sort()
-		self.scroll_speed *= song_data["song"]["speed"]
-		self.conductor.bpm = song_data["song"]["bpm"]
 
 	def start_song(self) -> None:
 		"""
@@ -104,11 +127,12 @@ class InGame(BaseScene):
 
 	def update(self, dt: float) -> None:
 		if self.state == IN_GAME_STATE.COUNTDOWN or self.state == IN_GAME_STATE.PLAYING:
-			self.conductor.song_position += dt
-			discrepancy = self.inst_player.time - self.conductor.song_position
-			if abs(discrepancy) > .05 and not self._warned_about_conductor_desync:
-				logger.warning(f"Conductor out of sync with player by {discrepancy:.4f} s.")
-				self._warned_about_conductor_desync = True
+			self.conductor.song_position += dt * 1000
+			discrepancy = self.inst_player.time * 1000 - self.conductor.song_position
+			if abs(discrepancy) > 20 and self._updates_since_desync_warn > 100:
+				logger.warning(f"Conductor out of sync with player by {discrepancy:.4f} ms.")
+				self._updates_since_desync_warn = 0
+			self._updates_since_desync_warn += 1
 			self._update_notes()
 
 		super().update(dt)
@@ -117,23 +141,34 @@ class InGame(BaseScene):
 		"""
 		Spawns, draws and deletes notes on screen.
 		"""
-		# Pixels a note traverses in a second
-		speed = 450 * self.scroll_speed
+		# Pixels a note traverses in a millisecond
+		speed = 0.45 * self.scroll_speed
 		note_vis_window_time = ((CNST.GAME_HEIGHT - CNST.STATIC_ARROW_Y) / speed)
-		# Check for notes that entered the visibility window
+		# NOTE: Makes assumption they're all the same (spoilers: they are)
+		arrow_width = self.note_sprites[SUSTAIN_STAGE.NONE][NOTE_TYPE.UP].texture.width * 0.7
+		# Checks for notes that entered the visibility window
 		if self._last_created_note < len(self._notes) - 1:
 			cur_note = self._notes[self._last_created_note + 1]
 			while True:
 				if (cur_note.time - self.conductor.song_position) > note_vis_window_time:
 					break
 				x = 50 + (CNST.GAME_WIDTH // 2) * cur_note.singer + (
-					cur_note.type.get_order() *
-					self.note_sprites[cur_note.type].texture.width * .7
+					cur_note.type.get_order() * arrow_width
 				)
-				cur_note.sprite = self.create_sprite(
-					"ui1", (x, -2000), self.note_sprites[cur_note.type].texture, "ui"
+				sust_stage = cur_note.sustain_stage # No i am not calling it sus_stage
+				sprite = self.create_sprite(
+					"ui1",
+					(x, -2000),
+					self.note_sprites[sust_stage][cur_note.type].texture,
+					"ui",
 				)
-				cur_note.sprite.world_scale = 0.7
+				sprite.world_scale = 0.7
+				if sust_stage != SUSTAIN_STAGE.NONE:
+					sprite.world_x += (arrow_width - sprite._texture.width) // 2
+					if sust_stage == SUSTAIN_STAGE.TRAIL:
+						sprite.world_scale_y = \
+							self.conductor.beat_step_duration * 0.015 * self.scroll_speed
+				cur_note.sprite = sprite
 				self._visible_notes.append(cur_note)
 				self._last_created_note += 1
 				if self._last_created_note < len(self._notes) - 1:
@@ -141,6 +176,7 @@ class InGame(BaseScene):
 				else:
 					break
 
+		# Updates existing notes' y coordinates and schedules deletion of offscreen ones.
 		despawned_notes = []
 		for note in self._visible_notes:
 			note_y = CNST.STATIC_ARROW_Y - (self.conductor.song_position - note.time) * speed
@@ -149,6 +185,7 @@ class InGame(BaseScene):
 			else:
 				note.sprite.world_y = note_y
 
+		# Removes offscreen notes
 		for note in despawned_notes:
 			self._visible_notes.remove(note) # O(n**2), yuck
 			self.remove_sprite(note.sprite)

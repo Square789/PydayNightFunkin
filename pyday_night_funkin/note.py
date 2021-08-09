@@ -5,6 +5,12 @@ from enum import IntEnum
 from pyday_night_funkin.pnf_sprite import PNFSprite
 
 
+class SUSTAIN_STAGE(IntEnum):
+	NONE = 0
+	TRAIL = 1
+	END = 2
+
+
 class NOTE_TYPE(IntEnum):
 	LEFT = 0
 	DOWN = 1
@@ -31,13 +37,21 @@ _NOTE_TYPE_ORDER = {NOTE_TYPE.LEFT: 0, NOTE_TYPE.DOWN: 1, NOTE_TYPE.UP: 2, NOTE_
 
 
 class Note():
-	__slots__ = ("singer", "time", "type", "sustain", "sprite")
-	def __init__(self, singer: int, time: float, type_: NOTE_TYPE, sustain: float) -> None:
+	__slots__ = ("singer", "time", "type", "sustain", "sprite", "sustain_stage")
+	def __init__(
+		self,
+		singer: int,
+		time: float,
+		type_: NOTE_TYPE,
+		sustain: float,
+		sustain_stage: SUSTAIN_STAGE,
+	) -> None:
 		self.singer = singer
 		self.time = time
 		self.type = type_
 		self.sustain = sustain
 		self.sprite = None
+		self.sustain_stage = sustain_stage
 
 	def __gt__(self, other) -> bool:
 		if isinstance(other, Note):

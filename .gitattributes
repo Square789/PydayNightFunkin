@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Stop stb_vorbis from making the project look like it's primarily C
+pyday_night_funkin/stb_vorbis/stb_vorbis.c linguist-vendored

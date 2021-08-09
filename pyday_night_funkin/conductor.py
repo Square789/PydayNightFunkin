@@ -11,6 +11,7 @@ class Conductor():
 	def __init__(self) -> None:
 		self._bpm = None
 		self.beat_duration = None
+		self.beat_step_duration = None
 		self.song_position = 0.0
 
 	@property
@@ -22,4 +23,5 @@ class Conductor():
 		if new_bpm <= 0:
 			raise ValueError("Bpm can't be lower than or equal to zero!")
 		self._bpm = new_bpm
-		self.beat_duration = 60.0 / new_bpm
+		self.beat_duration = 60000.0 / new_bpm
+		self.beat_step_duration = self.beat_duration / 4.0

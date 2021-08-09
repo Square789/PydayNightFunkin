@@ -156,6 +156,7 @@ class PNFSprite(Sprite):
 			)
 
 	def update_camera(self):
+		# NOTE: Maybe add possibility for more than 1 camera?
 		if self.camera is not None:
 			self.camera.apply_camera_attributes(self)
 
