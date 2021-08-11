@@ -103,6 +103,11 @@ class BaseScene():
 		Called on any key press.
 		"""
 
+	def on_key_release(self, keysym: int, modifiers: int) -> None:
+		"""
+		Called on any key release.
+		"""
+
 	def on_leave(self) -> None:
 		"""
 		Called when scene is about to be switched away from.

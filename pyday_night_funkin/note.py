@@ -2,7 +2,17 @@
 import typing as t
 from enum import IntEnum
 
-from pyday_night_funkin.pnf_sprite import PNFSprite
+from loguru import logger
+
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.pnf_sprite import PNFSprite
+
+
+class HIT_STATE(IntEnum):
+	SICK = 0
+	GOOD = 1
+	BAD = 2
+	SHIT = 3
 
 
 class SUSTAIN_STAGE(IntEnum):
@@ -37,7 +47,11 @@ _NOTE_TYPE_ORDER = {NOTE_TYPE.LEFT: 0, NOTE_TYPE.DOWN: 1, NOTE_TYPE.UP: 2, NOTE_
 
 
 class Note():
-	__slots__ = ("singer", "time", "type", "sustain", "sprite", "sustain_stage")
+	__slots__ = (
+		"singer", "time", "type", "sustain", "sustain_stage", "sprite", "hit_state", "playable",
+		"missed"
+	)
+
 	def __init__(
 		self,
 		singer: int,
@@ -50,8 +64,40 @@ class Note():
 		self.time = time
 		self.type = type_
 		self.sustain = sustain
-		self.sprite = None
 		self.sustain_stage = sustain_stage
+		self.sprite: t.Optional["PNFSprite"] = None
+		self.hit_state = None
+		self.playable = False
+		self.missed = False
+
+	def check_playability(self, current_time: float, safe_zone: float) -> None:
+		"""
+		For notes that need to be played by the player, tests whether
+		the note is in the safe zone and sets its playability to True
+		if it can be played. If the note left the safe zone, sets the
+		note as missed.
+		For notes played by the opponent, `playable` will always be
+		left at `False` and the `hit_state` will be set to `SICK` once
+		the note passed its playtime. They can also not be missed.
+		"""
+		if self.hit_state is not None:
+			return
+
+		if self.singer != 1:
+			if self.time <= current_time:
+				self.hit_state = HIT_STATE.SICK
+		else:
+			if self.time < current_time - safe_zone and self.hit_state is None:
+				self.playable = False
+				self.missed = True
+			else:
+				self.playable = self.is_playable(current_time, safe_zone)
+
+	def on_hit(self) -> None:
+		self.hit_state = HIT_STATE.SICK
+
+	def is_playable(self, current_time: float, safe_zone: float) -> bool:
+		return current_time - safe_zone < self.time <= current_time + (safe_zone * 0.5)
 
 	def __gt__(self, other) -> bool:
 		if isinstance(other, Note):

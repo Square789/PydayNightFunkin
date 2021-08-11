@@ -98,4 +98,4 @@ def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[FrameIn
 			FrameInfoTexture(texture_region_cache[region], has_frame_vars, frame_vars)
 		)
 
-	return frame_sequences
+	return dict(frame_sequences) # Don't return a defaultdict!

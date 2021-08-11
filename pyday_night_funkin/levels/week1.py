@@ -65,7 +65,7 @@ class Week1Level(Level):
 		stagecurtains.world_scale = 0.9
 
 		note_sprites = ASSETS.XML.NOTES.load()
-		self.arrow_sprites = [{}, {}]
+		self.static_arrows = [{}, {}]
 		for i, note_type in product((0, 1), NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
 			arrow_width = note_sprites[atlas_names[0]][0].texture.width
@@ -76,7 +76,7 @@ class Week1Level(Level):
 				arrow_sprite.add_animation(anim_name, note_sprites[atlas_name], 24, False)
 			arrow_sprite.world_scale = .7
 			arrow_sprite.play_animation("static")
-			self.arrow_sprites[i][note_type] = arrow_sprite
+			self.static_arrows[i][note_type] = arrow_sprite
 
 		self.health_bar = HealthBar(self.game_scene, "ui", "dad", "bf", ("ui0", "ui1", "ui2"))
 		self.health_bar.update(self.game_scene.health)

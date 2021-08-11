@@ -11,8 +11,10 @@ from pyglet.media.player import PlayerGroup
 from pyday_night_funkin.asset_system import ASSETS
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.conductor import Conductor
+from pyday_night_funkin.config import KEY
 from pyday_night_funkin.note import NOTE_TYPE, SUSTAIN_STAGE, Note
 from pyday_night_funkin.scenes._base import BaseScene
+from pyday_night_funkin.utils import ListWindow
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
@@ -45,10 +47,13 @@ class InGame(BaseScene):
 		self.voice_player = Player()
 		self.song_players = PlayerGroup((self.inst_player, self.voice_player))
 		self.state = IN_GAME_STATE.LOADING
+		self.paused = False
 
-		self._last_created_note = -1
-		self._visible_notes: t.List[Note] = []
 		self._notes: t.List[Note] = []
+		# Notes that are in the view area of the game, not neccessairly visible since they
+		# may have been played.
+		self._visible_notes = ListWindow(self._notes, 0, 0)
+		self._playable_notes = ListWindow(self._notes, 0, 0)
 		note_assets = ASSETS.XML.NOTES.load()
 		self.note_sprites = {
 			SUSTAIN_STAGE.NONE: {
@@ -84,8 +89,8 @@ class InGame(BaseScene):
 	def _setup_song(self) -> None:
 		"""
 		Queues the two song sources (out of which the second one may
-		be None) as returned by `load_song` in the players and
-		configures the conductor with the song's metadata.
+		be None) as returned by `load_song` in the players, configures
+		the conductor with the song's metadata and creates all notes.
 		"""
 		inst, voices, song_data = self.level.load_song()
 		self.song_players.pause()
@@ -99,8 +104,8 @@ class InGame(BaseScene):
 		self.scroll_speed *= song_data["song"]["speed"]
 		self.conductor.bpm = song_data["song"]["bpm"]
 		for section in song_data["song"]["notes"]:
-			singer = int(section["mustHitSection"]) # 0: opponent, 1: bf
 			for time_, type_, sustain in section["sectionNotes"]:
+				singer = int(section["mustHitSection"]) # 0: opponent, 1: bf
 				if type_ >= len(NOTE_TYPE): # Note is sung by other character
 					type_ %= len(NOTE_TYPE)
 					singer ^= 1
@@ -128,66 +133,124 @@ class InGame(BaseScene):
 	def update(self, dt: float) -> None:
 		if self.state == IN_GAME_STATE.COUNTDOWN or self.state == IN_GAME_STATE.PLAYING:
 			self.conductor.song_position += dt * 1000
-			discrepancy = self.inst_player.time * 1000 - self.conductor.song_position
-			if abs(discrepancy) > 20 and self._updates_since_desync_warn > 100:
-				logger.warning(f"Conductor out of sync with player by {discrepancy:.4f} ms.")
-				self._updates_since_desync_warn = 0
-			self._updates_since_desync_warn += 1
+			# discrepancy = self.inst_player.time * 1000 - self.conductor.song_position
+			# if abs(discrepancy) > 20 and self._updates_since_desync_warn > 100:
+			# 	logger.warning(f"Conductor out of sync with player by {discrepancy:.4f} ms.")
+			# 	self._updates_since_desync_warn = 0
+			# self._updates_since_desync_warn += 1
 			self._update_notes()
 
+		self._handle_keys()
+
+		if self.state != IN_GAME_STATE.LOADING:
+			self._update_animations()
+
 		super().update(dt)
+
+	def _update_animations(self) -> None:
+		pass
 
 	def _update_notes(self) -> None:
 		"""
 		Spawns, draws and deletes notes on screen.
+		Additionally, manages the visible and playable windows.
 		"""
+		# NOTE: Could create methods on the ListWindow to eliminate
+		# "grow, update-shrink" code duplication
 		# Pixels a note traverses in a millisecond
 		speed = 0.45 * self.scroll_speed
 		note_vis_window_time = ((CNST.GAME_HEIGHT - CNST.STATIC_ARROW_Y) / speed)
 		# NOTE: Makes assumption they're all the same (spoilers: they are)
 		arrow_width = self.note_sprites[SUSTAIN_STAGE.NONE][NOTE_TYPE.UP].texture.width * 0.7
-		# Checks for notes that entered the visibility window
-		if self._last_created_note < len(self._notes) - 1:
-			cur_note = self._notes[self._last_created_note + 1]
-			while True:
-				if (cur_note.time - self.conductor.song_position) > note_vis_window_time:
-					break
-				x = 50 + (CNST.GAME_WIDTH // 2) * cur_note.singer + (
-					cur_note.type.get_order() * arrow_width
-				)
-				sust_stage = cur_note.sustain_stage # No i am not calling it sus_stage
-				sprite = self.create_sprite(
-					"ui1",
-					(x, -2000),
-					self.note_sprites[sust_stage][cur_note.type].texture,
-					"ui",
-				)
-				sprite.world_scale = 0.7
-				if sust_stage != SUSTAIN_STAGE.NONE:
-					sprite.world_x += (arrow_width - sprite._texture.width) // 2
-					if sust_stage == SUSTAIN_STAGE.TRAIL:
-						sprite.world_scale_y = \
-							self.conductor.beat_step_duration * 0.015 * self.scroll_speed
-				cur_note.sprite = sprite
-				self._visible_notes.append(cur_note)
-				self._last_created_note += 1
-				if self._last_created_note < len(self._notes) - 1:
-					cur_note = self._notes[self._last_created_note + 1]
-				else:
-					break
+		
+		# Checks for notes that entered the visibility window, creates their sprites.
+		while (
+			self._visible_notes.end < len(self._notes) and
+			self._notes[self._visible_notes.end].time - self.conductor.song_position \
+				<= note_vis_window_time
+		):
+			cur_note = self._notes[self._visible_notes.end]
+			x = 50 + (CNST.GAME_WIDTH // 2) * cur_note.singer + \
+				cur_note.type.get_order() * arrow_width
+			# No i am not calling it sus_stage
+			sust_stage = cur_note.sustain_stage
+			texture = self.note_sprites[sust_stage][cur_note.type].texture
+			sprite = self.create_sprite("ui1", (x, -2000), texture, "ui")
+			sprite.world_scale = 0.7
+			if sust_stage != SUSTAIN_STAGE.NONE:
+				sprite.world_x += (arrow_width - texture.width) // 2
+				if sust_stage == SUSTAIN_STAGE.TRAIL:
+					sprite.world_scale_y = self.conductor.beat_step_duration * 0.015 * \
+						self.scroll_speed
+			cur_note.sprite = sprite
+			self._visible_notes.end += 1
 
-		# Updates existing notes' y coordinates and schedules deletion of offscreen ones.
-		despawned_notes = []
+		# Updates and shrinks visible notes window, makes played notes invisible,
+		# deletes off-screen ones.
 		for note in self._visible_notes:
 			note_y = CNST.STATIC_ARROW_Y - (self.conductor.song_position - note.time) * speed
-			if note_y < -note.sprite._texture.width:
-				despawned_notes.append(note)
+			if note_y < -note.sprite.height:
+				self._visible_notes.start += 1
+				self.remove_sprite(note.sprite)
+				note.sprite.delete()
+				note.sprite = None
+			elif note.hit_state is not None:
+				note.sprite.visible = False
 			else:
 				note.sprite.world_y = note_y
 
-		# Removes offscreen notes
-		for note in despawned_notes:
-			self._visible_notes.remove(note) # O(n**2), yuck
-			self.remove_sprite(note.sprite)
-			note.sprite.delete()
-			note.sprite = None
+		# Finds new playable notes
+		while (
+			self._playable_notes.end < len(self._notes) and
+			self._notes[self._playable_notes.end].is_playable(
+				self.conductor.song_position,
+				self.game.config.safe_window,
+			)
+		):
+			self._playable_notes.end += 1
+
+		# Updates playable notes and shrinks playable notes window by removing missed notes.
+		for note in self._playable_notes:
+			note.check_playability(
+				self.conductor.song_position,
+				self.game.config.safe_window,
+			)
+			if note.missed:
+				self._playable_notes.start += 1
+
+	def _handle_keys(self) -> None:
+		if (
+			self.state != IN_GAME_STATE.COUNTDOWN and
+			self.state != IN_GAME_STATE.PLAYING
+		):
+			return
+
+		pressed: t.Dict[NOTE_TYPE, t.Optional[Note]] = {}
+		just_pressed: t.Dict[NOTE_TYPE, bool] = {}
+		for note_type, key in zip(
+			(NOTE_TYPE.LEFT, NOTE_TYPE.DOWN, NOTE_TYPE.UP, NOTE_TYPE.RIGHT),
+			(KEY.LEFT, KEY.DOWN, KEY.UP, KEY.RIGHT)
+		):
+			if self.game.key_handler[key]:
+				pressed[note_type] = None
+				just_pressed[note_type] = self.game.key_handler.just_pressed(key)
+
+		for note in self._playable_notes:
+			if note.singer != 1 or note.hit_state is not None or note.type not in pressed:
+				continue
+			if note.type in pressed:
+				pressed[note.type] = note
+
+		for note_type in NOTE_TYPE:
+			if note_type not in pressed:
+				self.level.static_arrows[1][note_type].play_animation("static")
+			else:
+				if pressed[note_type] is None:
+					self.level.static_arrows[1][note_type].play_animation("pressed")
+				else:
+					if (
+						(pressed[note_type].sustain_stage == SUSTAIN_STAGE.NONE and just_pressed[note_type]) or
+						(pressed[note_type].sustain_stage != SUSTAIN_STAGE.NONE)
+					):
+						pressed[note_type].on_hit()
+						self.level.static_arrows[1][note_type].play_animation("confirm")
