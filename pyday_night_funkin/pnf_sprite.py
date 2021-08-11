@@ -140,7 +140,9 @@ class PNFSprite(Sprite):
 		# Disgusting override of underscore method, required to set the
 		# sprite's position on animation.
 		super()._animate(dt)
-		fx, fy = frame_offset = self._animation.frames[self._frame_index].frame_info[0:2]
+		cframe = self._animation.frames[self._frame_index]
+		fx, fy = cframe.frame_info[0:2]
+		frame_offset = (fx, fy)
 		if frame_offset != self._animation_frame_offset:
 			cfx, cfy = self._animation_frame_offset
 			self._world_x += (cfx - fx)

@@ -18,6 +18,9 @@ from pyday_night_funkin.scenes import BaseScene, InGame
 from pyday_night_funkin.scenes.in_game import InGameInfo
 
 
+__version__ = "0.0.0dev"
+
+
 class Game():
 	def __init__(self) -> None:
 		if ogg_decoder not in pyglet.media.get_decoders():
@@ -53,7 +56,7 @@ class Game():
 
 		self.main_batch = pyglet.graphics.Batch()
 		self.active_scene = None
-		self.switch_scene(InGame, WEEKS[1], 2, InGameInfo(DIFFICULTY.HARD))
+		self.switch_scene(InGame, WEEKS[1], 0, InGameInfo(DIFFICULTY.HARD))
 
 	def run(self) -> None:
 		logger.debug(f"Game started, pyglet version {pyglet.version}")
@@ -80,8 +83,8 @@ class Game():
 			self.debug_batch.draw()
 			self._fps_bump()
 			draw_time = (time() - stime) * 1000
+			# Prints frame x-1's draw time in frame x, but who cares
 			self.debug_pane.update_fps_label(self._fps[2], draw_time, self._update_time)
-			# self.debug_pane.fps_label.draw() # Just print x-1's draw time in frame x, who cares
 
 	def update(self, dt: float) -> None:
 		stime = time()

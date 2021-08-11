@@ -48,7 +48,7 @@ def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[FrameIn
 	spritesheet_path = xml_path.parent / texture_atlas.attrib["imagePath"]
 	atlas_surface: Texture = load_image(spritesheet_path).get_texture() # type: ignore
 
-	frame_sequences = defaultdict(lambda: [])
+	frame_sequences = defaultdict(list)
 	for sub_texture in texture_atlas:
 		if sub_texture.tag != "SubTexture":
 			logger.warning(f"Expected 'SubTexture' tag, got {sub_texture.tag!r}. Skipping.")
@@ -90,8 +90,7 @@ def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[FrameIn
 		frame_vars = tuple(None if e is None else int(e) for e in frame_vars)
 		if region not in texture_region_cache:
 			texture_region_cache[region] = atlas_surface.get_region(
-				x, atlas_surface.height - h - y,
-				w, h,
+				x, atlas_surface.height - h - y, w, h,
 			)
 		has_frame_vars = frame_vars[0] is not None
 		frame_sequences[animation_name].append(
