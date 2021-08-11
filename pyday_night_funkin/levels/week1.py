@@ -51,12 +51,27 @@ class Week1Level(Level):
 
 		bf_anims = ASSETS.XML.BOYFRIEND.load()
 		self.bf = self.game_scene.create_sprite("stage", (770, 450), None, "main")
-		self.bf.add_animation("idle_bop", bf_anims["BF idle dance"], 24, True)
-		# self.bf.scroll_factor = (0, 0)
+		self.bf.add_animation("idle_bop", bf_anims["BF idle dance"], 24, True, (-5, 0))
+		self.bf.add_animation("note_left", bf_anims["BF NOTE LEFT"], 24, False, (12, -6))
+		self.bf.add_animation("note_left_miss", bf_anims["BF NOTE LEFT MISS"], 24, False, (12, 24))
+		self.bf.add_animation("note_down", bf_anims["BF NOTE DOWN"], 24, False, (-10, -50))
+		self.bf.add_animation("note_down_miss", bf_anims["BF NOTE DOWN MISS"], 24, False, (-11, -19))
+		self.bf.add_animation("note_up", bf_anims["BF NOTE UP"], 24, False, (-29, 27))
+		self.bf.add_animation("note_up_miss", bf_anims["BF NOTE UP MISS"], 24, False, (-29, 27))
+		self.bf.add_animation("note_right", bf_anims["BF NOTE RIGHT"], 24, False, (-38, -7))
+		self.bf.add_animation("note_right_miss", bf_anims["BF NOTE RIGHT MISS"], 24, False, (-30, 21))
 
 		op_anims = ASSETS.XML.DADDY_DEAREST.load()
 		self.opponent = self.game_scene.create_sprite("stage", (100, 100), None, "main")
 		self.opponent.add_animation("idle_bop", op_anims["Dad idle dance"], 24, True)
+		# self.opponent.add_animation("note_left", op_anims["Dad Sing Note LEFT"], 24, False)
+		# self.opponent.add_animation("note_left_miss", op_anims["Dad Sing Note LEFT"], 24, False)
+		# self.opponent.add_animation("note_down", op_anims["Dad Sing Note DOWN"], 24, False)
+		# self.opponent.add_animation("note_down_miss", op_anims["Dad Sing Note DOWN"], 24, False)
+		# self.opponent.add_animation("note_up", op_anims["Dad Sing Note UP"], 24, False)
+		# self.opponent.add_animation("note_up_miss", op_anims["Dad Sing Note UP"], 24, False)
+		# self.opponent.add_animation("note_right", op_anims["Dad Sing Note RIGHT"], 24, False)
+		# self.opponent.add_animation("note_right_miss", op_anims["Dad Sing Note RIGHT"], 24, False)
 
 		stagecurtains = self.game_scene.create_sprite(
 			"curtains", (-500, -300), ASSETS.IMG.STAGE_CURTAINS.load(), "main"
@@ -76,6 +91,7 @@ class Week1Level(Level):
 				arrow_sprite.add_animation(anim_name, note_sprites[atlas_name], 24, False)
 			arrow_sprite.world_scale = .7
 			arrow_sprite.play_animation("static")
+			arrow_sprite._fixed_graphics_size = (150, 150)
 			self.static_arrows[i][note_type] = arrow_sprite
 
 		self.health_bar = HealthBar(self.game_scene, "ui", "dad", "bf", ("ui0", "ui1", "ui2"))

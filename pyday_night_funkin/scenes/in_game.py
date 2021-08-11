@@ -85,6 +85,7 @@ class InGame(BaseScene):
 
 		self.level.load_resources()
 		self.level.on_start()
+		self.cameras["main"].y += 200
 
 	def _setup_song(self) -> None:
 		"""
@@ -243,14 +244,21 @@ class InGame(BaseScene):
 
 		for note_type in NOTE_TYPE:
 			if note_type not in pressed:
-				self.level.static_arrows[1][note_type].play_animation("static")
+				if self.level.static_arrows[1][note_type].current_animation != "static":
+					self.level.static_arrows[1][note_type].play_animation("static")
 			else:
 				if pressed[note_type] is None:
-					self.level.static_arrows[1][note_type].play_animation("pressed")
+					if (
+						self.level.static_arrows[1][note_type].current_animation is not None and
+						self.level.static_arrows[1][note_type].current_animation == "static"
+					):
+						self.level.static_arrows[1][note_type].play_animation("pressed")
+						self.level.bf.play_animation(f"note_{note_type.name.lower()}_miss")
 				else:
 					if (
 						(pressed[note_type].sustain_stage == SUSTAIN_STAGE.NONE and just_pressed[note_type]) or
 						(pressed[note_type].sustain_stage != SUSTAIN_STAGE.NONE)
 					):
 						pressed[note_type].on_hit()
+						self.level.bf.play_animation(f"note_{note_type.name.lower()}")
 						self.level.static_arrows[1][note_type].play_animation("confirm")

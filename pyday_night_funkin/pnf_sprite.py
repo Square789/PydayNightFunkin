@@ -71,11 +71,22 @@ class OffsetAnimationFrame():
 class PNFAnimation(Animation):
 	"""
 	Subclasses the pyglet Animation to add the information whether it
-	should be looped into it.
+	should be looped and its offset into it.
+	It sets the last frame's duration to `None` if it should not be looped.
 	"""
-	def __init__(self, frames: t.Sequence[OffsetAnimationFrame], loop: bool = False):
+	def __init__(
+		self,
+		frames: t.Sequence[OffsetAnimationFrame],
+		offset: t.Tuple[int, int],
+		loop: bool = False,
+	):
 		super().__init__(frames)
+
+		self.offset = offset
 		self.loop = loop
+
+		if not loop:
+			self.frames[-1].duration = None
 
 
 class PNFSprite(Sprite):
@@ -108,8 +119,9 @@ class PNFSprite(Sprite):
 
 		super().__init__(image, 0, 0, blend_src, blend_dest, batch, group, usage, subpixel)
 
-		self._animations = {}
-		self._animation_offset = (0, 0)
+		self._animations: t.Dict[str, PNFAnimation] = {}
+		self._animation_frame_offset = (0, 0)
+		self.current_animation: t.Optional[str] = None
 		self.camera: t.Optional["Camera"] = None
 		# The `world_` variables below are meant to hold the sprite's position
 		# (top left because lmao), scale and rotation non-influenced by any camera operations
@@ -122,19 +134,18 @@ class PNFSprite(Sprite):
 		self._world_scale_x = 1.0
 		self._world_scale_y = 1.0
 		self._scroll_factor = (1.0, 1.0)
+		self._fixed_graphics_size: t.Optional[t.Tuple[int, int]] = None
 
 	def _animate(self, dt: float) -> None:
 		# Disgusting override of underscore method, required to set the
 		# sprite's position on animation.
 		super()._animate(dt)
 		fx, fy = frame_offset = self._animation.frames[self._frame_index].frame_info[0:2]
-		if frame_offset != self._animation_offset:
-			cfx, cfy = self._animation_offset
-			self._world_x += cfx
-			self._world_x -= fx
-			self._world_y += cfy
-			self._world_y -= fy
-			self._animation_offset = frame_offset
+		if frame_offset != self._animation_frame_offset:
+			cfx, cfy = self._animation_frame_offset
+			self._world_x += (cfx - fx)
+			self._world_y += (cfy - fy)
+			self._animation_frame_offset = frame_offset
 			self.update_camera()
 
 	def add_animation(
@@ -142,18 +153,60 @@ class PNFSprite(Sprite):
 		name: str,
 		anim_data: t.Union[PNFAnimation, t.Sequence["FrameInfoTexture"]],
 		fps: float = 24.0,
-		loop: bool = False
+		loop: bool = False,
+		offset: t.Optional[t.Tuple[int, int]] = None,
 	) -> None:
 		if fps <= 0:
 			raise ValueError("FPS can't be equal to or less than 0!")
+		if offset is None:
+			offset = (0, 0)
 
 		spf = 1.0 / fps
 		if isinstance(anim_data, PNFAnimation):
 			self._animations[name] = anim_data
 		else:
-			self._animations[name] = PNFAnimation(
-				[OffsetAnimationFrame(tex.texture, spf, tex.frame_info, name) for tex in anim_data], loop
-			)
+			frames = [
+				OffsetAnimationFrame(tex.texture, spf, tex.frame_info, name)
+				for tex in anim_data
+			]
+			self._animations[name] = PNFAnimation(frames, offset, loop)
+
+	def _set_texture(self, texture):
+		super()._set_texture(texture)
+
+	@property
+	def image(self) -> t.Union[PNFAnimation, AbstractImage]:
+		if self._animation is not None:
+			return self._animation
+		return self._texture
+
+	@image.setter
+	def image(self, image: t.Union[PNFAnimation, AbstractImage]) -> None:
+		if self._animation is not None:
+			pyglet.clock.unschedule(self._animate)
+			self._world_x += self._animation_frame_offset[0]
+			self._world_y += self._animation_frame_offset[1]
+			self._world_x += self._animation.offset[0]
+			self._world_y += self._animation.offset[1]
+			self._animation_frame_offset = (0, 0)
+			self._animation = None
+			self.current_animation = None
+
+		if isinstance(image, PNFAnimation):
+			self._animation = image
+			self._frame_index = 0
+			self._set_texture(image.frames[0].image.get_texture())
+			self._world_x -= self._animation.offset[0]
+			self._world_y -= self._animation.offset[1]
+			self._next_dt = image.frames[0].duration
+			if len(image.frames) == 1:
+				self._next_dt = None
+			if self._next_dt is not None:
+				pyglet.clock.schedule_once(self._animate, self._next_dt)
+		else:
+			self._set_texture(image.get_texture())
+		self._update_position()
+		self.update_camera()
 
 	def update_camera(self):
 		# NOTE: Maybe add possibility for more than 1 camera?
@@ -162,6 +215,7 @@ class PNFSprite(Sprite):
 
 	def play_animation(self, name: str) -> None:
 		self.image = self._animations[name]
+		self.current_animation = name
 
 	def tween(
 		self,

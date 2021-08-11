@@ -40,7 +40,6 @@ class Camera():
 		for sprite in sprites:
 			# SCALE -> ROTATE -> TRANSLATE
 			# Scale
-			# screen_scale = self._zoom * sprite._world_scale
 			sprite_scale_x = sprite._world_scale * sprite._world_scale_x
 			sprite_scale_y = sprite._world_scale * sprite._world_scale_y
 

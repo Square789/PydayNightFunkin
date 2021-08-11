@@ -53,7 +53,7 @@ class Game():
 
 		self.main_batch = pyglet.graphics.Batch()
 		self.active_scene = None
-		self.switch_scene(InGame, WEEKS[1], 1, InGameInfo(DIFFICULTY.HARD))
+		self.switch_scene(InGame, WEEKS[1], 2, InGameInfo(DIFFICULTY.HARD))
 
 	def run(self) -> None:
 		logger.debug(f"Game started, pyglet version {pyglet.version}")
