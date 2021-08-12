@@ -205,7 +205,7 @@ class PNFSprite(Sprite):
 				frame = what.frames[0]
 			else:
 				frame = what
-			new_bb = frame.frame_info[2:4]
+			new_bb = (frame.frame_info[2] - frame.frame_info[0], frame.frame_info[3] - frame.frame_info[1])
 		else:
 			new_bb = what
 		self._animation_base_box = new_bb
