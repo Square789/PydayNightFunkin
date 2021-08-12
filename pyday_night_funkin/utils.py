@@ -21,6 +21,20 @@ class ListWindow(t.Generic[T]):
 		return islice(self.list, self.start, self.end)
 
 
+class CtxGuard():
+	def __init__(self):
+		self._active = False
+
+	def __bool__(self):
+		return self._active
+
+	def __enter__(self):
+		self._active = True
+
+	def __exit__(self, *_):
+		self._active = False
+
+
 def clamp(value, min_, max_):
 	return min_ if value < min_ else (max_ if value > max_ else value)
 

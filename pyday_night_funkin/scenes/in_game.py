@@ -160,7 +160,7 @@ class InGame(BaseScene):
 		# "grow, update-shrink" code duplication
 		# Pixels a note traverses in a millisecond
 		speed = 0.45 * self.scroll_speed
-		note_vis_window_time = ((CNST.GAME_HEIGHT - CNST.STATIC_ARROW_Y) / speed)
+		note_vis_window_time = (CNST.GAME_HEIGHT - CNST.STATIC_ARROW_Y) / speed
 		# NOTE: Makes assumption they're all the same (spoilers: they are)
 		arrow_width = self.note_sprites[SUSTAIN_STAGE.NONE][NOTE_TYPE.UP].texture.width * 0.7
 		

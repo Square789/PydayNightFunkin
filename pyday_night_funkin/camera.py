@@ -38,17 +38,16 @@ class Camera():
 		view_target_x = self._view_target[0]
 		view_target_y = GAME_HEIGHT - self._view_target[1]
 		for sprite in sprites:
-			# SCALE -> ROTATE -> TRANSLATE
-			# Scale
+			# SCALE -> ROTATE -> TRANSLATE (Order to implement stuff in if i ever dooooooo)
 			sprite_scale_x = sprite._world_scale * sprite._world_scale_x
 			sprite_scale_y = sprite._world_scale * sprite._world_scale_y
 
-			# Rotate
-
-			# Translate
 			# Translate top left to bottom left coordinates, respecting sprite's scaling.
 			bl_world_x = sprite.world_x
-			bl_world_y = GAME_HEIGHT - (sprite._world_y + sprite._texture.height * sprite_scale_y)
+			bl_world_y = GAME_HEIGHT - (sprite._world_y + (sprite._texture.height * sprite_scale_y))
+			# Translate center to bottom left coordinate, respecting sprite's scaling.
+			# bl_world_x = sprite.world_x - ((sprite._texture.width * sprite_scale_x) // 2)
+			# bl_world_y = GAME_HEIGHT - (sprite._world_y + ((sprite._texture.height * sprite_scale_y) // 2))
 			sf_x, sf_y = sprite._scroll_factor
 			screen_x = int(
 				(

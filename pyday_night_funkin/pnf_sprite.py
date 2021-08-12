@@ -10,7 +10,7 @@ from pyglet.image.animation import Animation
 from pyglet.sprite import Sprite
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.utils import clamp
+from pyday_night_funkin.utils import CtxGuard, clamp
 
 if t.TYPE_CHECKING:
 	from pyglet.image import Texture
@@ -133,21 +133,27 @@ class PNFSprite(Sprite):
 		self._world_scale = 1.0
 		self._world_scale_x = 1.0
 		self._world_scale_y = 1.0
+		self._animation_base_box = None
 		self._scroll_factor = (1.0, 1.0)
-		self._fixed_graphics_size: t.Optional[t.Tuple[int, int]] = None
+		self._debug_prints = False
 
 	def _animate(self, dt: float) -> None:
 		# Disgusting override of underscore method, required to set the
 		# sprite's position on animation.
 		super()._animate(dt)
+		self._apply_post_animate_offset()
+
+	def _apply_post_animate_offset(self):
 		cframe = self._animation.frames[self._frame_index]
 		fx, fy = cframe.frame_info[0:2]
-		frame_offset = (fx, fy)
-		if frame_offset != self._animation_frame_offset:
+		nx = int(((self._animation_base_box[0] - cframe.frame_info[2]) // 2) * self._world_scale * self._world_scale_x)
+		ny = int(((self._animation_base_box[1] - cframe.frame_info[3]) // 2) * self._world_scale * self._world_scale_y)
+		new_frame_offset = (fx - nx, fy - ny)
+		if new_frame_offset != self._animation_frame_offset:
 			cfx, cfy = self._animation_frame_offset
-			self._world_x += (cfx - fx)
-			self._world_y += (cfy - fy)
-			self._animation_frame_offset = frame_offset
+			self._world_x += cfx - new_frame_offset[0]
+			self._world_y += cfy - new_frame_offset[1]
+			self._animation_frame_offset = new_frame_offset
 			self.update_camera()
 
 	def add_animation(
@@ -172,6 +178,9 @@ class PNFSprite(Sprite):
 				for tex in anim_data
 			]
 			self._animations[name] = PNFAnimation(frames, offset, loop)
+		if self._animation_base_box is None:
+			frame = self._animations[name].frames[0].image
+			self._animation_base_box = (frame.width, frame.height)
 
 	def _set_texture(self, texture):
 		super()._set_texture(texture)
@@ -197,9 +206,10 @@ class PNFSprite(Sprite):
 		if isinstance(image, PNFAnimation):
 			self._animation = image
 			self._frame_index = 0
-			self._set_texture(image.frames[0].image.get_texture())
 			self._world_x -= self._animation.offset[0]
 			self._world_y -= self._animation.offset[1]
+			self._set_texture(image.frames[0].image.get_texture())
+			self._apply_post_animate_offset()
 			self._next_dt = image.frames[0].duration
 			if len(image.frames) == 1:
 				self._next_dt = None
@@ -357,3 +367,4 @@ class PNFSprite(Sprite):
 	def world_scale_y(self, new_scale_y: float) -> None:
 		self._world_scale_y = new_scale_y
 		self.update_camera()
+
