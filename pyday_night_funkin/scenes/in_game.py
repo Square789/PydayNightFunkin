@@ -212,10 +212,13 @@ class InGame(BaseScene):
 
 		# Updates playable notes and shrinks playable notes window by removing missed notes.
 		for note in self._playable_notes:
+			prev_hitstate = note.hit_state
 			note.check_playability(
 				self.conductor.song_position,
 				self.game.config.safe_window,
 			)
+			if prev_hitstate != note.hit_state and note.singer == 0:
+				self.level.opponent.play_animation(f"note_{note.type.name.lower()}")
 			if note.missed:
 				self._playable_notes.start += 1
 
@@ -256,9 +259,14 @@ class InGame(BaseScene):
 						self.level.bf.play_animation(f"note_{note_type.name.lower()}_miss")
 				else:
 					if (
-						(pressed[note_type].sustain_stage == SUSTAIN_STAGE.NONE and just_pressed[note_type]) or
+						(
+							pressed[note_type].sustain_stage == SUSTAIN_STAGE.NONE and
+							just_pressed[note_type]
+						) or
 						(pressed[note_type].sustain_stage != SUSTAIN_STAGE.NONE)
 					):
-						pressed[note_type].on_hit()
+						pressed[note_type].on_hit(
+							self.conductor.song_position, self.game.config.safe_window
+						)
 						self.level.bf.play_animation(f"note_{note_type.name.lower()}")
 						self.level.static_arrows[1][note_type].play_animation("confirm")

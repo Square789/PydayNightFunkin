@@ -93,7 +93,7 @@ class Note():
 			else:
 				self.playable = self.is_playable(current_time, safe_zone)
 
-	def on_hit(self) -> None:
+	def on_hit(self, current_time: float, safe_zone: float) -> None:
 		self.hit_state = HIT_STATE.SICK
 
 	def is_playable(self, current_time: float, safe_zone: float) -> bool:

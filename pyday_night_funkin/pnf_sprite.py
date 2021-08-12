@@ -77,7 +77,7 @@ class PNFAnimation(Animation):
 	def __init__(
 		self,
 		frames: t.Sequence[OffsetAnimationFrame],
-		offset: t.Tuple[int, int],
+		offset: t.Optional[t.Tuple[int, int]],
 		loop: bool = False,
 	):
 		super().__init__(frames)
@@ -141,20 +141,35 @@ class PNFSprite(Sprite):
 		# Disgusting override of underscore method, required to set the
 		# sprite's position on animation.
 		super()._animate(dt)
-		self._apply_post_animate_offset()
+		if self._apply_post_animate_offset():
+			self.update_camera()
 
-	def _apply_post_animate_offset(self):
+	def _apply_post_animate_offset(self) -> bool:
+		"""
+		"Swaps out" the current animation frame offset with the new
+		one. The new one is calculated in this method using the current
+		animation frame, the sprite's scale and the animation base box.
+		Returns whether a new animation frame offset was applied and
+		thus whether the internal world coordinates were modified.
+		Does not cause a camera update.
+		"""
 		cframe = self._animation.frames[self._frame_index]
-		fx, fy = cframe.frame_info[0:2]
-		nx = int(((self._animation_base_box[0] - cframe.frame_info[2]) // 2) * self._world_scale * self._world_scale_x)
-		ny = int(((self._animation_base_box[1] - cframe.frame_info[3]) // 2) * self._world_scale * self._world_scale_y)
-		new_frame_offset = (fx - nx, fy - ny)
+		nx = round(
+			(cframe.frame_info[0] - (self._animation_base_box[0] - cframe.frame_info[2]) // 2) *
+			self._world_scale * self._world_scale_x
+		)
+		ny = round(
+			(cframe.frame_info[1] - (self._animation_base_box[1] - cframe.frame_info[3]) // 2) *
+			self._world_scale * self._world_scale_y
+		)
+		new_frame_offset = (nx, ny)
 		if new_frame_offset != self._animation_frame_offset:
 			cfx, cfy = self._animation_frame_offset
 			self._world_x += cfx - new_frame_offset[0]
 			self._world_y += cfy - new_frame_offset[1]
 			self._animation_frame_offset = new_frame_offset
-			self.update_camera()
+			return True
+		return False
 
 	def add_animation(
 		self,
@@ -166,8 +181,6 @@ class PNFSprite(Sprite):
 	) -> None:
 		if fps <= 0:
 			raise ValueError("FPS can't be equal to or less than 0!")
-		if offset is None:
-			offset = (0, 0)
 
 		spf = 1.0 / fps
 		if isinstance(anim_data, PNFAnimation):
@@ -179,8 +192,23 @@ class PNFSprite(Sprite):
 			]
 			self._animations[name] = PNFAnimation(frames, offset, loop)
 		if self._animation_base_box is None:
-			frame = self._animations[name].frames[0].image
-			self._animation_base_box = (frame.width, frame.height)
+			self.set_animation_base_box(self._animations[name])
+
+	def set_animation_base_box(
+		self,
+		what: t.Union[PNFAnimation, OffsetAnimationFrame, t.Tuple[int, int]],
+	) -> None:
+		if not isinstance(what, tuple):
+			if not isinstance(what, OffsetAnimationFrame):
+				if not isinstance(what, PNFAnimation):
+					raise TypeError("Invalid type.")
+				frame = what.frames[0]
+			else:
+				frame = what
+			new_bb = frame.frame_info[2:4]
+		else:
+			new_bb = what
+		self._animation_base_box = new_bb
 
 	def _set_texture(self, texture):
 		super()._set_texture(texture)
@@ -195,19 +223,27 @@ class PNFSprite(Sprite):
 	def image(self, image: t.Union[PNFAnimation, AbstractImage]) -> None:
 		if self._animation is not None:
 			pyglet.clock.unschedule(self._animate)
+			# Remove the current animation frame's offset (would've been done by self._animate)
 			self._world_x += self._animation_frame_offset[0]
 			self._world_y += self._animation_frame_offset[1]
-			self._world_x += self._animation.offset[0]
-			self._world_y += self._animation.offset[1]
 			self._animation_frame_offset = (0, 0)
+			# Remove the animation's general offset
+			if self._animation.offset is not None:
+				self._world_x += self._animation.offset[0]
+				self._world_y += self._animation.offset[1]
 			self._animation = None
 			self.current_animation = None
 
 		if isinstance(image, PNFAnimation):
 			self._animation = image
 			self._frame_index = 0
-			self._world_x -= self._animation.offset[0]
-			self._world_y -= self._animation.offset[1]
+			# Apply the animation's general offset
+			if self._animation.offset is not None:
+				self._world_x -= self._animation.offset[0]
+				self._world_y -= self._animation.offset[1]
+			# Set first frame and apply its offset
+			if self._animation.offset is not None:
+				self.set_animation_base_box(self._animation)
 			self._set_texture(image.frames[0].image.get_texture())
 			self._apply_post_animate_offset()
 			self._next_dt = image.frames[0].duration

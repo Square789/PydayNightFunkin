@@ -1,6 +1,7 @@
 
 from itertools import product
 import typing as t
+from loguru import logger
 
 import pyglet.clock
 
@@ -60,18 +61,17 @@ class Week1Level(Level):
 		self.bf.add_animation("note_up_miss", bf_anims["BF NOTE UP MISS"], 24, False, (-29, 27))
 		self.bf.add_animation("note_right", bf_anims["BF NOTE RIGHT"], 24, False, (-38, -7))
 		self.bf.add_animation("note_right_miss", bf_anims["BF NOTE RIGHT MISS"], 24, False, (-30, 21))
+		logger.debug(self.bf._animation_base_box)
+		#self.bf.set_animation_base_box(bf_anims["BF Dead Loop"][0].frame_info[2:4])
+		#logger.debug(self.bf._animation_base_box)
 
 		op_anims = ASSETS.XML.DADDY_DEAREST.load()
 		self.opponent = self.game_scene.create_sprite("stage", (100, 100), None, "main")
 		self.opponent.add_animation("idle_bop", op_anims["Dad idle dance"], 24, True)
-		# self.opponent.add_animation("note_left", op_anims["Dad Sing Note LEFT"], 24, False)
-		# self.opponent.add_animation("note_left_miss", op_anims["Dad Sing Note LEFT"], 24, False)
-		# self.opponent.add_animation("note_down", op_anims["Dad Sing Note DOWN"], 24, False)
-		# self.opponent.add_animation("note_down_miss", op_anims["Dad Sing Note DOWN"], 24, False)
-		# self.opponent.add_animation("note_up", op_anims["Dad Sing Note UP"], 24, False)
-		# self.opponent.add_animation("note_up_miss", op_anims["Dad Sing Note UP"], 24, False)
-		# self.opponent.add_animation("note_right", op_anims["Dad Sing Note RIGHT"], 24, False)
-		# self.opponent.add_animation("note_right_miss", op_anims["Dad Sing Note RIGHT"], 24, False)
+		self.opponent.add_animation("note_left", op_anims["Dad Sing Note LEFT"], 24, False, (-10, 10))
+		self.opponent.add_animation("note_down", op_anims["Dad Sing Note DOWN"], 24, False, (0, -30))
+		self.opponent.add_animation("note_up", op_anims["Dad Sing Note UP"], 24, False, (-6, 50))
+		self.opponent.add_animation("note_right", op_anims["Dad Sing Note RIGHT"], 24, False, (0, 27))
 
 		stagecurtains = self.game_scene.create_sprite(
 			"curtains", (-500, -300), ASSETS.IMG.STAGE_CURTAINS.load(), "main"
