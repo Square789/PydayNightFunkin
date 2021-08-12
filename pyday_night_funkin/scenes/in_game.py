@@ -132,7 +132,7 @@ class InGame(BaseScene):
 		self.song_players.play()
 
 	def update(self, dt: float) -> None:
-		if self.state == IN_GAME_STATE.COUNTDOWN or self.state == IN_GAME_STATE.PLAYING:
+		if self.state is IN_GAME_STATE.COUNTDOWN or self.state is IN_GAME_STATE.PLAYING:
 			self.conductor.song_position += dt * 1000
 			# discrepancy = self.inst_player.time * 1000 - self.conductor.song_position
 			# if abs(discrepancy) > 20 and self._updates_since_desync_warn > 100:
@@ -180,7 +180,7 @@ class InGame(BaseScene):
 			sprite.world_scale = 0.7
 			if sust_stage != SUSTAIN_STAGE.NONE:
 				sprite.world_x += (arrow_width - texture.width) // 2
-				if sust_stage == SUSTAIN_STAGE.TRAIL:
+				if sust_stage is SUSTAIN_STAGE.TRAIL:
 					sprite.world_scale_y = self.conductor.beat_step_duration * 0.015 * \
 						self.scroll_speed
 			cur_note.sprite = sprite
@@ -258,12 +258,14 @@ class InGame(BaseScene):
 						self.level.static_arrows[1][note_type].play_animation("pressed")
 						self.level.bf.play_animation(f"note_{note_type.name.lower()}_miss")
 				else:
+					# looks terrible no matter how i format it
 					if (
 						(
-							pressed[note_type].sustain_stage == SUSTAIN_STAGE.NONE and
+							pressed[note_type].sustain_stage is SUSTAIN_STAGE.NONE and
 							just_pressed[note_type]
-						) or
-						(pressed[note_type].sustain_stage != SUSTAIN_STAGE.NONE)
+						) or (
+							pressed[note_type].sustain_stage is not SUSTAIN_STAGE.NONE
+						)
 					):
 						pressed[note_type].on_hit(
 							self.conductor.song_position, self.game.config.safe_window
