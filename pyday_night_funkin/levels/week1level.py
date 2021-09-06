@@ -5,18 +5,16 @@ from loguru import logger
 
 import pyglet.clock
 
-from pyday_night_funkin.asset_system import ASSETS, SONGS
+from pyday_night_funkin.asset_system import ASSETS, SONGS, OggVorbisSong
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.health_bar import HealthBar
-from pyday_night_funkin.levels import Level
+from pyday_night_funkin.levels.level import Level, GAME_STATE
 from pyday_night_funkin.note import NOTE_TYPE
 from pyday_night_funkin.pnf_sprite import TWEEN_ATTR
-from pyday_night_funkin.scenes.in_game import IN_GAME_STATE
 from pyday_night_funkin.tweens import in_out_cubic
 
 
 class Week1Level(Level):
-
 	@staticmethod
 	def get_camera_names() -> t.Sequence[str]:
 		return ("main", "ui")
@@ -61,9 +59,6 @@ class Week1Level(Level):
 		self.bf.add_animation("note_up_miss", bf_anims["BF NOTE UP MISS"], 24, False, (-29, 27))
 		self.bf.add_animation("note_right", bf_anims["BF NOTE RIGHT"], 24, False, (-38, -7))
 		self.bf.add_animation("note_right_miss", bf_anims["BF NOTE RIGHT MISS"], 24, False, (-30, 21))
-		logger.debug(self.bf._animation_base_box)
-		#self.bf.set_animation_base_box(bf_anims["BF Dead Loop"][0].frame_info[2:4])
-		#logger.debug(self.bf._animation_base_box)
 
 		op_anims = ASSETS.XML.DADDY_DEAREST.load()
 		self.opponent = self.game_scene.create_sprite("stage", (100, 100), None, "main")
@@ -95,7 +90,7 @@ class Week1Level(Level):
 			self.static_arrows[i][note_type] = arrow_sprite
 
 		self.health_bar = HealthBar(self.game_scene, "ui", "dad", "bf", ("ui0", "ui1", "ui2"))
-		self.health_bar.update(self.game_scene.health)
+		self.health_bar.update(self.health)
 
 		countdown_textures = (
 			None,
@@ -125,22 +120,24 @@ class Week1Level(Level):
 			ASSETS.SOUND.INTRO_GO.load(),
 		)
 
+	def update(self, elapsed: float) -> None:
+		super().update(elapsed)
 
-	def on_start(self) -> None:
+	def ready(self) -> None:
 		self.gf.play_animation("idle_bop")
 		self.bf.play_animation("idle_bop")
 		self.opponent.play_animation("idle_bop")
 
 		self._countdown_stage = 0
-		self.game_scene.state = IN_GAME_STATE.COUNTDOWN
-		self.game_scene.conductor.song_position = self.game_scene.conductor.beat_duration * -5
+		self.state = GAME_STATE.COUNTDOWN
+		self.conductor.song_position = self.conductor.beat_duration * -5
 		pyglet.clock.schedule_interval(
-			self.countdown, self.game_scene.conductor.beat_duration / 1000
+			self.countdown, self.conductor.beat_duration / 1000
 		)
 
 	def countdown(self, _dt: float) -> None:
 		if self._countdown_stage == 4:
-			self.game_scene.start_song()
+			self.start_song()
 			pyglet.clock.unschedule(self.countdown)
 		else:
 			# self._countdown_stage will be changed once hide is called
@@ -153,7 +150,7 @@ class Week1Level(Level):
 					in_out_cubic,
 					TWEEN_ATTR.OPACITY,
 					0,
-					self.game_scene.conductor.beat_duration / 1000,
+					self.conductor.beat_duration / 1000,
 					hide
 				)
 
@@ -162,3 +159,18 @@ class Week1Level(Level):
 
 			self._countdown_stage += 1
 
+
+class Bopeebo(Week1Level):
+	@staticmethod
+	def get_song() -> OggVorbisSong:
+		return SONGS["Bopeebo"]
+
+class Fresh(Week1Level):
+	@staticmethod
+	def get_song() -> OggVorbisSong:
+		return SONGS["Fresh"]
+
+class DadBattle(Week1Level):
+	@staticmethod
+	def get_song() -> OggVorbisSong:
+		return SONGS["Dad Battle"]

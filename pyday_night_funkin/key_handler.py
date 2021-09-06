@@ -12,6 +12,9 @@ class KeyHandler():
 	Class to manage key presses.
 	"""
 	def __init__(self, key_bindings: t.Dict[KEY, int]):
+		"""
+		# TODO Le doc
+		"""
 		self.key_bindings = key_bindings
 		# 0: Whether key is being held
 		# 1: Whether key just got pressed (reset once just_pressed) is queried

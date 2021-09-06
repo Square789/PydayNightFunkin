@@ -56,18 +56,22 @@ class Game():
 
 		self.main_batch = pyglet.graphics.Batch()
 		self.active_scene = None
-		self.switch_scene(InGame, WEEKS[1], 0, InGameInfo(DIFFICULTY.HARD))
+
+		self.switch_scene(InGame(self, WEEKS[1].levels[1], InGameInfo(DIFFICULTY.HARD)))
 
 	def run(self) -> None:
 		logger.debug(f"Game started, pyglet version {pyglet.version}")
 		pyglet.clock.schedule_interval(self.update, 1 / 80.0)
 		pyglet.app.run()
 
-	def switch_scene(self, scene_class: t.Type[BaseScene], *args, **kwargs) -> None:
+	def switch_scene(self, new_scene: BaseScene) -> None:
+		"""
+		Causes game to switch scene to the new scene.
+		"""
 		if self.active_scene is not None:
 			self.active_scene.on_leave()
 			self.window.pop_handlers()
-		self.active_scene = scene_class(self, *args, **kwargs)
+		self.active_scene = new_scene
 		self.window.push_handlers(
 			on_draw = self.draw,
 			on_key_press = self.active_scene.on_key_press,
