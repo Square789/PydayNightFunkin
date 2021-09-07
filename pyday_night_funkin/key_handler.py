@@ -2,64 +2,65 @@
 from collections import defaultdict
 import typing as t
 
-from pyglet.window import key
+from pyday_night_funkin.config import CONTROL
 
-from pyday_night_funkin.config import KEY
-
+# TODO: There are most definitely bugs here where a control is
+# considered released reset when any of its associated keys are
+# released and not all of them.
 
 class KeyHandler():
 	"""
 	Class to manage key presses.
 	"""
-	def __init__(self, key_bindings: t.Dict[KEY, int]):
+	def __init__(self, key_bindings: t.Dict[CONTROL, int]):
 		"""
 		# TODO Le doc
 		"""
 		self.key_bindings = key_bindings
 		# 0: Whether key is being held
 		# 1: Whether key just got pressed (reset once just_pressed) is queried
-		self.key_states = {k: [False, False] for k in key_bindings.keys()}
-		_inverted_keys = defaultdict(list)
+		self.control_states = {k: [False, False] for k in key_bindings.keys()}
+		_key_to_control_map = defaultdict(list)
 		for k, v in key_bindings.items():
 			if isinstance(v, (tuple, list)):
 				for vv in v:
-					_inverted_keys[vv].append(k)
+					_key_to_control_map[vv].append(k)
 			else:
-				_inverted_keys[v].append(k)
-		self._pyglet_to_game_key_map = dict(_inverted_keys)
+				_key_to_control_map[v].append(k)
+		self._key_to_control_map = dict(_key_to_control_map)
 
 	def on_key_press(self, key_sym: int, modifiers: int) -> None:
-		if key_sym not in self._pyglet_to_game_key_map:
+		if key_sym not in self._key_to_control_map:
 			return
-		for game_key in self._pyglet_to_game_key_map[key_sym]:
-			self.key_states[game_key][0] = True
-			self.key_states[game_key][1] = True
+		for control in self._key_to_control_map[key_sym]:
+			self.control_states[control][0] = True
+			self.control_states[control][1] = True
 
 	def on_key_release(self, key_sym: int, modifiers: int) -> None:
-		if key_sym not in self._pyglet_to_game_key_map:
+		if key_sym not in self._key_to_control_map:
 			return
-		for game_key in self._pyglet_to_game_key_map[key_sym]:
-			self.key_states[game_key][0] = False
-			self.key_states[game_key][1] = False
+		for control in self._key_to_control_map[key_sym]:
+			self.control_states[control][0] = False
+			self.control_states[control][1] = False
 
-	def just_pressed(self, key: KEY) -> bool:
+	def just_pressed(self, control: CONTROL) -> bool:
 		"""
-		Returns whether a key was "just pressed". This will be False
-		for an unpressed key, True if this is the first time the
-		method was called on a held key and False for all subsequent
-		calls as long as the key is not released and pressed again.
+		Returns whether a control was "just pressed". This will be False
+		for an unpressed control, True if this is the first time the
+		method was called on a held control and False for all subsequent
+		calls as long as the control is not released and pressed again.
 		"""
-		if not self.pressed(key):
+		if not self.pressed(control):
 			return False
-		retv = self.key_states[key][1]
-		self.key_states[key][1] = False
+		retv = self.control_states[control][1]
+		self.control_states[control][1] = False
 		return retv
 
-	def pressed(self, key: KEY) -> bool:
+	def pressed(self, control: CONTROL) -> bool:
 		"""
-		Returns whether a key is pressed/being held down.
+		Returns whether a control is pressed/being held down.
 		"""
-		return self.key_states[key][0]
+		return self.control_states[control][0]
 
-	def __getitem__(self, key: KEY) -> bool:
-		return self.pressed(key)
+	def __getitem__(self, control: CONTROL) -> bool:
+		return self.pressed(control)

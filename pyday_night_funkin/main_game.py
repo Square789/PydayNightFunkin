@@ -8,7 +8,7 @@ from pyglet.graphics import Batch
 import pyglet.media
 from pyglet.window import key
 
-from pyday_night_funkin.config import Config, KEY
+from pyday_night_funkin.config import Config, CONTROL
 from pyday_night_funkin.constants import DIFFICULTY, GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.key_handler import KeyHandler
@@ -39,10 +39,10 @@ class Game():
 			1.0,
 			167.0,
 			{
-				KEY.LEFT: key.LEFT,
-				KEY.DOWN: key.DOWN,
-				KEY.UP: key.UP,
-				KEY.RIGHT: key.RIGHT,
+				CONTROL.LEFT: key.LEFT,
+				CONTROL.DOWN: key.DOWN,
+				CONTROL.UP: key.UP,
+				CONTROL.RIGHT: key.RIGHT,
 			},
 		)
 
@@ -51,13 +51,14 @@ class Game():
 			width = GAME_WIDTH,
 			height = GAME_HEIGHT,
 			resizable = True, # totally am gonna do this later and fucking die trying
+			vsync = False,
 		)
 		self.window.push_handlers(self.key_handler)
 
 		self.main_batch = pyglet.graphics.Batch()
 		self.active_scene = None
 
-		self.switch_scene(InGame(self, WEEKS[1].levels[1], InGameInfo(DIFFICULTY.HARD)))
+		self.switch_scene(InGame(self, WEEKS[1].levels[2], InGameInfo(DIFFICULTY.HARD)))
 
 	def run(self) -> None:
 		logger.debug(f"Game started, pyglet version {pyglet.version}")

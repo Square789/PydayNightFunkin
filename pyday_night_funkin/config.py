@@ -4,7 +4,7 @@ from enum import IntEnum
 import typing as t
 
 
-class KEY(IntEnum):
+class CONTROL(IntEnum):
 	LEFT = 0
 	DOWN = 1
 	UP = 2
@@ -21,8 +21,8 @@ class Config():
 		speed.
 	`safe_window`: Amount of time notes can be hit before/after their
 		actual time and still count as a hit, in ms.
-	`key_bindings`: Key bindings mapping each key in `KEY` to their
-		corresponding key in pyglet's `key` module. Multiple keys
+	`key_bindings`: Key bindings mapping each control input in `CONTROL`
+		to its corresponding key in pyglet's `key` module. Multiple keys
 		may also be specified in a list or tuple.
 	"""
 	scroll_speed: float

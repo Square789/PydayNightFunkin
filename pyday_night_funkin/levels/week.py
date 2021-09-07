@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import typing as t
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.levels import Level
+	from pyday_night_funkin.level import Level
 
 
 @dataclass

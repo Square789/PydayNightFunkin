@@ -29,5 +29,4 @@ class InGame(BaseScene):
 
 	def update(self, dt: float) -> None:
 		self.level.update(dt)
-
 		super().update(dt)

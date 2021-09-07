@@ -1,21 +1,16 @@
 
-from dataclasses import dataclass
 from enum import IntEnum
-import math
 import typing as t
 
 from loguru import logger
 from pyglet.media import Player
 from pyglet.media.player import PlayerGroup
 
-from pyday_night_funkin.asset_system import SONGS, OggVorbisSong
+from pyday_night_funkin.asset_system import OggVorbisSong
 from pyday_night_funkin.conductor import Conductor
-from pyday_night_funkin.note import Note, NOTE_TYPE, SUSTAIN_STAGE
 from pyday_night_funkin.note_handler import NoteHandler
-from pyday_night_funkin.utils import ListWindow
 
 if t.TYPE_CHECKING:
-	from pyglet.media import Source
 	from pyday_night_funkin.scenes import InGame
 
 
@@ -30,13 +25,17 @@ class GAME_STATE(IntEnum):
 class Level:
 	"""
 	Main game driver.
-	Meant to be a subclassable jumble of sprites, players etc. running
-	the entire game.
-	For customization, subclass it (see existing weeks for examples).
+	Meant to be a jumble of sprites, players, handlers etc. running the
+	entire game.
+	Note that this base class only provides a very small shred of
+	functionality, for it to be playable it needs to be expanded
+	by subclassing it (see existing weeks for examples).
 	"""
 
 	def __init__(self, game_scene: "InGame") -> None:
 		self.game_scene = game_scene
+
+		self.key_handler = game_scene.game.key_handler
 
 		self.state = GAME_STATE.LOADING
 
@@ -47,7 +46,6 @@ class Level:
 		self.conductor = Conductor()
 
 		self.health = 0.5
-		self.note_handler = NoteHandler(self)
 
 		self._updates_since_desync_warn = 999
 
@@ -70,7 +68,7 @@ class Level:
 		"""
 		pass
 
-	def load_song(self) -> t.Tuple["Source", t.Optional["Source"], t.Dict[str, t.Any]]:
+	def load_song(self) -> None:
 		"""
 		# TODO doc
 		"""
@@ -90,13 +88,17 @@ class Level:
 	def start_song(self) -> None:
 		"""
 		Starts the song by making the players play, zeroing
-		conductor's position and setting the s state to PLAYING.
+		conductor's position and setting the state to PLAYING.
 		"""
 		logger.debug(f"Started song! Scroll speed: {self.note_handler.scroll_speed}")
 		self.conductor.song_position = 0
 		self.song_players.play()
 
 	def ready(self) -> None:
+		"""
+		Called after `load_resources` and `load_song` have been called.
+		Should be used to start the level.
+		"""
 		pass
 
 	def update(self, dt: float) -> None:
@@ -107,4 +109,12 @@ class Level:
 				logger.warning(f"Conductor out of sync with player by {discrepancy:.4f} ms.")
 				self._updates_since_desync_warn = 0
 			self._updates_since_desync_warn += 1
-			self.note_handler.update(dt)
+
+		self.process_input()
+
+	def process_input(self) -> None:
+		"""
+		Called with `update` every time. Keyboard input should be
+		handled here.
+		"""
+		pass

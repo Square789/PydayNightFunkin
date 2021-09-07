@@ -7,6 +7,10 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.pnf_sprite import PNFSprite
 
 
+# TODO: Apparently, gl being a graphics library and stuff makes this
+# class and the PNFSprite insanely obsolete. Look into this as soon as
+# core level functionality is done
+
 CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
 
 class Camera():

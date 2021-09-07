@@ -8,13 +8,24 @@ import pyglet.clock
 from pyday_night_funkin.asset_system import ASSETS, SONGS, OggVorbisSong
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.health_bar import HealthBar
-from pyday_night_funkin.levels.level import Level, GAME_STATE
+from pyday_night_funkin.level import Level, GAME_STATE
 from pyday_night_funkin.note import NOTE_TYPE
+from pyday_night_funkin.note_handler import NoteHandler
 from pyday_night_funkin.pnf_sprite import TWEEN_ATTR
 from pyday_night_funkin.tweens import in_out_cubic
 
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.scenes import InGame
+
+# TODO: probably put another "BaseGame" level between this one and
+# "Level", or something to eliminate code dup for commonly reused sprites.
 
 class Week1Level(Level):
+	def __init__(self, game_scene: "InGame") -> None:
+		super().__init__(game_scene)
+
+		self.note_handler = NoteHandler(self, "ui1", "ui")
+
 	@staticmethod
 	def get_camera_names() -> t.Sequence[str]:
 		return ("main", "ui")
@@ -31,6 +42,7 @@ class Week1Level(Level):
 		Loads sprites and sounds for all week 1 levels.
 		"""
 		self.game_scene.cameras["main"].zoom = 1.0
+		self.game_scene.cameras["main"].y += 200
 
 		# SPRITES
 		stageback = self.game_scene.create_sprite(
@@ -120,8 +132,42 @@ class Week1Level(Level):
 			ASSETS.SOUND.INTRO_GO.load(),
 		)
 
-	def update(self, elapsed: float) -> None:
-		super().update(elapsed)
+	def process_input(self) -> None:
+		pressed = {
+			t: self.key_handler.just_pressed(c)
+			for t, c in self.note_handler.NOTE_TO_CONTROL_MAP.items()
+			if self.key_handler[c]
+		}
+		opponent_hit, player_missed, player_res = self.note_handler.update(pressed)
+		print(opponent_hit, player_missed, player_res)
+
+		if opponent_hit:
+			op_note = opponent_hit[-1]
+			self.opponent.play_animation(f"note_{op_note.type.name.lower()}")
+
+		if player_missed:
+			fail_note = player_missed[-1]
+			self.bf.play_animation(f"note_{fail_note.type.name.lower()}_miss")
+
+		for type_ in NOTE_TYPE:
+			if type_ not in player_res:
+				if self.static_arrows[1][type_].current_animation != "static":
+					self.static_arrows[1][type_].play_animation("static")
+			elif player_res[type_] is None:
+				if (
+					self.static_arrows[1][type_].current_animation is not None and
+					self.static_arrows[1][type_].current_animation == "static"
+				):
+					self.static_arrows[1][type_].play_animation("pressed")
+					self.bf.play_animation(f"note_{type_.name.lower()}_miss")
+			else:
+				player_res[type_].on_hit(
+					self.conductor.song_position,
+					self.game_scene.game.config.safe_window
+				)
+				self.static_arrows[1][type_].play_animation("confirm")
+				self.bf.play_animation(f"note_{type_.name.lower()}")
+
 
 	def ready(self) -> None:
 		self.gf.play_animation("idle_bop")

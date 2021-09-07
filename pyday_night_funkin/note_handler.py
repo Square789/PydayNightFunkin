@@ -3,13 +3,13 @@ import math
 import typing as t
 
 from pyday_night_funkin.asset_system import ASSETS
-from pyday_night_funkin.config import KEY
+from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.note import Note, NOTE_TYPE, SUSTAIN_STAGE
 from pyday_night_funkin.utils import ListWindow
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.levels import Level
+	from pyday_night_funkin.level import Level
 
 
 class NoteHandler:
@@ -18,18 +18,30 @@ class NoteHandler:
 	as processing key input.
 	"""
 
-	def __init__(self, level: "Level") -> None:
+	NOTE_TO_CONTROL_MAP = {
+		NOTE_TYPE.LEFT: CONTROL.LEFT,
+		NOTE_TYPE.DOWN: CONTROL.DOWN,
+		NOTE_TYPE.UP: CONTROL.UP,
+		NOTE_TYPE.RIGHT: CONTROL.RIGHT,
+	}
+
+	def __init__(self, level: "Level", note_layer: str, note_camera: str) -> None:
 		self.level = level
+		self.note_layer = note_layer
+		self.note_camera = note_camera
+
 		self.game_scene = level.game_scene
 		self.key_handler = level.game_scene.game.key_handler
 
 		self.scroll_speed = level.game_scene.game.config.scroll_speed
 
 		self.notes: t.List[Note] = []
-		# Notes in here may not actually be visible since they may
-		# have been played.
+		# Notes that are on screen and have a sprite registered.
+		# (May not actually be visible since they may have been played)
 		self.notes_visible = ListWindow(self.notes, 0, 0)
-		# Notes in here may not be visible for absurd scroll speeds.
+		# Notes that are playable based solely on their song position.
+		# (These may actually have been played or - for absurd scroll
+		# speeds - be invisible.)
 		self.notes_playable = ListWindow(self.notes, 0, 0)
 
 		note_assets = ASSETS.XML.NOTES.load()
@@ -79,7 +91,24 @@ class NoteHandler:
 					self.notes.append(sust_note)
 		self.notes.sort()
 
-	def update(self, dt: float) -> None:
+	def update(
+		self,
+		pressed: t.Dict[NOTE_TYPE, bool],
+	) -> t.Tuple[t.List[Note], t.List[Note], t.Dict[NOTE_TYPE, t.Optional[Note]]]:
+		"""
+		Update the note handler, causing it to move all onscreen notes
+		and handle hit/missed notes.
+		`pressed` should be a dict containing each held down type the
+		handler needs (see `NOTE_TO_CONTROL_MAP`) in its keys and
+		whether each note type's control was "just pressed" in its
+		values.
+		This update method returns a three-value tuple:
+			- Notes the opponent hit
+			- Notes the player missed
+			- A dict with the same keys as the passed `pressed` dict,
+				where each value is either the note that was hit or,
+				if the player missed, None.
+		"""
 		# NOTE: Could create methods on the ListWindow to eliminate
 		# "grow, update-shrink" code duplication
 
@@ -99,13 +128,14 @@ class NoteHandler:
 			cur_note = self.notes[self.notes_visible.end]
 			x = 50 + (CNST.GAME_WIDTH // 2) * cur_note.singer + \
 				cur_note.type.get_order() * arrow_width
-			sust_stage = cur_note.sustain_stage # No i am not calling it sus_stage
-			texture = self.note_sprites[sust_stage][cur_note.type].texture
-			sprite = self.game_scene.create_sprite("ui1", (x, -2000), texture, "ui")
+			texture = self.note_sprites[cur_note.sustain_stage][cur_note.type].texture
+			sprite = self.game_scene.create_sprite(
+				self.note_layer, (x, -2000), texture, self.note_camera
+			)
 			sprite.world_scale = 0.7
-			if sust_stage != SUSTAIN_STAGE.NONE:
+			if cur_note.sustain_stage != SUSTAIN_STAGE.NONE:
 				sprite.world_x += (arrow_width - texture.width) // 2
-				if sust_stage is SUSTAIN_STAGE.TRAIL:
+				if cur_note.sustain_stage is SUSTAIN_STAGE.TRAIL:
 					sprite.world_scale_y = self.level.conductor.beat_step_duration * \
 						0.015 * self.scroll_speed
 			cur_note.sprite = sprite
@@ -136,55 +166,27 @@ class NoteHandler:
 			self.notes_playable.end += 1
 
 		# Updates playable notes and shrinks playable notes window by removing missed notes.
+		missed_notes = []
+		opponent_hit_notes = []
 		for note in self.notes_playable:
 			prev_hitstate = note.hit_state
 			note.check_playability(song_pos, self.game_scene.game.config.safe_window)
 			if prev_hitstate != note.hit_state and note.singer == 0:
-				self.level.opponent.play_animation(f"note_{note.type.name.lower()}")
+				opponent_hit_notes.append(note)
 			if note.missed:
+				# BUT HER AIM IS GETTING BETTER
+				missed_notes.append(note)
 				self.notes_playable.start += 1
 
-		# Key handling oh yeah
-		pressed: t.Dict[NOTE_TYPE, t.Optional[Note]] = {}
-		just_pressed: t.Dict[NOTE_TYPE, bool] = {}
-		for note_type, key in zip(
-			(NOTE_TYPE.LEFT, NOTE_TYPE.DOWN, NOTE_TYPE.UP, NOTE_TYPE.RIGHT),
-			(KEY.LEFT, KEY.DOWN, KEY.UP, KEY.RIGHT)
-		):
-			if self.key_handler[key]:
-				pressed[note_type] = None
-				just_pressed[note_type] = self.key_handler.just_pressed(key)
-
+		# Input processing here
+		res_hit_map = {type_: None for type_ in pressed}
 		for note in self.notes_playable:
-			if note.singer != 1 or note.hit_state is not None or note.type not in pressed:
+			if (
+				note.singer != 1 or note.hit_state is not None or
+				note.type not in res_hit_map or res_hit_map[note.type] is not None
+			):
 				continue
-			if note.type in pressed:
-				pressed[note.type] = note
+			if pressed[note.type] or note.sustain_stage is not SUSTAIN_STAGE.NONE:
+				res_hit_map[note.type] = note
 
-		for note_type in NOTE_TYPE:
-			if note_type not in pressed:
-				if self.level.static_arrows[1][note_type].current_animation != "static":
-					self.level.static_arrows[1][note_type].play_animation("static")
-			else:
-				if pressed[note_type] is None:
-					if (
-						self.level.static_arrows[1][note_type].current_animation is not None and
-						self.level.static_arrows[1][note_type].current_animation == "static"
-					):
-						self.level.static_arrows[1][note_type].play_animation("pressed")
-						self.level.bf.play_animation(f"note_{note_type.name.lower()}_miss")
-				else:
-					# looks terrible no matter how i format it
-					if (
-						(
-							pressed[note_type].sustain_stage is SUSTAIN_STAGE.NONE and
-							just_pressed[note_type]
-						) or (
-							pressed[note_type].sustain_stage is not SUSTAIN_STAGE.NONE
-						)
-					):
-						pressed[note_type].on_hit(
-							song_pos, self.game_scene.game.config.safe_window
-						)
-						self.level.bf.play_animation(f"note_{note_type.name.lower()}")
-						self.level.static_arrows[1][note_type].play_animation("confirm")
+		return opponent_hit_notes, missed_notes, res_hit_map
