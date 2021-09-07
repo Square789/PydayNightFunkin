@@ -48,8 +48,7 @@ _NOTE_TYPE_ORDER = {NOTE_TYPE.LEFT: 0, NOTE_TYPE.DOWN: 1, NOTE_TYPE.UP: 2, NOTE_
 
 class Note():
 	__slots__ = (
-		"singer", "time", "type", "sustain", "sustain_stage", "sprite", "hit_state", "playable",
-		"missed"
+		"singer", "time", "type", "sustain", "sustain_stage", "sprite", "hit_state", "playable"
 	)
 
 	def __init__(
@@ -68,17 +67,15 @@ class Note():
 		self.sprite: t.Optional["PNFSprite"] = None
 		self.hit_state = None
 		self.playable = False
-		self.missed = False
 
 	def check_playability(self, current_time: float, safe_zone: float) -> None:
 		"""
 		For notes that need to be played by the player, tests whether
-		the note is in the safe zone and sets its playability to True
-		if it can be played. If the note left the safe zone, sets the
-		note as missed.
-		For notes played by the opponent, `playable` will always be
+		the note is in the safe zone and sets its playability to `True`
+		if it can be played.
+		For notes not played by the player, `playable` will always be
 		left at `False` and the `hit_state` will be set to `SICK` once
-		the note passed its playtime. They can also not be missed.
+		the note passed its playtime.
 		"""
 		if self.hit_state is not None:
 			return
@@ -87,16 +84,27 @@ class Note():
 			if self.time <= current_time:
 				self.hit_state = HIT_STATE.SICK
 		else:
-			if self.time < current_time - safe_zone and self.hit_state is None:
+			if self.time < current_time - safe_zone:
 				self.playable = False
-				self.missed = True
 			else:
 				self.playable = self.is_playable(current_time, safe_zone)
 
 	def on_hit(self, current_time: float, safe_zone: float) -> None:
+		"""
+		Should be called when the note was hit. Will set its playability
+		to `False` and its hit state to a fitting state depending on the
+		hit timing (# TODO)
+		"""
+		self.playable = False
 		self.hit_state = HIT_STATE.SICK
 
 	def is_playable(self, current_time: float, safe_zone: float) -> bool:
+		"""
+		Determines whether the note is playable based on the current
+		song position and a safe zone offset.
+		This function may still return `True` if the note is not being
+		sung by the player or if it already has been played.
+		"""
 		return current_time - safe_zone < self.time <= current_time + (safe_zone * 0.5)
 
 	def __gt__(self, other) -> bool:

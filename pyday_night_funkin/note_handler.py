@@ -31,7 +31,6 @@ class NoteHandler:
 		self.note_camera = note_camera
 
 		self.game_scene = level.game_scene
-		self.key_handler = level.game_scene.game.key_handler
 
 		self.scroll_speed = level.game_scene.game.config.scroll_speed
 
@@ -173,20 +172,23 @@ class NoteHandler:
 			note.check_playability(song_pos, self.game_scene.game.config.safe_window)
 			if prev_hitstate != note.hit_state and note.singer == 0:
 				opponent_hit_notes.append(note)
-			if note.missed:
-				# BUT HER AIM IS GETTING BETTER
-				missed_notes.append(note)
+			if not note.is_playable(song_pos, self.game_scene.game.config.safe_window):
 				self.notes_playable.start += 1
+				if note.hit_state is None and note.singer == 1:
+					missed_notes.append(note) # BUT HER AIM IS GETTING BETTER
+				print(self.notes_playable.start)
 
 		# Input processing here
 		res_hit_map = {type_: None for type_ in pressed}
 		for note in self.notes_playable:
 			if (
-				note.singer != 1 or note.hit_state is not None or
-				note.type not in res_hit_map or res_hit_map[note.type] is not None
+				not note.playable or
+				note.type not in res_hit_map or
+				res_hit_map[note.type] is not None
 			):
 				continue
 			if pressed[note.type] or note.sustain_stage is not SUSTAIN_STAGE.NONE:
+				# Congrats, note hit
 				res_hit_map[note.type] = note
 
 		return opponent_hit_notes, missed_notes, res_hit_map

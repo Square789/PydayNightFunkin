@@ -150,16 +150,21 @@ class Week1Level(Level):
 			self.bf.play_animation(f"note_{fail_note.type.name.lower()}_miss")
 
 		for type_ in NOTE_TYPE:
+			# Note not being held, make the arrow static
 			if type_ not in player_res:
 				if self.static_arrows[1][type_].current_animation != "static":
 					self.static_arrows[1][type_].play_animation("static")
+			# Note was pressed but player missed
 			elif player_res[type_] is None:
 				if (
 					self.static_arrows[1][type_].current_animation is not None and
 					self.static_arrows[1][type_].current_animation == "static"
 				):
 					self.static_arrows[1][type_].play_animation("pressed")
+				if pressed[type_]:
+					# Just pressed
 					self.bf.play_animation(f"note_{type_.name.lower()}_miss")
+			# Note was pressed and player hit
 			else:
 				player_res[type_].on_hit(
 					self.conductor.song_position,
@@ -167,7 +172,6 @@ class Week1Level(Level):
 				)
 				self.static_arrows[1][type_].play_animation("confirm")
 				self.bf.play_animation(f"note_{type_.name.lower()}")
-
 
 	def ready(self) -> None:
 		self.gf.play_animation("idle_bop")
@@ -197,7 +201,7 @@ class Week1Level(Level):
 					TWEEN_ATTR.OPACITY,
 					0,
 					self.conductor.beat_duration / 1000,
-					hide
+					hide,
 				)
 
 			if self.countdown_sounds[sprite_idx] is not None:
