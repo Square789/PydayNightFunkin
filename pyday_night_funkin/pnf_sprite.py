@@ -210,9 +210,6 @@ class PNFSprite(Sprite):
 			new_bb = what
 		self._animation_base_box = new_bb
 
-	def _set_texture(self, texture):
-		super()._set_texture(texture)
-
 	@property
 	def image(self) -> t.Union[PNFAnimation, AbstractImage]:
 		if self._animation is not None:
@@ -265,31 +262,44 @@ class PNFSprite(Sprite):
 		self.image = self._animations[name]
 		self.current_animation = name
 
+	def screen_center(self, screen_dims: t.Tuple[int, int]) -> None:
+		"""
+		Sets the sprite's world position so that it is centered 
+		on screen.
+		"""
+		self._world_x = (screen_dims[0] // 2) - \
+			self._texture.width * self._world_scale * self._world_scale_x
+		self._world_y = (screen_dims[1] // 2) - \
+			self._texture.height * self._world_scale * self._world_scale_y
+
 	def tween(
 		self,
 		tween_func: t.Callable[[float], float],
-		attribute: TWEEN_ATTR,
-		target_value: t.Union[int, float],
+		attributes: t.Dict[TWEEN_ATTR, t.Any],
 		duration: float,
 		on_complete: t.Callable = None,
 	) -> None:
 		"""
 		# TODO write some very cool doc
 		"""
-		attr_name = _TWEEN_ATTR_NAME_MAP[attribute]
+		# 0: initial value; 1: difference
+		tween_map = {}
+		for attribute, target_value in attributes.items():
+			attribute_name = _TWEEN_ATTR_NAME_MAP[attribute]
+			initial_value = getattr(self, attribute_name)
+			tween_map[attribute_name] = (initial_value, target_value - initial_value)
+
 		start_time = time()
 		stop_time = start_time + duration
 		time_difference = stop_time - start_time
-		initial_value = getattr(self, attr_name)
-		value_difference = target_value - initial_value
 		cur_time = start_time
 
-		# NOTE: maybe implement multiple attribute tweening later
 		def tween_schedule_func(dt: float):
 			nonlocal cur_time
 			cur_time += dt
 			progress = (clamp(cur_time, start_time, stop_time) - start_time) / time_difference
-			setattr(self, attr_name, initial_value + (value_difference * tween_func(progress)))
+			for attr_name, (v_ini, v_diff) in tween_map.items():
+				setattr(self, attr_name, v_ini + (v_diff * tween_func(progress)))
 			self.update_camera()
 			if cur_time >= stop_time:
 				pyglet.clock.unschedule(tween_schedule_func)

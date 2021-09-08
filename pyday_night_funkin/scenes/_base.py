@@ -56,7 +56,7 @@ class BaseScene():
 	def create_sprite(
 		self,
 		layer: str,
-		position: t.Tuple[int, int],
+		position: t.Tuple[int, int] = (0, 0),
 		image: t.Optional[t.Union[AbstractImage, PNFAnimation]] = None,
 		camera: t.Optional[str] = None,
 	) -> PNFSprite:
@@ -89,14 +89,14 @@ class BaseScene():
 	def remove_sprite(self, sprite: PNFSprite) -> None:
 		"""
 		Removes a sprite from this scene's sprite registry and its
-		associated camera.
+		associated camera and deletes it.
 		If the sprite is unknown to the scene, does nothing.
 		"""
 		i = id(sprite)
 		if i in self._sprites:
 			if sprite.camera is not None:
 				sprite.camera.remove_sprite(sprite)
-			self._sprites.pop(i)
+			self._sprites.pop(i).delete()
 
 	def on_key_press(self, keysym: int, modifiers: int) -> None:
 		"""

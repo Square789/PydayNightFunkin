@@ -1,7 +1,8 @@
 
 from itertools import product
-import typing as t
 from loguru import logger
+import random
+import typing as t
 
 import pyglet.clock
 
@@ -9,10 +10,10 @@ from pyday_night_funkin.asset_system import ASSETS, SONGS, OggVorbisSong
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.level import Level, GAME_STATE
-from pyday_night_funkin.note import NOTE_TYPE
+from pyday_night_funkin.note import RATING, NOTE_TYPE
 from pyday_night_funkin.note_handler import NoteHandler
 from pyday_night_funkin.pnf_sprite import TWEEN_ATTR
-from pyday_night_funkin.tweens import in_out_cubic
+from pyday_night_funkin.tweens import in_cubic, in_out_cubic
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGame
@@ -132,14 +133,20 @@ class Week1Level(Level):
 			ASSETS.SOUND.INTRO_GO.load(),
 		)
 
+		self.note_rating_sprites = {
+			RATING.SICK: ASSETS.IMG.SICK.load(),
+			RATING.GOOD: ASSETS.IMG.GOOD.load(),
+			RATING.BAD: ASSETS.IMG.BAD.load(),
+			RATING.SHIT: ASSETS.IMG.SHIT.load(),
+		}
+
 	def process_input(self) -> None:
 		pressed = {
-			t: self.key_handler.just_pressed(c)
-			for t, c in self.note_handler.NOTE_TO_CONTROL_MAP.items()
-			if self.key_handler[c]
+			type_: self.key_handler.just_pressed(control)
+			for type_, control in self.note_handler.NOTE_TO_CONTROL_MAP.items()
+			if self.key_handler[control]
 		}
 		opponent_hit, player_missed, player_res = self.note_handler.update(pressed)
-		print(opponent_hit, player_missed, player_res)
 
 		if opponent_hit:
 			op_note = opponent_hit[-1]
@@ -173,6 +180,27 @@ class Week1Level(Level):
 				self.static_arrows[1][type_].play_animation("confirm")
 				self.bf.play_animation(f"note_{type_.name.lower()}")
 
+				# TODO: Slam velocity system onto sprites because haha
+				combo_sprite = self.game_scene.create_sprite(
+					"ui2",
+					image = self.note_rating_sprites[player_res[type_].rating],
+				)
+				combo_sprite.world_scale = 0.7
+				combo_sprite.screen_center(CNST.GAME_DIMENSIONS)
+				combo_sprite.world_x = int(CNST.GAME_WIDTH * .55) - 40
+				combo_sprite.world_y -= 60
+
+				combo_sprite.tween(
+					in_cubic,
+					{
+						TWEEN_ATTR.X: combo_sprite.world_x + random.randint(-10, 10),
+						TWEEN_ATTR.Y: combo_sprite.world_y + random.randint(5, 10),
+						TWEEN_ATTR.OPACITY: 0,
+					},
+					0.2,
+					lambda: self.game_scene.remove_sprite(combo_sprite),
+				)
+
 	def ready(self) -> None:
 		self.gf.play_animation("idle_bop")
 		self.bf.play_animation("idle_bop")
@@ -198,8 +226,7 @@ class Week1Level(Level):
 				self.countdown_sprites[sprite_idx].visible = True
 				self.countdown_sprites[sprite_idx].tween(
 					in_out_cubic,
-					TWEEN_ATTR.OPACITY,
-					0,
+					{TWEEN_ATTR.OPACITY: 0},
 					self.conductor.beat_duration / 1000,
 					hide,
 				)

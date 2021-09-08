@@ -8,7 +8,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.pnf_sprite import PNFSprite
 
 
-class HIT_STATE(IntEnum):
+class RATING(IntEnum):
 	SICK = 0
 	GOOD = 1
 	BAD = 2
@@ -48,7 +48,7 @@ _NOTE_TYPE_ORDER = {NOTE_TYPE.LEFT: 0, NOTE_TYPE.DOWN: 1, NOTE_TYPE.UP: 2, NOTE_
 
 class Note():
 	__slots__ = (
-		"singer", "time", "type", "sustain", "sustain_stage", "sprite", "hit_state", "playable"
+		"singer", "time", "type", "sustain", "sustain_stage", "sprite", "rating", "playable"
 	)
 
 	def __init__(
@@ -65,7 +65,7 @@ class Note():
 		self.sustain = sustain
 		self.sustain_stage = sustain_stage
 		self.sprite: t.Optional["PNFSprite"] = None
-		self.hit_state = None
+		self.rating = None
 		self.playable = False
 
 	def check_playability(self, current_time: float, safe_zone: float) -> None:
@@ -74,15 +74,15 @@ class Note():
 		the note is in the safe zone and sets its playability to `True`
 		if it can be played.
 		For notes not played by the player, `playable` will always be
-		left at `False` and the `hit_state` will be set to `SICK` once
+		left at `False` and the `rating` will be set to `SICK` once
 		the note passed its playtime.
 		"""
-		if self.hit_state is not None:
+		if self.rating is not None:
 			return
 
 		if self.singer != 1:
 			if self.time <= current_time:
-				self.hit_state = HIT_STATE.SICK
+				self.rating = RATING.SICK
 		else:
 			if self.time < current_time - safe_zone:
 				self.playable = False
@@ -92,11 +92,10 @@ class Note():
 	def on_hit(self, current_time: float, safe_zone: float) -> None:
 		"""
 		Should be called when the note was hit. Will set its playability
-		to `False` and its hit state to a fitting state depending on the
-		hit timing (# TODO)
+		to `False` and its rating  depending on the hit timing (# TODO)
 		"""
 		self.playable = False
-		self.hit_state = HIT_STATE.SICK
+		self.rating = RATING.SICK
 
 	def is_playable(self, current_time: float, safe_zone: float) -> bool:
 		"""

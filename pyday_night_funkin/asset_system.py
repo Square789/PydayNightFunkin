@@ -203,6 +203,10 @@ class ASSETS:
 		READY = Image("shared/images/ready.png")
 		SET = Image("shared/images/set.png")
 		GO = Image("shared/images/go.png")
+		SICK = Image("shared/images/sick.png")
+		GOOD = Image("shared/images/good.png")
+		BAD = Image("shared/images/bad.png")
+		SHIT = Image("shared/images/shit.png")
 
 	class SOUND:
 		INTRO_3 = OggVorbisSound("shared/sounds/intro3.ogg")

@@ -147,9 +147,8 @@ class NoteHandler:
 			if note_y < -note.sprite.height:
 				self.notes_visible.start += 1
 				self.game_scene.remove_sprite(note.sprite)
-				note.sprite.delete()
 				note.sprite = None
-			elif note.hit_state is not None:
+			elif note.rating is not None:
 				note.sprite.visible = False
 			else:
 				note.sprite.world_y = note_y
@@ -168,15 +167,14 @@ class NoteHandler:
 		missed_notes = []
 		opponent_hit_notes = []
 		for note in self.notes_playable:
-			prev_hitstate = note.hit_state
+			prev_hitstate = note.rating
 			note.check_playability(song_pos, self.game_scene.game.config.safe_window)
-			if prev_hitstate != note.hit_state and note.singer == 0:
+			if prev_hitstate != note.rating and note.singer == 0:
 				opponent_hit_notes.append(note)
 			if not note.is_playable(song_pos, self.game_scene.game.config.safe_window):
 				self.notes_playable.start += 1
-				if note.hit_state is None and note.singer == 1:
+				if note.rating is None and note.singer == 1:
 					missed_notes.append(note) # BUT HER AIM IS GETTING BETTER
-				print(self.notes_playable.start)
 
 		# Input processing here
 		res_hit_map = {type_: None for type_ in pressed}
