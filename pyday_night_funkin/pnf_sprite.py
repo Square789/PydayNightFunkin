@@ -278,10 +278,20 @@ class PNFSprite(Sprite):
 		attributes: t.Dict[TWEEN_ATTR, t.Any],
 		duration: float,
 		on_complete: t.Callable = None,
+		start_delay: float = 0.0,
 	) -> None:
 		"""
 		# TODO write some very cool doc
 		"""
+		if start_delay < 0.0:
+			raise ValueError("Can't start a tween in the past!")
+		if start_delay:
+			pyglet.clock.schedule_once(
+				lambda _: self.tween(tween_func, attributes, duration, on_complete),
+				start_delay
+			)
+			return
+
 		# 0: initial value; 1: difference
 		tween_map = {}
 		for attribute, target_value in attributes.items():

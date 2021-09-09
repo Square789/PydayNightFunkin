@@ -1,7 +1,7 @@
 
 from itertools import product
 from loguru import logger
-import random
+from random import randint
 import typing as t
 
 import pyglet.clock
@@ -13,7 +13,7 @@ from pyday_night_funkin.level import Level, GAME_STATE
 from pyday_night_funkin.note import RATING, NOTE_TYPE
 from pyday_night_funkin.note_handler import NoteHandler
 from pyday_night_funkin.pnf_sprite import TWEEN_ATTR
-from pyday_night_funkin.tweens import in_cubic, in_out_cubic
+from pyday_night_funkin.tweens import in_cubic, in_out_cubic, linear, out_cubic
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGame
@@ -140,6 +140,8 @@ class Week1Level(Level):
 			RATING.SHIT: ASSETS.IMG.SHIT.load(),
 		}
 
+		self.number_sprites = [getattr(ASSETS.IMG, f"NUM{i}").load() for i in range(10)]
+
 	def process_input(self) -> None:
 		pressed = {
 			type_: self.key_handler.just_pressed(control)
@@ -171,6 +173,7 @@ class Week1Level(Level):
 				if pressed[type_]:
 					# Just pressed
 					self.bf.play_animation(f"note_{type_.name.lower()}_miss")
+					self.combo = 0
 			# Note was pressed and player hit
 			else:
 				player_res[type_].on_hit(
@@ -179,27 +182,49 @@ class Week1Level(Level):
 				)
 				self.static_arrows[1][type_].play_animation("confirm")
 				self.bf.play_animation(f"note_{type_.name.lower()}")
+				self.combo += 1
 
-				# TODO: Slam velocity system onto sprites because haha
+				x = int(CNST.GAME_WIDTH * .55)
+
 				combo_sprite = self.game_scene.create_sprite(
 					"ui2",
 					image = self.note_rating_sprites[player_res[type_].rating],
 				)
-				combo_sprite.world_scale = 0.7
 				combo_sprite.screen_center(CNST.GAME_DIMENSIONS)
-				combo_sprite.world_x = int(CNST.GAME_WIDTH * .55) - 40
+				combo_sprite.world_x = x - 40
 				combo_sprite.world_y -= 60
+				combo_sprite.world_scale = 0.7
+
+				self.game_scene.set_movement(combo_sprite, (0, -150), (0, 600))
 
 				combo_sprite.tween(
-					in_cubic,
-					{
-						TWEEN_ATTR.X: combo_sprite.world_x + random.randint(-10, 10),
-						TWEEN_ATTR.Y: combo_sprite.world_y + random.randint(5, 10),
-						TWEEN_ATTR.OPACITY: 0,
-					},
-					0.2,
-					lambda: self.game_scene.remove_sprite(combo_sprite),
+					tween_func = out_cubic,
+					attributes = {TWEEN_ATTR.OPACITY: 0},
+					duration = 0.2,
+					on_complete = lambda: self.game_scene.remove_sprite(combo_sprite),
+					start_delay = self.conductor.beat_duration * 0.001,
 				)
+	
+				for i, digit in enumerate(f"{self.combo:>03}"):
+					sprite = self.game_scene.create_sprite(
+						"ui2", image = self.number_sprites[int(digit)], camera = "ui"
+					)
+					sprite.screen_center(CNST.GAME_DIMENSIONS)
+					sprite.world_x = x + (43 * i) - 90
+					sprite.world_y += 80
+					sprite.world_scale = .5
+
+					self.game_scene.set_movement(
+						sprite, (randint(-5, 5), -randint(140, 160)), (0, randint(200, 300))
+					)
+
+					sprite.tween(
+						tween_func = linear,
+						attributes = {TWEEN_ATTR.OPACITY: 0},
+						duration = 0.2,
+						on_complete = lambda sprite = sprite: self.game_scene.remove_sprite(sprite),
+						start_delay = self.conductor.beat_duration * 0.002,
+					)
 
 	def ready(self) -> None:
 		self.gf.play_animation("idle_bop")

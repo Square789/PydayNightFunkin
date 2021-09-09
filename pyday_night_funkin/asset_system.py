@@ -157,7 +157,7 @@ class OggVorbisSong(OggVorbis):
 		stream: t.Tuple[bool, bool],
 		difficulty: DIFFICULTY
 	) -> t.Tuple[Source, t.Optional[Source], t.Dict[str, t.Any]]:
-		json_file = str(self.get_path()) + difficulty.to_json_str() + ".json"
+		json_file = str(self.get_path()) + difficulty.to_song_json_suffix() + ".json"
 		json_path = self.data_dir.load() / self.get_path() / json_file
 		song_path = self.song_dir.load() / self.get_path() / "Inst.ogg"
 		voic_path = self.song_dir.load() / self.get_path() / "Voices.ogg"
@@ -207,6 +207,16 @@ class ASSETS:
 		GOOD = Image("shared/images/good.png")
 		BAD = Image("shared/images/bad.png")
 		SHIT = Image("shared/images/shit.png")
+		NUM0 = Image("preload/images/num0.png")
+		NUM1 = Image("preload/images/num1.png")
+		NUM2 = Image("preload/images/num2.png")
+		NUM3 = Image("preload/images/num3.png")
+		NUM4 = Image("preload/images/num4.png")
+		NUM5 = Image("preload/images/num5.png")
+		NUM6 = Image("preload/images/num6.png")
+		NUM7 = Image("preload/images/num7.png")
+		NUM8 = Image("preload/images/num8.png")
+		NUM9 = Image("preload/images/num9.png")
 
 	class SOUND:
 		INTRO_3 = OggVorbisSound("shared/sounds/intro3.ogg")

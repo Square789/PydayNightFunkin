@@ -1,6 +1,7 @@
 
 import typing as t
 
+from loguru import logger
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
 
 if t.TYPE_CHECKING:

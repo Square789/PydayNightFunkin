@@ -46,6 +46,7 @@ class Level:
 		self.conductor = Conductor()
 
 		self.health = 0.5
+		self.combo = 0
 
 		self._updates_since_desync_warn = 999
 

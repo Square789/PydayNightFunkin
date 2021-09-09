@@ -21,6 +21,37 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
 
 
+class _SpriteMovement():
+	__slots__ = ("velocity", "acceleration")
+	
+	def __init__(
+		self,
+		velocity: t.Tuple[float, float] = (0.0, 0.0),
+		acceleration: t.Tuple[float, float] = (0.0, 0.0),
+	) -> None:
+		self.velocity = velocity
+		self.acceleration = acceleration
+
+	# Dumbed down case of code shamelessly stolen from https://github.com/HaxeFlixel/
+	# 	flixel/blob/e3c3b30f2f4dfb0486c4b8308d13f5a816d6e5ec/flixel/FlxObject.hx#L738
+	def update(self, dt: float) -> t.Tuple[float, float]:
+		acc_x, acc_y = self.acceleration
+		vel_x, vel_y = self.velocity
+
+		vel_delta = 0.5 * acc_x * dt
+		vel_x += vel_delta
+		posx_delta = vel_x * dt
+		vel_x += vel_delta
+
+		vel_delta = 0.5 * acc_y * dt
+		vel_y += vel_delta
+		posy_delta = vel_y * dt
+		vel_y += vel_delta
+
+		self.velocity = (vel_x, vel_y)
+
+		return (posx_delta, posy_delta)
+
 class BaseScene():
 	"""
 	A scene holds a number of sprites and cameras, functions to
@@ -50,7 +81,9 @@ class BaseScene():
 		self.layers = OrderedDict((name, OrderedGroup(i)) for i, name in enumerate(layer_names))
 		self._default_camera = Camera()
 		self.cameras = {name: Camera() for name in camera_names}
+		# Keys between sprites and moving_sprites must always be the same
 		self._sprites: t.Dict[int, PNFSprite] = {}
+		self._moving_sprites: t.Dict[int, _SpriteMovement] = {}
 		self.sfx_ring = SFXRing(CNST.SFX_RING_SIZE)
 
 	def create_sprite(
@@ -94,19 +127,33 @@ class BaseScene():
 		"""
 		i = id(sprite)
 		if i in self._sprites:
+			if i in self._moving_sprites:
+				self._moving_sprites.pop(i)
 			if sprite.camera is not None:
 				sprite.camera.remove_sprite(sprite)
+			else:
+				self._default_camera.remove_sprite(sprite)
 			self._sprites.pop(i).delete()
 
-	def on_key_press(self, keysym: int, modifiers: int) -> None:
-		"""
-		Called on any key press.
-		"""
+	def set_movement(
+		self,
+		sprite: PNFSprite,
+		velocity: t.Tuple[float, float],
+		acceleration: t.Tuple[float, float] = (0.0, 0.0),
+	) -> None:
+		sid = id(sprite)
+		if sid not in self._sprites:
+			return
+		if sid in self._moving_sprites:
+			self._moving_sprites[sid].velocity = velocity
+			self._moving_sprites[sid].acceleration = acceleration
+		else:
+			self._moving_sprites[sid] = _SpriteMovement(velocity, acceleration)
 
-	def on_key_release(self, keysym: int, modifiers: int) -> None:
-		"""
-		Called on any key release.
-		"""
+	def stop_movement(self, sprite: PNFSprite) -> None:
+		sid = id(sprite)
+		if sid in self._moving_sprites:
+			self._moving_sprites.pop(sid)
 
 	def on_leave(self) -> None:
 		"""
@@ -121,6 +168,12 @@ class BaseScene():
 		pass
 
 	def update(self, dt: float) -> None:
+		for sid, movement in self._moving_sprites.items():
+			dx, dy = movement.update(dt)
+			self._sprites[sid].world_update(
+				x = self._sprites[sid].world_x + dx,
+				y = self._sprites[sid].world_y + dy,
+			)
 		self._default_camera.update()
 		for cam in self.cameras.values():
 			cam.update()

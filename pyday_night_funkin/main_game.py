@@ -36,9 +36,9 @@ class Game():
 			logger.add(self.debug_pane.add_message)
 
 		self.config = Config(
-			1.0,
-			167.0,
-			{
+			scroll_speed = 1.0,
+			safe_window = 167.0,
+			key_bindings = {
 				CONTROL.LEFT: key.LEFT,
 				CONTROL.DOWN: key.DOWN,
 				CONTROL.UP: key.UP,
@@ -75,8 +75,6 @@ class Game():
 		self.active_scene = new_scene
 		self.window.push_handlers(
 			on_draw = self.draw,
-			on_key_press = self.active_scene.on_key_press,
-			on_key_release = self.active_scene.on_key_release,
 			on_resize = self.active_scene.on_window_resize,
 		)
 

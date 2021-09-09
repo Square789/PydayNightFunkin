@@ -22,7 +22,7 @@ class DIFFICULTY(IntEnum):
 	NORMAL = 1
 	HARD = 2
 
-	def to_json_str(self) -> str:
+	def to_song_json_suffix(self) -> str:
 		if self is self.EASY:
 			return "-easy"
 		elif self is self.NORMAL:
