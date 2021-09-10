@@ -37,6 +37,9 @@ class Week1Level(Level):
 			"background0", "background1", "girlfriend", "stage", "curtains",
 			"ui0", "ui1", "ui2", "ui3"
 		)
+		# ui0: static arrows, countdown sprite, health bar jpeg
+		# ui1: notes, health bar bars
+		# ui2: health bar icons
 
 	def load_resources(self) -> None:
 		"""
@@ -105,26 +108,12 @@ class Week1Level(Level):
 		self.health_bar = HealthBar(self.game_scene, "ui", "dad", "bf", ("ui0", "ui1", "ui2"))
 		self.health_bar.update(self.health)
 
-		countdown_textures = (
+		self.countdown_textures = (
 			None,
 			ASSETS.IMG.READY.load(),
 			ASSETS.IMG.SET.load(),
 			ASSETS.IMG.GO.load(),
 		)
-		self.countdown_sprites = []
-		for tex in countdown_textures:
-			if tex is None:
-				self.countdown_sprites.append(None)
-				continue
-
-			sprite = self.game_scene.create_sprite(
-				"ui0",
-				((CNST.GAME_WIDTH - tex.width) // 2, (CNST.GAME_HEIGHT - tex.height) // 2),
-				tex,
-				"ui",
-			)
-			sprite.visible = False
-			self.countdown_sprites.append(sprite)
 
 		self.countdown_sounds = (
 			ASSETS.SOUND.INTRO_3.load(),
@@ -133,14 +122,14 @@ class Week1Level(Level):
 			ASSETS.SOUND.INTRO_GO.load(),
 		)
 
-		self.note_rating_sprites = {
+		self.note_rating_textures = {
 			RATING.SICK: ASSETS.IMG.SICK.load(),
 			RATING.GOOD: ASSETS.IMG.GOOD.load(),
 			RATING.BAD: ASSETS.IMG.BAD.load(),
 			RATING.SHIT: ASSETS.IMG.SHIT.load(),
 		}
 
-		self.number_sprites = [getattr(ASSETS.IMG, f"NUM{i}").load() for i in range(10)]
+		self.number_textures = [getattr(ASSETS.IMG, f"NUM{i}").load() for i in range(10)]
 
 	def process_input(self) -> None:
 		pressed = {
@@ -188,7 +177,7 @@ class Week1Level(Level):
 
 				combo_sprite = self.game_scene.create_sprite(
 					"ui2",
-					image = self.note_rating_sprites[player_res[type_].rating],
+					image = self.note_rating_textures[player_res[type_].rating],
 				)
 				combo_sprite.screen_center(CNST.GAME_DIMENSIONS)
 				combo_sprite.world_x = x - 40
@@ -207,7 +196,7 @@ class Week1Level(Level):
 	
 				for i, digit in enumerate(f"{self.combo:>03}"):
 					sprite = self.game_scene.create_sprite(
-						"ui2", image = self.number_sprites[int(digit)], camera = "ui"
+						"ui2", image = self.number_textures[int(digit)], camera = "ui"
 					)
 					sprite.screen_center(CNST.GAME_DIMENSIONS)
 					sprite.world_x = x + (43 * i) - 90
@@ -245,15 +234,20 @@ class Week1Level(Level):
 		else:
 			# self._countdown_stage will be changed once hide is called
 			sprite_idx = self._countdown_stage
-			if self.countdown_sprites[sprite_idx] is not None:
-				def hide():
-					self.countdown_sprites[sprite_idx].visible = False
-				self.countdown_sprites[sprite_idx].visible = True
-				self.countdown_sprites[sprite_idx].tween(
+			tex = self.countdown_textures[sprite_idx]
+			if tex is not None:
+				sprite = self.game_scene.create_sprite(
+					"ui0",
+					((CNST.GAME_WIDTH - tex.width) // 2, (CNST.GAME_HEIGHT - tex.height) // 2),
+					tex,
+					"ui",
+				)
+
+				sprite.tween(
 					in_out_cubic,
 					{TWEEN_ATTR.OPACITY: 0},
 					self.conductor.beat_duration / 1000,
-					hide,
+					lambda: self.game_scene.remove_sprite(sprite),
 				)
 
 			if self.countdown_sounds[sprite_idx] is not None:
