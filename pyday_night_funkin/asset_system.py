@@ -232,11 +232,3 @@ class ASSETS:
 		BOPEEBO = OggVorbisSong(_SONG_DIR, _DATA_DIR, "bopeebo")
 		FRESH = OggVorbisSong(_SONG_DIR, _DATA_DIR, "fresh")
 		DAD_BATTLE = OggVorbisSong(_SONG_DIR, _DATA_DIR, "dadbattle")
-
-
-SONGS = {
-	"Tutorial": ASSETS.SONG.TUTORIAL,
-	"Bopeebo": ASSETS.SONG.BOPEEBO,
-	"Fresh": ASSETS.SONG.FRESH,
-	"Dad Battle": ASSETS.SONG.DAD_BATTLE,
-}

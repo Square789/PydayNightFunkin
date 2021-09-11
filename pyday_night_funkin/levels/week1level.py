@@ -1,25 +1,24 @@
 
 from itertools import product
+from pyday_night_funkin.characters import Boyfriend, DaddyDearest, Girlfriend
 from loguru import logger
 from random import randint
 import typing as t
 
 import pyglet.clock
 
-from pyday_night_funkin.asset_system import ASSETS, SONGS, OggVorbisSong
+from pyday_night_funkin.asset_system import ASSETS, OggVorbisSong
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.level import Level, GAME_STATE
 from pyday_night_funkin.note import RATING, NOTE_TYPE
 from pyday_night_funkin.note_handler import NoteHandler
 from pyday_night_funkin.pnf_sprite import TWEEN_ATTR
-from pyday_night_funkin.tweens import in_cubic, in_out_cubic, linear, out_cubic
+from pyday_night_funkin.tweens import in_out_cubic, linear, out_cubic
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGame
 
-# TODO: probably put another "BaseGame" level between this one and
-# "Level", or something to eliminate code dup for commonly reused sprites.
 
 class Week1Level(Level):
 	def __init__(self, game_scene: "InGame") -> None:
@@ -50,42 +49,30 @@ class Week1Level(Level):
 
 		# SPRITES
 		stageback = self.game_scene.create_sprite(
-			"background0", (-600, -200), ASSETS.IMG.STAGE_BACK.load(), "main"
+			"background0", "main", x = -600, y = -200, image = ASSETS.IMG.STAGE_BACK.load()
 		)
 		stageback.scroll_factor = (.9, .9)
 		stagefront = self.game_scene.create_sprite(
-			"background1", (-650, 600), ASSETS.IMG.STAGE_FRONT.load(), "main"
+			"background1", "main", x = -650, y = 600, image = ASSETS.IMG.STAGE_FRONT.load()
 		)
 		stagefront.scroll_factor = (.9, .9)
 		stagefront.world_scale = 1.1
 
-		gf_anims = ASSETS.XML.GIRLFRIEND.load()
-		self.gf = self.game_scene.create_sprite("girlfriend", (400, 130), None, "main")
+		self.gf = self.game_scene.create_sprite(
+			"girlfriend", "main", Girlfriend, level = self, x = 400, y = 130, image = None
+		)
 		self.gf.scroll_factor = (.95, .95)
-		self.gf.add_animation("idle_bop", gf_anims["GF Dancing Beat"], 24, True)
 
-		bf_anims = ASSETS.XML.BOYFRIEND.load()
-		self.bf = self.game_scene.create_sprite("stage", (770, 450), None, "main")
-		self.bf.add_animation("idle_bop", bf_anims["BF idle dance"], 24, True, (-5, 0))
-		self.bf.add_animation("note_left", bf_anims["BF NOTE LEFT"], 24, False, (12, -6))
-		self.bf.add_animation("note_left_miss", bf_anims["BF NOTE LEFT MISS"], 24, False, (12, 24))
-		self.bf.add_animation("note_down", bf_anims["BF NOTE DOWN"], 24, False, (-10, -50))
-		self.bf.add_animation("note_down_miss", bf_anims["BF NOTE DOWN MISS"], 24, False, (-11, -19))
-		self.bf.add_animation("note_up", bf_anims["BF NOTE UP"], 24, False, (-29, 27))
-		self.bf.add_animation("note_up_miss", bf_anims["BF NOTE UP MISS"], 24, False, (-29, 27))
-		self.bf.add_animation("note_right", bf_anims["BF NOTE RIGHT"], 24, False, (-38, -7))
-		self.bf.add_animation("note_right_miss", bf_anims["BF NOTE RIGHT MISS"], 24, False, (-30, 21))
+		self.bf = self.game_scene.create_sprite(
+			"stage", "main", Boyfriend, level = self, x = 770, y = 450, image = None
+		)
 
-		op_anims = ASSETS.XML.DADDY_DEAREST.load()
-		self.opponent = self.game_scene.create_sprite("stage", (100, 100), None, "main")
-		self.opponent.add_animation("idle_bop", op_anims["Dad idle dance"], 24, True)
-		self.opponent.add_animation("note_left", op_anims["Dad Sing Note LEFT"], 24, False, (-10, 10))
-		self.opponent.add_animation("note_down", op_anims["Dad Sing Note DOWN"], 24, False, (0, -30))
-		self.opponent.add_animation("note_up", op_anims["Dad Sing Note UP"], 24, False, (-6, 50))
-		self.opponent.add_animation("note_right", op_anims["Dad Sing Note RIGHT"], 24, False, (0, 27))
+		self.opponent = self.game_scene.create_sprite(
+			"stage", "main", DaddyDearest, level = self, x = 100, y = 100, image = None
+		)
 
 		stagecurtains = self.game_scene.create_sprite(
-			"curtains", (-500, -300), ASSETS.IMG.STAGE_CURTAINS.load(), "main"
+			"curtains", "main", x = -500, y = -300, image = ASSETS.IMG.STAGE_CURTAINS.load()
 		)
 		stagecurtains.scroll_factor = (1.3, 1.3)
 		stagecurtains.world_scale = 0.9
@@ -97,12 +84,11 @@ class Week1Level(Level):
 			arrow_width = note_sprites[atlas_names[0]][0].texture.width
 			x = 50 + (CNST.GAME_WIDTH // 2) * i + (note_type.get_order() * arrow_width * .7)
 			y = CNST.STATIC_ARROW_Y
-			arrow_sprite = self.game_scene.create_sprite("ui0", (x, y), None)
+			arrow_sprite = self.game_scene.create_sprite("ui0", "ui", x = x, y = y, image = None)
 			for anim_name, atlas_name in zip(("static", "pressed", "confirm"), atlas_names):
 				arrow_sprite.add_animation(anim_name, note_sprites[atlas_name], 24, False)
 			arrow_sprite.world_scale = .7
 			arrow_sprite.play_animation("static")
-			arrow_sprite._fixed_graphics_size = (150, 150)
 			self.static_arrows[i][note_type] = arrow_sprite
 
 		self.health_bar = HealthBar(self.game_scene, "ui", "dad", "bf", ("ui0", "ui1", "ui2"))
@@ -131,7 +117,10 @@ class Week1Level(Level):
 
 		self.number_textures = [getattr(ASSETS.IMG, f"NUM{i}").load() for i in range(10)]
 
-	def process_input(self) -> None:
+	def load_song(self) -> None:
+		self.note_handler.feed_song_data(super().load_song())
+
+	def process_input(self, dt: float) -> None:
 		pressed = {
 			type_: self.key_handler.just_pressed(control)
 			for type_, control in self.note_handler.NOTE_TO_CONTROL_MAP.items()
@@ -141,11 +130,12 @@ class Week1Level(Level):
 
 		if opponent_hit:
 			op_note = opponent_hit[-1]
-			self.opponent.play_animation(f"note_{op_note.type.name.lower()}")
+			self.opponent.hold_timer = 0.0
+			self.opponent.play_animation(f"sing_note_{op_note.type.name.lower()}")
 
 		if player_missed:
 			fail_note = player_missed[-1]
-			self.bf.play_animation(f"note_{fail_note.type.name.lower()}_miss")
+			self.bf.play_animation(f"miss_note_{fail_note.type.name.lower()}")
 
 		for type_ in NOTE_TYPE:
 			# Note not being held, make the arrow static
@@ -161,22 +151,24 @@ class Week1Level(Level):
 					self.static_arrows[1][type_].play_animation("pressed")
 				if pressed[type_]:
 					# Just pressed
-					self.bf.play_animation(f"note_{type_.name.lower()}_miss")
+					self.bf.play_animation(f"miss_note_{type_.name.lower()}")
 					self.combo = 0
 			# Note was pressed and player hit
 			else:
 				player_res[type_].on_hit(
 					self.conductor.song_position,
-					self.game_scene.game.config.safe_window
+					self.game_scene.game.config.safe_window,
 				)
 				self.static_arrows[1][type_].play_animation("confirm")
-				self.bf.play_animation(f"note_{type_.name.lower()}")
+				self.bf.hold_timer = 0.0
+				self.bf.play_animation(f"sing_note_{type_.name.lower()}")
 				self.combo += 1
 
 				x = int(CNST.GAME_WIDTH * .55)
 
 				combo_sprite = self.game_scene.create_sprite(
 					"ui2",
+					"ui",
 					image = self.note_rating_textures[player_res[type_].rating],
 				)
 				combo_sprite.screen_center(CNST.GAME_DIMENSIONS)
@@ -190,13 +182,16 @@ class Week1Level(Level):
 					tween_func = out_cubic,
 					attributes = {TWEEN_ATTR.OPACITY: 0},
 					duration = 0.2,
-					on_complete = lambda: self.game_scene.remove_sprite(combo_sprite),
+					on_complete = (
+						lambda combo_sprite = combo_sprite:
+							self.game_scene.remove_sprite(combo_sprite)
+					),
 					start_delay = self.conductor.beat_duration * 0.001,
 				)
 	
 				for i, digit in enumerate(f"{self.combo:>03}"):
 					sprite = self.game_scene.create_sprite(
-						"ui2", image = self.number_textures[int(digit)], camera = "ui"
+						"ui2", "ui", image = self.number_textures[int(digit)]
 					)
 					sprite.screen_center(CNST.GAME_DIMENSIONS)
 					sprite.world_x = x + (43 * i) - 90
@@ -215,6 +210,8 @@ class Week1Level(Level):
 						start_delay = self.conductor.beat_duration * 0.002,
 					)
 
+		self.bf.update_character(dt, bool(pressed))
+
 	def ready(self) -> None:
 		self.gf.play_animation("idle_bop")
 		self.bf.play_animation("idle_bop")
@@ -227,7 +224,13 @@ class Week1Level(Level):
 			self.countdown, self.conductor.beat_duration / 1000
 		)
 
-	def countdown(self, _dt: float) -> None:
+	def update(self, dt: float) -> None:
+		super().update(dt)
+		# bf is handled in `process_input`
+		self.gf.update_character(dt)
+		self.opponent.update_character(dt)
+
+	def countdown(self, dt: float) -> None:
 		if self._countdown_stage == 4:
 			self.start_song()
 			pyglet.clock.unschedule(self.countdown)
@@ -238,16 +241,17 @@ class Week1Level(Level):
 			if tex is not None:
 				sprite = self.game_scene.create_sprite(
 					"ui0",
-					((CNST.GAME_WIDTH - tex.width) // 2, (CNST.GAME_HEIGHT - tex.height) // 2),
-					tex,
 					"ui",
+					x = (CNST.GAME_WIDTH - tex.width) // 2,
+					y = (CNST.GAME_HEIGHT - tex.height) // 2,
+					image = tex,
 				)
 
 				sprite.tween(
 					in_out_cubic,
 					{TWEEN_ATTR.OPACITY: 0},
 					self.conductor.beat_duration / 1000,
-					lambda: self.game_scene.remove_sprite(sprite),
+					lambda sprite = sprite: self.game_scene.remove_sprite(sprite),
 				)
 
 			if self.countdown_sounds[sprite_idx] is not None:
@@ -259,14 +263,14 @@ class Week1Level(Level):
 class Bopeebo(Week1Level):
 	@staticmethod
 	def get_song() -> OggVorbisSong:
-		return SONGS["Bopeebo"]
+		return ASSETS.SONG.BOPEEBO
 
 class Fresh(Week1Level):
 	@staticmethod
 	def get_song() -> OggVorbisSong:
-		return SONGS["Fresh"]
+		return ASSETS.SONG.FRESH
 
 class DadBattle(Week1Level):
 	@staticmethod
 	def get_song() -> OggVorbisSong:
-		return SONGS["Dad Battle"]
+		return ASSETS.SONG.DAD_BATTLE

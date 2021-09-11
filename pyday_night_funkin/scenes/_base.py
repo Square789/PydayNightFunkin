@@ -4,6 +4,7 @@ import typing as t
 
 from loguru import logger
 import pyglet
+from pyglet.gl.gl import GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
 if pyglet.version.startswith("2.0"):
 	from pyglet.graphics import Group
 	OrderedGroup = lambda o, parent = None: Group(o, parent)
@@ -19,6 +20,9 @@ from pyday_night_funkin.sfx_ring import SFXRing
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
+
+
+T = t.TypeVar("T", bound = PNFSprite)
 
 
 class _SpriteMovement():
@@ -89,27 +93,26 @@ class BaseScene():
 	def create_sprite(
 		self,
 		layer: str,
-		position: t.Tuple[int, int] = (0, 0),
-		image: t.Optional[t.Union[AbstractImage, PNFAnimation]] = None,
 		camera: t.Optional[str] = None,
-	) -> PNFSprite:
+		sprite_class: t.Type[T] = PNFSprite,
+		*args,
+		**kwargs,
+	) -> T:
 		"""
-		Creates a sprite on the given layer at the given position.
-		Optionally an image may be specified which will be given
-		directly to the `PNFSprite` constructor.
+		Creates a sprite on the given layer belonging to a camera.
 		If a camera name is specified (and the camera exists in the
 		scene), the sprite will be registered with it and its
 		transformations immediatedly applied. If no camera name is
 		specified, the sprite will be attached to a default camera
 		that is never moved.
+		The sprite class will be created with all args and kwargs,
+		as well as a fitting `batch` and `group` filled in by the scene
+		if not otherwise given. (And if you give it another batch or
+		group you better know what you're doing.)
 		"""
-		sprite = PNFSprite(
-			image,
-			position[0],
-			position[1],
-			batch = self.batch,
-			group = self.layers[layer],
-		)
+		kwargs.setdefault("batch", self.batch)
+		kwargs.setdefault("group", self.layers[layer])
+		sprite = sprite_class(*args, **kwargs)
 
 		self._sprites[id(sprite)] = sprite
 		if camera is not None:

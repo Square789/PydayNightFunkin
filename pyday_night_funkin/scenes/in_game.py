@@ -10,6 +10,9 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.levels import Level
 
 
+from pyglet.window.key import C, LEFT, RIGHT, DOWN, UP
+
+
 @dataclass
 class InGameInfo():
 	difficulty: CNST.DIFFICULTY
@@ -29,4 +32,13 @@ class InGame(BaseScene):
 
 	def update(self, dt: float) -> None:
 		self.level.update(dt)
+		if self.game.debug and self.game.pyglet_ksh[C]:
+			if self.game.pyglet_ksh[LEFT]:
+				self.cameras["main"].x -= 10
+			if self.game.pyglet_ksh[RIGHT]:
+				self.cameras["main"].x += 10
+			if self.game.pyglet_ksh[DOWN]:
+				self.cameras["main"].y += 10
+			if self.game.pyglet_ksh[UP]:
+				self.cameras["main"].y -= 10
 		super().update(dt)

@@ -1,4 +1,5 @@
 
+from itertools import islice
 import math
 import typing as t
 
@@ -82,9 +83,9 @@ class NoteHandler:
 				type_ = NOTE_TYPE(type_)
 				note = Note(singer, time_, type_, sustain, SUSTAIN_STAGE.NONE)
 				self.notes.append(note)
-				trail_notes = math.ceil(sustain / self.level.conductor.beat_step_duration)
+				trail_notes = math.ceil(sustain / self.level.conductor.step_duration)
 				for i in range(trail_notes): # 0 and effectless for non-sustain notes.
-					sust_time = time_ + (self.level.conductor.beat_step_duration * (i + 1))
+					sust_time = time_ + (self.level.conductor.step_duration * (i + 1))
 					stage = SUSTAIN_STAGE.END if i == trail_notes - 1 else SUSTAIN_STAGE.TRAIL
 					sust_note = Note(singer, sust_time, type_, sustain, stage)
 					self.notes.append(sust_note)
@@ -129,29 +130,32 @@ class NoteHandler:
 				cur_note.type.get_order() * arrow_width
 			texture = self.note_sprites[cur_note.sustain_stage][cur_note.type].texture
 			sprite = self.game_scene.create_sprite(
-				self.note_layer, (x, -2000), texture, self.note_camera
+				self.note_layer, self.note_camera, x = x, y = -2000, image = texture
 			)
 			sprite.world_scale = 0.7
 			if cur_note.sustain_stage != SUSTAIN_STAGE.NONE:
 				sprite.world_x += (arrow_width - texture.width) // 2
 				if cur_note.sustain_stage is SUSTAIN_STAGE.TRAIL:
-					sprite.world_scale_y = self.level.conductor.beat_step_duration * \
+					sprite.world_scale_y = self.level.conductor.step_duration * \
 						0.015 * self.scroll_speed
 			cur_note.sprite = sprite
 			self.notes_visible.end += 1
 
 		# Updates and shrinks visible notes window, makes played notes invisible,
 		# deletes off-screen ones.
-		for note in self.notes_visible:
+		deletion_bound = 0
+		for i, note in enumerate(self.notes_visible):
 			note_y = CNST.STATIC_ARROW_Y - (song_pos - note.time) * speed
 			if note_y < -note.sprite.height:
-				self.notes_visible.start += 1
-				self.game_scene.remove_sprite(note.sprite)
-				note.sprite = None
+				deletion_bound = max(deletion_bound, i + 1)
 			elif note.rating is not None:
 				note.sprite.visible = False
 			else:
 				note.sprite.world_y = note_y
+		for idx in range(self.notes_visible.start, self.notes_visible.start + deletion_bound):
+			self.game_scene.remove_sprite(self.notes[idx].sprite)
+			self.notes[idx].sprite = None
+			self.notes_visible.start += 1
 
 		# Finds new playable notes
 		while (
@@ -166,26 +170,32 @@ class NoteHandler:
 		# Updates playable notes and shrinks playable notes window by removing missed notes.
 		missed_notes = []
 		opponent_hit_notes = []
-		for note in self.notes_playable:
+		deletion_bound = 0
+		for i, note in enumerate(self.notes_playable):
 			prev_hitstate = note.rating
 			note.check_playability(song_pos, self.game_scene.game.config.safe_window)
 			if prev_hitstate != note.rating and note.singer == 0:
 				opponent_hit_notes.append(note)
 			if not note.is_playable(song_pos, self.game_scene.game.config.safe_window):
-				self.notes_playable.start += 1
-				if note.rating is None and note.singer == 1:
-					missed_notes.append(note) # BUT HER AIM IS GETTING BETTER
+				deletion_bound = max(deletion_bound, i + 1)
+		for idx in range(self.notes_playable.start, self.notes_playable.start + deletion_bound):
+			note = self.notes[idx]
+			if note.rating is None and note.singer == 1:
+				missed_notes.append(note) # BUT HER AIM IS GETTING BETTER
+			self.notes_playable.start += 1
 
 		# Input processing here
 		res_hit_map = {type_: None for type_ in pressed}
 		for note in self.notes_playable:
 			if (
-				not note.playable or
-				note.type not in res_hit_map or
-				res_hit_map[note.type] is not None
+				note.playable and
+				# note type's control is down
+				note.type in res_hit_map and
+				# no other note was already encountered
+				res_hit_map[note.type] is None and
+				# Was either just pressed or is a sustain note
+				(pressed[note.type] or note.sustain_stage is not SUSTAIN_STAGE.NONE)
 			):
-				continue
-			if pressed[note.type] or note.sustain_stage is not SUSTAIN_STAGE.NONE:
 				# Congrats, note hit
 				res_hit_map[note.type] = note
 

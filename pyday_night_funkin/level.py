@@ -69,7 +69,7 @@ class Level:
 		"""
 		pass
 
-	def load_song(self) -> None:
+	def load_song(self) -> t.Dict:
 		"""
 		# TODO doc
 		"""
@@ -84,14 +84,13 @@ class Level:
 			self.voice_player.queue(voices)
 
 		self.conductor.bpm = song_data["song"]["bpm"]
-		self.note_handler.feed_song_data(song_data)
+		return song_data
 
 	def start_song(self) -> None:
 		"""
 		Starts the song by making the players play, zeroing
 		conductor's position and setting the state to PLAYING.
 		"""
-		logger.debug(f"Started song! Scroll speed: {self.note_handler.scroll_speed}")
 		self.conductor.song_position = 0
 		self.song_players.play()
 
@@ -111,9 +110,9 @@ class Level:
 				self._updates_since_desync_warn = 0
 			self._updates_since_desync_warn += 1
 
-		self.process_input()
+		self.process_input(dt)
 
-	def process_input(self) -> None:
+	def process_input(self, dt: float) -> None:
 		"""
 		Called with `update` every time. Keyboard input should be
 		handled here.

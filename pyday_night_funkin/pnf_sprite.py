@@ -117,7 +117,7 @@ class PNFSprite(Sprite):
 		if image is None:
 			image = CNST.ERROR_TEXTURE
 
-		super().__init__(image, 0, 0, blend_src, blend_dest, batch, group, usage, subpixel)
+		super().__init__(image, x, y, blend_src, blend_dest, batch, group, usage, subpixel)
 
 		self._animations: t.Dict[str, PNFAnimation] = {}
 		self._animation_frame_offset = (0, 0)
@@ -135,7 +135,6 @@ class PNFSprite(Sprite):
 		self._world_scale_y = 1.0
 		self._animation_base_box = None
 		self._scroll_factor = (1.0, 1.0)
-		self._debug_prints = False
 
 	def _animate(self, dt: float) -> None:
 		# Disgusting override of underscore method, required to set the

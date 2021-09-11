@@ -99,8 +99,8 @@ class Note():
 
 	def is_playable(self, current_time: float, safe_zone: float) -> bool:
 		"""
-		Determines whether the note is playable based on the current
-		song position and a safe zone offset.
+		Determines whether the note is playable solely based on the
+		current song position and the safe zone offset.
 		This function may still return `True` if the note is not being
 		sung by the player or if it already has been played.
 		"""
@@ -133,3 +133,9 @@ class Note():
 		elif isinstance(other, int):
 			return self.time <= other
 		return NotImplemented
+
+	def __repr__(self) -> str:
+		return (
+			f"<{self.__class__.__name__} at {id(self):>08X} (type={self.type.name} "
+			f"time={self.time})>"
+		)

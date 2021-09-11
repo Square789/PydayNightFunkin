@@ -7,6 +7,7 @@ import pyglet
 from pyglet.graphics import Batch
 import pyglet.media
 from pyglet.window import key
+from pyglet.window.key import KeyStateHandler
 
 from pyday_night_funkin.config import Config, CONTROL
 from pyday_night_funkin.constants import DIFFICULTY, GAME_WIDTH, GAME_HEIGHT
@@ -46,6 +47,7 @@ class Game():
 			},
 		)
 
+		self.pyglet_ksh = KeyStateHandler()
 		self.key_handler = KeyHandler(self.config.key_bindings)
 		self.window = pyglet.window.Window(
 			width = GAME_WIDTH,
@@ -54,11 +56,12 @@ class Game():
 			vsync = False,
 		)
 		self.window.push_handlers(self.key_handler)
+		self.window.push_handlers(self.pyglet_ksh)
 
 		self.main_batch = pyglet.graphics.Batch()
 		self.active_scene = None
 
-		self.switch_scene(InGame(self, WEEKS[1].levels[1], InGameInfo(DIFFICULTY.HARD)))
+		self.switch_scene(InGame(self, WEEKS[1].levels[2], InGameInfo(DIFFICULTY.HARD)))
 
 	def run(self) -> None:
 		logger.debug(f"Game started, pyglet version {pyglet.version}")
