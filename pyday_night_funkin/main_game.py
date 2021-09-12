@@ -64,7 +64,7 @@ class Game():
 		self.switch_scene(InGame(self, WEEKS[1].levels[2], InGameInfo(DIFFICULTY.HARD)))
 
 	def run(self) -> None:
-		logger.debug(f"Game started, pyglet version {pyglet.version}")
+		logger.debug(f"Game started (v{__version__}), pyglet version {pyglet.version}")
 		pyglet.clock.schedule_interval(self.update, 1 / 80.0)
 		pyglet.app.run()
 

@@ -287,7 +287,7 @@ class PNFSprite(Sprite):
 		if start_delay:
 			pyglet.clock.schedule_once(
 				lambda _: self.tween(tween_func, attributes, duration, on_complete),
-				start_delay
+				start_delay,
 			)
 			return
 
