@@ -29,6 +29,7 @@ class Camera:
 		self.deviance = (
 			(CENTER_X - vx),
 			(CENTER_Y - vy),
+			0.0,
 		)
 
 	def update(self):

@@ -135,8 +135,8 @@ class PNFSpriteGroup(SpriteGroup):
 
 		sfx, sfy = self.sprite._scroll_factor
 		self._translation_undo = (
-			-self.sprite.camera.zoom * sfx * self.sprite.camera.deviance[0],
-			-self.sprite.camera.zoom * sfy * self.sprite.camera.deviance[1],
+			-(self.sprite.camera.zoom * sfx * self.sprite.camera.deviance[0] + CNST.GAME_WIDTH / 2),
+			-(self.sprite.camera.zoom * sfy * self.sprite.camera.deviance[1] + CNST.GAME_HEIGHT / 2),
 			0.0,
 		)
 		gl.glTranslatef(
@@ -153,9 +153,11 @@ class PNFSpriteGroup(SpriteGroup):
 				1.0,
 			)
 
+		gl.glTranslatef(-CNST.GAME_WIDTH / 2, -CNST.GAME_HEIGHT / 2, 0.0)
 
 	def unset_state(self) -> None:
 		gl.glMatrixMode(gl.GL_MODELVIEW)
+		gl.glTranslatef(CNST.GAME_WIDTH / 2, CNST.GAME_HEIGHT / 2, 0.0)
 		gl.glScalef(*self._scale_undo)
 		gl.glTranslatef(*self._translation_undo)
 		
