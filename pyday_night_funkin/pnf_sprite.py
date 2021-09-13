@@ -90,31 +90,6 @@ class PNFAnimation(Animation):
 			self.frames[-1].duration = None
 
 
-shittyshader = """
-#version 330
-
-in vec2 position;
-
-uniform mat4 projection_mat;
-uniform mat4 model_mat;
-
-void main() {
-	gl_Position = projection_mat * model_mat * vec4(position, 0.0, 1.0)
-}
-"""
-
-class VertexShader:
-	def __init__(self, prog) -> None:
-		self._s = gl.glCreateShader(gl.GL_VERTEX_SHADER)
-		gl.glShaderSource(self._s, 1, [prog], 0)
-		gl.glCompileShader(self._s)
-
-	def use():
-		pass
-	def stop():
-		pass
-
-
 class PNFSpriteGroup(SpriteGroup):
 	def __init__(self, sprite: "PNFSprite", *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
