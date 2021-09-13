@@ -10,7 +10,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.levels import Level
 
 
-from pyglet.window.key import C, LEFT, RIGHT, DOWN, UP
+from pyglet.window.key import B, C, D, LEFT, RIGHT, DOWN, UP, PLUS, MINUS
 
 
 @dataclass
@@ -32,13 +32,24 @@ class InGame(BaseScene):
 
 	def update(self, dt: float) -> None:
 		self.level.update(dt)
+		c = None
 		if self.game.debug and self.game.pyglet_ksh[C]:
+			c = "main"
+		elif self.game.debug and self.game.pyglet_ksh[D]:
+			c = "ui"
+		if c:
 			if self.game.pyglet_ksh[LEFT]:
-				self.cameras["main"].x -= 10
+				self.cameras[c].x -= 10
 			if self.game.pyglet_ksh[RIGHT]:
-				self.cameras["main"].x += 10
+				self.cameras[c].x += 10
 			if self.game.pyglet_ksh[DOWN]:
-				self.cameras["main"].y += 10
+				self.cameras[c].y += 10
 			if self.game.pyglet_ksh[UP]:
-				self.cameras["main"].y -= 10
+				self.cameras[c].y -= 10
+			if self.game.pyglet_ksh[PLUS]:
+				self.cameras[c].zoom += .01
+			if self.game.pyglet_ksh[MINUS]:
+				self.cameras[c].zoom -= .01
+		if self.game.debug and self.game.pyglet_ksh[B]:
+			self.batch._dump_draw_list()
 		super().update(dt)

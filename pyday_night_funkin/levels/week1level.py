@@ -45,7 +45,7 @@ class Week1Level(Level):
 		Loads sprites and sounds for all week 1 levels.
 		"""
 		self.game_scene.cameras["main"].zoom = 1.0
-		self.game_scene.cameras["main"].y += 200
+		# self.game_scene.cameras["main"].y += 200
 
 		# SPRITES
 		stageback = self.game_scene.create_sprite(
@@ -56,7 +56,7 @@ class Week1Level(Level):
 			"background1", "main", x = -650, y = 600, image = ASSETS.IMG.STAGE_FRONT.load()
 		)
 		stagefront.scroll_factor = (.9, .9)
-		stagefront.world_scale = 1.1
+		stagefront.scale = 1.1
 
 		self.gf = self.game_scene.create_sprite(
 			"girlfriend", "main", Girlfriend, level = self, x = 400, y = 130, image = None
@@ -75,7 +75,7 @@ class Week1Level(Level):
 			"curtains", "main", x = -500, y = -300, image = ASSETS.IMG.STAGE_CURTAINS.load()
 		)
 		stagecurtains.scroll_factor = (1.3, 1.3)
-		stagecurtains.world_scale = 0.9
+		stagecurtains.scale = 0.9
 
 		note_sprites = ASSETS.XML.NOTES.load()
 		self.static_arrows = [{}, {}]
@@ -87,7 +87,7 @@ class Week1Level(Level):
 			arrow_sprite = self.game_scene.create_sprite("ui0", "ui", x = x, y = y, image = None)
 			for anim_name, atlas_name in zip(("static", "pressed", "confirm"), atlas_names):
 				arrow_sprite.add_animation(anim_name, note_sprites[atlas_name], 24, False)
-			arrow_sprite.world_scale = .7
+			arrow_sprite.scale = .7
 			arrow_sprite.play_animation("static")
 			self.static_arrows[i][note_type] = arrow_sprite
 
@@ -172,9 +172,9 @@ class Week1Level(Level):
 					image = self.note_rating_textures[player_res[type_].rating],
 				)
 				combo_sprite.screen_center(CNST.GAME_DIMENSIONS)
-				combo_sprite.world_x = x - 40
-				combo_sprite.world_y -= 60
-				combo_sprite.world_scale = 0.7
+				combo_sprite.x = x - 40
+				combo_sprite.y -= 60
+				combo_sprite.scale = 0.7
 
 				self.game_scene.set_movement(combo_sprite, (0, -150), (0, 600))
 
@@ -194,9 +194,9 @@ class Week1Level(Level):
 						"ui2", "ui", image = self.number_textures[int(digit)]
 					)
 					sprite.screen_center(CNST.GAME_DIMENSIONS)
-					sprite.world_x = x + (43 * i) - 90
-					sprite.world_y += 80
-					sprite.world_scale = .5
+					sprite.x = x + (43 * i) - 90
+					sprite.y += 80
+					sprite.scale = .5
 
 					self.game_scene.set_movement(
 						sprite, (randint(-5, 5), -randint(140, 160)), (0, randint(200, 300))
@@ -221,7 +221,7 @@ class Week1Level(Level):
 		self.state = GAME_STATE.COUNTDOWN
 		self.conductor.song_position = self.conductor.beat_duration * -5
 		pyglet.clock.schedule_interval(
-			self.countdown, self.conductor.beat_duration / 1000
+			self.countdown, self.conductor.beat_duration * 0.001
 		)
 
 	def update(self, dt: float) -> None:
@@ -250,7 +250,7 @@ class Week1Level(Level):
 				sprite.tween(
 					in_out_cubic,
 					{TWEEN_ATTR.OPACITY: 0},
-					self.conductor.beat_duration / 1000,
+					self.conductor.beat_duration * 0.001,
 					lambda sprite = sprite: self.game_scene.remove_sprite(sprite),
 				)
 

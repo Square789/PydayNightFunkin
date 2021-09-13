@@ -132,11 +132,11 @@ class NoteHandler:
 			sprite = self.game_scene.create_sprite(
 				self.note_layer, self.note_camera, x = x, y = -2000, image = texture
 			)
-			sprite.world_scale = 0.7
+			sprite.scale = 0.7
 			if cur_note.sustain_stage != SUSTAIN_STAGE.NONE:
-				sprite.world_x += (arrow_width - texture.width) // 2
+				sprite.x += (arrow_width - texture.width) // 2
 				if cur_note.sustain_stage is SUSTAIN_STAGE.TRAIL:
-					sprite.world_scale_y = self.level.conductor.step_duration * \
+					sprite.scale_y = self.level.conductor.step_duration * \
 						0.015 * self.scroll_speed
 			cur_note.sprite = sprite
 			self.notes_visible.end += 1
@@ -151,7 +151,7 @@ class NoteHandler:
 			elif note.rating is not None:
 				note.sprite.visible = False
 			else:
-				note.sprite.world_y = note_y
+				note.sprite.y = note_y
 		for idx in range(self.notes_visible.start, self.notes_visible.start + deletion_bound):
 			self.game_scene.remove_sprite(self.notes[idx].sprite)
 			self.notes[idx].sprite = None

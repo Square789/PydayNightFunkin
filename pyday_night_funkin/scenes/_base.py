@@ -112,13 +112,11 @@ class BaseScene():
 		"""
 		kwargs.setdefault("batch", self.batch)
 		kwargs.setdefault("group", self.layers[layer])
+		kwargs.setdefault("camera", self._default_camera if camera is None else self.cameras[camera])
+
 		sprite = sprite_class(*args, **kwargs)
 
 		self._sprites[id(sprite)] = sprite
-		if camera is not None:
-			self.cameras[camera].add_sprite(sprite)
-		else:
-			self._default_camera.add_sprite(sprite)
 
 		return sprite
 
@@ -132,10 +130,6 @@ class BaseScene():
 		if i in self._sprites:
 			if i in self._moving_sprites:
 				self._moving_sprites.pop(i)
-			if sprite.camera is not None:
-				sprite.camera.remove_sprite(sprite)
-			else:
-				self._default_camera.remove_sprite(sprite)
 			self._sprites.pop(i).delete()
 
 	def set_movement(
@@ -173,9 +167,9 @@ class BaseScene():
 	def update(self, dt: float) -> None:
 		for sid, movement in self._moving_sprites.items():
 			dx, dy = movement.update(dt)
-			self._sprites[sid].world_update(
-				x = self._sprites[sid].world_x + dx,
-				y = self._sprites[sid].world_y + dy,
+			self._sprites[sid].update(
+				x = self._sprites[sid].x + dx,
+				y = self._sprites[sid].y + dy,
 			)
 		self._default_camera.update()
 		for cam in self.cameras.values():

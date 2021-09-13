@@ -4,9 +4,10 @@ import typing as t
 
 from loguru import logger
 import pyglet
+from pyglet import gl
 from pyglet.graphics import Batch
 import pyglet.media
-from pyglet.window import key
+from pyglet.window import Projection, key
 from pyglet.window.key import KeyStateHandler
 
 from pyday_night_funkin.config import Config, CONTROL
@@ -21,6 +22,35 @@ from pyday_night_funkin.scenes.in_game import InGameInfo
 
 __version__ = "0.0.0dev"
 
+
+class TLProjection2D(Projection):
+	"""
+	Top left projection that resizes the window's viewport as well.
+	Whether it should be doing that is a good question but all seems
+	good so far.
+	"""
+
+	def set(self, window_width, window_height, viewport_width, viewport_height):
+		cur_wh_ratio = viewport_width / viewport_height if viewport_height > 0 else 999
+		tgt_wh_ratio = GAME_WIDTH / GAME_HEIGHT
+
+		if cur_wh_ratio > tgt_wh_ratio:
+			# height is limiting
+			viewport_width = int(viewport_height * tgt_wh_ratio)
+		else:
+			# width is limiting
+			viewport_height = int(viewport_width * (1/tgt_wh_ratio))
+
+		gl.glViewport(
+			(window_width - viewport_width) // 2,
+			(window_height - viewport_height) // 2,
+			max(1, viewport_width),
+			max(1, viewport_height),
+		)
+		gl.glMatrixMode(gl.GL_PROJECTION)
+		gl.glLoadIdentity()
+		gl.glOrtho(0, max(1, GAME_WIDTH), max(1, GAME_HEIGHT), 0, -1, 1)
+		gl.glMatrixMode(gl.GL_MODELVIEW)
 
 class Game():
 	def __init__(self) -> None:
@@ -55,6 +85,7 @@ class Game():
 			resizable = True, # totally am gonna do this later and fucking die trying
 			vsync = False,
 		)
+		self.window.projection = TLProjection2D()
 		self.window.push_handlers(self.key_handler)
 		self.window.push_handlers(self.pyglet_ksh)
 
