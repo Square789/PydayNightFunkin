@@ -6,6 +6,7 @@ import typing as t
 
 import pyglet.clock
 from pyglet import gl
+from pyglet.gl.gl import GL_DEPTH, GL_DEPTH_TEST
 import pyglet.graphics
 from pyglet.image import AbstractImage, Texture
 from pyglet.image.animation import Animation
@@ -95,28 +96,38 @@ class PNFSpriteGroup(SpriteGroup):
 		super().__init__(*args, **kwargs)
 		self.sprite = sprite
 
-		self._translation_undo = (0.0, 0.0, 0.0)
+		self._translate_undo = (0.0, 0.0, 0.0)
 		self._scale_undo = (1.0, 1.0, 1.0)
 
 	def set_state(self) -> None:
 		gl.glEnable(self.texture.target)
 		gl.glBindTexture(self.texture.target, self.texture.id)
 
+		# gl.glPushAttrib(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 		gl.glPushAttrib(gl.GL_COLOR_BUFFER_BIT)
 		gl.glEnable(gl.GL_BLEND)
 		gl.glBlendFunc(self.blend_src, self.blend_dest)
 
+		# gl.glEnable(gl.GL_DEPTH_TEST)
+		# gl.glDepthFunc(gl.GL_LESS)
+
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 
 		sfx, sfy = self.sprite._scroll_factor
-		self._translation_undo = (
-			-(self.sprite.camera.zoom * sfx * self.sprite.camera.deviance[0] + CNST.GAME_WIDTH / 2),
-			-(self.sprite.camera.zoom * sfy * self.sprite.camera.deviance[1] + CNST.GAME_HEIGHT / 2),
+		self._translate_undo = (
+			-(
+				(self.sprite.camera.zoom * sfx * self.sprite.camera.deviance[0]) +
+				CNST.GAME_WIDTH / 2
+			),
+			-(
+				(self.sprite.camera.zoom * sfy * self.sprite.camera.deviance[1]) +
+				CNST.GAME_HEIGHT / 2
+			),
 			0.0,
 		)
 		gl.glTranslatef(
-			-self._translation_undo[0],
-			-self._translation_undo[1],
+			-self._translate_undo[0],
+			-self._translate_undo[1],
 			0.0,
 		)
 
@@ -134,8 +145,9 @@ class PNFSpriteGroup(SpriteGroup):
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glTranslatef(CNST.GAME_WIDTH / 2, CNST.GAME_HEIGHT / 2, 0.0)
 		gl.glScalef(*self._scale_undo)
-		gl.glTranslatef(*self._translation_undo)
+		gl.glTranslatef(*self._translate_undo)
 		
+		# gl.glDisable(GL_DEPTH_TEST)
 		gl.glPopAttrib()
 		gl.glDisable(self.texture.target)
 

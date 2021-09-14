@@ -17,6 +17,8 @@ ERROR_TEXTURE = CheckerImagePattern(PINK, BLACK).create_image(32, 32).create_tex
 
 SFX_RING_SIZE = 8
 
+DEPTH_BUFFER_PRECISION = 1/(2**23)
+
 class DIFFICULTY(IntEnum):
 	EASY = 0
 	NORMAL = 1
