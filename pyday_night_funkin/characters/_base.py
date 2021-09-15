@@ -9,7 +9,6 @@ if t.TYPE_CHECKING:
 
 class Character(PNFSprite):
 
-	_sprite = None
 	hold_timeout = 4.0
 
 	def __init__(self, level: "Level", *args, **kwargs) -> None:
@@ -19,10 +18,8 @@ class Character(PNFSprite):
 
 		self.hold_timer = 0.0
 
-	# Unfortunately `update` clashes with pyglet's sprite and replacing it with
-	# a functionally entirely different method would suck, despite the fact the
-	# sprite's update shouldn't even be used anyways.
-	# Unconventional method name go!
+	# Unfortunately, the name `update` clashes with sprite, so have
+	# this as a certified code smell
 	def update_character(self, dt: float) -> None:
 		if self.current_animation.startswith("sing"):
 			self.hold_timer += dt

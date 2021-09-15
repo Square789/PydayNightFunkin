@@ -27,7 +27,7 @@ class Boyfriend(Character):
 			self.hold_timer += dt
 
 		if (
-			self.hold_timer >= self.hold_timeout * self.level.conductor.beat_duration * 0.001 and
+			self.hold_timer >= self.hold_timeout * self.level.conductor.step_duration * 0.001 and
 			not dont_idle
 		):
 			self.hold_timer = 0.0
