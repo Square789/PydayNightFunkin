@@ -15,7 +15,7 @@ from pyglet.media import load as load_media, Source
 
 from pyday_night_funkin.constants import DIFFICULTY
 from pyday_night_funkin.image_loader import (
-	FrameInfoTexture, load_animation_frames_from_xml, load_image
+	FrameInfoTexture, load_frames_from_sparrow_atlas, load_image
 )
 import pyday_night_funkin.ogg_decoder
 
@@ -110,7 +110,7 @@ class Resource():
 
 class XmlTextureAtlas(Resource):
 	def load(self) -> t.Dict[str, t.List[FrameInfoTexture]]:
-		return load_animation_frames_from_xml(self.get_path())
+		return load_frames_from_sparrow_atlas(self.get_path())
 
 
 class Image(Resource):

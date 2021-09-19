@@ -13,7 +13,7 @@ from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.level import Level, GAME_STATE
 from pyday_night_funkin.note import RATING, NOTE_TYPE
 from pyday_night_funkin.note_handler import NoteHandler
-from pyday_night_funkin.pnf_sprite import TWEEN_ATTR
+from pyday_night_funkin.graphics.pnf_sprite import TWEEN_ATTR
 from pyday_night_funkin.tweens import in_out_cubic, linear, out_cubic
 
 if t.TYPE_CHECKING:

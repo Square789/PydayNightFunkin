@@ -32,24 +32,4 @@ class InGame(BaseScene):
 
 	def update(self, dt: float) -> None:
 		self.level.update(dt)
-		c = None
-		if self.game.debug and self.game.pyglet_ksh[C]:
-			c = "main"
-		elif self.game.debug and self.game.pyglet_ksh[D]:
-			c = "ui"
-		if c:
-			if self.game.pyglet_ksh[LEFT]:
-				self.cameras[c].x -= 10
-			if self.game.pyglet_ksh[RIGHT]:
-				self.cameras[c].x += 10
-			if self.game.pyglet_ksh[DOWN]:
-				self.cameras[c].y += 10
-			if self.game.pyglet_ksh[UP]:
-				self.cameras[c].y -= 10
-			if self.game.pyglet_ksh[PLUS]:
-				self.cameras[c].zoom += .01
-			if self.game.pyglet_ksh[MINUS]:
-				self.cameras[c].zoom -= .01
-		if self.game.debug and self.game.pyglet_ksh[B]:
-			self.batch._dump_draw_list()
 		super().update(dt)

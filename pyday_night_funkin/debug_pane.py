@@ -3,12 +3,7 @@ import typing as t
 
 from collections import deque
 
-import pyglet
-if pyglet.version.startswith("2.0"):
-	from pyglet.graphics import Group
-	OrderedGroup = lambda o, parent = None: Group(o, parent)
-else:
-	from pyglet.graphics import OrderedGroup
+from pyglet.graphics import Group
 from pyglet.shapes import Rectangle
 from pyglet.text import Label
 
@@ -30,8 +25,8 @@ class DebugPane():
 
 	def __init__(self, line_amount: int, batch: "Batch") -> None:
 		self.insert_index = 0
-		self.background = OrderedGroup(0)
-		self.foreground = OrderedGroup(1)
+		self.background = Group(order = 0)
+		self.foreground = Group(order = 1)
 		self.batch = batch
 		self.labels = [
 			Label(
@@ -56,8 +51,7 @@ class DebugPane():
 		)
 		self.rect = Rectangle(
 			self.PADDING,
-			CNST.GAME_HEIGHT - (self.FONT_SIZE * line_amount) - \
-				(self.LINE_DIST * (line_amount - 1)),
+			0,
 			CNST.GAME_WIDTH - 2 * self.PADDING,
 			(self.FONT_SIZE * line_amount) + (self.LINE_DIST * (line_amount - 1)),
 			color = (20, 20, 100),

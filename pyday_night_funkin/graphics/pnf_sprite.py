@@ -5,19 +5,19 @@ from time import time
 import typing as t
 
 import pyglet.clock
-from pyglet import gl
-from pyglet.gl.gl import GL_DEPTH, GL_DEPTH_TEST
-import pyglet.graphics
-from pyglet.image import AbstractImage, Texture
+from pyglet import gl, graphics
+from pyglet.gl.gl import GL_BLEND
+from pyglet.graphics.shader import Shader, ShaderProgram
+from pyglet.image import AbstractImage, Texture, TextureArrayRegion
 from pyglet.image.animation import Animation
-from pyglet.sprite import Sprite, SpriteGroup
+from pyglet import sprite
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.image_loader import FrameInfoTexture
-	from pyday_night_funkin.camera import Camera
+	from pyday_night_funkin.graphics.camera import Camera
 
 
 class TWEEN_ATTR(IntEnum):
@@ -91,68 +91,163 @@ class PNFAnimation(Animation):
 			self.frames[-1].duration = None
 
 
-class PNFSpriteGroup(SpriteGroup):
+PNF_SPRITE_VERTEX_SRC = """
+#version 330
+
+in vec2 translate;
+in vec4 colors;
+in vec3 tex_coords;
+in vec2 scale;
+in vec2 position;
+in vec2 scroll_factor;
+in float rotation;
+
+out vec4 vertex_colors;
+out vec3 texture_coords;
+
+uniform WindowBlock {{
+	mat4 projection;
+	mat4 view;
+}} window;
+
+uniform CameraAttrs {{
+	float zoom;
+	vec2  deviance;
+}} camera;
+
+
+mat4 m_trans_scale = mat4(1.0);
+mat4 m_rotation = mat4(1.0);
+//mat4 m_camera = mat4(1.0);
+//mat4 m_camera_post = mat4(1.0);
+
+
+void main() {{
+	m_trans_scale[3][0] = translate.x + (camera.deviance.x * scroll_factor.x);
+	m_trans_scale[3][1] = translate.y + (camera.deviance.y * scroll_factor.y);
+	m_trans_scale[0][0] = scale.x * camera.zoom;
+	m_trans_scale[1][1] = scale.y * camera.zoom;
+	m_rotation[0][0] =  cos(-radians(rotation)); 
+	m_rotation[0][1] =  sin(-radians(rotation));
+	m_rotation[1][0] = -sin(-radians(rotation));
+	m_rotation[1][1] =  cos(-radians(rotation));
+	// Camera transform
+	//m_camera[3][0] = 0.000001 * (camera.zoom * scroll_factor.x * camera.deviance.x + {0});
+	//m_camera[3][1] = 0.000001 * (camera.zoom * scroll_factor.y * camera.deviance.y + {1});
+	// Camera scale
+	//m_camera[0][0] = 1.0 + 0.000001 * (1.0 / camera.zoom);
+	//m_camera[1][1] = 1.0 + 0.000001 * (1.0 / camera.zoom);
+	// Camera post-scale-transform
+	//m_camera_post[3][0] = 0.000001*-{0};
+	//m_camera_post[3][1] = 0.000001*-{1};
+
+	gl_Position = \\
+		window.projection * \\
+		window.view * \\
+		/*m_camera_post * \\
+*/		/*m_camera * \\
+*/		m_trans_scale * \\
+		m_rotation * \\
+		vec4(position, 0, 1) \\
+	;
+
+	vertex_colors = vec4(colors.x, 1.0, 1.0, 1.0);
+	texture_coords = tex_coords;
+}}
+""".format(CNST.GAME_WIDTH / 2, CNST.GAME_HEIGHT / 2)
+
+PNF_SPRITE_FRAGMENT_SRC = """
+#version 150 core
+
+in vec4 vertex_colors;
+in vec3 texture_coords;
+
+out vec4 final_colors;
+
+uniform sampler2D sprite_texture;
+
+
+void main() {
+	final_colors = texture(sprite_texture, texture_coords.xy) * vertex_colors;
+}
+"""
+
+class _ShaderContainer():
+	def __init__(self) -> None:
+		self.prog = None
+
+	def get_program(self):
+		if self.prog is None:
+			self._compile()
+		return self.prog
+
+	def _compile(self):
+		vertex_shader = Shader(PNF_SPRITE_VERTEX_SRC, "vertex")
+		fragment_shader = Shader(PNF_SPRITE_FRAGMENT_SRC, "fragment")
+		self.prog = ShaderProgram(vertex_shader, fragment_shader)
+
+_pnf_sprite_shader_container = _ShaderContainer()
+
+
+class PNFSpriteGroup(sprite.SpriteGroup):
 	def __init__(self, sprite: "PNFSprite", *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 		self.sprite = sprite
 
-		self._translate_undo = (0.0, 0.0, 0.0)
-		self._scale_undo = (1.0, 1.0, 1.0)
+	def set_state(self):
+		self.program.use()
+		self.sprite.camera.ubo.bind()
 
-	def set_state(self) -> None:
-		gl.glEnable(self.texture.target)
+		gl.glActiveTexture(gl.GL_TEXTURE0)
 		gl.glBindTexture(self.texture.target, self.texture.id)
-
-		# gl.glPushAttrib(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-		gl.glPushAttrib(gl.GL_COLOR_BUFFER_BIT)
 		gl.glEnable(gl.GL_BLEND)
 		gl.glBlendFunc(self.blend_src, self.blend_dest)
 
-		# gl.glEnable(gl.GL_DEPTH_TEST)
-		# gl.glDepthFunc(gl.GL_LESS)
+	def unset_state(self):
+		gl.glDisable(gl.GL_BLEND)
+		gl.glBindTexture(self.texture.target, 0)
 
-		gl.glMatrixMode(gl.GL_MODELVIEW)
+		self.program.stop()
 
-		sfx, sfy = self.sprite._scroll_factor
-		self._translate_undo = (
-			-(
-				(self.sprite.camera.zoom * sfx * self.sprite.camera.deviance[0]) +
-				CNST.GAME_WIDTH / 2
-			),
-			-(
-				(self.sprite.camera.zoom * sfy * self.sprite.camera.deviance[1]) +
-				CNST.GAME_HEIGHT / 2
-			),
-			0.0,
-		)
-		gl.glTranslatef(
-			-self._translate_undo[0],
-			-self._translate_undo[1],
-			0.0,
-		)
+	# 	sfx, sfy = self.sprite._scroll_factor
+	# 	gl.glTranslatef(
+	# 		(
+	# 			(self.sprite.camera.zoom * sfx * self.sprite.camera.deviance[0]) +
+	# 			CNST.GAME_WIDTH / 2
+	# 		),
+	# 		(
+	# 			(self.sprite.camera.zoom * sfy * self.sprite.camera.deviance[1]) +
+	# 			CNST.GAME_HEIGHT / 2
+	# 		),
+	# 		0.0,
+	# 	)
 
-		if self.sprite.camera.zoom != 0.0:
-			self._scale_undo = (1.0/self.sprite.camera.zoom, 1.0/self.sprite.camera.zoom, 1.0)
-			gl.glScalef(
-				1.0/self._scale_undo[0],
-				1.0/self._scale_undo[1],
-				1.0,
-			)
+	# 	if self.sprite.camera.zoom != 0.0:
+	# 		self._scale_undo = ( , 1.0)
+	# 		gl.glScalef(
+	# 			1.0/self.sprite.camera.zoom,
+	# 			1.0/self.sprite.camera.zoom,
+	# 			1.0,
+	# 		)
 
-		gl.glTranslatef(-CNST.GAME_WIDTH / 2, -CNST.GAME_HEIGHT / 2, 0.0)
+	# 	gl.glTranslatef(
+	# 		-CNST.GAME_WIDTH / 2,
+	# 		-CNST.GAME_HEIGHT / 2,
+	# 		0.0
+	# 	)
 
-	def unset_state(self) -> None:
-		gl.glMatrixMode(gl.GL_MODELVIEW)
-		gl.glTranslatef(CNST.GAME_WIDTH / 2, CNST.GAME_HEIGHT / 2, 0.0)
-		gl.glScalef(*self._scale_undo)
-		gl.glTranslatef(*self._translate_undo)
+	# def unset_state(self) -> None:
+	# 	gl.glMatrixMode(gl.GL_MODELVIEW)
+	# 	gl.glTranslatef(CNST.GAME_WIDTH / 2, CNST.GAME_HEIGHT / 2, 0.0)
+	# 	gl.glScalef(*self._scale_undo)
+	# 	gl.glTranslatef(*self._translate_undo)
 		
-		# gl.glDisable(GL_DEPTH_TEST)
-		gl.glPopAttrib()
-		gl.glDisable(self.texture.target)
+	# 	# gl.glDisable(GL_DEPTH_TEST)
+	# 	gl.glPopAttrib()
+	# 	gl.glDisable(self.texture.target)
 
 
-class PNFSprite(Sprite):
+class PNFSprite(sprite.Sprite):
 	"""
 	TODO doc
 
@@ -164,14 +259,15 @@ class PNFSprite(Sprite):
 		self,
 		camera: "Camera",
 		image: t.Optional[t.Union[PNFAnimation, AbstractImage]] = None,
-		x: int = 0,
-		y: int = 0,
+		x = 0,
+		y = 0,
 		blend_src = gl.GL_SRC_ALPHA,
 		blend_dest = gl.GL_ONE_MINUS_SRC_ALPHA,
 		batch = None,
 		group = None,
 		usage = "dynamic",
 		subpixel = False,
+		program = None,
 	) -> None:
 		image = CNST.ERROR_TEXTURE if image is None else image
 
@@ -182,43 +278,101 @@ class PNFSprite(Sprite):
 		self.current_animation: t.Optional[str] = None
 		self.camera = camera
 
-		if batch is not None:
-			self._batch = batch
+		self.asdfdebug = False
 
 		self._x = x
 		self._y = y
 
-		self._texture = image.get_texture()
+		if isinstance(image, PNFAnimation):
+			self._texture = image.frames[0].image.get_texture()
+		else:
+			self._texture = image.get_texture()
 
-		self._group = PNFSpriteGroup(self, self._texture, blend_src, blend_dest, group)
+		if isinstance(image, TextureArrayRegion):
+			raise NotImplementedError("What's the deal with TextureArrayRegions?")
+			program = sprite.get_default_array_shader()
+		else:
+			program = _pnf_sprite_shader_container.get_program()
+
+		self._batch = batch or graphics.get_default_batch()
+		self._group = PNFSpriteGroup(self, self._texture, blend_src, blend_dest, program, parent = group)
 		self._usage = usage
 		self._subpixel = subpixel
 		self._create_vertex_list()
 
-	def _apply_post_animate_offset(self) -> bool:
+		self.image = image
+
+	def _apply_post_animate_offset(self) -> None:
 		"""
 		"Swaps out" the current animation frame offset with the new
 		one. The new one is calculated in this method using the current
 		animation frame, the sprite's scale and the animation base box.
-		Returns whether a new animation frame offset was applied and
-		thus whether the internal world coordinates were modified.
-		Does not cause a camera update.
 		"""
-		cframe = self._animation.frames[self._frame_index]
+		fix, fiy, fiw, fih = self._animation.frames[self._frame_index].frame_info
 		nx = round(
-			(cframe.frame_info[0] - (self._animation_base_box[0] - cframe.frame_info[2]) // 2) *
+			(fix - (self._animation_base_box[0] - fiw) // 2) *
 			self._scale * self._scale_x
 		)
 		ny = round(
-			(cframe.frame_info[1] - (self._animation_base_box[1] - cframe.frame_info[3]) // 2) *
+			(fiy - (self._animation_base_box[1] - fih) // 2) *
 			self._scale * self._scale_y
 		)
 		new_frame_offset = (nx, ny)
-		if new_frame_offset != self._animation_frame_offset:
-			cfx, cfy = self._animation_frame_offset
-			self.x += cfx - new_frame_offset[0]
-			self.y += cfy - new_frame_offset[1]
-			self._animation_frame_offset = new_frame_offset
+		self.x += self._animation_frame_offset[0] - nx
+		self.y += self._animation_frame_offset[1] - ny
+		self._animation_frame_offset = new_frame_offset
+		self._update_position()
+
+	def _set_animation_base_box(
+		self,
+		what: t.Union[PNFAnimation, OffsetAnimationFrame, t.Tuple[int, int]],
+	) -> None:
+		if not isinstance(what, tuple):
+			if not isinstance(what, OffsetAnimationFrame):
+				if not isinstance(what, PNFAnimation):
+					raise TypeError("Invalid type.")
+				frame = what.frames[0]
+			else:
+				frame = what
+			new_bb = (
+				frame.frame_info[2] - frame.frame_info[0],
+				frame.frame_info[3] - frame.frame_info[1],
+			)
+		else:
+			new_bb = what
+		self._animation_base_box = new_bb
+
+	def _create_vertex_list(self):
+		usage = self._usage
+		self._vertex_list = self._batch.add_indexed(
+			4, gl.GL_TRIANGLES, self._group, [0, 1, 2, 0, 2, 3],
+			"position2f/" + usage,
+			(
+				"colors4Bn/" + usage,
+				(*self._rgb, int(self._opacity)) * 4
+			),
+			(
+				"translate2f/" + usage,
+				(self._x, self._y) * 4
+			),
+			(
+				"scale2f/" + usage,
+				(self._scale * self._scale_x, self._scale * self._scale_y) * 4
+			),
+			(
+				"rotation1f/" + usage,
+				(self._rotation,) * 4
+			),
+			(
+				"scroll_factor2f/" + usage,
+				self._scroll_factor * 4
+			),
+			(
+				"tex_coords3f/" + usage,
+				self._texture.tex_coords
+			),
+		)
+		self._update_position()
 
 	def add_animation(
 		self,
@@ -242,22 +396,6 @@ class PNFSprite(Sprite):
 			self._animations[name] = PNFAnimation(frames, offset, loop)
 		if self._animation_base_box is None:
 			self._set_animation_base_box(self._animations[name])
-
-	def _set_animation_base_box(
-		self,
-		what: t.Union[PNFAnimation, OffsetAnimationFrame, t.Tuple[int, int]],
-	) -> None:
-		if not isinstance(what, tuple):
-			if not isinstance(what, OffsetAnimationFrame):
-				if not isinstance(what, PNFAnimation):
-					raise TypeError("Invalid type.")
-				frame = what.frames[0]
-			else:
-				frame = what
-			new_bb = (frame.frame_info[2] - frame.frame_info[0], frame.frame_info[3] - frame.frame_info[1])
-		else:
-			new_bb = what
-		self._animation_base_box = new_bb
 
 	def play_animation(self, name: str) -> None:
 		self.image = self._animations[name]
@@ -323,6 +461,7 @@ class PNFSprite(Sprite):
 	@scroll_factor.setter
 	def scroll_factor(self, new_sf: t.Tuple[float, float]) -> None:
 		self._scroll_factor = new_sf
+		self._vertex_list.scroll_factor[:] = new_sf * 4
 
 	@property
 	def image(self) -> t.Union[PNFAnimation, AbstractImage]:
@@ -372,72 +511,36 @@ class PNFSprite(Sprite):
 		super()._animate(dt)
 		self._apply_post_animate_offset()
 
-	def _update_position(self):
-		# Contains some manipulations to creation to the
-		# vertex array since otherwise it would be displayed
-		# upside down
-		img = self._texture
-		scale_x = self._scale * self._scale_x
-		scale_y = self._scale * self._scale_y
-		if not self._visible:
-			vertices = [0, 0, 0, 0, 0, 0, 0, 0]
-		elif self._rotation:
-			src_y = -img.anchor_y * scale_y
-
-			x1 = -img.anchor_x * scale_x
-			y1 = src_y + img.height * scale_y
-			x2 = x1 + img.width * scale_x
-			y2 = src_y
-			x = self._x
-			y = self._y
-			r = -math.radians(self._rotation)
-			cr = math.cos(r)
-			sr = math.sin(r)
-			ax = x1 * cr - y1 * sr + x
-			ay = x1 * sr + y1 * cr + y
-			bx = x2 * cr - y1 * sr + x
-			by = x2 * sr + y1 * cr + y
-			cx = x2 * cr - y2 * sr + x
-			cy = x2 * sr + y2 * cr + y
-			dx = x1 * cr - y2 * sr + x
-			dy = x1 * sr + y2 * cr + y
-			vertices = [ax, ay, bx, by, cx, cy, dx, dy]
-		elif scale_x != 1.0 or scale_y != 1.0:
-			src_y = self._y - (img.anchor_y * scale_y)
-
-			x1 = self._x - img.anchor_x * scale_x
-			y1 = src_y + (img.height * scale_y)
-			x2 = x1 + img.width * scale_x
-			y2 = src_y
-			vertices = [x1, y1, x2, y1, x2, y2, x1, y2]
-		else:
-			src_y = self._y - img.anchor_y
-
-			x1 = self._x - img.anchor_x
-			y1 = src_y + img.height
-			x2 = x1 + img.width
-			y2 = src_y
-			vertices = [x1, y1, x2, y1, x2, y2, x1, y2]
-		if not self._subpixel:
-			vertices = [int(v) for v in vertices]
-
-		self._vertex_list.vertices[:] = vertices
+	# === Below methods are largely copy-pasted from the superclass sprite === #
 
 	def _set_texture(self, texture):
 		if texture.id is not self._texture.id:
 			self._group = PNFSpriteGroup(
-				self,
-				texture,
-				self._group.blend_src,
-				self._group.blend_dest,
-				self._group.parent
+				self, texture, self._group.blend_src, self._group.blend_dest,
+				self._group.program, 0, self._group.parent
 			)
-			if self._batch is None:
-				self._vertex_list.tex_coords[:] = texture.tex_coords
-			else:
-				self._vertex_list.delete()
-				self._texture = texture
-				self._create_vertex_list()
+			self._vertex_list.delete()
+			self._texture = texture
+			self._create_vertex_list()
 		else:
 			self._vertex_list.tex_coords[:] = texture.tex_coords
 		self._texture = texture
+
+	def _update_position(self):
+		# Contains some manipulations to creation to the
+		# vertex array since otherwise it would be displayed
+		# upside down
+		if not self._visible:
+			self._vertex_list.position[:] = (0, 0, 0, 0, 0, 0, 0, 0)
+		else:
+			img = self._texture
+			x1 = -img.anchor_x
+			y1 = img.height
+			x2 = img.width
+			y2 = -img.anchor_y
+			verticies = (x1, y1, x2, y1, x2, y2, x1, y2)
+
+			if not self._subpixel:
+				self._vertex_list.position[:] = tuple(map(int, verticies))
+			else:
+				self._vertex_list.position[:] = verticies

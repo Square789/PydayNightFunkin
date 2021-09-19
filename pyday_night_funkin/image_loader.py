@@ -39,7 +39,7 @@ def load_image(path: Path) -> pyglet.image.AbstractImage:
 		_IMAGE_CACHE[cache_key] = pyglet.image.load(str(path))
 	return _IMAGE_CACHE[cache_key]
 
-def load_animation_frames_from_xml(xml_path: Path) -> t.Dict[str, t.List[FrameInfoTexture]]:
+def load_frames_from_sparrow_atlas(xml_path: Path) -> t.Dict[str, t.List[FrameInfoTexture]]:
 	with xml_path.open("r", encoding = "utf-8") as fp:
 		et = ElementTree.parse(fp)
 
