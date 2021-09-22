@@ -1,13 +1,12 @@
 
 from enum import IntEnum
-import math
 from time import time
 import typing as t
 
 import pyglet.clock
-from pyglet import gl, graphics
-from pyglet.gl.gl import GL_BLEND
-from pyglet.graphics.shader import Shader, ShaderProgram
+from pyglet import gl
+from pyglet import graphics
+from pyglet.graphics.shader import Shader, ShaderProgram, UniformBufferObject
 from pyglet.image import AbstractImage, Texture, TextureArrayRegion
 from pyglet.image.animation import Animation
 from pyglet import sprite
@@ -105,56 +104,59 @@ in float rotation;
 out vec4 vertex_colors;
 out vec3 texture_coords;
 
-uniform WindowBlock {{
+uniform WindowBlock {
 	mat4 projection;
 	mat4 view;
-}} window;
+} window;
 
-uniform CameraAttrs {{
+uniform CameraAttrs {
 	float zoom;
 	vec2  deviance;
-}} camera;
+	vec2  GAME_DIMENSIONS;
+} camera;
 
 
 mat4 m_trans_scale = mat4(1.0);
 mat4 m_rotation = mat4(1.0);
-//mat4 m_camera = mat4(1.0);
-//mat4 m_camera_post = mat4(1.0);
+mat4 m_camera_trans = mat4(1.0);
+mat4 m_camera_scale = mat4(1.0);
+mat4 m_camera_pre_trans = mat4(1.0);
 
 
-void main() {{
-	m_trans_scale[3][0] = translate.x + (camera.deviance.x * scroll_factor.x);
-	m_trans_scale[3][1] = translate.y + (camera.deviance.y * scroll_factor.y);
-	m_trans_scale[0][0] = scale.x * camera.zoom;
-	m_trans_scale[1][1] = scale.y * camera.zoom;
-	m_rotation[0][0] =  cos(-radians(rotation)); 
+void main() {
+	m_trans_scale[3][0] = translate.x;
+	m_trans_scale[3][1] = translate.y;
+	m_trans_scale[0][0] = scale.x;
+	m_trans_scale[1][1] = scale.y;
+	m_rotation[0][0] =  cos(-radians(rotation));
 	m_rotation[0][1] =  sin(-radians(rotation));
 	m_rotation[1][0] = -sin(-radians(rotation));
 	m_rotation[1][1] =  cos(-radians(rotation));
 	// Camera transform
-	//m_camera[3][0] = 0.000001 * (camera.zoom * scroll_factor.x * camera.deviance.x + {0});
-	//m_camera[3][1] = 0.000001 * (camera.zoom * scroll_factor.y * camera.deviance.y + {1});
+	m_camera_trans[3][0] = 0.001 * ((camera.zoom * scroll_factor.x * camera.deviance.x) + (camera.GAME_DIMENSIONS.x / 2));
+	m_camera_trans[3][1] = 0.001 * ((camera.zoom * scroll_factor.y * camera.deviance.y) + (camera.GAME_DIMENSIONS.y / 2));
 	// Camera scale
-	//m_camera[0][0] = 1.0 + 0.000001 * (1.0 / camera.zoom);
-	//m_camera[1][1] = 1.0 + 0.000001 * (1.0 / camera.zoom);
-	// Camera post-scale-transform
-	//m_camera_post[3][0] = 0.000001*-{0};
-	//m_camera_post[3][1] = 0.000001*-{1};
+	m_camera_scale[0][0] = 0.001 * camera.zoom;
+	m_camera_scale[1][1] = 0.001 * camera.zoom;
+	// Camera pre-scale-transform
+	m_camera_pre_trans[3][0] = -camera.GAME_DIMENSIONS.x / 2;
+	m_camera_pre_trans[3][1] = -camera.GAME_DIMENSIONS.y / 2;
 
 	gl_Position = \\
 		window.projection * \\
 		window.view * \\
-		/*m_camera_post * \\
-*/		/*m_camera * \\
-*/		m_trans_scale * \\
+		m_camera_pre_trans * \\
+		m_camera_scale * \\
+		m_camera_trans * \\
+		m_trans_scale * \\
 		m_rotation * \\
 		vec4(position, 0, 1) \\
 	;
 
 	vertex_colors = vec4(colors.x, 1.0, 1.0, 1.0);
 	texture_coords = tex_coords;
-}}
-""".format(CNST.GAME_WIDTH / 2, CNST.GAME_HEIGHT / 2)
+}
+"""
 
 PNF_SPRITE_FRAGMENT_SRC = """
 #version 150 core
@@ -172,21 +174,40 @@ void main() {
 }
 """
 
-class _ShaderContainer():
+class _PNFSpriteShaderContainer():
 	def __init__(self) -> None:
 		self.prog = None
 
-	def get_program(self):
+	def get_program(self) -> ShaderProgram:
+		"""
+		Returns the program associated with PNFSprites.
+		"""
 		if self.prog is None:
 			self._compile()
 		return self.prog
 
-	def _compile(self):
+	def get_camera_ubo(self) -> UniformBufferObject:
+		"""
+		Returns a new Uniform Buffer Object for the shader program's
+		`CameraAttrs` uniform block, which will bind at the binding
+		index the program expects.
+		"""
+		return self.get_program().uniform_blocks["CameraAttrs"].create_ubo(1)
+
+	def _compile(self) -> None:
+		"""
+		Compiles and sets up the program.
+		"""
 		vertex_shader = Shader(PNF_SPRITE_VERTEX_SRC, "vertex")
 		fragment_shader = Shader(PNF_SPRITE_FRAGMENT_SRC, "fragment")
 		self.prog = ShaderProgram(vertex_shader, fragment_shader)
+		# Window block binds itself to 0 and is a pain to control outside of
+		# the actual window class, so just source it from binding point 0
+		gl.glUniformBlockBinding(self.prog.id, self.prog.uniform_blocks["WindowBlock"].index, 0)
+		# Source camera attributes from binding point 1
+		gl.glUniformBlockBinding(self.prog.id, self.prog.uniform_blocks["CameraAttrs"].index, 1)
 
-_pnf_sprite_shader_container = _ShaderContainer()
+pnf_sprite_shader_container = _PNFSpriteShaderContainer()
 
 
 class PNFSpriteGroup(sprite.SpriteGroup):
@@ -222,11 +243,9 @@ class PNFSpriteGroup(sprite.SpriteGroup):
 	# 		0.0,
 	# 	)
 
-	# 	if self.sprite.camera.zoom != 0.0:
-	# 		self._scale_undo = ( , 1.0)
 	# 		gl.glScalef(
-	# 			1.0/self.sprite.camera.zoom,
-	# 			1.0/self.sprite.camera.zoom,
+	# 			self.sprite.camera.zoom,
+	# 			self.sprite.camera.zoom,
 	# 			1.0,
 	# 		)
 
@@ -236,15 +255,6 @@ class PNFSpriteGroup(sprite.SpriteGroup):
 	# 		0.0
 	# 	)
 
-	# def unset_state(self) -> None:
-	# 	gl.glMatrixMode(gl.GL_MODELVIEW)
-	# 	gl.glTranslatef(CNST.GAME_WIDTH / 2, CNST.GAME_HEIGHT / 2, 0.0)
-	# 	gl.glScalef(*self._scale_undo)
-	# 	gl.glTranslatef(*self._translate_undo)
-		
-	# 	# gl.glDisable(GL_DEPTH_TEST)
-	# 	gl.glPopAttrib()
-	# 	gl.glDisable(self.texture.target)
 
 
 class PNFSprite(sprite.Sprite):
@@ -292,7 +302,7 @@ class PNFSprite(sprite.Sprite):
 			raise NotImplementedError("What's the deal with TextureArrayRegions?")
 			program = sprite.get_default_array_shader()
 		else:
-			program = _pnf_sprite_shader_container.get_program()
+			program = pnf_sprite_shader_container.get_program()
 
 		self._batch = batch or graphics.get_default_batch()
 		self._group = PNFSpriteGroup(self, self._texture, blend_src, blend_dest, program, parent = group)
@@ -321,7 +331,6 @@ class PNFSprite(sprite.Sprite):
 		self.x += self._animation_frame_offset[0] - nx
 		self.y += self._animation_frame_offset[1] - ny
 		self._animation_frame_offset = new_frame_offset
-		self._update_position()
 
 	def _set_animation_base_box(
 		self,
@@ -503,7 +512,6 @@ class PNFSprite(sprite.Sprite):
 				pyglet.clock.schedule_once(self._animate, self._next_dt)
 		else:
 			self._set_texture(image.get_texture())
-		self._update_position()
 
 	def _animate(self, dt: float) -> None:
 		# Disgusting override of underscore method, required to set the
@@ -525,6 +533,9 @@ class PNFSprite(sprite.Sprite):
 		else:
 			self._vertex_list.tex_coords[:] = texture.tex_coords
 		self._texture = texture
+		# NOTE: good idea maybe??? If not done, screws over vertices
+		# if the texture changes dimension thanks to top left coords
+		self._update_position()
 
 	def _update_position(self):
 		# Contains some manipulations to creation to the

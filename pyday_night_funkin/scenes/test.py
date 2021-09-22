@@ -1,7 +1,7 @@
 
 import typing as t
 
-from pyglet.window.key import B, E, Q, W, A, S, D, C, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
+from pyglet.window.key import B, E, Q, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 
 from pyday_night_funkin.asset_system import ASSETS
 from pyday_night_funkin.characters import Boyfriend
@@ -16,7 +16,7 @@ class TestScene(BaseScene):
 	def __init__(self, game: "Game") -> None:
 		super().__init__(game, ("ye_olde_layer", ), ("main", ))
 
-		self.test_sprite = self.create_sprite("ye_olde_layer", "main", x = 100, y = 100)
+		self.test_sprite = self.create_sprite("ye_olde_layer", "main", x = 0, y = 0)
 		self.test_sprite.scale = 4
 
 		note_sprites = ASSETS.XML.NOTES.load()
@@ -55,11 +55,12 @@ class TestScene(BaseScene):
 			self.bf.play_animation("idle_bop")
 
 		if self.game.pyglet_ksh[Q]:
-			print(self.cameras["main"].ubo)
-			print(self.cameras["main"].ubo.view.zoom)
-			print(self.cameras["main"].ubo.view.deviance[0])
-			print(self.cameras["main"].ubo.view.deviance[1])
-			print(self.bf._vertex_list.domain.attributes)
+			print(self.cameras["main"].ubo, self.cameras["main"].ubo.view._fields_)
+			print(
+				self.cameras["main"].ubo.view.zoom,
+				self.cameras["main"].ubo.view.deviance[0],
+				self.cameras["main"].ubo.view.deviance[1]
+			)
 
 		confirm = self.game.pyglet_ksh[E]
 		for k, i in ((LEFT, 0), (DOWN, 1), (UP, 2), (RIGHT, 3)):
@@ -80,5 +81,5 @@ class TestScene(BaseScene):
 		if self.game.pyglet_ksh[X]:
 			self.cameras["main"].zoom -= .01
 
-		if self.game.debug and self.game.pyglet_ksh[B]:
+		if self.game.pyglet_ksh[B]:
 			self.batch._dump_draw_list()

@@ -2,12 +2,9 @@
 import typing as t
 
 from pyglet.gl import *
-from pyglet.graphics.shader import Shader, ShaderProgram
 
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
-
-if t.TYPE_CHECKING:
-	from pyday_night_funkin.graphics.pnf_sprite import PNFSprite
+from pyday_night_funkin.graphics.pnf_sprite import pnf_sprite_shader_container
 
 
 CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
@@ -15,40 +12,21 @@ CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
 
 class Camera:
 
-	# https://github.com/pyglet/pyglet/blob/ \
-	# a16674ff3f448379a8810d9f81c180af647a615e/pyglet/window/__init__.py#L441
-	# Like here, apparently a never-used dummy shader is required to get a uniform
-	# block
-	_dummy_vertex_src = """
-	#version 330
-	in vec4 pos;
-
-	uniform CameraAttrs {
-		float zoom;
-		vec2  deviance;
-	} camera;
-
-	void main() {
-		gl_Position = camera.zoom * vec4(camera.deviance, 0, 1) * pos;
-	}
-	"""
-
 	def __init__(self):
+		self.ubo = pnf_sprite_shader_container.get_camera_ubo()
+
 		self._view_target = list(CENTER)
 		self._zoom = 1.0
 		self._deviance = None
 
-		self._dummy_shader = ShaderProgram(Shader(self._dummy_vertex_src, "vertex"))
-		self.ubo = self._dummy_shader.uniform_blocks["CameraAttrs"].create_ubo()
-
 		self._update_ubo()
 
-	def _update_ubo(self):
+	def _update_ubo(self) -> None:
 		vx, vy = self._view_target
-		zoom = self._zoom
 		with self.ubo as ubo:
 			ubo.deviance[:] = ((CENTER_X - vx), (CENTER_Y - vy))
-			ubo.zoom = zoom
+			ubo.zoom = self._zoom
+			ubo.GAME_DIMENSIONS[:] = (GAME_WIDTH, GAME_HEIGHT)
 
 	@property
 	def x(self) -> int:
