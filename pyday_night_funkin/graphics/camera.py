@@ -24,8 +24,8 @@ class Camera:
 	def _update_ubo(self) -> None:
 		vx, vy = self._view_target
 		with self.ubo as ubo:
-			ubo.deviance[:] = ((CENTER_X - vx), (CENTER_Y - vy))
 			ubo.zoom = self._zoom
+			ubo.deviance[:] = ((CENTER_X - vx), (CENTER_Y - vy))
 			ubo.GAME_DIMENSIONS[:] = (GAME_WIDTH, GAME_HEIGHT)
 
 	@property

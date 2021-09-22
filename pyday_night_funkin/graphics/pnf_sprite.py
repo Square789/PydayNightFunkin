@@ -1,5 +1,7 @@
 
+import ctypes
 from enum import IntEnum
+import enum
 from time import time
 import typing as t
 
@@ -109,7 +111,7 @@ uniform WindowBlock {
 	mat4 view;
 } window;
 
-uniform CameraAttrs {
+layout (std140) uniform CameraAttrs {
 	float zoom;
 	vec2  deviance;
 	vec2  GAME_DIMENSIONS;
@@ -118,8 +120,7 @@ uniform CameraAttrs {
 
 mat4 m_trans_scale = mat4(1.0);
 mat4 m_rotation = mat4(1.0);
-mat4 m_camera_trans = mat4(1.0);
-mat4 m_camera_scale = mat4(1.0);
+mat4 m_camera_trans_scale = mat4(1.0);
 mat4 m_camera_pre_trans = mat4(1.0);
 
 
@@ -132,12 +133,11 @@ void main() {
 	m_rotation[0][1] =  sin(-radians(rotation));
 	m_rotation[1][0] = -sin(-radians(rotation));
 	m_rotation[1][1] =  cos(-radians(rotation));
-	// Camera transform
-	m_camera_trans[3][0] = 0.001 * ((camera.zoom * scroll_factor.x * camera.deviance.x) + (camera.GAME_DIMENSIONS.x / 2));
-	m_camera_trans[3][1] = 0.001 * ((camera.zoom * scroll_factor.y * camera.deviance.y) + (camera.GAME_DIMENSIONS.y / 2));
-	// Camera scale
-	m_camera_scale[0][0] = 0.001 * camera.zoom;
-	m_camera_scale[1][1] = 0.001 * camera.zoom;
+	// Camera transform and zoom scale
+	m_camera_trans_scale[3][0] = (camera.zoom * scroll_factor.x * camera.deviance.x) + (camera.GAME_DIMENSIONS.x / 2);
+	m_camera_trans_scale[3][1] = (camera.zoom * scroll_factor.y * camera.deviance.y) + (camera.GAME_DIMENSIONS.y / 2);
+	m_camera_trans_scale[0][0] = camera.zoom;
+	m_camera_trans_scale[1][1] = camera.zoom;
 	// Camera pre-scale-transform
 	m_camera_pre_trans[3][0] = -camera.GAME_DIMENSIONS.x / 2;
 	m_camera_pre_trans[3][1] = -camera.GAME_DIMENSIONS.y / 2;
@@ -145,9 +145,8 @@ void main() {
 	gl_Position = \\
 		window.projection * \\
 		window.view * \\
-		m_camera_pre_trans * \\
-		m_camera_scale * \\
-		m_camera_trans * \\
+		m_camera_trans_scale *\\
+		m_camera_pre_trans *\\
 		m_trans_scale * \\
 		m_rotation * \\
 		vec4(position, 0, 1) \\
@@ -192,7 +191,23 @@ class _PNFSpriteShaderContainer():
 		`CameraAttrs` uniform block, which will bind at the binding
 		index the program expects.
 		"""
-		return self.get_program().uniform_blocks["CameraAttrs"].create_ubo(1)
+		ubo = self.get_program().uniform_blocks["CameraAttrs"].create_ubo(1)
+		# HACK: WARNING OH GOD WHY
+		# HACK: I have to re-emphasize, this right here?
+		# This is cancer [insert papa franku copypasta here]
+		# Relies on the std140 layout specifier and patches the UBO with
+		# a hardcoded alignment structure just for it.
+		class _CA_struct(ctypes.Structure):
+			_fields_ = [
+				("zoom", ctypes.c_float),
+				("_padding0", ctypes.c_float * 1),
+				("deviance", ctypes.c_float * 2),
+				("GAME_DIMENSIONS", ctypes.c_float * 2),
+			]
+
+		ubo.view = _CA_struct()
+		ubo._view_ptr = ctypes.pointer(ubo.view)
+		return ubo
 
 	def _compile(self) -> None:
 		"""
@@ -229,32 +244,6 @@ class PNFSpriteGroup(sprite.SpriteGroup):
 		gl.glBindTexture(self.texture.target, 0)
 
 		self.program.stop()
-
-	# 	sfx, sfy = self.sprite._scroll_factor
-	# 	gl.glTranslatef(
-	# 		(
-	# 			(self.sprite.camera.zoom * sfx * self.sprite.camera.deviance[0]) +
-	# 			CNST.GAME_WIDTH / 2
-	# 		),
-	# 		(
-	# 			(self.sprite.camera.zoom * sfy * self.sprite.camera.deviance[1]) +
-	# 			CNST.GAME_HEIGHT / 2
-	# 		),
-	# 		0.0,
-	# 	)
-
-	# 		gl.glScalef(
-	# 			self.sprite.camera.zoom,
-	# 			self.sprite.camera.zoom,
-	# 			1.0,
-	# 		)
-
-	# 	gl.glTranslatef(
-	# 		-CNST.GAME_WIDTH / 2,
-	# 		-CNST.GAME_HEIGHT / 2,
-	# 		0.0
-	# 	)
-
 
 
 class PNFSprite(sprite.Sprite):
