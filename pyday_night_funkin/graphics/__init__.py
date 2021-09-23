@@ -5,8 +5,10 @@ invert their vertex order in order to not have them display upside
 down when using general top left coordinates.
 """
 
+from pyday_night_funkin.graphics import pyglet_tl_patch
+
+from pyday_night_funkin.graphics.camera import Camera
 from pyday_night_funkin.graphics.pnf_sprite import PNFSprite
 from pyday_night_funkin.graphics.pnf_window import PNFWindow
-from pyday_night_funkin.graphics.tl_shapes import TLRectangle
 
-__all__ = ["PNFSprite", "PNFWindow", "TLRectangle"]
+__all__ = ["PNFSprite", "PNFWindow", "Camera", "pyglet_tl_patch"]

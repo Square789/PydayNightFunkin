@@ -8,6 +8,7 @@ from pyglet.shapes import Rectangle
 from pyglet.text import Label
 
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.graphics.pyglet_tl_patch import TLLabel, TLRectangle
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics import Batch
@@ -29,7 +30,7 @@ class DebugPane():
 		self.foreground = Group(order = 1)
 		self.batch = batch
 		self.labels = [
-			Label(
+			TLLabel(
 				"",
 				font_name = "Consolas",
 				font_size = self.FONT_SIZE,
@@ -39,17 +40,16 @@ class DebugPane():
 				group = self.foreground,
 			) for i in range(line_amount)
 		]
-		self.fps_label = Label(
+		self.fps_label = TLLabel(
 			"",
 			font_name = "Consolas",
 			font_size = self.FONT_SIZE + 4,
 			x = 20,
-			y = CNST.GAME_HEIGHT - \
-				((self.FONT_SIZE * (line_amount + 1)) + 4 + self.LINE_DIST * line_amount),
+			y = ((self.FONT_SIZE * (line_amount + 1)) + 4 + self.LINE_DIST * line_amount),
 			batch = batch,
 			group = self.foreground,
 		)
-		self.rect = Rectangle(
+		self.rect = TLRectangle(
 			self.PADDING,
 			0,
 			CNST.GAME_WIDTH - 2 * self.PADDING,
@@ -66,6 +66,7 @@ class DebugPane():
 		possibly overflowing label's text to be deleted and bumping
 		up all other labels.
 		"""
+		print("// DebugPane: Adding message")
 		if self.insert_index == len(self.labels):
 			self.insert_index -= 1
 			for i in range(len(self.labels) - 1):
