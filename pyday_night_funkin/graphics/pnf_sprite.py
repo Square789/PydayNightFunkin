@@ -535,8 +535,8 @@ class PNFSprite(sprite.Sprite):
 		else:
 			img = self._texture
 			x1 = -img.anchor_x
-			y1 = img.height
-			x2 = img.width
+			y1 = -img.anchor_y + img.height
+			x2 = -img.anchor_x + img.width
 			y2 = -img.anchor_y
 			verticies = (x1, y1, x2, y1, x2, y2, x1, y2)
 

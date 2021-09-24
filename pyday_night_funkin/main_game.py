@@ -1,5 +1,4 @@
 
-from pyday_night_funkin.scenes.test import TestScene
 from time import time
 import typing as t
 
@@ -17,7 +16,7 @@ from pyday_night_funkin.graphics import PNFWindow
 from pyday_night_funkin.key_handler import KeyHandler
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin import ogg_decoder
-from pyday_night_funkin.scenes import BaseScene, InGame
+from pyday_night_funkin.scenes import BaseScene, InGame, TestScene
 from pyday_night_funkin.scenes.in_game import InGameInfo
 
 
@@ -35,7 +34,7 @@ class Game():
 			self._update_time = 0
 			self._fps = [time() * 1000, 0, "?"]
 			self.debug_batch = Batch()
-			self.debug_pane = DebugPane(2, self.debug_batch)
+			self.debug_pane = DebugPane(8, self.debug_batch)
 			logger.add(self.debug_pane.add_message)
 
 		self.config = Config(
@@ -63,8 +62,8 @@ class Game():
 		self.main_batch = pyglet.graphics.Batch()
 		self.active_scene = None
 
-		# self.switch_scene(InGame(self, WEEKS[1].levels[1], InGameInfo(DIFFICULTY.HARD)))
-		self.switch_scene(TestScene(self))
+		self.switch_scene(InGame(self, WEEKS[1].levels[1], InGameInfo(DIFFICULTY.HARD)))
+		# self.switch_scene(TestScene(self))
 
 	def run(self) -> None:
 		logger.debug(f"Game started (v{__version__}), pyglet version {pyglet.version}")

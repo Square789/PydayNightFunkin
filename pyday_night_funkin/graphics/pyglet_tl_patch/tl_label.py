@@ -7,13 +7,11 @@ import ast
 import inspect
 
 from pyglet.gl import GL_LINES, GL_TRIANGLES
-from pyglet.graphics import Batch
-from pyglet.text import Label, decode_text
-from pyglet.text.layout import _GlyphBox, TextLayout, get_default_layout_shader, TextDecorationGroup
+from pyglet.text import Label
+from pyglet.text.layout import _GlyphBox, TextLayout, get_default_layout_shader
 
 
 class _TLGlyphBox(_GlyphBox):
-
 	def place(self, layout, i, x, y, context):
 		assert self.glyphs
 		try:
@@ -35,12 +33,16 @@ class _TLGlyphBox(_GlyphBox):
 			assert len(self.glyphs[start - i:end - i]) == end - start
 			for kern, glyph in self.glyphs[start - i:end - i]:
 				x1 += kern
-				v0, v1, v2, v3 = glyph.vertices
-				v0 += x1
-				v2 += x1
-				v1 += y + baseline
-				v3 += y + baseline
-				vertices.extend(map(int, [v0, v1, v2, v1, v2, v3, v0, v3]))
+				vx1, vy1, vx2, vy2 = glyph.vertices
+
+				# TOP LEFT MODIFICATION HERE #
+				vy1, vy2 = vy2, vy1
+
+				vx1 += x1
+				vx2 += x1
+				vy1 += y + baseline
+				vy2 += y + baseline
+				vertices.extend(map(int, [vx1, vy1, vx2, vy1, vx2, vy2, vx1, vy2]))
 				t = glyph.tex_coords
 				tex_coords.extend(t)
 				x1 += glyph.advance
@@ -69,6 +71,8 @@ class _TLGlyphBox(_GlyphBox):
 		)
 
 		context.add_list(vertex_list)
+
+		# NOTE: This stuff isn't flipped around because I don't use it
 
 		# Decoration (background color and underline)
 		# -------------------------------------------
@@ -123,147 +127,45 @@ class _TLGlyphBox(_GlyphBox):
 			context.add_list(underline_list)
 
 
+# https://medium.com/@chipiga86/
+# python-monkey-patching-like-a-boss-87d7ddb8098e
 def get_src(o):
 	src = inspect.getsource(o).split("\n")
 	indent = len(src[0]) - len(src[0].lstrip())
 	return "\n".join(l[indent:] for l in src)
 
 class _TextPatcher(ast.NodeTransformer):
+	def __init__(self, sub_what, sub_with) -> None:
+		super().__init__()
+		self.sub_what = sub_what
+		self.sub_with = sub_with
+
 	def visit_Name(self, node):
-		if node.id != "_GlyphBox":
+		if node.id != self.sub_what:
 			return node
-		return ast.Name(id = "_TLGlyphBox", ctx = node.ctx)
+		return ast.Name(id = self.sub_with, ctx = node.ctx)
 
-_tp = _TextPatcher()
+_tp = _TextPatcher("_GlyphBox", "_TLGlyphBox")
 
-# https://medium.com/@chipiga86/
-# python-monkey-patching-like-a-boss-87d7ddb8098e
-def _patch(src_cls, method_name, tgt_cls):
-	src_method = getattr(src_cls, method_name)
-	src_mod = inspect.getmodule(src_method)
-	meth_ast = ast.parse(get_src(src_method))
+def _patch(src_cls, method_name):
+	"""
+	Changes all occurrences of `_GlyphBox` in the method
+	`src_cls:method_name` to `_TLGlyphBox` and returns the recompiled
+	method, which is bound to the global scope of the module the
+	source class was defined in.
+	"""
+	src_mod = inspect.getmodule(src_cls)
+	meth_ast = ast.parse(get_src(getattr(src_cls, method_name)))
 
 	meth_ast = ast.fix_missing_locations(_tp.visit(meth_ast))
 
 	src_mod.__dict__["_TLGlyphBox"] = _TLGlyphBox
+	# Required so the recompiled function has access to the module's globals
 	d = src_mod.__dict__
-	exec(compile(meth_ast, "<asdf>", "exec"), d)
+	exec(compile(meth_ast, f"<patch from {inspect.getfile(src_mod)}>", "exec"), d)
 	m = d.pop(method_name)
 	return m
 
-class TLTextLayout(TextLayout):
-	_flow_glyphs_single_line = _patch(TextLayout, "_flow_glyphs_single_line", "TLTextLayout")
-	_flow_glyphs_wrap = _patch(TextLayout, "_flow_glyphs_wrap", "TLTextLayout")
-
-
-class TLDocumentLabel(TLTextLayout):
-	def __init__(
-		self, document=None,
-		x=0, y=0, width=None, height=None,
-		anchor_x='left', anchor_y='baseline',
-		multiline=False, dpi=None, batch=None, group=None
-	):
-		super(TLDocumentLabel, self).__init__(
-			document, width=width, height=height,
-			multiline=multiline,
-			dpi=dpi, batch=batch, group=group
-		)
-
-		self._x = x
-		self._y = y
-		self._anchor_x = anchor_x
-		self._anchor_y = anchor_y
-		self._update()
-
-	# TODO: USE THIS TO ISOLATE ONLY DOCUMENTLABEL'S ATTRIBUTES, then work with that in __new__
-	#       TO ELIMINATE COPY-PASTE
-	# >>> set(dir(DocumentLabel)) - set(dir(TextLayout))
-	# {'font_size', 'italic', 'bold', 'set_style', 'color', 'text', 'font_name', 'get_style'}
-
-	@property
-	def text(self):
-		"""The text of the label.
-
-		:type: str
-		"""
-		return self.document.text
-
-	@text.setter
-	def text(self, text):
-		self.document.text = text
-
-	@property
-	def color(self):
-		return self.document.get_style('color')
-
-	@color.setter
-	def color(self, color):
-		self.document.set_style(0, len(self.document.text), {'color': color})
-
-	@property
-	def font_name(self):
-		return self.document.get_style('font_name')
-
-	@font_name.setter
-	def font_name(self, font_name):
-		self.document.set_style(0, len(self.document.text), {'font_name': font_name})
-
-	@property
-	def font_size(self):
-		return self.document.get_style('font_size')
-
-	@font_size.setter
-	def font_size(self, font_size):
-		self.document.set_style(0, len(self.document.text), {'font_size': font_size})
-
-	@property
-	def bold(self):
-		return self.document.get_style('bold')
-
-	@bold.setter
-	def bold(self, bold):
-		self.document.set_style(0, len(self.document.text), {'bold': bold})
-
-	@property
-	def italic(self):
-		return self.document.get_style('italic')
-
-	@italic.setter
-	def italic(self, italic):
-		self.document.set_style(0, len(self.document.text), {'italic': italic})
-
-	def get_style(self, name):
-		return self.document.get_style_range(name, 0, len(self.document.text))
-
-	def set_style(self, name, value):
-		self.document.set_style(0, len(self.document.text), {name: value})
-
-
-class TLLabel(TLDocumentLabel):
-
-	def __init__(
-		self,
-		text='', font_name=None, font_size=None, bold=False, italic=False, stretch=False,
-		color=(255, 255, 255, 255),
-		x=0, y=0, width=None, height=None,
-		anchor_x='left', anchor_y='baseline',
-		align='left',
-		multiline=False, dpi=None, batch=None, group=None
-	):
-		document = decode_text(text)
-		super(TLLabel, self).__init__(
-			document, x, y, width, height,
-			anchor_x, anchor_y,
-			multiline, dpi, batch, group
-		)
-
-		self.document.set_style(0, len(self.document.text), {
-			'font_name': font_name,
-			'font_size': font_size,
-			'bold': bold,
-			'italic': italic,
-			'stretch': stretch,
-			'color': color,
-			'align': align,
-		})
-
+class TLLabel(Label):
+	_flow_glyphs_single_line = _patch(TextLayout, "_flow_glyphs_single_line")
+	_flow_glyphs_wrap = _patch(TextLayout, "_flow_glyphs_wrap")
