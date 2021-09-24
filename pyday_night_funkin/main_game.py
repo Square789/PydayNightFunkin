@@ -12,10 +12,11 @@ from pyglet.window.key import KeyStateHandler
 from pyday_night_funkin.config import Config, CONTROL
 from pyday_night_funkin.constants import DIFFICULTY, GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
+from pyday_night_funkin.graphics import PNFWindow
 from pyday_night_funkin.key_handler import KeyHandler
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin import ogg_decoder
-from pyday_night_funkin.scenes import BaseScene, InGame
+from pyday_night_funkin.scenes import BaseScene, InGame, TestScene
 from pyday_night_funkin.scenes.in_game import InGameInfo
 
 
@@ -49,10 +50,10 @@ class Game():
 
 		self.pyglet_ksh = KeyStateHandler()
 		self.key_handler = KeyHandler(self.config.key_bindings)
-		self.window = pyglet.window.Window(
+		self.window = PNFWindow(
 			width = GAME_WIDTH,
 			height = GAME_HEIGHT,
-			resizable = True, # totally am gonna do this later and fucking die trying
+			resizable = True,
 			vsync = False,
 		)
 		self.window.push_handlers(self.key_handler)
@@ -61,7 +62,8 @@ class Game():
 		self.main_batch = pyglet.graphics.Batch()
 		self.active_scene = None
 
-		self.switch_scene(InGame(self, WEEKS[1].levels[2], InGameInfo(DIFFICULTY.HARD)))
+		self.switch_scene(InGame(self, WEEKS[1].levels[1], InGameInfo(DIFFICULTY.HARD)))
+		# self.switch_scene(TestScene(self))
 
 	def run(self) -> None:
 		logger.debug(f"Game started (v{__version__}), pyglet version {pyglet.version}")

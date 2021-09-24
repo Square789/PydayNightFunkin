@@ -1,7 +1,7 @@
 
 import typing as t
 
-from pyday_night_funkin.pnf_sprite import PNFSprite
+from pyday_night_funkin.graphics.pnf_sprite import PNFSprite
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.level import Level

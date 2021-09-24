@@ -3,19 +3,11 @@ from collections import OrderedDict
 import typing as t
 
 from loguru import logger
-import pyglet
-from pyglet.gl.gl import GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
-if pyglet.version.startswith("2.0"):
-	from pyglet.graphics import Group
-	OrderedGroup = lambda o, parent = None: Group(o, parent)
-else:
-	from pyglet.graphics import OrderedGroup
-from pyglet.image import AbstractImage
-from pyglet.window import key
+from pyglet.graphics import Group
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.camera import Camera
-from pyday_night_funkin.pnf_sprite import PNFSprite, PNFAnimation
+from pyday_night_funkin.graphics.camera import Camera
+from pyday_night_funkin.graphics.pnf_sprite import PNFSprite
 from pyday_night_funkin.sfx_ring import SFXRing
 
 if t.TYPE_CHECKING:
@@ -82,7 +74,7 @@ class BaseScene():
 		"""
 		self.game = game
 		self.batch = game.main_batch
-		self.layers = OrderedDict((name, OrderedGroup(i)) for i, name in enumerate(layer_names))
+		self.layers = OrderedDict((name, Group(order = i)) for i, name in enumerate(layer_names))
 		self._default_camera = Camera()
 		self.cameras = {name: Camera() for name in camera_names}
 		# Keys between sprites and moving_sprites must always be the same
@@ -112,13 +104,11 @@ class BaseScene():
 		"""
 		kwargs.setdefault("batch", self.batch)
 		kwargs.setdefault("group", self.layers[layer])
+		kwargs.setdefault("camera", self._default_camera if camera is None else self.cameras[camera])
+
 		sprite = sprite_class(*args, **kwargs)
 
 		self._sprites[id(sprite)] = sprite
-		if camera is not None:
-			self.cameras[camera].add_sprite(sprite)
-		else:
-			self._default_camera.add_sprite(sprite)
 
 		return sprite
 
@@ -132,10 +122,6 @@ class BaseScene():
 		if i in self._sprites:
 			if i in self._moving_sprites:
 				self._moving_sprites.pop(i)
-			if sprite.camera is not None:
-				sprite.camera.remove_sprite(sprite)
-			else:
-				self._default_camera.remove_sprite(sprite)
 			self._sprites.pop(i).delete()
 
 	def set_movement(
@@ -173,13 +159,10 @@ class BaseScene():
 	def update(self, dt: float) -> None:
 		for sid, movement in self._moving_sprites.items():
 			dx, dy = movement.update(dt)
-			self._sprites[sid].world_update(
-				x = self._sprites[sid].world_x + dx,
-				y = self._sprites[sid].world_y + dy,
+			self._sprites[sid].update(
+				x = self._sprites[sid].x + dx,
+				y = self._sprites[sid].y + dy,
 			)
-		self._default_camera.update()
-		for cam in self.cameras.values():
-			cam.update()
 
 	def draw(self) -> None:
 		self.batch.draw()

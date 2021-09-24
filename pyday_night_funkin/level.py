@@ -79,6 +79,8 @@ class Level:
 		self.song_players.pause()
 		self.inst_player.next_source()
 		self.inst_player.queue(inst)
+		# self.inst_player.volume = 0
+		# self.voice_player.volume = 0
 		if voices is not None:
 			self.voice_player.next_source()
 			self.voice_player.queue(voices)

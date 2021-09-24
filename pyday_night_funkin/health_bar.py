@@ -44,7 +44,7 @@ class HealthBar():
 			image = bar_image,
 		)
 
-		bar_y = self.health_bar.world_y + 4
+		bar_y = self.health_bar.y + 4
 		self.opponent_bar = scene.create_sprite(
 			bar_layer,
 			camera,
@@ -64,14 +64,14 @@ class HealthBar():
 		self.opponent_icons = [fi_tex.texture for fi_tex in healthbar_icons[opponent_icon]]
 		self.player_icons = [fi_tex.texture for fi_tex in healthbar_icons[player_icon]]
 		# This assumes all opponent and player icons are of same height (i mean, they are)
-		icon_y = self.health_bar.world_y + (bar_image.height - self.opponent_icons[0].height) // 2
+		icon_y = self.health_bar.y + (bar_image.height - self.opponent_icons[0].height) // 2
 		self.opponent_sprite = scene.create_sprite(
 			icon_layer, camera, x = 0, y = icon_y, image = self.opponent_icons[0]
 		)
 		self.player_sprite = scene.create_sprite(
 			icon_layer, camera, x = 0, y = icon_y, image = self.player_icons[0]
 		)
-		self.player_sprite.world_scale_x = -1.0
+		self.player_sprite.scale_x = -1.0
 
 	def _create_bar_part(self, height: int, color) -> Texture:
 		return ImageData(1, height, "RGBA", to_rgba_bytes(color) * height).get_texture()
@@ -84,15 +84,15 @@ class HealthBar():
 		below the health bar's ded threshold.
 		"""
 		bar_width = self.health_bar._texture.width - 8
-		opponent_bar_x = self.health_bar.world_x + 4
+		opponent_bar_x = self.health_bar.x + 4
 		opponent_bar_width = int((1.0 - clamp(new_health, 0.0, 1.0)) * bar_width)
 		player_bar_x = opponent_bar_x + opponent_bar_width
 		player_bar_width = bar_width - opponent_bar_width
 
-		self.opponent_bar.world_update(x = opponent_bar_x, scale_x = opponent_bar_width)
-		self.player_bar.world_update(x = player_bar_x, scale_x = player_bar_width)
-		self.opponent_sprite.world_x = player_bar_x - ICON_X_DISPLACEMENT
-		self.player_sprite.world_x = player_bar_x + ICON_X_DISPLACEMENT
+		self.opponent_bar.update(x = opponent_bar_x, scale_x = opponent_bar_width)
+		self.player_bar.update(x = player_bar_x, scale_x = player_bar_width)
+		self.opponent_sprite.x = player_bar_x - ICON_X_DISPLACEMENT
+		self.player_sprite.x = player_bar_x + ICON_X_DISPLACEMENT
 
 		if new_health > (1.0 - self.ded_icon_threshold):
 			if self.opponent_sprite.image != self.opponent_icons[1]:
