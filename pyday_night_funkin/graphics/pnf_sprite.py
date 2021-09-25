@@ -1,8 +1,5 @@
 
 import ctypes
-from enum import IntEnum
-import enum
-from time import time
 import typing as t
 
 import pyglet.clock
@@ -14,32 +11,10 @@ from pyglet.image.animation import Animation
 from pyglet import sprite
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.image_loader import FrameInfoTexture
 	from pyday_night_funkin.graphics.camera import Camera
-
-
-class TWEEN_ATTR(IntEnum):
-	X = 0
-	Y = 1
-	ROTATION = 2
-	OPACITY = 3
-	SCALE = 4
-	SCALE_X = 5
-	SCALE_Y = 6
-
-
-_TWEEN_ATTR_NAME_MAP = {
-	TWEEN_ATTR.X: "x",
-	TWEEN_ATTR.Y: "y",
-	TWEEN_ATTR.ROTATION: "rotation",
-	TWEEN_ATTR.OPACITY: "opacity",
-	TWEEN_ATTR.SCALE: "scale",
-	TWEEN_ATTR.SCALE_X: "scale_x",
-	TWEEN_ATTR.SCALE_Y: "scale_y",
-}
 
 
 class OffsetAnimationFrame():
@@ -152,7 +127,7 @@ void main() {
 		vec4(position, 0, 1) \\
 	;
 
-	vertex_colors = vec4(colors.x, 1.0, 1.0, 1.0);
+	vertex_colors = colors;
 	texture_coords = tex_coords;
 }
 """
@@ -407,51 +382,6 @@ class PNFSprite(sprite.Sprite):
 		self.x = (screen_dims[0] // 2) - self._texture.width * self._scale * self._scale_x
 		self.y = (screen_dims[1] // 2) - self._texture.height * self._scale * self._scale_y
 
-	def tween(
-		self,
-		tween_func: t.Callable[[float], float],
-		attributes: t.Dict[TWEEN_ATTR, t.Any],
-		duration: float,
-		on_complete: t.Callable = None,
-		start_delay: float = 0.0,
-	) -> None:
-		"""
-		# TODO write some very cool doc
-		"""
-		if start_delay < 0.0:
-			raise ValueError("Can't start a tween in the past!")
-		if start_delay:
-			pyglet.clock.schedule_once(
-				lambda _: self.tween(tween_func, attributes, duration, on_complete),
-				start_delay,
-			)
-			return
-
-		# 0: initial value; 1: difference
-		tween_map = {}
-		for attribute, target_value in attributes.items():
-			attribute_name = _TWEEN_ATTR_NAME_MAP[attribute]
-			initial_value = getattr(self, attribute_name)
-			tween_map[attribute_name] = (initial_value, target_value - initial_value)
-
-		start_time = time()
-		stop_time = start_time + duration
-		time_difference = stop_time - start_time
-		cur_time = start_time
-
-		def tween_schedule_func(dt: float):
-			nonlocal cur_time
-			cur_time += dt
-			progress = (clamp(cur_time, start_time, stop_time) - start_time) / time_difference
-			for attr_name, (v_ini, v_diff) in tween_map.items():
-				setattr(self, attr_name, v_ini + (v_diff * tween_func(progress)))
-			if cur_time >= stop_time:
-				pyglet.clock.unschedule(tween_schedule_func)
-				if on_complete is not None:
-					on_complete()
-
-		pyglet.clock.schedule(tween_schedule_func)
-
 	@property
 	def scroll_factor(self) -> t.Tuple[float, float]:
 		return self._scroll_factor
@@ -511,6 +441,7 @@ class PNFSprite(sprite.Sprite):
 	# === Below methods are largely copy-pasted from the superclass sprite === #
 
 	def _set_texture(self, texture):
+		prev_h, prev_w = self._texture.height, self._texture.width
 		if texture.id is not self._texture.id:
 			self._group = PNFSpriteGroup(
 				self, texture, self._group.blend_src, self._group.blend_dest,
@@ -522,9 +453,10 @@ class PNFSprite(sprite.Sprite):
 		else:
 			self._vertex_list.tex_coords[:] = texture.tex_coords
 		self._texture = texture
-		# NOTE: good idea maybe??? If not done, screws over vertices
-		# if the texture changes dimension thanks to top left coords
-		self._update_position()
+		# NOTE: If not done, screws over vertices if the texture changes
+		# dimension thanks to top left coords; no idea if should be done
+		if prev_h != texture.height or prev_w != texture.width:
+			self._update_position()
 
 	def _update_position(self):
 		# Contains some manipulations to creation to the

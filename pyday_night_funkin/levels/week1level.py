@@ -13,8 +13,7 @@ from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.level import Level, GAME_STATE
 from pyday_night_funkin.note import RATING, NOTE_TYPE
 from pyday_night_funkin.note_handler import NoteHandler
-from pyday_night_funkin.graphics.pnf_sprite import TWEEN_ATTR
-from pyday_night_funkin.tweens import in_out_cubic, linear, out_cubic
+from pyday_night_funkin.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGame
@@ -176,9 +175,10 @@ class Week1Level(Level):
 				combo_sprite.y -= 60
 				combo_sprite.scale = 0.7
 
-				self.game_scene.set_movement(combo_sprite, (0, -150), (0, 600))
+				self.game_scene.start_movement(combo_sprite, (0, -150), (0, 600))
 
-				combo_sprite.tween(
+				self.game_scene.start_tween(
+					combo_sprite,
 					tween_func = out_cubic,
 					attributes = {TWEEN_ATTR.OPACITY: 0},
 					duration = 0.2,
@@ -198,11 +198,12 @@ class Week1Level(Level):
 					sprite.y += 80
 					sprite.scale = .5
 
-					self.game_scene.set_movement(
+					self.game_scene.start_movement(
 						sprite, (randint(-5, 5), -randint(140, 160)), (0, randint(200, 300))
 					)
 
-					sprite.tween(
+					self.game_scene.start_tween(
+						sprite,
 						tween_func = linear,
 						attributes = {TWEEN_ATTR.OPACITY: 0},
 						duration = 0.2,
@@ -247,7 +248,8 @@ class Week1Level(Level):
 					image = tex,
 				)
 
-				sprite.tween(
+				self.game_scene.start_tween(
+					sprite,
 					in_out_cubic,
 					{TWEEN_ATTR.OPACITY: 0},
 					self.conductor.beat_duration * 0.001,

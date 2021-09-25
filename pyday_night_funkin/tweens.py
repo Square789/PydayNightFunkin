@@ -1,3 +1,17 @@
+
+from enum import IntEnum
+
+
+class TWEEN_ATTR(IntEnum):
+	X = 0
+	Y = 1
+	ROTATION = 2
+	OPACITY = 3
+	SCALE = 4
+	SCALE_X = 5
+	SCALE_Y = 6
+
+
 # https://easings.net cool site
 
 def linear(x: float) -> float:
