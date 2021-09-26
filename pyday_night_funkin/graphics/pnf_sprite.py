@@ -86,6 +86,9 @@ uniform WindowBlock {
 	mat4 view;
 } window;
 
+// Not really sure about having GAME_DIMENSIONS here
+// since it's by all means a constant
+
 layout (std140) uniform CameraAttrs {
 	float zoom;
 	vec2  deviance;
@@ -377,10 +380,10 @@ class PNFSprite(sprite.Sprite):
 	def screen_center(self, screen_dims: t.Tuple[int, int]) -> None:
 		"""
 		Sets the sprite's world position so that it is centered 
-		on screen.
+		on screen. (Ignoring camera and scroll factors)
 		"""
-		self.x = (screen_dims[0] // 2) - self._texture.width * self._scale * self._scale_x
-		self.y = (screen_dims[1] // 2) - self._texture.height * self._scale * self._scale_y
+		self.x = (screen_dims[0] // 2) - self.width
+		self.y = (screen_dims[1] // 2) - self.height
 
 	@property
 	def scroll_factor(self) -> t.Tuple[float, float]:

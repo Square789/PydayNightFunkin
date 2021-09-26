@@ -60,8 +60,10 @@ class TestScene(BaseScene):
 			print(
 				self.cameras["main"].ubo.view.zoom,
 				self.cameras["main"].ubo.view.deviance[0],
-				self.cameras["main"].ubo.view.deviance[1]
+				self.cameras["main"].ubo.view.deviance[1],
+				sep = " "
 			)
+			print(self.cameras["main"].ubo.read())
 
 		confirm = self.game.pyglet_ksh[E]
 		for k, i in ((LEFT, 0), (DOWN, 1), (UP, 2), (RIGHT, 3)):

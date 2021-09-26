@@ -41,10 +41,10 @@ class Game():
 			scroll_speed = 1.0,
 			safe_window = 167.0,
 			key_bindings = {
-				CONTROL.LEFT: key.LEFT,
-				CONTROL.DOWN: key.DOWN,
-				CONTROL.UP: key.UP,
-				CONTROL.RIGHT: key.RIGHT,
+				CONTROL.LEFT: [key.LEFT, key.A],
+				CONTROL.DOWN: [key.DOWN, key.S],
+				CONTROL.UP: [key.UP, key.W],
+				CONTROL.RIGHT: [key.RIGHT, key.D],
 			},
 		)
 
