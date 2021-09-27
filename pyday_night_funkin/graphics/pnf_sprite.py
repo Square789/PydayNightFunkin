@@ -255,8 +255,6 @@ class PNFSprite(sprite.Sprite):
 		self.current_animation: t.Optional[str] = None
 		self.camera = camera
 
-		self.asdfdebug = False
-
 		self._x = x
 		self._y = y
 

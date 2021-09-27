@@ -85,6 +85,7 @@ class InGameScene(MusicBeatScene):
 			self.voice_player.queue(voices)
 
 		self.conductor.bpm = song_data["song"]["bpm"]
+		self.conductor.load_bpm_changes(song_data)
 		self.note_handler.feed_song_data(song_data)
 
 	def start_song(self) -> None:
@@ -124,3 +125,7 @@ class InGameScene(MusicBeatScene):
 		handled here.
 		"""
 		pass
+
+	def on_beat_hit(self) -> None:
+		super().on_beat_hit()
+		logger.debug("beat hit")
