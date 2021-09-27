@@ -1,6 +1,5 @@
 
 from itertools import product
-from pyday_night_funkin.characters import Boyfriend, DaddyDearest, Girlfriend
 from loguru import logger
 from random import randint
 import typing as t
@@ -9,22 +8,19 @@ import pyglet.clock
 
 from pyday_night_funkin.asset_system import ASSETS, OggVorbisSong
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.characters import Boyfriend, DaddyDearest, Girlfriend
+from pyday_night_funkin.enums import GAME_STATE
 from pyday_night_funkin.health_bar import HealthBar
-from pyday_night_funkin.level import Level, GAME_STATE
+from pyday_night_funkin.scenes import InGameScene
 from pyday_night_funkin.note import RATING, NOTE_TYPE
-from pyday_night_funkin.note_handler import NoteHandler
+from pyday_night_funkin.note_handler import AbstractNoteHandler, NoteHandler
 from pyday_night_funkin.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.scenes import InGame
+	from pyday_night_funkin.main_game import Game
 
 
-class Week1Level(Level):
-	def __init__(self, game_scene: "InGame") -> None:
-		super().__init__(game_scene)
-
-		self.note_handler = NoteHandler(self, "ui1", "ui")
-
+class Week1Level(InGameScene):
 	@staticmethod
 	def get_camera_names() -> t.Sequence[str]:
 		return ("main", "ui")
@@ -39,38 +35,41 @@ class Week1Level(Level):
 		# ui1: notes, health bar bars
 		# ui2: health bar icons
 
+	def create_note_handler(self) -> AbstractNoteHandler:
+		return NoteHandler(self, "ui1", "ui")
+
 	def load_resources(self) -> None:
 		"""
 		Loads sprites and sounds for all week 1 levels.
 		"""
-		self.game_scene.cameras["main"].zoom = 1.0
-		# self.game_scene.cameras["main"].y += 200
+		self.cameras["main"].zoom = 1.0
+		self.cameras["main"].y += 200
 
 		# SPRITES
-		stageback = self.game_scene.create_sprite(
+		stageback = self.create_sprite(
 			"background0", "main", x = -600, y = -200, image = ASSETS.IMG.STAGE_BACK.load()
 		)
 		stageback.scroll_factor = (.9, .9)
-		stagefront = self.game_scene.create_sprite(
+		stagefront = self.create_sprite(
 			"background1", "main", x = -650, y = 600, image = ASSETS.IMG.STAGE_FRONT.load()
 		)
 		stagefront.scroll_factor = (.9, .9)
 		stagefront.scale = 1.1
 
-		self.gf = self.game_scene.create_sprite(
+		self.gf = self.create_sprite(
 			"girlfriend", "main", Girlfriend, level = self, x = 400, y = 130, image = None
 		)
 		self.gf.scroll_factor = (.95, .95)
 
-		self.bf = self.game_scene.create_sprite(
+		self.bf = self.create_sprite(
 			"stage", "main", Boyfriend, level = self, x = 770, y = 450, image = None
 		)
 
-		self.opponent = self.game_scene.create_sprite(
+		self.opponent = self.create_sprite(
 			"stage", "main", DaddyDearest, level = self, x = 100, y = 100, image = None
 		)
 
-		stagecurtains = self.game_scene.create_sprite(
+		stagecurtains = self.create_sprite(
 			"curtains", "main", x = -500, y = -300, image = ASSETS.IMG.STAGE_CURTAINS.load()
 		)
 		stagecurtains.scroll_factor = (1.3, 1.3)
@@ -83,14 +82,14 @@ class Week1Level(Level):
 			arrow_width = note_sprites[atlas_names[0]][0].texture.width
 			x = 50 + (CNST.GAME_WIDTH // 2) * i + (note_type.get_order() * arrow_width * .7)
 			y = CNST.STATIC_ARROW_Y
-			arrow_sprite = self.game_scene.create_sprite("ui0", "ui", x = x, y = y, image = None)
+			arrow_sprite = self.create_sprite("ui0", "ui", x = x, y = y, image = None)
 			for anim_name, atlas_name in zip(("static", "pressed", "confirm"), atlas_names):
 				arrow_sprite.add_animation(anim_name, note_sprites[atlas_name], 24, False)
 			arrow_sprite.scale = .7
 			arrow_sprite.play_animation("static")
 			self.static_arrows[i][note_type] = arrow_sprite
 
-		self.health_bar = HealthBar(self.game_scene, "ui", "dad", "bf", ("ui0", "ui1", "ui2"))
+		self.health_bar = HealthBar(self, "ui", "dad", "bf", ("ui0", "ui1", "ui2"))
 		self.health_bar.update(self.health)
 
 		self.countdown_textures = (
@@ -115,9 +114,6 @@ class Week1Level(Level):
 		}
 
 		self.number_textures = [getattr(ASSETS.IMG, f"NUM{i}").load() for i in range(10)]
-
-	def load_song(self) -> None:
-		self.note_handler.feed_song_data(super().load_song())
 
 	def process_input(self, dt: float) -> None:
 		pressed = {
@@ -156,7 +152,7 @@ class Week1Level(Level):
 			else:
 				player_res[type_].on_hit(
 					self.conductor.song_position,
-					self.game_scene.game.config.safe_window,
+					self.game.config.safe_window,
 				)
 				self.static_arrows[1][type_].play_animation("confirm")
 				self.bf.hold_timer = 0.0
@@ -165,7 +161,7 @@ class Week1Level(Level):
 
 				x = int(CNST.GAME_WIDTH * .55)
 
-				combo_sprite = self.game_scene.create_sprite(
+				combo_sprite = self.create_sprite(
 					"ui2",
 					"ui",
 					image = self.note_rating_textures[player_res[type_].rating],
@@ -175,22 +171,21 @@ class Week1Level(Level):
 				combo_sprite.y -= 60
 				combo_sprite.scale = 0.7
 
-				self.game_scene.start_movement(combo_sprite, (0, -150), (0, 600))
+				self.start_movement(combo_sprite, (0, -150), (0, 600))
 
-				self.game_scene.start_tween(
+				self.start_tween(
 					combo_sprite,
 					tween_func = out_cubic,
 					attributes = {TWEEN_ATTR.OPACITY: 0},
 					duration = 0.2,
 					on_complete = (
-						lambda combo_sprite = combo_sprite:
-							self.game_scene.remove_sprite(combo_sprite)
+						lambda combo_sprite = combo_sprite: self.remove_sprite(combo_sprite)
 					),
 					start_delay = self.conductor.beat_duration * 0.001,
 				)
 	
 				for i, digit in enumerate(f"{self.combo:>03}"):
-					sprite = self.game_scene.create_sprite(
+					sprite = self.create_sprite(
 						"ui2", "ui", image = self.number_textures[int(digit)]
 					)
 					sprite.screen_center(CNST.GAME_DIMENSIONS)
@@ -198,16 +193,16 @@ class Week1Level(Level):
 					sprite.y += 80
 					sprite.scale = .5
 
-					self.game_scene.start_movement(
+					self.start_movement(
 						sprite, (randint(-5, 5), -randint(140, 160)), (0, randint(200, 300))
 					)
 
-					self.game_scene.start_tween(
+					self.start_tween(
 						sprite,
 						tween_func = linear,
 						attributes = {TWEEN_ATTR.OPACITY: 0},
 						duration = 0.2,
-						on_complete = lambda sprite = sprite: self.game_scene.remove_sprite(sprite),
+						on_complete = lambda sprite = sprite: self.remove_sprite(sprite),
 						start_delay = self.conductor.beat_duration * 0.002,
 					)
 
@@ -240,7 +235,7 @@ class Week1Level(Level):
 			sprite_idx = self._countdown_stage
 			tex = self.countdown_textures[sprite_idx]
 			if tex is not None:
-				sprite = self.game_scene.create_sprite(
+				sprite = self.create_sprite(
 					"ui0",
 					"ui",
 					x = (CNST.GAME_WIDTH - tex.width) // 2,
@@ -248,16 +243,16 @@ class Week1Level(Level):
 					image = tex,
 				)
 
-				self.game_scene.start_tween(
+				self.start_tween(
 					sprite,
 					in_out_cubic,
 					{TWEEN_ATTR.OPACITY: 0},
 					self.conductor.beat_duration * 0.001,
-					lambda sprite = sprite: self.game_scene.remove_sprite(sprite),
+					lambda sprite = sprite: self.remove_sprite(sprite),
 				)
 
 			if self.countdown_sounds[sprite_idx] is not None:
-				self.game_scene.sfx_ring.play(self.countdown_sounds[sprite_idx])
+				self.sfx_ring.play(self.countdown_sounds[sprite_idx])
 
 			self._countdown_stage += 1
 

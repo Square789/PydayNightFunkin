@@ -13,11 +13,13 @@ import typing as t
 from pyglet.image import AbstractImage
 from pyglet.media import load as load_media, Source
 
-from pyday_night_funkin.constants import DIFFICULTY
 from pyday_night_funkin.image_loader import (
 	FrameInfoTexture, load_frames_from_texture_atlas, load_image
 )
 import pyday_night_funkin.ogg_decoder
+
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.enums import DIFFICULTY
 
 
 # NOTE: Instead of having the complete assets be an ASSETS class with Resources,
@@ -155,7 +157,7 @@ class OggVorbisSong(OggVorbis):
 	def load(
 		self,
 		stream: t.Tuple[bool, bool],
-		difficulty: DIFFICULTY
+		difficulty: "DIFFICULTY",
 	) -> t.Tuple[Source, t.Optional[Source], t.Dict[str, t.Any]]:
 		json_file = str(self.get_path()) + difficulty.to_song_json_suffix() + ".json"
 		json_path = self.data_dir.load() / self.get_path() / json_file

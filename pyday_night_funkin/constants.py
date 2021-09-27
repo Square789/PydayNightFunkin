@@ -1,6 +1,4 @@
 
-from enum import IntEnum
-
 from pyglet.image import CheckerImagePattern, Texture
 
 
@@ -18,17 +16,3 @@ ERROR_TEXTURE = CheckerImagePattern(PINK, BLACK).create_image(32, 32).create_tex
 SFX_RING_SIZE = 8
 
 DEPTH_BUFFER_PRECISION = 1/(2**23)
-
-class DIFFICULTY(IntEnum):
-	EASY = 0
-	NORMAL = 1
-	HARD = 2
-
-	def to_song_json_suffix(self) -> str:
-		if self is self.EASY:
-			return "-easy"
-		elif self is self.NORMAL:
-			return ""
-		elif self is self.HARD:
-			return "-hard"
-		return ""

@@ -10,10 +10,25 @@ from pyday_night_funkin.note import Note, NOTE_TYPE, SUSTAIN_STAGE
 from pyday_night_funkin.utils import ListWindow
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.level import Level
+	from pyday_night_funkin.scenes import InGameScene
 
 
-class NoteHandler:
+class AbstractNoteHandler:
+	"""
+	Base class for a note handler. A class that receives input and is
+	responsible for spawning, moving and deleting notes.
+	"""
+	def __init__(game_scene: "InGameScene", note_layer: str, note_camera: str) -> None:
+		raise NotImplementedError("Abstract class.")
+
+	def feed_song_data(self, song_data) -> None:
+		raise NotImplementedError("Abstract class.")
+
+	def update(self, dt: float) -> t.Any:
+		raise NotImplementedError("Abstract class.")
+
+
+class NoteHandler(AbstractNoteHandler):
 	"""
 	Class responsible for spawning, moving and deleting notes as well
 	as processing key input.
@@ -26,14 +41,13 @@ class NoteHandler:
 		NOTE_TYPE.RIGHT: CONTROL.RIGHT,
 	}
 
-	def __init__(self, level: "Level", note_layer: str, note_camera: str) -> None:
-		self.level = level
+	def __init__(self, game_scene: "InGameScene", note_layer: str, note_camera: str) -> None:
 		self.note_layer = note_layer
 		self.note_camera = note_camera
 
-		self.game_scene = level.game_scene
+		self.game_scene = game_scene
 
-		self.scroll_speed = level.game_scene.game.config.scroll_speed
+		self.scroll_speed = game_scene.game.config.scroll_speed
 
 		self.notes: t.List[Note] = []
 		# Notes that are on screen and have a sprite registered.
@@ -83,9 +97,9 @@ class NoteHandler:
 				type_ = NOTE_TYPE(type_)
 				note = Note(singer, time_, type_, sustain, SUSTAIN_STAGE.NONE)
 				self.notes.append(note)
-				trail_notes = math.ceil(sustain / self.level.conductor.step_duration)
+				trail_notes = math.ceil(sustain / self.game_scene.conductor.step_duration)
 				for i in range(trail_notes): # 0 and effectless for non-sustain notes.
-					sust_time = time_ + (self.level.conductor.step_duration * (i + 1))
+					sust_time = time_ + (self.game_scene.conductor.step_duration * (i + 1))
 					stage = SUSTAIN_STAGE.END if i == trail_notes - 1 else SUSTAIN_STAGE.TRAIL
 					sust_note = Note(singer, sust_time, type_, sustain, stage)
 					self.notes.append(sust_note)
@@ -112,7 +126,7 @@ class NoteHandler:
 		# NOTE: Could create methods on the ListWindow to eliminate
 		# "grow, update-shrink" code duplication
 
-		song_pos = self.level.conductor.song_position
+		song_pos = self.game_scene.conductor.song_position
 
 		# Pixels a note traverses in a millisecond
 		speed = 0.45 * self.scroll_speed
@@ -136,7 +150,7 @@ class NoteHandler:
 			if cur_note.sustain_stage != SUSTAIN_STAGE.NONE:
 				sprite.x += (arrow_width - texture.width) // 2
 				if cur_note.sustain_stage is SUSTAIN_STAGE.TRAIL:
-					sprite.scale_y = self.level.conductor.step_duration * \
+					sprite.scale_y = self.game_scene.conductor.step_duration * \
 						0.015 * self.scroll_speed
 			cur_note.sprite = sprite
 			self.notes_visible.end += 1
