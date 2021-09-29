@@ -8,7 +8,7 @@ import typing as t
 import pyglet.clock
 from pyglet.math import Vec2
 
-from pyday_night_funkin.asset_system import ASSETS, OggVorbisSong
+from pyday_night_funkin.asset_system import ASSETS, load_asset
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.characters import Boyfriend, DaddyDearest, Girlfriend
 from pyday_night_funkin.enums import GAME_STATE
@@ -21,6 +21,7 @@ from pyday_night_funkin.utils import lerp
 
 
 class Week1Level(InGameScene):
+	DEFAULT_CAM_ZOOM = 0.9
 
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
@@ -51,11 +52,11 @@ class Week1Level(InGameScene):
 		"""
 		# SPRITES
 		stageback = self.create_sprite(
-			"background0", "main", x = -600, y = -200, image = ASSETS.IMG.STAGE_BACK.load()
+			"background0", "main", x = -600, y = -200, image = load_asset(ASSETS.IMG.STAGE_BACK)
 		)
 		stageback.scroll_factor = (.9, .9)
 		stagefront = self.create_sprite(
-			"background1", "main", x = -650, y = 600, image = ASSETS.IMG.STAGE_FRONT.load()
+			"background1", "main", x = -650, y = 600, image = load_asset(ASSETS.IMG.STAGE_FRONT)
 		)
 		stagefront.scroll_factor = (.9, .9)
 		stagefront.scale = 1.1
@@ -74,12 +75,12 @@ class Week1Level(InGameScene):
 		)
 
 		stagecurtains = self.create_sprite(
-			"curtains", "main", x = -500, y = -300, image = ASSETS.IMG.STAGE_CURTAINS.load()
+			"curtains", "main", x = -500, y = -300, image = load_asset(ASSETS.IMG.STAGE_CURTAINS)
 		)
 		stagecurtains.scroll_factor = (1.3, 1.3)
 		stagecurtains.scale = 0.9
 
-		note_sprites = ASSETS.XML.NOTES.load()
+		note_sprites = load_asset(ASSETS.XML.NOTES)
 		self.static_arrows = [{}, {}]
 		for i, note_type in product((0, 1), NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
@@ -98,34 +99,39 @@ class Week1Level(InGameScene):
 
 		self.countdown_textures = (
 			None,
-			ASSETS.IMG.READY.load(),
-			ASSETS.IMG.SET.load(),
-			ASSETS.IMG.GO.load(),
+			load_asset(ASSETS.IMG.READY),
+			load_asset(ASSETS.IMG.SET),
+			load_asset(ASSETS.IMG.GO),
 		)
 
 		self.countdown_sounds = (
-			ASSETS.SOUND.INTRO_3.load(),
-			ASSETS.SOUND.INTRO_2.load(),
-			ASSETS.SOUND.INTRO_1.load(),
-			ASSETS.SOUND.INTRO_GO.load(),
+			load_asset(ASSETS.SOUND.INTRO_3),
+			load_asset(ASSETS.SOUND.INTRO_2),
+			load_asset(ASSETS.SOUND.INTRO_1),
+			load_asset(ASSETS.SOUND.INTRO_GO),
 		)
 
 		self.note_rating_textures = {
-			RATING.SICK: ASSETS.IMG.SICK.load(),
-			RATING.GOOD: ASSETS.IMG.GOOD.load(),
-			RATING.BAD: ASSETS.IMG.BAD.load(),
-			RATING.SHIT: ASSETS.IMG.SHIT.load(),
+			RATING.SICK: load_asset(ASSETS.IMG.SICK),
+			RATING.GOOD: load_asset(ASSETS.IMG.GOOD),
+			RATING.BAD: load_asset(ASSETS.IMG.BAD),
+			RATING.SHIT: load_asset(ASSETS.IMG.SHIT),
 		}
 
-		self.number_textures = [getattr(ASSETS.IMG, f"NUM{i}").load() for i in range(10)]
+		self.number_textures = [load_asset(getattr(ASSETS.IMG, f"NUM{i}")) for i in range(10)]
 
 	def ready(self) -> None:
 		self.gf.play_animation("idle_bop")
 		self.bf.play_animation("idle_bop")
 		self.opponent.play_animation("idle_bop")
 
-		self.cameras["main"].zoom = 0.9
-		self.cameras["main"].look_at(self.opponent.get_midpoint() + Vec2(400, 0))
+		# No idea if this is a good choice but the dict accesses seem weird and
+		# it's not like there will be more than these cameras
+		self.main_cam = self.cameras["main"]
+		self.ui_cam = self.cameras["ui"]
+
+		self.main_cam.zoom = self.DEFAULT_CAM_ZOOM
+		self.main_cam.look_at(self.opponent.get_midpoint() + Vec2(400, 0))
 
 		self._countdown_stage = 0
 		self.state = GAME_STATE.COUNTDOWN
@@ -145,12 +151,12 @@ class Week1Level(InGameScene):
 		if opponent_hit:
 			op_note = opponent_hit[-1]
 			self.opponent.hold_timer = 0.0
-			self.opponent.play_animation(f"sing_note_{op_note.type.name.lower()}")
+			self.opponent.play_animation(f"sing_note_{op_note.type.name.lower()}", True)
 			self.zoom_cams = True
 
 		if player_missed:
 			fail_note = player_missed[-1]
-			self.bf.play_animation(f"miss_note_{fail_note.type.name.lower()}")
+			self.bf.play_animation(f"miss_note_{fail_note.type.name.lower()}", True)
 
 		for type_ in NOTE_TYPE:
 			# Note not being held, make the arrow static
@@ -166,7 +172,7 @@ class Week1Level(InGameScene):
 					self.static_arrows[1][type_].play_animation("pressed")
 				if pressed[type_]:
 					# Just pressed
-					self.bf.play_animation(f"miss_note_{type_.name.lower()}")
+					self.bf.play_animation(f"miss_note_{type_.name.lower()}", True)
 					self.combo = 0
 			# Note was pressed and player hit
 			else:
@@ -234,7 +240,7 @@ class Week1Level(InGameScene):
 		self.gf.update_character(dt)
 		self.opponent.update_character(dt)
 
-		# terrible indentation
+		# Camera follow code with crap indentation
 		if self.song_data is not None:
 			sec = floor(self.cur_step / 16)
 			if sec >= 0 and sec < len(self.song_data["notes"]):
@@ -246,17 +252,17 @@ class Week1Level(InGameScene):
 						_cam_follow = self.opponent.get_midpoint() + Vec2(150, -100)
 					else:
 						_cam_follow = self.bf.get_midpoint() + Vec2(-100, -100)
-					self.cameras["main"].set_follow_target(_cam_follow, 0.04)
+					self.main_cam.set_follow_target(_cam_follow, 0.04)
 
 		if self.zoom_cams:
-			self.cameras["main"].zoom = lerp(0.9, self.cameras["main"].zoom, 0.95)
-			self.cameras["ui"].zoom = lerp(1.0, self.cameras["ui"].zoom, 0.95)
+			self.main_cam.zoom = lerp(self.DEFAULT_CAM_ZOOM, self.main_cam.zoom, 0.95)
+			self.ui_cam.zoom = lerp(1.0, self.ui_cam.zoom, 0.95)
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
-		if self.zoom_cams and self.cameras["main"].zoom < 1.35 and self.cur_beat % 4 == 0:
-			self.cameras["main"].zoom += 0.015
-			self.cameras["ui"].zoom += 0.03
+		if self.zoom_cams and self.main_cam.zoom < 1.35 and self.cur_beat % 4 == 0:
+			self.main_cam.zoom += 0.015
+			self.ui_cam.zoom += 0.03
 
 		if (
 			self.bf.current_animation is not None and
@@ -297,7 +303,7 @@ class Week1Level(InGameScene):
 
 class Bopeebo(Week1Level):
 	@staticmethod
-	def get_song() -> OggVorbisSong:
+	def get_song() -> int:
 		return ASSETS.SONG.BOPEEBO
 
 	def on_beat_hit(self) -> None:
@@ -307,10 +313,10 @@ class Bopeebo(Week1Level):
 
 class Fresh(Week1Level):
 	@staticmethod
-	def get_song() -> OggVorbisSong:
+	def get_song() -> int:
 		return ASSETS.SONG.FRESH
 
 class DadBattle(Week1Level):
 	@staticmethod
-	def get_song() -> OggVorbisSong:
+	def get_song() -> int:
 		return ASSETS.SONG.DAD_BATTLE

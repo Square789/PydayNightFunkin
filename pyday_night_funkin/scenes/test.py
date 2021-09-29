@@ -4,7 +4,7 @@ import typing as t
 from loguru import logger
 from pyglet.window.key import B, E, Q, W, A, S, D, I, M, R, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 
-from pyday_night_funkin.asset_system import ASSETS
+from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.characters import Boyfriend
 from pyday_night_funkin.note import NOTE_TYPE
 from pyday_night_funkin.scenes._base import BaseScene
@@ -20,7 +20,7 @@ class TestScene(BaseScene):
 		self.test_sprite = self.create_sprite("ye_olde_layer", "main", x = 0, y = 0)
 		self.test_sprite.scale = 4
 
-		note_sprites = ASSETS.XML.NOTES.load()
+		note_sprites = load_asset(ASSETS.XML.NOTES)
 		self.arrows = []
 		for i, note_type in enumerate(NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
@@ -31,7 +31,7 @@ class TestScene(BaseScene):
 			s.play_animation("static")
 			self.arrows.append(s)
 
-		self.bf = self.create_sprite("ye_olde_layer", "main", Boyfriend, level = None, x = 770, y = 250)
+		self.bf = self.create_sprite("ye_olde_layer", "main", Boyfriend, scene = None, x = 770, y = 250)
 		self.bf.asdfdebug = True
 		self.bf.play_animation("idle_bop")
 

@@ -5,6 +5,7 @@ from loguru import logger
 from pyglet.media import Player
 from pyglet.media.player import PlayerGroup
 
+from pyday_night_funkin.asset_system import load_asset
 from pyday_night_funkin.enums import DIFFICULTY, GAME_STATE
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 
@@ -49,7 +50,7 @@ class InGameScene(MusicBeatScene):
 		self.ready()
 
 	@staticmethod
-	def get_song() -> "OggVorbisSong":
+	def get_song() -> int:
 		raise NotImplementedError("Subclass this!")
 
 	@staticmethod
@@ -74,8 +75,10 @@ class InGameScene(MusicBeatScene):
 		"""
 		# TODO doc
 		"""
-		inst, voices, song_data = self.get_song().load(
-			(False, False), self.difficulty
+		inst, voices, song_data = load_asset(
+			self.get_song(),
+			(False, False),
+			self.difficulty,
 		)
 
 		self.song_players.pause()
