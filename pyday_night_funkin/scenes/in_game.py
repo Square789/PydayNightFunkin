@@ -37,6 +37,8 @@ class InGameScene(MusicBeatScene):
 		self.voice_player = Player()
 		self.song_players = PlayerGroup((self.inst_player, self.voice_player))
 
+		self.song_data = None
+
 		self.health = 0.5
 		self.combo = 0
 
@@ -75,6 +77,7 @@ class InGameScene(MusicBeatScene):
 		inst, voices, song_data = self.get_song().load(
 			(False, False), self.difficulty
 		)
+
 		self.song_players.pause()
 		self.inst_player.next_source()
 		self.inst_player.queue(inst)
@@ -84,9 +87,11 @@ class InGameScene(MusicBeatScene):
 			self.voice_player.next_source()
 			self.voice_player.queue(voices)
 
-		self.conductor.bpm = song_data["song"]["bpm"]
+		self.conductor.bpm = song_data["bpm"]
 		self.conductor.load_bpm_changes(song_data)
 		self.note_handler.feed_song_data(song_data)
+
+		self.song_data = song_data
 
 	def start_song(self) -> None:
 		"""
@@ -125,7 +130,3 @@ class InGameScene(MusicBeatScene):
 		handled here.
 		"""
 		pass
-
-	def on_beat_hit(self) -> None:
-		super().on_beat_hit()
-		logger.debug("beat hit")

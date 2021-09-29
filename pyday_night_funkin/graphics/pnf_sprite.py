@@ -8,6 +8,7 @@ from pyglet import graphics
 from pyglet.graphics.shader import Shader, ShaderProgram, UniformBufferObject
 from pyglet.image import AbstractImage, Texture, TextureArrayRegion
 from pyglet.image.animation import Animation
+from pyglet.math import Vec2
 from pyglet import sprite
 
 import pyday_night_funkin.constants as CNST
@@ -91,7 +92,7 @@ uniform WindowBlock {
 
 layout (std140) uniform CameraAttrs {
 	float zoom;
-	vec2  deviance;
+	vec2  position;
 	vec2  GAME_DIMENSIONS;
 } camera;
 
@@ -112,8 +113,8 @@ void main() {
 	m_rotation[1][0] = -sin(-radians(rotation));
 	m_rotation[1][1] =  cos(-radians(rotation));
 	// Camera transform and zoom scale
-	m_camera_trans_scale[3][0] = (camera.zoom * scroll_factor.x * camera.deviance.x) + (camera.GAME_DIMENSIONS.x / 2);
-	m_camera_trans_scale[3][1] = (camera.zoom * scroll_factor.y * camera.deviance.y) + (camera.GAME_DIMENSIONS.y / 2);
+	m_camera_trans_scale[3][0] = (camera.zoom * scroll_factor.x * -camera.position.x) + (camera.GAME_DIMENSIONS.x / 2);
+	m_camera_trans_scale[3][1] = (camera.zoom * scroll_factor.y * -camera.position.y) + (camera.GAME_DIMENSIONS.y / 2);
 	m_camera_trans_scale[0][0] = camera.zoom;
 	m_camera_trans_scale[1][1] = camera.zoom;
 	// Camera pre-scale-transform
@@ -179,7 +180,7 @@ class _PNFSpriteShaderContainer():
 			_fields_ = [
 				("zoom", ctypes.c_float),
 				("_padding0", ctypes.c_float * 1),
-				("deviance", ctypes.c_float * 2),
+				("position", ctypes.c_float * 2),
 				("GAME_DIMENSIONS", ctypes.c_float * 2),
 			]
 
@@ -382,6 +383,18 @@ class PNFSprite(sprite.Sprite):
 		"""
 		self.x = (screen_dims[0] // 2) - self.width
 		self.y = (screen_dims[1] // 2) - self.height
+
+	def get_midpoint(self) -> Vec2:
+		"""
+		Returns the middle point of this sprite, based on its current
+		texture and world position.
+		"""
+		# Not using the width / height properties since they return
+		# incorrect values for negative scaling
+		return Vec2(
+			self._x + self._texture.width * self._scale_x * self._scale * 0.5,
+			self._y + self._texture.height * self._scale_y * self._scale * 0.5,
+		)
 
 	@property
 	def scroll_factor(self) -> t.Tuple[float, float]:

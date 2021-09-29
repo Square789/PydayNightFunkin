@@ -87,8 +87,8 @@ class NoteHandler(AbstractNoteHandler):
 		generate the notes. This should happen before any calls
 		to `update`!
 		"""
-		self.scroll_speed *= song_data["song"]["speed"]
-		for section in song_data["song"]["notes"]:
+		self.scroll_speed *= song_data["speed"]
+		for section in song_data["notes"]:
 			for time_, type_, sustain in section["sectionNotes"]:
 				singer = int(section["mustHitSection"]) # 0: opponent, 1: bf
 				if type_ >= len(NOTE_TYPE): # Note is sung by other character

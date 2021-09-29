@@ -165,10 +165,10 @@ class OggVorbisSong(OggVorbis):
 		voic_path = self.song_dir.load() / self.get_path() / "Voices.ogg"
 		with open(json_path, "r") as json_handle:
 			# TODO verify integrity of song dict
-			data = json.load(json_handle)
+			data = json.load(json_handle)["song"]
 		inst = self._load(song_path, stream[0])
 		voic = None
-		if data["song"]["needsVoices"]:  # Should be more like "hasVoices":
+		if data["needsVoices"]:  # Should be more like "hasVoices":
 			voic = self._load(voic_path, stream[1])
 
 		return (inst, voic, data)

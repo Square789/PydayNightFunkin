@@ -47,6 +47,7 @@ class Conductor():
 		r = BPMChangeEvent(0.0, 0.0, 0.0)
 		# NOTE: pretty intensive loop, could be kept track of way easier by
 		# adding a song_position property
+		# Loop is assuming bpm change events are ordered
 		for change in self._bpm_changes:
 			if self.song_position >= change.song_time:
 				r = change
@@ -56,10 +57,10 @@ class Conductor():
 
 	def load_bpm_changes(self, song_data) -> None:
 		bpm_changes = []
-		cur_bpm = song_data["song"]["bpm"]
+		cur_bpm = song_data["bpm"]
 		total_steps = 0
 		total_pos = 0.0
-		for section in song_data["song"]["notes"]:
+		for section in song_data["notes"]:
 			if "changeBPM" in section and section["changeBPM"] and section["bpm"] != cur_bpm:
 				cur_bpm = section["bpm"]
 				bpm_changes.append(BPMChangeEvent(total_steps, total_pos, cur_bpm))

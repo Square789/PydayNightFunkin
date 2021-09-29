@@ -284,6 +284,10 @@ class BaseScene():
 		pass
 
 	def update(self, dt: float) -> None:
+		self._default_camera.update(dt)
+		for c in self.cameras.values():
+			c.update(dt)
+
 		finished_tweens = []
 		for sprite, info in self._sprite_info.items():
 			if info is None:

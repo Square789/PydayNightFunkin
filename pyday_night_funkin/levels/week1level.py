@@ -1,10 +1,12 @@
 
 from itertools import product
 from loguru import logger
+from math import floor
 from random import randint
 import typing as t
 
 import pyglet.clock
+from pyglet.math import Vec2
 
 from pyday_night_funkin.asset_system import ASSETS, OggVorbisSong
 import pyday_night_funkin.constants as CNST
@@ -16,11 +18,14 @@ from pyday_night_funkin.note import RATING, NOTE_TYPE
 from pyday_night_funkin.note_handler import AbstractNoteHandler, NoteHandler
 from pyday_night_funkin.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
 
-if t.TYPE_CHECKING:
-	from pyday_night_funkin.main_game import Game
-
 
 class Week1Level(InGameScene):
+
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self._last_followed_singer = 0
+
 	@staticmethod
 	def get_camera_names() -> t.Sequence[str]:
 		return ("main", "ui")
@@ -42,9 +47,6 @@ class Week1Level(InGameScene):
 		"""
 		Loads sprites and sounds for all week 1 levels.
 		"""
-		self.cameras["main"].zoom = 1.0
-		self.cameras["main"].y += 200
-
 		# SPRITES
 		stageback = self.create_sprite(
 			"background0", "main", x = -600, y = -200, image = ASSETS.IMG.STAGE_BACK.load()
@@ -57,16 +59,16 @@ class Week1Level(InGameScene):
 		stagefront.scale = 1.1
 
 		self.gf = self.create_sprite(
-			"girlfriend", "main", Girlfriend, level = self, x = 400, y = 130, image = None
+			"girlfriend", "main", Girlfriend, scene = self, x = 400, y = 130, image = None
 		)
 		self.gf.scroll_factor = (.95, .95)
 
 		self.bf = self.create_sprite(
-			"stage", "main", Boyfriend, level = self, x = 770, y = 450, image = None
+			"stage", "main", Boyfriend, scene = self, x = 770, y = 450, image = None
 		)
 
 		self.opponent = self.create_sprite(
-			"stage", "main", DaddyDearest, level = self, x = 100, y = 100, image = None
+			"stage", "main", DaddyDearest, scene = self, x = 100, y = 100, image = None
 		)
 
 		stagecurtains = self.create_sprite(
@@ -114,6 +116,22 @@ class Week1Level(InGameScene):
 		}
 
 		self.number_textures = [getattr(ASSETS.IMG, f"NUM{i}").load() for i in range(10)]
+
+	def ready(self) -> None:
+		self.gf.play_animation("idle_bop")
+		self.bf.play_animation("idle_bop")
+		self.opponent.play_animation("idle_bop")
+
+		self.cameras["main"].zoom = 1.0
+		self.cameras["main"].y += 200
+		self.cameras["main"].set_follow_target(self.opponent.get_midpoint() + Vec2(400, 0), 0.04)
+
+		self._countdown_stage = 0
+		self.state = GAME_STATE.COUNTDOWN
+		self.conductor.song_position = self.conductor.beat_duration * -5
+		pyglet.clock.schedule_interval(
+			self.countdown, self.conductor.beat_duration * 0.001
+		)
 
 	def process_input(self, dt: float) -> None:
 		pressed = {
@@ -208,23 +226,25 @@ class Week1Level(InGameScene):
 
 		self.bf.update_character(dt, bool(pressed))
 
-	def ready(self) -> None:
-		self.gf.play_animation("idle_bop")
-		self.bf.play_animation("idle_bop")
-		self.opponent.play_animation("idle_bop")
-
-		self._countdown_stage = 0
-		self.state = GAME_STATE.COUNTDOWN
-		self.conductor.song_position = self.conductor.beat_duration * -5
-		pyglet.clock.schedule_interval(
-			self.countdown, self.conductor.beat_duration * 0.001
-		)
-
 	def update(self, dt: float) -> None:
 		super().update(dt)
 		# bf is handled in `process_input`
 		self.gf.update_character(dt)
 		self.opponent.update_character(dt)
+
+		# terrible indentation
+		if self.song_data is not None:
+			sec = floor(self.cur_step / 16)
+			if sec >= 0 and sec < len(self.song_data["notes"]):
+				cur_section = self.song_data["notes"][sec]
+				to_follow = int(cur_section["mustHitSection"])
+				if to_follow != self._last_followed_singer:
+					self._last_followed_singer = to_follow
+					if to_follow == 0:
+						_cam_follow = self.opponent.get_midpoint() + Vec2(150, -100)
+					else:
+						_cam_follow = self.bf.get_midpoint() + Vec2(-100, -100)
+					self.cameras["main"].set_follow_target(_cam_follow, 0.04)
 
 	def countdown(self, dt: float) -> None:
 		if self._countdown_stage == 4:

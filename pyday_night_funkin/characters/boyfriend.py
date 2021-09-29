@@ -5,12 +5,12 @@ from pyday_night_funkin.characters._base import Character
 from pyday_night_funkin.asset_system import ASSETS
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.level import Level
+	from pyday_night_funkin.scenes import MusicBeatScene
 
 
 class Boyfriend(Character):
-	def __init__(self, level: "Level", *args, **kwargs) -> None:
-		super().__init__(level, *args, **kwargs)
+	def __init__(self, scene: "MusicBeatScene", *args, **kwargs) -> None:
+		super().__init__(scene, *args, **kwargs)
 		anims = ASSETS.XML.BOYFRIEND.load()
 		self.add_animation("idle_bop", anims["BF idle dance"], 24, True, (-5, 0))
 		self.add_animation("sing_note_left", anims["BF NOTE LEFT"], 24, False, (12, -6))
@@ -27,7 +27,7 @@ class Boyfriend(Character):
 			self.hold_timer += dt
 
 		if (
-			self.hold_timer >= self.hold_timeout * self.level.conductor.step_duration * 0.001 and
+			self.hold_timer >= self.hold_timeout * self.scene.conductor.step_duration * 0.001 and
 			not dont_idle
 		):
 			self.hold_timer = 0.0
