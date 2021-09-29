@@ -12,6 +12,7 @@ from pyglet.math import Vec2
 from pyglet import sprite
 
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.image_loader import FrameInfoTexture
@@ -22,8 +23,7 @@ class OffsetAnimationFrame():
 	"""
 	Similar to pyglet's AnimationFrame, except it also stores a
 	per-frame offset that should be applied to its receiving sprite's
-	x and y coordinates as well as a name that can be used to identify
-	the frame.
+	x and y coordinates.
 	"""
 
 	__slots__ = ("image", "duration", "frame_info", "name")
@@ -33,12 +33,10 @@ class OffsetAnimationFrame():
 		image: Texture,
 		duration: float,
 		frame_info: t.Tuple[int, int, int, int],
-		name: str = "?"
 	) -> None:
 		self.image = image
 		self.duration = duration
 		self.frame_info = frame_info
-		self.name = name
 
 	def __repr__(self):
 		return (
@@ -254,6 +252,7 @@ class PNFSprite(sprite.Sprite):
 		self._animation_frame_offset = (0, 0)
 		self._scroll_factor = (1.0, 1.0)
 		self.current_animation: t.Optional[str] = None
+		self.animation_playing = False
 		self.camera = camera
 
 		self._x = x
@@ -365,14 +364,16 @@ class PNFSprite(sprite.Sprite):
 			self._animations[name] = anim_data
 		else:
 			frames = [
-				OffsetAnimationFrame(tex.texture, spf, tex.frame_info, name)
+				OffsetAnimationFrame(tex.texture, spf, tex.frame_info)
 				for tex in anim_data
 			]
 			self._animations[name] = PNFAnimation(frames, offset, loop)
 		if self._animation_base_box is None:
 			self._set_animation_base_box(self._animations[name])
 
-	def play_animation(self, name: str) -> None:
+	def play_animation(self, name: str, force: bool = False) -> None:
+		if self.current_animation == name and self.animation_playing and not force:
+			return
 		self.image = self._animations[name]
 		self.current_animation = name
 
@@ -416,18 +417,21 @@ class PNFSprite(sprite.Sprite):
 		if self._animation is not None:
 			pyglet.clock.unschedule(self._animate)
 			# Remove the current animation frame's offset (would've been done by self._animate)
-			self.x += self._animation_frame_offset[0]
-			self.y += self._animation_frame_offset[1]
+			self._x += self._animation_frame_offset[0]
+			self._y += self._animation_frame_offset[1]
 			self._animation_frame_offset = (0, 0)
 			# Remove the animation's general offset
 			if self._animation.offset is not None:
-				self.x += self._animation.offset[0]
-				self.y += self._animation.offset[1]
+				self._x += self._animation.offset[0]
+				self._y += self._animation.offset[1]
 			self._animation = None
+			self.animation_playing = False
 			self.current_animation = None
+			self._update_position()
 
 		if isinstance(image, PNFAnimation):
 			self._animation = image
+			self.animation_playing = True
 			self._frame_index = 0
 			# Apply the animation's general offset
 			if self._animation.offset is not None:
@@ -446,13 +450,28 @@ class PNFSprite(sprite.Sprite):
 		else:
 			self._set_texture(image.get_texture())
 
-	def _animate(self, dt: float) -> None:
-		# Disgusting override of underscore method, required to set the
-		# sprite's position on animation.
-		super()._animate(dt)
-		self._apply_post_animate_offset()
-
 	# === Below methods are largely copy-pasted from the superclass sprite === #
+
+	def _animate(self, dt: float) -> None:
+		self._frame_index += 1
+		if self._frame_index >= len(self._animation.frames):
+			self._frame_index = 0
+			self.dispatch_event('on_animation_end')
+			if self._vertex_list is None:
+				return # Deleted in event handler.
+
+		frame = self._animation.frames[self._frame_index]
+		self._set_texture(frame.image.get_texture())
+
+		if frame.duration is not None:
+			duration = frame.duration - (self._next_dt - dt)
+			duration = clamp(duration, 0, frame.duration)
+			pyglet.clock.schedule_once(self._animate, duration)
+			self._next_dt = duration
+		else:
+			self.dispatch_event('on_animation_end')
+			self.animation_playing = False
+		self._apply_post_animate_offset()
 
 	def _set_texture(self, texture):
 		prev_h, prev_w = self._texture.height, self._texture.width

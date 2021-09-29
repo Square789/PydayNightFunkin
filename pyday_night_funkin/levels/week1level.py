@@ -17,6 +17,7 @@ from pyday_night_funkin.scenes import InGameScene
 from pyday_night_funkin.note import RATING, NOTE_TYPE
 from pyday_night_funkin.note_handler import AbstractNoteHandler, NoteHandler
 from pyday_night_funkin.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
+from pyday_night_funkin.utils import lerp
 
 
 class Week1Level(InGameScene):
@@ -25,6 +26,7 @@ class Week1Level(InGameScene):
 		super().__init__(*args, **kwargs)
 
 		self._last_followed_singer = 0
+		self.zoom_cams = False
 
 	@staticmethod
 	def get_camera_names() -> t.Sequence[str]:
@@ -122,9 +124,8 @@ class Week1Level(InGameScene):
 		self.bf.play_animation("idle_bop")
 		self.opponent.play_animation("idle_bop")
 
-		self.cameras["main"].zoom = 1.0
-		self.cameras["main"].y += 200
-		self.cameras["main"].set_follow_target(self.opponent.get_midpoint() + Vec2(400, 0), 0.04)
+		self.cameras["main"].zoom = 0.9
+		self.cameras["main"].look_at(self.opponent.get_midpoint() + Vec2(400, 0))
 
 		self._countdown_stage = 0
 		self.state = GAME_STATE.COUNTDOWN
@@ -145,6 +146,7 @@ class Week1Level(InGameScene):
 			op_note = opponent_hit[-1]
 			self.opponent.hold_timer = 0.0
 			self.opponent.play_animation(f"sing_note_{op_note.type.name.lower()}")
+			self.zoom_cams = True
 
 		if player_missed:
 			fail_note = player_missed[-1]
@@ -246,6 +248,22 @@ class Week1Level(InGameScene):
 						_cam_follow = self.bf.get_midpoint() + Vec2(-100, -100)
 					self.cameras["main"].set_follow_target(_cam_follow, 0.04)
 
+		if self.zoom_cams:
+			self.cameras["main"].zoom = lerp(0.9, self.cameras["main"].zoom, 0.95)
+			self.cameras["ui"].zoom = lerp(1.0, self.cameras["ui"].zoom, 0.95)
+
+	def on_beat_hit(self) -> None:
+		super().on_beat_hit()
+		if self.zoom_cams and self.cameras["main"].zoom < 1.35 and self.cur_beat % 4 == 0:
+			self.cameras["main"].zoom += 0.015
+			self.cameras["ui"].zoom += 0.03
+
+		if (
+			self.bf.current_animation is not None and
+			not self.bf.current_animation.startswith("sing")
+		):
+			self.bf.play_animation("idle_bop")
+
 	def countdown(self, dt: float) -> None:
 		if self._countdown_stage == 4:
 			self.start_song()
@@ -281,6 +299,11 @@ class Bopeebo(Week1Level):
 	@staticmethod
 	def get_song() -> OggVorbisSong:
 		return ASSETS.SONG.BOPEEBO
+
+	def on_beat_hit(self) -> None:
+		super().on_beat_hit()
+		if self.cur_beat % 8 == 7:
+			self.bf.play_animation("hey")
 
 class Fresh(Week1Level):
 	@staticmethod

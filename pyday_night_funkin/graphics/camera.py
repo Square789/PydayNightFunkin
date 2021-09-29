@@ -53,6 +53,17 @@ class Camera:
 		if self._follow_target is not None:
 			self._update_follow_target(dt)
 
+	def look_at(self, where: Vec2) -> None:
+		"""
+		Immediatedly sets the camera's target position to look at the
+		given point.
+		"""
+		# This may not respect zoom. Or, it may, and I am completely
+		# forgetting something.
+		self._x = where[0] - CENTER_X
+		self._y = where[1] - CENTER_Y
+		self._update_ubo()
+
 	def set_follow_target(self, tgt: t.Optional[Vec2], lerp: float = 1.0):
 		self._follow_target = tgt
 		self._follow_lerp = lerp

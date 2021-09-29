@@ -21,6 +21,7 @@ class Boyfriend(Character):
 		self.add_animation("miss_note_up", anims["BF NOTE UP MISS"], 24, False, (-29, 27))
 		self.add_animation("sing_note_right", anims["BF NOTE RIGHT"], 24, False, (-38, -7))
 		self.add_animation("miss_note_right", anims["BF NOTE RIGHT MISS"], 24, False, (-30, 21))
+		self.add_animation("hey", anims["BF HEY!!"], 24, False, (7, 4))
 
 	def update_character(self, dt: float, dont_idle: bool) -> None:
 		if self.current_animation.startswith("sing"):

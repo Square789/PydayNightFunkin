@@ -38,6 +38,9 @@ class CtxGuard():
 def clamp(value, min_, max_):
 	return min_ if value < min_ else (max_ if value > max_ else value)
 
+def lerp(start, stop, ratio):
+	return start + (stop - start) * ratio
+
 def to_rgba_bytes(v: t.Union[t.Tuple[int, int, int, int], int]) -> bytes:
 	if isinstance(v, tuple):
 		if len(v) == 4:
