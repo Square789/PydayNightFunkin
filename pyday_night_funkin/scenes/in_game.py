@@ -25,7 +25,7 @@ class InGameScene(MusicBeatScene):
 	by subclassing it (see existing weeks for examples).
 	"""
 	def __init__(self, game: "Game", difficulty: DIFFICULTY) -> None:
-		super().__init__(game, self.get_layer_names(), self.get_camera_names())
+		super().__init__(game)
 
 		self.difficulty = difficulty
 
@@ -52,14 +52,6 @@ class InGameScene(MusicBeatScene):
 	@staticmethod
 	def get_song() -> int:
 		raise NotImplementedError("Subclass this!")
-
-	@staticmethod
-	def get_camera_names() -> t.Sequence[str]:
-		return ()
-
-	@staticmethod
-	def get_layer_names() -> t.Sequence[str]:
-		return ()
 
 	def create_note_handler(self) -> "AbstractNoteHandler":
 		raise NotImplementedError("Subclass this!")

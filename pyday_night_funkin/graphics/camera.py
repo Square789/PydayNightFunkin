@@ -60,8 +60,8 @@ class Camera:
 		"""
 		# This may not respect zoom. Or, it may, and I am completely
 		# forgetting something.
-		self._x = where[0] - CENTER_X
-		self._y = where[1] - CENTER_Y
+		self._x = where[0] - CENTER_X # (self._width / 2)
+		self._y = where[1] - CENTER_Y # (self._height / 2)
 		self._update_ubo()
 
 	def set_follow_target(self, tgt: t.Optional[Vec2], lerp: float = 1.0):

@@ -14,7 +14,7 @@ from pyday_night_funkin.characters import Boyfriend, DaddyDearest, Girlfriend
 from pyday_night_funkin.enums import GAME_STATE
 from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.scenes import InGameScene
-from pyday_night_funkin.note import RATING, NOTE_TYPE
+from pyday_night_funkin.note import RATING, NOTE_TYPE, SUSTAIN_STAGE
 from pyday_night_funkin.note_handler import AbstractNoteHandler, NoteHandler
 from pyday_night_funkin.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
 from pyday_night_funkin.utils import lerp
@@ -34,14 +34,14 @@ class Week1Level(InGameScene):
 		return ("main", "ui")
 
 	@staticmethod
-	def get_layer_names() -> t.Sequence[str]:
+	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		return (
 			"background0", "background1", "girlfriend", "stage", "curtains",
-			"ui0", "ui1", "ui2", "ui3"
+			("ui_combo", True), "ui0", "ui1", "ui2"
 		)
-		# ui0: static arrows, countdown sprite, health bar jpeg
-		# ui1: notes, health bar bars
-		# ui2: health bar icons
+		# ui0: health bar jpeg, countdown sprite
+		# ui1: health bar bars, static arrows
+		# ui2: health bar icons, note arrows
 
 	def create_note_handler(self) -> AbstractNoteHandler:
 		return NoteHandler(self, "ui1", "ui")
@@ -183,54 +183,56 @@ class Week1Level(InGameScene):
 				self.static_arrows[1][type_].play_animation("confirm")
 				self.bf.hold_timer = 0.0
 				self.bf.play_animation(f"sing_note_{type_.name.lower()}")
-				self.combo += 1
 
-				x = int(CNST.GAME_WIDTH * .55)
+				if player_res[type_].sustain_stage is SUSTAIN_STAGE.NONE:
+					self.combo += 1
 
-				combo_sprite = self.create_sprite(
-					"ui2",
-					"ui",
-					image = self.note_rating_textures[player_res[type_].rating],
-				)
-				combo_sprite.screen_center(CNST.GAME_DIMENSIONS)
-				combo_sprite.x = x - 40
-				combo_sprite.y -= 60
-				combo_sprite.scale = 0.7
+					x = int(CNST.GAME_WIDTH * .55)
 
-				self.start_movement(combo_sprite, (0, -150), (0, 600))
-
-				self.start_tween(
-					combo_sprite,
-					tween_func = out_cubic,
-					attributes = {TWEEN_ATTR.OPACITY: 0},
-					duration = 0.2,
-					on_complete = (
-						lambda combo_sprite = combo_sprite: self.remove_sprite(combo_sprite)
-					),
-					start_delay = self.conductor.beat_duration * 0.001,
-				)
-	
-				for i, digit in enumerate(f"{self.combo:>03}"):
-					sprite = self.create_sprite(
-						"ui2", "ui", image = self.number_textures[int(digit)]
+					combo_sprite = self.create_sprite(
+						"ui_combo",
+						"ui",
+						image = self.note_rating_textures[player_res[type_].rating],
 					)
-					sprite.screen_center(CNST.GAME_DIMENSIONS)
-					sprite.x = x + (43 * i) - 90
-					sprite.y += 80
-					sprite.scale = .5
+					combo_sprite.screen_center(CNST.GAME_DIMENSIONS)
+					combo_sprite.x = x - 40
+					combo_sprite.y -= 60
+					combo_sprite.scale = 0.7
 
-					self.start_movement(
-						sprite, (randint(-5, 5), -randint(140, 160)), (0, randint(200, 300))
-					)
+					self.start_movement(combo_sprite, (0, -150), (0, 600))
 
 					self.start_tween(
-						sprite,
-						tween_func = linear,
+						combo_sprite,
+						tween_func = out_cubic,
 						attributes = {TWEEN_ATTR.OPACITY: 0},
 						duration = 0.2,
-						on_complete = lambda sprite = sprite: self.remove_sprite(sprite),
-						start_delay = self.conductor.beat_duration * 0.002,
+						on_complete = (
+							lambda combo_sprite = combo_sprite: self.remove_sprite(combo_sprite)
+						),
+						start_delay = self.conductor.beat_duration * 0.001,
 					)
+		
+					for i, digit in enumerate(f"{self.combo:>03}"):
+						sprite = self.create_sprite(
+							"ui_combo", "ui", image = self.number_textures[int(digit)]
+						)
+						sprite.screen_center(CNST.GAME_DIMENSIONS)
+						sprite.x = x + (43 * i) - 90
+						sprite.y += 80
+						sprite.scale = .5
+
+						self.start_movement(
+							sprite, (randint(-5, 5), -randint(140, 160)), (0, randint(200, 300))
+						)
+
+						self.start_tween(
+							sprite,
+							tween_func = linear,
+							attributes = {TWEEN_ATTR.OPACITY: 0},
+							duration = 0.2,
+							on_complete = lambda sprite = sprite: self.remove_sprite(sprite),
+							start_delay = self.conductor.beat_duration * 0.002,
+						)
 
 		self.bf.update_character(dt, bool(pressed))
 

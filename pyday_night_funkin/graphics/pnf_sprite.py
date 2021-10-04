@@ -146,6 +146,10 @@ uniform sampler2D sprite_texture;
 
 
 void main() {
+	// if (vertex_colors.a < 0.01) {
+	// 	discard;
+	// }
+
 	final_colors = texture(sprite_texture, texture_coords.xy) * vertex_colors;
 }
 """
@@ -321,30 +325,13 @@ class PNFSprite(sprite.Sprite):
 		self._vertex_list = self._batch.add_indexed(
 			4, gl.GL_TRIANGLES, self._group, [0, 1, 2, 0, 2, 3],
 			"position2f/" + usage,
-			(
-				"colors4Bn/" + usage,
-				(*self._rgb, int(self._opacity)) * 4
-			),
-			(
-				"translate2f/" + usage,
-				(self._x, self._y) * 4
-			),
-			(
-				"scale2f/" + usage,
-				(self._scale * self._scale_x, self._scale * self._scale_y) * 4
-			),
-			(
-				"rotation1f/" + usage,
-				(self._rotation,) * 4
-			),
-			(
-				"scroll_factor2f/" + usage,
-				self._scroll_factor * 4
-			),
-			(
-				"tex_coords3f/" + usage,
-				self._texture.tex_coords
-			),
+			("colors4Bn/" + usage, (*self._rgb, int(self._opacity)) * 4),
+			("translate2f/" + usage, (self._x, self._y) * 4),
+			("scale2f/" + usage,
+				(self._scale * self._scale_x, self._scale * self._scale_y) * 4),
+			("rotation1f/" + usage, (self._rotation, ) * 4),
+			("scroll_factor2f/" + usage, self._scroll_factor * 4),
+			("tex_coords3f/" + usage, self._texture.tex_coords),
 		)
 		self._update_position()
 
@@ -503,9 +490,8 @@ class PNFSprite(sprite.Sprite):
 			y1 = -img.anchor_y + img.height
 			x2 = -img.anchor_x + img.width
 			y2 = -img.anchor_y
-			verticies = (x1, y1, x2, y1, x2, y2, x1, y2)
 
-			if not self._subpixel:
-				self._vertex_list.position[:] = tuple(map(int, verticies))
+			if self._subpixel:
+				self._vertex_list.position[:] = (x1, y1, x2, y1, x2, y2, x1, y2)
 			else:
-				self._vertex_list.position[:] = verticies
+				self._vertex_list.position[:] = tuple(map(int, (x1, y1, x2, y1, x2, y2, x1, y2)))

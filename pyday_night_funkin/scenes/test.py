@@ -1,8 +1,7 @@
 
 import typing as t
 
-from loguru import logger
-from pyglet.window.key import B, E, Q, W, A, S, D, I, M, R, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
+from pyglet.window.key import E, Q, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 
 from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.characters import Boyfriend
@@ -83,9 +82,3 @@ class TestScene(BaseScene):
 			self.cameras["main"].zoom += .01
 		if self.game.pyglet_ksh[X]:
 			self.cameras["main"].zoom -= .01
-
-		if self.game.pyglet_ksh[R]:
-			logger.debug("hello")
-
-		if self.game.pyglet_ksh[B]:
-			self.batch._dump_draw_list()
