@@ -37,14 +37,13 @@ class Week1Level(InGameScene):
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		return (
 			"background0", "background1", "girlfriend", "stage", "curtains",
-			("ui_combo", True), "ui0", "ui1", "ui2"
+			("ui_combo", True), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
 		)
-		# ui0: health bar jpeg, countdown sprite
-		# ui1: health bar bars, static arrows
-		# ui2: health bar icons, note arrows
+		# TODO: change health bar, creating 3 layers for it like this seems really wrong
+		# countdown sprites on ui0
 
 	def create_note_handler(self) -> AbstractNoteHandler:
-		return NoteHandler(self, "ui1", "ui")
+		return NoteHandler(self, "ui_notes", "ui")
 
 	def load_resources(self) -> None:
 		"""
@@ -87,7 +86,7 @@ class Week1Level(InGameScene):
 			arrow_width = note_sprites[atlas_names[0]][0].texture.width
 			x = 50 + (CNST.GAME_WIDTH // 2) * i + (note_type.get_order() * arrow_width * .7)
 			y = CNST.STATIC_ARROW_Y
-			arrow_sprite = self.create_sprite("ui0", "ui", x = x, y = y, image = None)
+			arrow_sprite = self.create_sprite("ui_arrows", "ui", x = x, y = y, image = None)
 			for anim_name, atlas_name in zip(("static", "pressed", "confirm"), atlas_names):
 				arrow_sprite.add_animation(anim_name, note_sprites[atlas_name], 24, False)
 			arrow_sprite.scale = .7
@@ -176,7 +175,8 @@ class Week1Level(InGameScene):
 					self.combo = 0
 			# Note was pressed and player hit
 			else:
-				player_res[type_].on_hit(
+				note = player_res[type_]
+				note.on_hit(
 					self.conductor.song_position,
 					self.game.config.safe_window,
 				)
@@ -184,57 +184,59 @@ class Week1Level(InGameScene):
 				self.bf.hold_timer = 0.0
 				self.bf.play_animation(f"sing_note_{type_.name.lower()}")
 
-				if player_res[type_].sustain_stage is SUSTAIN_STAGE.NONE:
+				if note.sustain_stage is SUSTAIN_STAGE.NONE:
 					self.combo += 1
-
-					x = int(CNST.GAME_WIDTH * .55)
-
-					combo_sprite = self.create_sprite(
-						"ui_combo",
-						"ui",
-						image = self.note_rating_textures[player_res[type_].rating],
-					)
-					combo_sprite.screen_center(CNST.GAME_DIMENSIONS)
-					combo_sprite.x = x - 40
-					combo_sprite.y -= 60
-					combo_sprite.scale = 0.7
-
-					self.start_movement(combo_sprite, (0, -150), (0, 600))
-
-					self.start_tween(
-						combo_sprite,
-						tween_func = out_cubic,
-						attributes = {TWEEN_ATTR.OPACITY: 0},
-						duration = 0.2,
-						on_complete = (
-							lambda combo_sprite = combo_sprite: self.remove_sprite(combo_sprite)
-						),
-						start_delay = self.conductor.beat_duration * 0.001,
-					)
-		
-					for i, digit in enumerate(f"{self.combo:>03}"):
-						sprite = self.create_sprite(
-							"ui_combo", "ui", image = self.number_textures[int(digit)]
-						)
-						sprite.screen_center(CNST.GAME_DIMENSIONS)
-						sprite.x = x + (43 * i) - 90
-						sprite.y += 80
-						sprite.scale = .5
-
-						self.start_movement(
-							sprite, (randint(-5, 5), -randint(140, 160)), (0, randint(200, 300))
-						)
-
-						self.start_tween(
-							sprite,
-							tween_func = linear,
-							attributes = {TWEEN_ATTR.OPACITY: 0},
-							duration = 0.2,
-							on_complete = lambda sprite = sprite: self.remove_sprite(sprite),
-							start_delay = self.conductor.beat_duration * 0.002,
-						)
+					self.combo_popup(note.rating)
 
 		self.bf.update_character(dt, bool(pressed))
+
+	def combo_popup(self, rating: RATING) -> None:
+		x = int(CNST.GAME_WIDTH * .55)
+
+		combo_sprite = self.create_sprite(
+			"ui_combo",
+			"ui",
+			image = self.note_rating_textures[rating],
+		)
+		combo_sprite.screen_center(CNST.GAME_DIMENSIONS)
+		combo_sprite.x = x - 40
+		combo_sprite.y -= 60
+		combo_sprite.scale = 0.7
+
+		self.start_movement(combo_sprite, (0, -150), (0, 600))
+
+		self.start_tween(
+			combo_sprite,
+			tween_func = out_cubic,
+			attributes = {TWEEN_ATTR.OPACITY: 0},
+			duration = 0.2,
+			on_complete = (
+				lambda combo_sprite = combo_sprite: self.remove_sprite(combo_sprite)
+			),
+			start_delay = self.conductor.beat_duration * 0.001,
+		)
+
+		for i, digit in enumerate(f"{self.combo:>03}"):
+			sprite = self.create_sprite(
+				"ui_combo", "ui", image = self.number_textures[int(digit)]
+			)
+			sprite.screen_center(CNST.GAME_DIMENSIONS)
+			sprite.x = x + (43 * i) - 90
+			sprite.y += 80
+			sprite.scale = .5
+
+			self.start_movement(
+				sprite, (randint(-5, 5), -randint(140, 160)), (0, randint(200, 300))
+			)
+
+			self.start_tween(
+				sprite,
+				tween_func = linear,
+				attributes = {TWEEN_ATTR.OPACITY: 0},
+				duration = 0.2,
+				on_complete = lambda sprite = sprite: self.remove_sprite(sprite),
+				start_delay = self.conductor.beat_duration * 0.002,
+			)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)

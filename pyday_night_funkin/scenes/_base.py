@@ -342,7 +342,6 @@ class BaseScene():
 		pass
 
 	def update(self, dt: float) -> None:
-
 		if self.game.debug:
 			if self.game.pyglet_ksh[R]:
 				logger.debug("hello")
