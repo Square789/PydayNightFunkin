@@ -88,9 +88,9 @@ class Week1Level(InGameScene):
 			y = CNST.STATIC_ARROW_Y
 			arrow_sprite = self.create_sprite("ui_arrows", "ui", x = x, y = y, image = None)
 			for anim_name, atlas_name in zip(("static", "pressed", "confirm"), atlas_names):
-				arrow_sprite.add_animation(anim_name, note_sprites[atlas_name], 24, False)
+				arrow_sprite.animation.add(anim_name, note_sprites[atlas_name], 24, False)
 			arrow_sprite.scale = .7
-			arrow_sprite.play_animation("static")
+			arrow_sprite.animation.play("static")
 			self.static_arrows[i][note_type] = arrow_sprite
 
 		self.health_bar = HealthBar(self, "ui", "dad", "bf", ("ui0", "ui1", "ui2"))
@@ -120,9 +120,12 @@ class Week1Level(InGameScene):
 		self.number_textures = [load_asset(getattr(ASSETS.IMG, f"NUM{i}")) for i in range(10)]
 
 	def ready(self) -> None:
-		self.gf.play_animation("idle_bop")
-		self.bf.play_animation("idle_bop")
-		self.opponent.play_animation("idle_bop")
+		self.gf.animation.play("idle_bop")
+		self.bf.animation.play("idle_bop")
+		self.opponent.animation.play("idle_bop")
+		# Force update in a really ugly manner here since get_midpoint
+		# would be weird otherwise
+		self.opponent.update_sprite(0.0)
 
 		# No idea if this is a good choice but the dict accesses seem weird and
 		# it's not like there will be more than these cameras
@@ -150,28 +153,28 @@ class Week1Level(InGameScene):
 		if opponent_hit:
 			op_note = opponent_hit[-1]
 			self.opponent.hold_timer = 0.0
-			self.opponent.play_animation(f"sing_note_{op_note.type.name.lower()}", True)
+			self.opponent.animation.play(f"sing_note_{op_note.type.name.lower()}", True)
 			self.zoom_cams = True
 
 		if player_missed:
 			fail_note = player_missed[-1]
-			self.bf.play_animation(f"miss_note_{fail_note.type.name.lower()}", True)
+			self.bf.animation.play(f"miss_note_{fail_note.type.name.lower()}", True)
 
 		for type_ in NOTE_TYPE:
 			# Note not being held, make the arrow static
 			if type_ not in player_res:
-				if self.static_arrows[1][type_].current_animation != "static":
-					self.static_arrows[1][type_].play_animation("static")
+				if self.static_arrows[1][type_].animation.current_name != "static":
+					self.static_arrows[1][type_].animation.play("static")
 			# Note was pressed but player missed
 			elif player_res[type_] is None:
 				if (
-					self.static_arrows[1][type_].current_animation is not None and
-					self.static_arrows[1][type_].current_animation == "static"
+					self.static_arrows[1][type_].animation.current is not None and
+					self.static_arrows[1][type_].animation.current_name == "static"
 				):
-					self.static_arrows[1][type_].play_animation("pressed")
+					self.static_arrows[1][type_].animation.play("pressed")
 				if pressed[type_]:
 					# Just pressed
-					self.bf.play_animation(f"miss_note_{type_.name.lower()}", True)
+					self.bf.animation.play(f"miss_note_{type_.name.lower()}", True)
 					self.combo = 0
 			# Note was pressed and player hit
 			else:
@@ -180,15 +183,15 @@ class Week1Level(InGameScene):
 					self.conductor.song_position,
 					self.game.config.safe_window,
 				)
-				self.static_arrows[1][type_].play_animation("confirm")
+				self.static_arrows[1][type_].animation.play("confirm")
 				self.bf.hold_timer = 0.0
-				self.bf.play_animation(f"sing_note_{type_.name.lower()}")
+				self.bf.animation.play(f"sing_note_{type_.name.lower()}")
 
 				if note.sustain_stage is SUSTAIN_STAGE.NONE:
 					self.combo += 1
 					self.combo_popup(note.rating)
 
-		self.bf.update_character(dt, bool(pressed))
+		self.bf.dont_idle = bool(pressed)
 
 	def combo_popup(self, rating: RATING) -> None:
 		x = int(CNST.GAME_WIDTH * .55)
@@ -203,10 +206,9 @@ class Week1Level(InGameScene):
 		combo_sprite.y -= 60
 		combo_sprite.scale = 0.7
 
-		self.start_movement(combo_sprite, (0, -150), (0, 600))
+		combo_sprite.start_movement((0, -150), (0, 600))
 
-		self.start_tween(
-			combo_sprite,
+		combo_sprite.start_tween(
 			tween_func = out_cubic,
 			attributes = {TWEEN_ATTR.OPACITY: 0},
 			duration = 0.2,
@@ -225,12 +227,11 @@ class Week1Level(InGameScene):
 			sprite.y += 80
 			sprite.scale = .5
 
-			self.start_movement(
-				sprite, (randint(-5, 5), -randint(140, 160)), (0, randint(200, 300))
+			sprite.start_movement(
+				(randint(-5, 5), -randint(140, 160)), (0, randint(200, 300))
 			)
 
-			self.start_tween(
-				sprite,
+			sprite.start_tween(
 				tween_func = linear,
 				attributes = {TWEEN_ATTR.OPACITY: 0},
 				duration = 0.2,
@@ -240,9 +241,6 @@ class Week1Level(InGameScene):
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
-		# bf is handled in `process_input`
-		self.gf.update_character(dt)
-		self.opponent.update_character(dt)
 
 		# Camera follow code with crap indentation
 		if self.song_data is not None:
@@ -269,10 +267,10 @@ class Week1Level(InGameScene):
 			self.ui_cam.zoom += 0.03
 
 		if (
-			self.bf.current_animation is not None and
-			not self.bf.current_animation.startswith("sing")
+			self.bf.animation.current is not None and
+			not self.bf.animation.current_name.startswith("sing")
 		):
-			self.bf.play_animation("idle_bop")
+			self.bf.animation.play("idle_bop")
 
 	def countdown(self, dt: float) -> None:
 		if self._countdown_stage == 4:
@@ -291,8 +289,7 @@ class Week1Level(InGameScene):
 					image = tex,
 				)
 
-				self.start_tween(
-					sprite,
+				sprite.start_tween(
 					in_out_cubic,
 					{TWEEN_ATTR.OPACITY: 0},
 					self.conductor.beat_duration * 0.001,
@@ -313,7 +310,7 @@ class Bopeebo(Week1Level):
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
 		if self.cur_beat % 8 == 7:
-			self.bf.play_animation("hey")
+			self.bf.animation.play("hey")
 
 class Fresh(Week1Level):
 	@staticmethod

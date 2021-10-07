@@ -1,69 +1,34 @@
 
 import ctypes
+from time import time
 import typing as t
 
 import pyglet.clock
 from pyglet import gl
 from pyglet import graphics
 from pyglet.graphics.shader import Shader, ShaderProgram, UniformBufferObject
-from pyglet.image import AbstractImage, Texture, TextureArrayRegion
-from pyglet.image.animation import Animation
+from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
 from pyglet import sprite
 
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.tweens import TWEEN_ATTR
+from pyday_night_funkin.graphics.pnf_animation import AnimationController, PNFAnimation
 from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.image_loader import FrameInfoTexture
 	from pyday_night_funkin.graphics.camera import Camera
 
 
-class OffsetAnimationFrame():
-	"""
-	Similar to pyglet's AnimationFrame, except it also stores a
-	per-frame offset that should be applied to its receiving sprite's
-	x and y coordinates.
-	"""
-
-	__slots__ = ("image", "duration", "frame_info", "name")
-
-	def __init__(
-		self,
-		image: Texture,
-		duration: float,
-		frame_info: t.Tuple[int, int, int, int],
-	) -> None:
-		self.image = image
-		self.duration = duration
-		self.frame_info = frame_info
-
-	def __repr__(self):
-		return (
-			f"AnimationFrame({self.image}, duration={self.duration}, "
-			f"frame_info={self.frame_info})"
-		)
-
-
-class PNFAnimation(Animation):
-	"""
-	Subclasses the pyglet Animation to add the information whether it
-	should be looped and its offset into it.
-	It sets the last frame's duration to `None` if it should not be looped.
-	"""
-	def __init__(
-		self,
-		frames: t.Sequence[OffsetAnimationFrame],
-		offset: t.Optional[t.Tuple[int, int]],
-		loop: bool = False,
-	):
-		super().__init__(frames)
-
-		self.offset = offset
-		self.loop = loop
-
-		if not loop:
-			self.frames[-1].duration = None
+_TWEEN_ATTR_NAME_MAP = {
+	TWEEN_ATTR.X: "x",
+	TWEEN_ATTR.Y: "y",
+	TWEEN_ATTR.ROTATION: "rotation",
+	TWEEN_ATTR.OPACITY: "opacity",
+	TWEEN_ATTR.SCALE: "scale",
+	TWEEN_ATTR.SCALE_X: "scale_x",
+	TWEEN_ATTR.SCALE_Y: "scale_y",
+}
 
 
 PNF_SPRITE_VERTEX_SRC = """
@@ -227,6 +192,74 @@ class PNFSpriteGroup(sprite.SpriteGroup):
 		self.program.stop()
 
 
+class Movement():
+	__slots__ = ("velocity", "acceleration")
+	
+	def __init__(self, velocity: Vec2, acceleration: Vec2) -> None:
+		self.velocity = velocity
+		self.acceleration = acceleration
+
+	# Dumbed down case of code shamelessly stolen from https://github.com/HaxeFlixel/
+	# flixel/blob/e3c3b30f2f4dfb0486c4b8308d13f5a816d6e5ec/flixel/FlxObject.hx#L738
+	def update(self, dt: float) -> Vec2:
+		acc_x, acc_y = self.acceleration
+		vel_x, vel_y = self.velocity
+
+		vel_delta = 0.5 * acc_x * dt
+		vel_x += vel_delta
+		posx_delta = vel_x * dt
+		vel_x += vel_delta
+
+		vel_delta = 0.5 * acc_y * dt
+		vel_y += vel_delta
+		posy_delta = vel_y * dt
+		vel_y += vel_delta
+
+		self.velocity = Vec2(vel_x, vel_y)
+
+		return Vec2(posx_delta, posy_delta)
+
+class Tween():
+	__slots__ = (
+		"tween_func", "start_time", "stop_time", "duration", "cur_time",
+		"attr_map", "on_complete", "stopped"
+	)
+
+	def __init__(
+		self,
+		tween_func: t.Callable,
+		start_time: float,
+		duration: float,
+		cur_time: float,
+		attr_map: t.Dict[str, t.Tuple[t.Any, t.Any]],
+		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
+	) -> None:
+		self.tween_func = tween_func
+		self.start_time = start_time
+		self.stop_time = start_time + duration
+		self.duration = duration
+		self.cur_time = cur_time
+		self.attr_map = attr_map
+		self.on_complete = on_complete
+
+	def update(self, dt: float) -> t.Dict[str, t.Any]:
+		self.cur_time += dt
+		progress = self.tween_func(
+			(
+				clamp(self.cur_time, self.start_time, self.stop_time) -
+				self.start_time
+			) / self.duration
+		)
+
+		return {
+			attr_name: v_ini + v_diff * progress
+			for attr_name, (v_ini, v_diff) in self.attr_map.items()
+		}
+
+	def is_finished(self) -> bool:
+		return self.cur_time >= self.stop_time
+
+
 class PNFSprite(sprite.Sprite):
 	"""
 	TODO doc
@@ -235,10 +268,11 @@ class PNFSprite(sprite.Sprite):
 	attributes of the standard pyglet Sprite, which may completely
 	break it in any other pyglet releases.
 	"""
+
 	def __init__(
 		self,
 		camera: "Camera",
-		image: t.Optional[t.Union[PNFAnimation, AbstractImage]] = None,
+		image: t.Optional[AbstractImage] = None,
 		x = 0,
 		y = 0,
 		blend_src = gl.GL_SRC_ALPHA,
@@ -251,21 +285,17 @@ class PNFSprite(sprite.Sprite):
 	) -> None:
 		image = CNST.ERROR_TEXTURE if image is None else image
 
-		self._animations: t.Dict[str, PNFAnimation] = {}
-		self._animation_base_box = None
-		self._animation_frame_offset = (0, 0)
-		self._scroll_factor = (1.0, 1.0)
-		self.current_animation: t.Optional[str] = None
-		self.animation_playing = False
+		self.animation = AnimationController()
 		self.camera = camera
+
+		self.movement: t.Optional[Movement] = None
+		self.tweens: t.List[Tween] = []
 
 		self._x = x
 		self._y = y
+		self._scroll_factor = (1.0, 1.0)
 
-		if isinstance(image, PNFAnimation):
-			self._texture = image.frames[0].image.get_texture()
-		else:
-			self._texture = image.get_texture()
+		self._texture = image.get_texture()
 
 		if isinstance(image, TextureArrayRegion):
 			raise NotImplementedError("What's the deal with TextureArrayRegions?")
@@ -281,45 +311,6 @@ class PNFSprite(sprite.Sprite):
 
 		self.image = image
 
-	def _apply_post_animate_offset(self) -> None:
-		"""
-		"Swaps out" the current animation frame offset with the new
-		one. The new one is calculated in this method using the current
-		animation frame, the sprite's scale and the animation base box.
-		"""
-		fix, fiy, fiw, fih = self._animation.frames[self._frame_index].frame_info
-		nx = round(
-			(fix - (self._animation_base_box[0] - fiw) // 2) *
-			self._scale * self._scale_x
-		)
-		ny = round(
-			(fiy - (self._animation_base_box[1] - fih) // 2) *
-			self._scale * self._scale_y
-		)
-		new_frame_offset = (nx, ny)
-		self.x += self._animation_frame_offset[0] - nx
-		self.y += self._animation_frame_offset[1] - ny
-		self._animation_frame_offset = new_frame_offset
-
-	def _set_animation_base_box(
-		self,
-		what: t.Union[PNFAnimation, OffsetAnimationFrame, t.Tuple[int, int]],
-	) -> None:
-		if not isinstance(what, tuple):
-			if not isinstance(what, OffsetAnimationFrame):
-				if not isinstance(what, PNFAnimation):
-					raise TypeError("Invalid type.")
-				frame = what.frames[0]
-			else:
-				frame = what
-			new_bb = (
-				frame.frame_info[2] - frame.frame_info[0],
-				frame.frame_info[3] - frame.frame_info[1],
-			)
-		else:
-			new_bb = what
-		self._animation_base_box = new_bb
-
 	def _create_vertex_list(self):
 		usage = self._usage
 		self._vertex_list = self._batch.add_indexed(
@@ -334,35 +325,6 @@ class PNFSprite(sprite.Sprite):
 			("tex_coords3f/" + usage, self._texture.tex_coords),
 		)
 		self._update_position()
-
-	def add_animation(
-		self,
-		name: str,
-		anim_data: t.Union[PNFAnimation, t.Sequence["FrameInfoTexture"]],
-		fps: float = 24.0,
-		loop: bool = False,
-		offset: t.Optional[t.Tuple[int, int]] = None,
-	) -> None:
-		if fps <= 0:
-			raise ValueError("FPS can't be equal to or less than 0!")
-
-		spf = 1.0 / fps
-		if isinstance(anim_data, PNFAnimation):
-			self._animations[name] = anim_data
-		else:
-			frames = [
-				OffsetAnimationFrame(tex.texture, spf, tex.frame_info)
-				for tex in anim_data
-			]
-			self._animations[name] = PNFAnimation(frames, offset, loop)
-		if self._animation_base_box is None:
-			self._set_animation_base_box(self._animations[name])
-
-	def play_animation(self, name: str, force: bool = False) -> None:
-		if self.current_animation == name and self.animation_playing and not force:
-			return
-		self.image = self._animations[name]
-		self.current_animation = name
 
 	def screen_center(self, screen_dims: t.Tuple[int, int]) -> None:
 		"""
@@ -384,6 +346,98 @@ class PNFSprite(sprite.Sprite):
 			self._y + self._texture.height * self._scale_y * self._scale * 0.5,
 		)
 
+	def start_tween(
+		self,
+		tween_func: t.Callable[[float], float],
+		attributes: t.Dict[TWEEN_ATTR, t.Any],
+		duration: float,
+		on_complete: t.Callable[[], t.Any] = None,
+		start_delay: float = 0.0,
+	) -> Tween:
+		"""
+		# TODO write some very cool doc
+		"""
+		if start_delay < 0.0:
+			raise ValueError("Can't start a tween in the past!")
+
+		if start_delay:
+			pyglet.clock.schedule_once(
+				lambda _: self.start_tween(tween_func, attributes, duration, on_complete),
+				start_delay,
+			)
+			return
+
+		# 0: initial value; 1: difference
+		attr_map = {}
+		for attribute, target_value in attributes.items():
+			attribute_name = _TWEEN_ATTR_NAME_MAP[attribute]
+			initial_value = getattr(self, attribute_name)
+			attr_map[attribute_name] = (initial_value, target_value - initial_value)
+
+		start_time = time()
+
+		t = Tween(
+			tween_func,
+			start_time = start_time,
+			duration = duration,
+			cur_time = start_time,
+			attr_map = attr_map,
+			on_complete = on_complete,
+		)
+
+		self.tweens.append(t)
+
+		return t
+
+	def start_movement(
+		self,
+		velocity: t.Union[Vec2, t.Tuple[float, float]],
+		acceleration: t.Optional[t.Union[Vec2, t.Tuple[float, float]]] = None,
+	) -> None:
+		if not isinstance(velocity, Vec2):
+			velocity = Vec2(*velocity)
+
+		if acceleration is not None and not isinstance(acceleration, Vec2):
+			acceleration = Vec2(*acceleration)
+
+		self.movement = Movement(velocity, acceleration)
+
+	def stop_movement(self) -> None:
+		self.movement = None
+
+	# Unfortunately, the name `update` clashes with sprite, so have
+	# this as a certified code smell
+	def update_sprite(self, dt: float) -> None:
+		self.animation.update(dt)
+		if (new_frame := self.animation.query_new_frame()) is not None:
+			self._set_texture(new_frame)
+
+		if (new_offset := self.animation.query_new_offset()) is not None:
+			self.update(
+				x = self._x + (new_offset[0] * self._scale * self._scale_x),
+				y = self._y + (new_offset[1] * self._scale * self._scale_y),
+			)
+
+		if self.movement is not None:
+			dx, dy = self.movement.update(dt)
+			self.update(x = self.x + dx, y = self.y + dy)
+
+		finished_tweens = []
+		for tween in self.tweens:
+			if tween.is_finished():
+				finished_tweens.append(tween)
+			else:
+				for attr, v in tween.update(dt).items():
+					setattr(self, attr, v)
+
+		for tween in finished_tweens:
+			if tween.on_complete is not None:
+				tween.on_complete()
+			try:
+				self.tweens.remove(tween)
+			except ValueError:
+				pass
+
 	@property
 	def scroll_factor(self) -> t.Tuple[float, float]:
 		return self._scroll_factor
@@ -401,64 +455,22 @@ class PNFSprite(sprite.Sprite):
 
 	@image.setter
 	def image(self, image: t.Union[PNFAnimation, AbstractImage]) -> None:
-		if self._animation is not None:
-			pyglet.clock.unschedule(self._animate)
-			# Remove the current animation frame's offset (would've been done by self._animate)
-			self._x += self._animation_frame_offset[0]
-			self._y += self._animation_frame_offset[1]
-			self._animation_frame_offset = (0, 0)
-			# Remove the animation's general offset
-			if self._animation.offset is not None:
-				self._x += self._animation.offset[0]
-				self._y += self._animation.offset[1]
-			self._animation = None
-			self.animation_playing = False
-			self.current_animation = None
-			self._update_position()
-
 		if isinstance(image, PNFAnimation):
-			self._animation = image
-			self.animation_playing = True
-			self._frame_index = 0
-			# Apply the animation's general offset
-			if self._animation.offset is not None:
-				self.x -= self._animation.offset[0]
-				self.y -= self._animation.offset[1]
-			# Set first frame and apply its offset
-			if self._animation.offset is not None:
-				self._set_animation_base_box(self._animation)
-			self._set_texture(image.frames[0].image.get_texture())
-			self._apply_post_animate_offset()
-			self._next_dt = image.frames[0].duration
-			if len(image.frames) == 1:
-				self._next_dt = None
-			if self._next_dt is not None:
-				pyglet.clock.schedule_once(self._animate, self._next_dt)
-		else:
-			self._set_texture(image.get_texture())
+			raise RuntimeError(
+				"Please play animations via the sprite's animation controller: "
+				"`sprite.animation.play()`"
+			)
 
-	# === Below methods are largely copy-pasted from the superclass sprite === #
+		self.animation.stop()
+		self._set_texture(image.get_texture())
 
 	def _animate(self, dt: float) -> None:
-		self._frame_index += 1
-		if self._frame_index >= len(self._animation.frames):
-			self._frame_index = 0
-			self.dispatch_event('on_animation_end')
-			if self._vertex_list is None:
-				return # Deleted in event handler.
+		raise RuntimeError(
+			"For PNFSprites and its subclasses, the animation controller must "
+			"be used instead of pyglet's clock-based animation!"
+		)
 
-		frame = self._animation.frames[self._frame_index]
-		self._set_texture(frame.image.get_texture())
-
-		if frame.duration is not None:
-			duration = frame.duration - (self._next_dt - dt)
-			duration = clamp(duration, 0, frame.duration)
-			pyglet.clock.schedule_once(self._animate, duration)
-			self._next_dt = duration
-		else:
-			self.dispatch_event('on_animation_end')
-			self.animation_playing = False
-		self._apply_post_animate_offset()
+	# === Below methods are largely copy-pasted from the superclass sprite === #
 
 	def _set_texture(self, texture):
 		prev_h, prev_w = self._texture.height, self._texture.width
@@ -474,7 +486,7 @@ class PNFSprite(sprite.Sprite):
 			self._vertex_list.tex_coords[:] = texture.tex_coords
 		self._texture = texture
 		# NOTE: If not done, screws over vertices if the texture changes
-		# dimension thanks to top left coords; no idea if should be done
+		# dimension thanks to top left coords
 		if prev_h != texture.height or prev_w != texture.width:
 			self._update_position()
 

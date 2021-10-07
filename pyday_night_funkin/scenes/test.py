@@ -14,7 +14,7 @@ if t.TYPE_CHECKING:
 
 class TestScene(BaseScene):
 	def __init__(self, game: "Game") -> None:
-		super().__init__(game, ("ye_olde_layer", ), ("main", ))
+		super().__init__(game)
 
 		self.test_sprite = self.create_sprite("ye_olde_layer", "main", x = 0, y = 0)
 		self.test_sprite.scale = 4
@@ -25,14 +25,21 @@ class TestScene(BaseScene):
 			atlas_names = note_type.get_atlas_names()
 			s = self.create_sprite("ye_olde_layer", "main", x = 300, y = 50 + i*200)
 			for anim_name, atlas_name in zip(("static", "pressed", "confirm"), atlas_names):
-				s.add_animation(anim_name, note_sprites[atlas_name], 24, False)
+				s.animation.add(anim_name, note_sprites[atlas_name], 24, False)
 			s.scale = 1.25 - i * .25
-			s.play_animation("static")
+			s.animation.play("static")
 			self.arrows.append(s)
 
 		self.bf = self.create_sprite("ye_olde_layer", "main", Boyfriend, scene = None, x = 770, y = 250)
-		self.bf.asdfdebug = True
-		self.bf.play_animation("idle_bop")
+		self.bf.animation.play("idle_bop")
+
+	@staticmethod
+	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
+		return ("ye_olde_layer", )
+
+	@staticmethod
+	def get_camera_names() -> t.Sequence[str]:
+		return ("main", )
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
@@ -50,25 +57,15 @@ class TestScene(BaseScene):
 			self.test_sprite.x += 1
 
 		if self.game.pyglet_ksh[M]:
-			self.bf.play_animation("miss_note_down")
+			self.bf.animation.play("miss_note_down")
 		if self.game.pyglet_ksh[I]:
-			self.bf.play_animation("idle_bop")
-
-		if self.game.pyglet_ksh[Q]:
-			print(self.cameras["main"].ubo, self.cameras["main"].ubo.view._fields_)
-			print(
-				self.cameras["main"].ubo.view.zoom,
-				self.cameras["main"].ubo.view.deviance[0],
-				self.cameras["main"].ubo.view.deviance[1],
-				sep = " "
-			)
-			print(self.cameras["main"].ubo.read())
+			self.bf.animation.play("idle_bop")
 
 		confirm = self.game.pyglet_ksh[E]
 		for k, i in ((LEFT, 0), (DOWN, 1), (UP, 2), (RIGHT, 3)):
 			a = ("confirm" if confirm else "pressed") if self.game.pyglet_ksh[k] else "static"
-			if self.arrows[i].current_animation != a:
-				self.arrows[i].play_animation(a)
+			if self.arrows[i].animation.current_name != a:
+				self.arrows[i].animation.play(a)
 
 		if self.game.pyglet_ksh[LEFT]:
 			self.cameras["main"].x -= 10

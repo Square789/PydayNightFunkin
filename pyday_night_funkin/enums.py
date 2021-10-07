@@ -26,3 +26,10 @@ class GAME_STATE(IntEnum):
 	COUNTDOWN = 2
 	PLAYING = 3
 	END_DIALOGUE = 4
+
+
+class ANIMATION_TAG(IntEnum):
+	IDLE = 0
+	SING = 1
+	MISS = 2
+	SPECIAL = 3

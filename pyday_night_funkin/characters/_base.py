@@ -18,12 +18,11 @@ class Character(PNFSprite):
 
 		self.hold_timer = 0.0
 
-	# Unfortunately, the name `update` clashes with sprite, so have
-	# this as a certified code smell
-	def update_character(self, dt: float) -> None:
-		if self.current_animation.startswith("sing"):
+	def update_sprite(self, dt: float) -> None:
+		super().update_sprite(dt)
+		if self.animation.current is not None and self.animation.current_name.startswith("sing"):
 			self.hold_timer += dt
 
 		if self.hold_timer >= self.hold_timeout * self.scene.conductor.step_duration * 0.001:
 			self.hold_timer = 0.0
-			self.play_animation("idle_bop")
+			self.animation.play("idle_bop")

@@ -11,4 +11,4 @@ class Girlfriend(Character):
 	def __init__(self, scene: "MusicBeatScene", *args, **kwargs) -> None:
 		super().__init__(scene, *args, **kwargs)
 		anims = load_asset(ASSETS.XML.GIRLFRIEND)
-		self.add_animation("idle_bop", anims["GF Dancing Beat"], 24, True)
+		self.animation.add("idle_bop", anims["GF Dancing Beat"], 24, True)
