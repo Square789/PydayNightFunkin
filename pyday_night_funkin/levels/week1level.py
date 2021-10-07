@@ -9,13 +9,13 @@ import pyglet.clock
 from pyglet.math import Vec2
 
 from pyday_night_funkin.asset_system import ASSETS, load_asset
-import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.characters import Boyfriend, DaddyDearest, Girlfriend
-from pyday_night_funkin.enums import GAME_STATE
+import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.enums import ANIMATION_TAG, GAME_STATE
 from pyday_night_funkin.health_bar import HealthBar
-from pyday_night_funkin.scenes import InGameScene
 from pyday_night_funkin.note import RATING, NOTE_TYPE, SUSTAIN_STAGE
 from pyday_night_funkin.note_handler import AbstractNoteHandler, NoteHandler
+from pyday_night_funkin.scenes import InGameScene
 from pyday_night_funkin.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
 from pyday_night_funkin.utils import lerp
 
@@ -61,16 +61,16 @@ class Week1Level(InGameScene):
 		stagefront.scale = 1.1
 
 		self.gf = self.create_sprite(
-			"girlfriend", "main", Girlfriend, scene = self, x = 400, y = 130, image = None
+			"girlfriend", "main", Girlfriend, scene = self, x = 400, y = 130
 		)
 		self.gf.scroll_factor = (.95, .95)
 
 		self.bf = self.create_sprite(
-			"stage", "main", Boyfriend, scene = self, x = 770, y = 450, image = None
+			"stage", "main", Boyfriend, scene = self, x = 770, y = 450
 		)
 
 		self.opponent = self.create_sprite(
-			"stage", "main", DaddyDearest, scene = self, x = 100, y = 100, image = None
+			"stage", "main", DaddyDearest, scene = self, x = 100, y = 100
 		)
 
 		stagecurtains = self.create_sprite(
@@ -86,9 +86,15 @@ class Week1Level(InGameScene):
 			arrow_width = note_sprites[atlas_names[0]][0].texture.width
 			x = 50 + (CNST.GAME_WIDTH // 2) * i + (note_type.get_order() * arrow_width * .7)
 			y = CNST.STATIC_ARROW_Y
-			arrow_sprite = self.create_sprite("ui_arrows", "ui", x = x, y = y, image = None)
-			for anim_name, atlas_name in zip(("static", "pressed", "confirm"), atlas_names):
-				arrow_sprite.animation.add(anim_name, note_sprites[atlas_name], 24, False)
+			arrow_sprite = self.create_sprite("ui_arrows", "ui", x = x, y = y)
+			for anim_name, atlas_name, tag in zip(
+				("static", "pressed", "confirm"),
+				atlas_names,
+				(ANIMATION_TAG.STATIC, ANIMATION_TAG.PRESSED, ANIMATION_TAG.CONFIRM),
+			):
+				arrow_sprite.animation.add(
+					anim_name, note_sprites[atlas_name], 24, False, tags = (tag, )
+				)
 			arrow_sprite.scale = .7
 			arrow_sprite.animation.play("static")
 			self.static_arrows[i][note_type] = arrow_sprite
@@ -123,9 +129,7 @@ class Week1Level(InGameScene):
 		self.gf.animation.play("idle_bop")
 		self.bf.animation.play("idle_bop")
 		self.opponent.animation.play("idle_bop")
-		# Force update in a really ugly manner here since get_midpoint
-		# would be weird otherwise
-		self.opponent.update_sprite(0.0)
+		self.opponent.check_animation_controller()
 
 		# No idea if this is a good choice but the dict accesses seem weird and
 		# it's not like there will be more than these cameras
@@ -163,29 +167,22 @@ class Week1Level(InGameScene):
 		for type_ in NOTE_TYPE:
 			# Note not being held, make the arrow static
 			if type_ not in player_res:
-				if self.static_arrows[1][type_].animation.current_name != "static":
+				if not self.static_arrows[1][type_].animation.has_tag(ANIMATION_TAG.STATIC):
 					self.static_arrows[1][type_].animation.play("static")
 			# Note was pressed but player missed
 			elif player_res[type_] is None:
-				if (
-					self.static_arrows[1][type_].animation.current is not None and
-					self.static_arrows[1][type_].animation.current_name == "static"
-				):
+				if self.static_arrows[1][type_].animation.has_tag(ANIMATION_TAG.STATIC):
 					self.static_arrows[1][type_].animation.play("pressed")
-				if pressed[type_]:
-					# Just pressed
+				if pressed[type_]:  # Just pressed
 					self.bf.animation.play(f"miss_note_{type_.name.lower()}", True)
 					self.combo = 0
 			# Note was pressed and player hit
 			else:
 				note = player_res[type_]
-				note.on_hit(
-					self.conductor.song_position,
-					self.game.config.safe_window,
-				)
+				note.on_hit(self.conductor.song_position, self.game.config.safe_window)
 				self.static_arrows[1][type_].animation.play("confirm")
 				self.bf.hold_timer = 0.0
-				self.bf.animation.play(f"sing_note_{type_.name.lower()}")
+				self.bf.animation.play(f"sing_note_{type_.name.lower()}", True)
 
 				if note.sustain_stage is SUSTAIN_STAGE.NONE:
 					self.combo += 1
@@ -265,12 +262,6 @@ class Week1Level(InGameScene):
 		if self.zoom_cams and self.main_cam.zoom < 1.35 and self.cur_beat % 4 == 0:
 			self.main_cam.zoom += 0.015
 			self.ui_cam.zoom += 0.03
-
-		if (
-			self.bf.animation.current is not None and
-			not self.bf.animation.current_name.startswith("sing")
-		):
-			self.bf.animation.play("idle_bop")
 
 	def countdown(self, dt: float) -> None:
 		if self._countdown_stage == 4:

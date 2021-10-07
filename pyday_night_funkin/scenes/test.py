@@ -1,23 +1,25 @@
 
 import typing as t
 
-from pyglet.window.key import E, Q, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
+from pyglet.window.key import E, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 
 from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.characters import Boyfriend
 from pyday_night_funkin.note import NOTE_TYPE
-from pyday_night_funkin.scenes._base import BaseScene
+from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
 
 
-class TestScene(BaseScene):
+class TestScene(MusicBeatScene):
 	def __init__(self, game: "Game") -> None:
 		super().__init__(game)
 
 		self.test_sprite = self.create_sprite("ye_olde_layer", "main", x = 0, y = 0)
 		self.test_sprite.scale = 4
+
+		self.conductor.bpm = 123
 
 		note_sprites = load_asset(ASSETS.XML.NOTES)
 		self.arrows = []
@@ -30,7 +32,9 @@ class TestScene(BaseScene):
 			s.animation.play("static")
 			self.arrows.append(s)
 
-		self.bf = self.create_sprite("ye_olde_layer", "main", Boyfriend, scene = None, x = 770, y = 250)
+		self.bf = self.create_sprite(
+			"ye_olde_layer", "main", Boyfriend, scene = self, x = 770, y = 250
+		)
 		self.bf.animation.play("idle_bop")
 
 	@staticmethod
@@ -64,8 +68,7 @@ class TestScene(BaseScene):
 		confirm = self.game.pyglet_ksh[E]
 		for k, i in ((LEFT, 0), (DOWN, 1), (UP, 2), (RIGHT, 3)):
 			a = ("confirm" if confirm else "pressed") if self.game.pyglet_ksh[k] else "static"
-			if self.arrows[i].animation.current_name != a:
-				self.arrows[i].animation.play(a)
+			self.arrows[i].animation.play(a)
 
 		if self.game.pyglet_ksh[LEFT]:
 			self.cameras["main"].x -= 10

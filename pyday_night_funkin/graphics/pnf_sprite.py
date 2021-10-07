@@ -267,6 +267,7 @@ class PNFSprite(sprite.Sprite):
 	WARNING: This subclass meddles with many underscore-prepended
 	attributes of the standard pyglet Sprite, which may completely
 	break it in any other pyglet releases.
+	Also, it breaks pyglet's animation events.
 	"""
 
 	def __init__(
@@ -405,11 +406,14 @@ class PNFSprite(sprite.Sprite):
 	def stop_movement(self) -> None:
 		self.movement = None
 
-	# Unfortunately, the name `update` clashes with sprite, so have
-	# this as a certified code smell
-	def update_sprite(self, dt: float) -> None:
-		self.animation.update(dt)
-		if (new_frame := self.animation.query_new_frame()) is not None:
+	def check_animation_controller(self):
+		"""
+		Tests animation controller for new textures or offsets
+		and applies them to the sprite.
+		Useful for when waiting for `update_sprite` isn't possible during
+		setup which i.e. depends on the first frame of an animation.
+		"""
+		if (new_frame := self.animation.query_new_texture()) is not None:
 			self._set_texture(new_frame)
 
 		if (new_offset := self.animation.query_new_offset()) is not None:
@@ -417,6 +421,12 @@ class PNFSprite(sprite.Sprite):
 				x = self._x + (new_offset[0] * self._scale * self._scale_x),
 				y = self._y + (new_offset[1] * self._scale * self._scale_y),
 			)
+
+	# Unfortunately, the name `update` clashes with sprite, so have
+	# this as a certified code smell
+	def update_sprite(self, dt: float) -> None:
+		self.animation.update(dt)
+		self.check_animation_controller()
 
 		if self.movement is not None:
 			dx, dy = self.movement.update(dt)

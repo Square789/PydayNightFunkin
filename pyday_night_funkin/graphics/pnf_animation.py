@@ -47,7 +47,7 @@ class PNFAnimation(Animation):
 		frames: t.Sequence[OffsetAnimationFrame],
 		loop: bool = False,
 		offset: t.Optional[Vec2] = None,
-		*tags: t.Hashable,
+		tags: t.Sequence[t.Hashable] = (),
 	):
 		"""
 		Creates a PNFAnimation.
@@ -115,7 +115,7 @@ class AnimationController():
 		else:
 			self._new_offset += offset
 
-	def query_new_frame(self) -> t.Optional["Texture"]:
+	def query_new_texture(self) -> t.Optional["Texture"]:
 		r = self._new_texture
 		self._new_texture = None
 		return r
@@ -145,11 +145,38 @@ class AnimationController():
 	def current_frame(self) -> t.Optional[OffsetAnimationFrame]:
 		"""
 		Returns the current animation's frame or `None` if no animation
-		is playing.
+		is set.
 		"""
 		if self.current is None:
 			return None
 		return self.current.frames[self._frame_idx]
+
+	@property
+	def is_set(self) -> bool:
+		"""
+		Shorthand for `animation_controller.current is not None`.
+		Returns whether this controller has an animation set on it.
+		"""
+		return self.current is not None
+
+	@property
+	def loop(self) -> bool:
+		"""
+		Returns whether the current animation loops.
+		False if no animation is set.
+		"""
+		if self.current is None:
+			return False
+		return self.current.loop
+
+	def has_tag(self, tag: t.Hashable) -> bool:
+		"""
+		Returns whether the current animation is tagged with the given
+		value. False if no animation is set.
+		"""
+		if self.current is None:
+			return False
+		return tag in self.current.tags
 
 	def update(self, dt: float) -> None:
 		"""
@@ -185,7 +212,7 @@ class AnimationController():
 		fps: float = 24.0,
 		loop: bool = False,
 		offset: t.Optional[t.Union[t.Tuple[int, int], Vec2]] = None,
-		*tags: t.Hashable,
+		tags: t.Sequence[t.Hashable] = (),
 	) -> None:
 		"""
 		Adds an animation to this AnimationController.
@@ -207,7 +234,7 @@ class AnimationController():
 				OffsetAnimationFrame(tex.texture, spf, tex.frame_info)
 				for tex in anim_data
 			]
-			animation = PNFAnimation(frames, loop, offset, *tags)
+			animation = PNFAnimation(frames, loop, offset, tags)
 
 		self._animations[name] = animation
 		if self._base_box is None:
@@ -218,8 +245,6 @@ class AnimationController():
 			self.current is not None and
 			self.current_name == name and not force
 		):
-			if not self.playing:
-				self.playing = True
 			return
 
 		# Remove old animation and its offsets
@@ -245,7 +270,8 @@ class AnimationController():
 		self._on_new_frame()
 
 	def pause(self) -> None:
-		pass
+		self.playing = False
 
 	def stop(self) -> None:
-		pass
+		if self.current is not None:
+			self._set_offset(self._detach_animation())
