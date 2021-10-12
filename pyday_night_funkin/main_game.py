@@ -28,8 +28,9 @@ class Game():
 		if ogg_decoder not in pyglet.media.get_decoders():
 			pyglet.media.add_decoders(ogg_decoder)
 
-		self.debug = True
 		logger.remove(0)
+
+		self.debug = True
 		if self.debug:
 			self._update_time = 0
 			self._fps = [time() * 1000, 0, "?"]
@@ -45,48 +46,84 @@ class Game():
 				CONTROL.DOWN: [key.DOWN, key.S],
 				CONTROL.UP: [key.UP, key.W],
 				CONTROL.RIGHT: [key.RIGHT, key.D],
+				CONTROL.ENTER: key.ENTER,
 			},
 		)
 
-		self.pyglet_ksh = KeyStateHandler()
-		self.key_handler = KeyHandler(self.config.key_bindings)
 		self.window = PNFWindow(
 			width = GAME_WIDTH,
 			height = GAME_HEIGHT,
 			resizable = True,
 			vsync = False,
 		)
+
+		self.pyglet_ksh = KeyStateHandler()
+		self.key_handler = KeyHandler(self.config.key_bindings)
+
 		self.window.push_handlers(self.key_handler)
 		self.window.push_handlers(self.pyglet_ksh)
+		self.window.push_handlers(on_draw = self.draw)
 
-		self.main_batch = pyglet.graphics.Batch()
-		self.active_scene = None
+		self._scene_stack: t.List[BaseScene] = []
+		self._scenes_to_draw: t.List[BaseScene] = []
+		self._scenes_to_update: t.List[BaseScene] = []
 
-		self.switch_scene(WEEKS[1].levels[1](self, DIFFICULTY.HARD))
-		# self.switch_scene(TestScene(self))
+		self.push_scene(WEEKS[1].levels[1], DIFFICULTY.HARD)
+		# self.push_scene(TestScene)
+
+	def _on_scene_stack_change(self, ignore: t.Optional[BaseScene] = None) -> None:
+		for self_attr, scene_attr, scene_callback in (
+			("_scenes_to_draw", "draw_passthrough", "on_regular_draw_change"),
+			("_scenes_to_update", "update_passthrough", "on_regular_update_change"),
+		):
+			start = len(self._scene_stack) - 1
+			while start >= 0 and getattr(self._scene_stack[start], scene_attr):
+				start -= 1
+
+			prev = getattr(self, self_attr)
+			new = self._scene_stack[start:]
+
+			for scene in prev:
+				if scene is not ignore and scene not in new:
+					getattr(scene, scene_callback)(False)
+
+			for scene in new:
+				if scene is not ignore and scene not in prev:
+					getattr(scene, scene_callback)(True)
+
+			setattr(self, self_attr, new)
 
 	def run(self) -> None:
 		logger.debug(f"Game started (v{__version__}), pyglet version {pyglet.version}")
 		pyglet.clock.schedule_interval(self.update, 1 / 80.0)
 		pyglet.app.run()
 
-	def switch_scene(self, new_scene: BaseScene) -> None:
+	def push_scene(self, new_scene_cls: t.Type[BaseScene], *args, **kwargs) -> None:
 		"""
-		Causes game to switch scene to the new scene.
+		Pushes a new scene onto the scene stack which will then
+		be the topmost scene.
+		The game instance will be passed as the first argument to the
+		scene class, with any args and kwargs following it.
 		"""
-		if self.active_scene is not None:
-			self.active_scene.on_leave()
-			self.window.pop_handlers()
-		self.active_scene = new_scene
-		self.window.push_handlers(
-			on_draw = self.draw,
-			on_resize = self.active_scene.on_window_resize,
-		)
+		new_scene = new_scene_cls(self, *args, **kwargs)
+		self._scene_stack.append(new_scene)
+		self._on_scene_stack_change(new_scene)
+
+	def remove_scene(self, scene: BaseScene) -> None:
+		"""
+		Removes the given scene from anywhere in the scene stack.
+		ValueError is raised if it is not present.
+		"""
+		self._scene_stack.remove(scene)
+		self._on_scene_stack_change()
 
 	def draw(self) -> None:
 		stime = time()
 		self.window.clear()
-		self.active_scene.draw()
+
+		for scene in self._scenes_to_draw:
+			scene.draw()
+
 		if self.debug:
 			self.debug_batch.draw()
 			self._fps_bump()
@@ -96,7 +133,10 @@ class Game():
 
 	def update(self, dt: float) -> None:
 		stime = time()
-		self.active_scene.update(dt)
+
+		for scene in self._scenes_to_update:
+			scene.update(dt)
+
 		self._update_time = (time() - stime) * 1000
 
 	def _fps_bump(self):

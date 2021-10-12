@@ -147,6 +147,7 @@ class Week1Level(InGameScene):
 		)
 
 	def process_input(self, dt: float) -> None:
+		super().process_input(dt)
 		pressed = {
 			type_: self.key_handler.just_pressed(control)
 			for type_, control in self.note_handler.NOTE_TO_CONTROL_MAP.items()
@@ -272,13 +273,8 @@ class Week1Level(InGameScene):
 			sprite_idx = self._countdown_stage
 			tex = self.countdown_textures[sprite_idx]
 			if tex is not None:
-				sprite = self.create_sprite(
-					"ui0",
-					"ui",
-					x = (CNST.GAME_WIDTH - tex.width) // 2,
-					y = (CNST.GAME_HEIGHT - tex.height) // 2,
-					image = tex,
-				)
+				sprite = self.create_sprite("ui0", "ui", image = tex)
+				sprite.screen_center(CNST.GAME_DIMENSIONS)
 
 				sprite.start_tween(
 					in_out_cubic,
@@ -291,7 +287,6 @@ class Week1Level(InGameScene):
 				self.sfx_ring.play(self.countdown_sounds[sprite_idx])
 
 			self._countdown_stage += 1
-
 
 class Bopeebo(Week1Level):
 	@staticmethod

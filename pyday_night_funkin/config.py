@@ -9,6 +9,7 @@ class CONTROL(IntEnum):
 	DOWN = 1
 	UP = 2
 	RIGHT = 3
+	ENTER = 4
 
 
 @dataclass

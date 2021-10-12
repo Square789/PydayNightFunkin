@@ -6,11 +6,12 @@ from pyglet.media import Player
 from pyglet.media.player import PlayerGroup
 
 from pyday_night_funkin.asset_system import load_asset
+from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin.enums import DIFFICULTY, GAME_STATE
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
+from pyday_night_funkin.scenes.pause import PauseScene
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.asset_system import OggVorbisSong
 	from pyday_night_funkin.main_game import Game
 	from pyday_night_funkin.note_handler import AbstractNoteHandler
 
@@ -26,6 +27,8 @@ class InGameScene(MusicBeatScene):
 	"""
 	def __init__(self, game: "Game", difficulty: DIFFICULTY) -> None:
 		super().__init__(game)
+
+		self.draw_passthrough = False
 
 		self.difficulty = difficulty
 
@@ -55,6 +58,12 @@ class InGameScene(MusicBeatScene):
 
 	def create_note_handler(self) -> "AbstractNoteHandler":
 		raise NotImplementedError("Subclass this!")
+
+	def on_regular_update_change(self, new: bool) -> None:
+		if new:
+			self.song_players.play()
+		else:
+			self.song_players.pause()
 
 	def load_resources(self) -> None:
 		"""
@@ -113,9 +122,12 @@ class InGameScene(MusicBeatScene):
 			self.conductor.song_position += dt * 1000
 			discrepancy = self.inst_player.time * 1000 - self.conductor.song_position
 			if abs(discrepancy) > 20 and self._updates_since_desync_warn > 100:
-				logger.warning(f"Conductor out of sync with player by {discrepancy:.4f} ms.")
+				logger.warning(f"Player ahead of conductor by {discrepancy:.4f} ms.")
 				self._updates_since_desync_warn = 0
 			self._updates_since_desync_warn += 1
+
+		if self.key_handler.just_pressed(CONTROL.ENTER):
+			self.game.push_scene(PauseScene)
 
 		self.process_input(dt)
 

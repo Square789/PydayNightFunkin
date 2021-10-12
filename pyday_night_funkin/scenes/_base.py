@@ -4,7 +4,7 @@ from time import time
 import typing as t
 
 from loguru import logger
-from pyglet.graphics import Group
+from pyglet.graphics import Batch, Group
 from pyglet.window.key import B, R
 
 import pyday_night_funkin.constants as CNST
@@ -66,7 +66,10 @@ class BaseScene():
 		:param game: The `Game` the scene belongs to.
 		"""
 		self.game = game
-		self.batch = game.main_batch
+		self.batch = Batch()
+
+		self.draw_passthrough = True
+		self.update_passthrough = False
 
 		self.layers = OrderedDict(
 			(name, Layer(Group(order = i), force_order))
@@ -106,6 +109,33 @@ class BaseScene():
 		only when necessary.
 		"""
 		return ()
+
+	def on_regular_update_change(self, new: bool) -> None:
+		"""
+		Called when the game's scene stack changes and the scene will
+		now either be updated each game tick when it wasn't before
+		(`new` is `True`) or the scene will now not be updated
+		anymore when it was before (`new` is `False`).
+
+		Should be used to stop/pause/start/play things that are not
+		handled in the scene's `update` function.
+
+		! WARNING ! Due to poor programming, the scene may not delete
+		itself here and should not interact with the game at all.
+		"""
+		pass
+
+	def on_regular_draw_change(self, new: bool) -> None:
+		"""
+		Called when the game's scene stack changes and the scene will
+		now either be drawn each game tick when it wasn't before
+		(`new` is `True`) or the scene will now not be drawn
+		anymore when it was before (`new` is `False`).
+
+		! WARNING ! Due to poor programming, the scene may not delete
+		itself here and should not interact with the game at all.
+		"""
+		pass
 
 	def create_sprite(
 		self,
@@ -147,18 +177,6 @@ class BaseScene():
 			self._sprites.remove(sprite)
 			sprite.delete()
 
-	def on_leave(self) -> None:
-		"""
-		Called when scene is about to be switched away from.
-		"""
-		pass
-
-	def on_window_resize(self, new_w: int, new_h: int) -> None:
-		"""
-		Called when the game window is resized.
-		"""
-		pass
-
 	def update(self, dt: float) -> None:
 		if self.game.debug:
 			if self.game.pyglet_ksh[R]:
@@ -171,8 +189,25 @@ class BaseScene():
 		for c in self.cameras.values():
 			c.update(dt)
 
-		for sprite in set(self._sprites):
+		for sprite in self._sprites.copy():
 			sprite.update_sprite(dt)
 
 	def draw(self) -> None:
+		"""
+		Draw the scene.
+		There should be no reason to override this.
+		"""
 		self.batch.draw()
+
+	def destroy(self) -> None:
+		"""
+		Destroy the scene by removing it from its game, deleting its
+		sprites and deleting its graphics batch.
+		"""
+		self.game.remove_scene(self)
+
+		# Copy in case __del__ or delete does weird things
+		for spr in self._sprites.copy():
+			spr.delete()
+
+		del self.batch

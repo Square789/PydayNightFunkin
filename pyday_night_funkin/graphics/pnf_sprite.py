@@ -87,8 +87,8 @@ void main() {
 	gl_Position = \\
 		window.projection * \\
 		window.view * \\
-		m_camera_trans_scale *\\
-		m_camera_pre_trans *\\
+		m_camera_trans_scale * \\
+		m_camera_pre_trans * \\
 		m_trans_scale * \\
 		m_rotation * \\
 		vec4(position, 0, 1) \\
@@ -332,8 +332,8 @@ class PNFSprite(sprite.Sprite):
 		Sets the sprite's world position so that it is centered 
 		on screen. (Ignoring camera and scroll factors)
 		"""
-		self.x = (screen_dims[0] // 2) - self.width
-		self.y = (screen_dims[1] // 2) - self.height
+		self.x = (screen_dims[0] - self.width) // 2
+		self.y = (screen_dims[1] - self.height) // 2
 
 	def get_midpoint(self) -> Vec2:
 		"""
@@ -425,8 +425,9 @@ class PNFSprite(sprite.Sprite):
 	# Unfortunately, the name `update` clashes with sprite, so have
 	# this as a certified code smell
 	def update_sprite(self, dt: float) -> None:
-		self.animation.update(dt)
-		self.check_animation_controller()
+		if self.animation.is_set:
+			self.animation.update(dt)
+			self.check_animation_controller()
 
 		if self.movement is not None:
 			dx, dy = self.movement.update(dt)
