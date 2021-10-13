@@ -32,10 +32,10 @@ class TestScene(MusicBeatScene):
 			s.animation.play("static")
 			self.arrows.append(s)
 
-		self.bf = self.create_sprite(
+		self.boyfriend = self.create_sprite(
 			"ye_olde_layer", "main", Boyfriend, scene = self, x = 770, y = 250
 		)
-		self.bf.animation.play("idle_bop")
+		self.boyfriend.animation.play("idle_bop")
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
@@ -61,9 +61,9 @@ class TestScene(MusicBeatScene):
 			self.test_sprite.x += 1
 
 		if self.game.pyglet_ksh[M]:
-			self.bf.animation.play("miss_note_down")
+			self.boyfriend.animation.play("miss_note_down")
 		if self.game.pyglet_ksh[I]:
-			self.bf.animation.play("idle_bop")
+			self.boyfriend.animation.play("idle_bop")
 
 		confirm = self.game.pyglet_ksh[E]
 		for k, i in ((LEFT, 0), (DOWN, 1), (UP, 2), (RIGHT, 3)):

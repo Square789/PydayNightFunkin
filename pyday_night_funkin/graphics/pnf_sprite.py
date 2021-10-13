@@ -3,7 +3,6 @@ import ctypes
 from time import time
 import typing as t
 
-import pyglet.clock
 from pyglet import gl
 from pyglet import graphics
 from pyglet.graphics.shader import Shader, ShaderProgram, UniformBufferObject
@@ -219,6 +218,7 @@ class Movement():
 
 		return Vec2(posx_delta, posy_delta)
 
+
 class Tween():
 	__slots__ = (
 		"tween_func", "start_time", "stop_time", "duration", "cur_time",
@@ -352,22 +352,11 @@ class PNFSprite(sprite.Sprite):
 		tween_func: t.Callable[[float], float],
 		attributes: t.Dict[TWEEN_ATTR, t.Any],
 		duration: float,
-		on_complete: t.Callable[[], t.Any] = None,
-		start_delay: float = 0.0,
+		on_complete: t.Callable[[], t.Any] = None
 	) -> Tween:
 		"""
 		# TODO write some very cool doc
 		"""
-		if start_delay < 0.0:
-			raise ValueError("Can't start a tween in the past!")
-
-		if start_delay:
-			pyglet.clock.schedule_once(
-				lambda _: self.start_tween(tween_func, attributes, duration, on_complete),
-				start_delay,
-			)
-			return
-
 		# 0: initial value; 1: difference
 		attr_map = {}
 		for attribute, target_value in attributes.items():

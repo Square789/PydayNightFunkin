@@ -4,6 +4,7 @@ from time import time
 import typing as t
 
 from loguru import logger
+from pyglet.clock import Clock
 from pyglet.graphics import Batch, Group
 from pyglet.window.key import B, R
 
@@ -52,6 +53,7 @@ class Layer():
 		else:
 			return self.group
 
+
 class BaseScene():
 	"""
 	A scene holds a number of sprites and cameras, functions to
@@ -78,6 +80,9 @@ class BaseScene():
 				for x in self.get_layer_names()
 			)
 		)
+
+		self._passed_time = 0.0
+		self.clock = Clock(self._get_elapsed_time)
 
 		self._default_camera = Camera()
 		self.cameras = {name: Camera() for name in self.get_camera_names()}
@@ -109,6 +114,9 @@ class BaseScene():
 		only when necessary.
 		"""
 		return ()
+
+	def _get_elapsed_time(self) -> float:
+		return self._passed_time
 
 	def on_regular_update_change(self, new: bool) -> None:
 		"""
@@ -185,6 +193,9 @@ class BaseScene():
 			if self.game.pyglet_ksh[B]:
 				self.batch._dump_draw_list()
 
+		self._passed_time += dt
+		self.clock.tick()
+
 		self._default_camera.update(dt)
 		for c in self.cameras.values():
 			c.update(dt)
@@ -209,5 +220,6 @@ class BaseScene():
 		# Copy in case __del__ or delete does weird things
 		for spr in self._sprites.copy():
 			spr.delete()
+		self._sprites.clear()
 
 		del self.batch

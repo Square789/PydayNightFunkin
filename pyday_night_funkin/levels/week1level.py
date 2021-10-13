@@ -5,7 +5,6 @@ from math import floor
 from random import randint
 import typing as t
 
-import pyglet.clock
 from pyglet.math import Vec2
 
 from pyday_night_funkin.asset_system import ASSETS, load_asset
@@ -60,12 +59,12 @@ class Week1Level(InGameScene):
 		stagefront.scroll_factor = (.9, .9)
 		stagefront.scale = 1.1
 
-		self.gf = self.create_sprite(
+		self.girlfriend = self.create_sprite(
 			"girlfriend", "main", Girlfriend, scene = self, x = 400, y = 130
 		)
-		self.gf.scroll_factor = (.95, .95)
+		self.girlfriend.scroll_factor = (.95, .95)
 
-		self.bf = self.create_sprite(
+		self.boyfriend = self.create_sprite(
 			"stage", "main", Boyfriend, scene = self, x = 770, y = 450
 		)
 
@@ -126,13 +125,13 @@ class Week1Level(InGameScene):
 		self.number_textures = [load_asset(getattr(ASSETS.IMG, f"NUM{i}")) for i in range(10)]
 
 	def ready(self) -> None:
-		self.gf.animation.play("idle_bop")
-		self.bf.animation.play("idle_bop")
+		self.girlfriend.animation.play("idle_bop")
+		self.boyfriend.animation.play("idle_bop")
 		self.opponent.animation.play("idle_bop")
-		self.opponent.check_animation_controller()
+		self.opponent.check_animation_controller() # for the `main_cam.look_at` below
 
 		# No idea if this is a good choice but the dict accesses seem weird and
-		# it's not like there will be more than these cameras
+		# it's not like there will be more cameras
 		self.main_cam = self.cameras["main"]
 		self.ui_cam = self.cameras["ui"]
 
@@ -142,12 +141,13 @@ class Week1Level(InGameScene):
 		self._countdown_stage = 0
 		self.state = GAME_STATE.COUNTDOWN
 		self.conductor.song_position = self.conductor.beat_duration * -5
-		pyglet.clock.schedule_interval(
+		self.clock.schedule_interval(
 			self.countdown, self.conductor.beat_duration * 0.001
 		)
 
 	def process_input(self, dt: float) -> None:
 		super().process_input(dt)
+
 		pressed = {
 			type_: self.key_handler.just_pressed(control)
 			for type_, control in self.note_handler.NOTE_TO_CONTROL_MAP.items()
@@ -163,7 +163,7 @@ class Week1Level(InGameScene):
 
 		if player_missed:
 			fail_note = player_missed[-1]
-			self.bf.animation.play(f"miss_note_{fail_note.type.name.lower()}", True)
+			self.boyfriend.animation.play(f"miss_note_{fail_note.type.name.lower()}", True)
 
 		for type_ in NOTE_TYPE:
 			# Note not being held, make the arrow static
@@ -174,22 +174,22 @@ class Week1Level(InGameScene):
 			elif player_res[type_] is None:
 				if self.static_arrows[1][type_].animation.has_tag(ANIMATION_TAG.STATIC):
 					self.static_arrows[1][type_].animation.play("pressed")
-				if pressed[type_]:  # Just pressed
-					self.bf.animation.play(f"miss_note_{type_.name.lower()}", True)
+				if pressed[type_]: # Just pressed
+					self.boyfriend.animation.play(f"miss_note_{type_.name.lower()}", True)
 					self.combo = 0
 			# Note was pressed and player hit
 			else:
 				note = player_res[type_]
 				note.on_hit(self.conductor.song_position, self.game.config.safe_window)
 				self.static_arrows[1][type_].animation.play("confirm")
-				self.bf.hold_timer = 0.0
-				self.bf.animation.play(f"sing_note_{type_.name.lower()}", True)
+				self.boyfriend.hold_timer = 0.0
+				self.boyfriend.animation.play(f"sing_note_{type_.name.lower()}", True)
 
 				if note.sustain_stage is SUSTAIN_STAGE.NONE:
 					self.combo += 1
 					self.combo_popup(note.rating)
 
-		self.bf.dont_idle = bool(pressed)
+		self.boyfriend.dont_idle = bool(pressed)
 
 	def combo_popup(self, rating: RATING) -> None:
 		x = int(CNST.GAME_WIDTH * .55)
@@ -206,14 +206,15 @@ class Week1Level(InGameScene):
 
 		combo_sprite.start_movement((0, -150), (0, 600))
 
-		combo_sprite.start_tween(
-			tween_func = out_cubic,
-			attributes = {TWEEN_ATTR.OPACITY: 0},
-			duration = 0.2,
-			on_complete = (
-				lambda combo_sprite = combo_sprite: self.remove_sprite(combo_sprite)
+		# NOTE: Maybe get a cleaner way of delaying the removal tween in here
+		self.clock.schedule_once(
+			lambda _, combo_sprite = combo_sprite: combo_sprite.start_tween(
+				tween_func = out_cubic,
+				attributes = {TWEEN_ATTR.OPACITY: 0},
+				duration = 0.2,
+				on_complete = lambda: self.remove_sprite(combo_sprite),
 			),
-			start_delay = self.conductor.beat_duration * 0.001,
+			self.conductor.beat_duration * 0.001,
 		)
 
 		for i, digit in enumerate(f"{self.combo:>03}"):
@@ -229,12 +230,14 @@ class Week1Level(InGameScene):
 				(randint(-5, 5), -randint(140, 160)), (0, randint(200, 300))
 			)
 
-			sprite.start_tween(
-				tween_func = linear,
-				attributes = {TWEEN_ATTR.OPACITY: 0},
-				duration = 0.2,
-				on_complete = lambda sprite = sprite: self.remove_sprite(sprite),
-				start_delay = self.conductor.beat_duration * 0.002,
+			self.clock.schedule_once(
+				lambda _, sprite = sprite: sprite.start_tween(
+					tween_func = linear,
+					attributes = {TWEEN_ATTR.OPACITY: 0},
+					duration = 0.2,
+					on_complete = lambda: self.remove_sprite(sprite),
+				),
+				self.conductor.beat_duration * 0.002,
 			)
 
 	def update(self, dt: float) -> None:
@@ -251,7 +254,7 @@ class Week1Level(InGameScene):
 					if to_follow == 0:
 						_cam_follow = self.opponent.get_midpoint() + Vec2(150, -100)
 					else:
-						_cam_follow = self.bf.get_midpoint() + Vec2(-100, -100)
+						_cam_follow = self.boyfriend.get_midpoint() + Vec2(-100, -100)
 					self.main_cam.set_follow_target(_cam_follow, 0.04)
 
 		if self.zoom_cams:
@@ -267,7 +270,7 @@ class Week1Level(InGameScene):
 	def countdown(self, dt: float) -> None:
 		if self._countdown_stage == 4:
 			self.start_song()
-			pyglet.clock.unschedule(self.countdown)
+			self.clock.unschedule(self.countdown)
 		else:
 			# self._countdown_stage will be changed once hide is called
 			sprite_idx = self._countdown_stage
@@ -275,7 +278,6 @@ class Week1Level(InGameScene):
 			if tex is not None:
 				sprite = self.create_sprite("ui0", "ui", image = tex)
 				sprite.screen_center(CNST.GAME_DIMENSIONS)
-
 				sprite.start_tween(
 					in_out_cubic,
 					{TWEEN_ATTR.OPACITY: 0},
@@ -296,7 +298,7 @@ class Bopeebo(Week1Level):
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
 		if self.cur_beat % 8 == 7:
-			self.bf.animation.play("hey")
+			self.boyfriend.animation.play("hey")
 
 class Fresh(Week1Level):
 	@staticmethod

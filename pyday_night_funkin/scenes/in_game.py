@@ -60,6 +60,9 @@ class InGameScene(MusicBeatScene):
 		raise NotImplementedError("Subclass this!")
 
 	def on_regular_update_change(self, new: bool) -> None:
+		if self.state is not GAME_STATE.PLAYING:
+			return
+
 		if new:
 			self.song_players.play()
 		else:
@@ -77,9 +80,7 @@ class InGameScene(MusicBeatScene):
 		# TODO doc
 		"""
 		inst, voices, song_data = load_asset(
-			self.get_song(),
-			(False, False),
-			self.difficulty,
+			self.get_song(), (False, False), self.difficulty
 		)
 
 		self.song_players.pause()
@@ -104,6 +105,7 @@ class InGameScene(MusicBeatScene):
 		"""
 		self.conductor.song_position = 0
 		self.song_players.play()
+		self.state = GAME_STATE.PLAYING
 
 	def ready(self) -> None:
 		"""

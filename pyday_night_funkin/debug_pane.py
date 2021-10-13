@@ -1,11 +1,9 @@
 
+from queue import Queue
+import queue
 import typing as t
 
-from collections import deque
-
 from pyglet.graphics import Group
-from pyglet.shapes import Rectangle
-from pyglet.text import Label
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.graphics.pyglet_tl_patch import TLLabel, TLRectangle
@@ -29,6 +27,7 @@ class DebugPane():
 		self.background = Group(order = 0)
 		self.foreground = Group(order = 1)
 		self.batch = batch
+		self._queue = Queue()
 		self.labels = [
 			TLLabel(
 				"",
@@ -63,26 +62,40 @@ class DebugPane():
 
 	def add_message(self, log_message: str) -> None:
 		"""
-		Adds the given log message to the debug pane, causing a
-		possibly overflowing label's text to be deleted and bumping
-		up all other labels.
+		Adds the given log message to the debug pane's queue.
+		This should be thread-safe, but the change will only appear
+		once `update` is called.
 		"""
-		if self.insert_index == len(self.labels):
-			self.insert_index -= 1
-			for i in range(len(self.labels) - 1):
-				self.labels[i].text = self.labels[i + 1].text
+		self._queue.put(log_message)
 
-		self.labels[self.insert_index].text = log_message
-		self.insert_index += 1
-
-	def update_fps_label(self, fps: int, draw_time: float, update_time: float) -> None:
+	def update(self, fps: int, draw_time: float, update_time: float) -> None:
 		"""
-		Sets the fps label's text to a readable string built from the
-		supplied fps, draw time and update time.
-		Does not redraw the label.
+		Updates the debug pane and writes all queued messages to
+		the labels, causing a possibly overflowing label's text to be
+		deleted and bumping up all other labels.
+		Additionally, sets the fps label's text to a readable string
+		built from the supplied fps, draw time and update time.
+		Call this when GL allows it, there have been weird threading
+		errors in the past.
 		"""
-		frame_time = draw_time + update_time
 		self.fps_label.text = (
-			f"FPS: {fps:>4}; Frame time {frame_time:>5.1f} ms (Draw {draw_time:>5.1f}, "
-			f"Update {update_time:>5.1f}) "
+			f"FPS: {fps:>4}; Frame time {draw_time + update_time:>5.1f} ms "
+			f"(Draw {draw_time:>5.1f}, Update {update_time:>5.1f}) "
 		)
+
+		if self._queue.empty():
+			return
+
+		while True:
+			try:
+				message = self._queue.get_nowait()
+			except queue.Empty:
+				break
+
+			if self.insert_index == len(self.labels):
+				self.insert_index -= 1
+				for i in range(len(self.labels) - 1):
+					self.labels[i].text = self.labels[i + 1].text
+
+			self.labels[self.insert_index].text = message
+			self.insert_index += 1

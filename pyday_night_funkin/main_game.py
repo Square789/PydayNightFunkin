@@ -129,7 +129,7 @@ class Game():
 			self._fps_bump()
 			draw_time = (time() - stime) * 1000
 			# Prints frame x-1's draw time in frame x, but who cares
-			self.debug_pane.update_fps_label(self._fps[2], draw_time, self._update_time)
+			self.debug_pane.update(self._fps[2], draw_time, self._update_time)
 
 	def update(self, dt: float) -> None:
 		stime = time()
