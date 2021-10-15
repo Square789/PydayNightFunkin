@@ -47,6 +47,7 @@ class Game():
 				CONTROL.UP: [key.UP, key.W],
 				CONTROL.RIGHT: [key.RIGHT, key.D],
 				CONTROL.ENTER: key.ENTER,
+				CONTROL.DEBUG_DESYNC: key._1
 			},
 		)
 

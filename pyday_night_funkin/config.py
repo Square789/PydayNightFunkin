@@ -10,6 +10,7 @@ class CONTROL(IntEnum):
 	UP = 2
 	RIGHT = 3
 	ENTER = 4
+	DEBUG_DESYNC = 5
 
 
 @dataclass

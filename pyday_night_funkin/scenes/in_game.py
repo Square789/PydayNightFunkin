@@ -1,4 +1,5 @@
 
+import random
 import typing as t
 
 from loguru import logger
@@ -46,8 +47,6 @@ class InGameScene(MusicBeatScene):
 		self.health = 0.5
 		self.combo = 0
 
-		self._updates_since_desync_warn = 999
-
 		self.load_resources()
 		self.load_song()
 		self.ready()
@@ -58,6 +57,14 @@ class InGameScene(MusicBeatScene):
 
 	def create_note_handler(self) -> "AbstractNoteHandler":
 		raise NotImplementedError("Subclass this!")
+
+	def resync(self) -> None:
+		logger.info("Resyncing...")
+		self.voice_player.pause()
+		# NOTE Conductor may be rewound here which has potential to screw things up
+		self.conductor.song_position = self.inst_player.time * 1000
+		self.voice_player.seek(self.conductor.song_position * 0.001)
+		self.voice_player.play()
 
 	def on_regular_update_change(self, new: bool) -> None:
 		if self.state is not GAME_STATE.PLAYING:
@@ -122,11 +129,11 @@ class InGameScene(MusicBeatScene):
 			self.state is GAME_STATE.PLAYING
 		):
 			self.conductor.song_position += dt * 1000
-			discrepancy = self.inst_player.time * 1000 - self.conductor.song_position
-			if abs(discrepancy) > 20 and self._updates_since_desync_warn > 100:
-				logger.warning(f"Player ahead of conductor by {discrepancy:.4f} ms.")
-				self._updates_since_desync_warn = 0
-			self._updates_since_desync_warn += 1
+			if self.state is GAME_STATE.PLAYING:
+				discrepancy = self.inst_player.time * 1000 - self.conductor.song_position
+				if abs(discrepancy) > 20:
+					logger.warning(f"Player ahead of conductor by {discrepancy:.4f} ms.")
+					self.resync()
 
 		if self.key_handler.just_pressed(CONTROL.ENTER):
 			self.game.push_scene(PauseScene)
@@ -138,4 +145,8 @@ class InGameScene(MusicBeatScene):
 		Called with `update` every time. Keyboard input should be
 		handled here.
 		"""
-		pass
+		if self.game.debug:
+			if self.game.key_handler.just_pressed(CONTROL.DEBUG_DESYNC):
+				desync = random.randint(-200, 200)
+				logger.debug(f"Desyncing conductor by {desync}ms")
+				self.conductor.song_position += desync

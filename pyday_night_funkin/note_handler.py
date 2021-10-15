@@ -133,7 +133,7 @@ class NoteHandler(AbstractNoteHandler):
 		note_vis_window_time = (CNST.GAME_HEIGHT - CNST.STATIC_ARROW_Y) / speed
 		# NOTE: Makes assumption they're all the same (spoilers: they are)
 		arrow_width = self.note_sprites[SUSTAIN_STAGE.NONE][NOTE_TYPE.UP].texture.width * 0.7
-		
+
 		# Checks for notes that entered the visibility window, creates their sprites.
 		while (
 			self.notes_visible.end < len(self.notes) and

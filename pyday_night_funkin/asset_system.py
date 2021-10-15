@@ -34,6 +34,7 @@ class ASSETS:
 		DADDY_DEAREST = 2
 		ICON_GRID = 3
 		NOTES = 4
+		ALPHABET = 5
 
 	class IMG:
 		STAGE_BACK = 100000
@@ -187,6 +188,7 @@ _DEFAULT_ASSET_SYSTEM = AssetSystem({
 	ASSETS.XML.DADDY_DEAREST: XmlTextureAtlas("shared/images/DADDY_DEAREST.xml"),
 	ASSETS.XML.ICON_GRID: XmlTextureAtlas("preload/images/iconGrid.xml"),
 	ASSETS.XML.NOTES: XmlTextureAtlas("shared/images/NOTE_assets.xml"),
+	ASSETS.XML.ALPHABET: XmlTextureAtlas("preload/images/alphabet.xml"),
 
 	ASSETS.IMG.STAGE_BACK: Image("shared/images/stageback.png"),
 	ASSETS.IMG.STAGE_FRONT: Image("shared/images/stagefront.png"),
