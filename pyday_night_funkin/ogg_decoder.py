@@ -38,16 +38,10 @@ class OggVorbisStreamingSource(StreamingSource):
 			logger.warning("Sample position is -1, using possibly inaccurate fallback value!")
 			sample_pos = self.fallback_sample_pos
 
-		samples_per_chan, data = self._stbv.get_samples_short_interleaved(num_bytes // 2)
+		read_samples, data = self._stbv.get_samples_short_interleaved(num_bytes // 2)
 		sample_rate = self._stbv.sample_rate
-		read_samples = samples_per_chan * self._stbv.channel_amount
-		read_bytes = read_samples * 2
 		if read_samples == 0:
 			return None
-
-		if read_bytes != len(data):
-			# NOTE: this probably involves copying the entire audio buffer just to trim it
-			data = data[0 : read_bytes]
 
 		return AudioData(data, len(data), sample_pos / sample_rate, read_samples / sample_rate, [])
 

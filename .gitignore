@@ -121,3 +121,9 @@ pyday_night_funkin/stb_vorbis/*.dll
 
 # Some local test files, mostly profiling. Root directory only. 
 /_*
+
+# No [usually cython generated] c files
+*.c
+
+# eeeexcept for that one
+!stb_vorbis/stb_vorbis.c

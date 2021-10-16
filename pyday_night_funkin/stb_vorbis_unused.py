@@ -397,9 +397,7 @@ class STBVorbis():
 
 		self._stb_vorbis = stb_vorbis_lib.stb_vorbis_open_filename(cstr, byref(error), alloc)
 		if not self._stb_vorbis:
-			raise STBVorbisException(
-				f"Error creating stb_vorbis struct: {self._get_error_string()}."
-			)
+			raise STBVorbisException(f"Error creating stb_vorbis struct.")
 
 		# These better don't change midway through a file
 		self.channel_amount = self._stb_vorbis.contents.channels
