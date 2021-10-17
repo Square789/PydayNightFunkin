@@ -48,7 +48,7 @@ cdef bool is_valid_char(unsigned int c):
 		c == ord('-')
 	)
 
-cdef bool is_space(unsigned int c):
+cdef bool is_space(int c):
 	return c in (10, 13, 9, 32) # ('\n', '\r', '\t', ' ')
 
 cdef int ord_at(str string, int idx):
@@ -63,25 +63,39 @@ class AlmostXMLParserException(SyntaxError):
 
 cdef class AlmostXMLParser():
 
-	DefaultHandlerExpand = None
-	StartElementHandler = None
-	EndElementHandler = None
-	StartNamespaceDeclHandler = None
-	EndNamespaceDeclHandler = None
-	CharacterDataHandler = None
-	CommentHandler = None
-	ProcessingInstructionHandler = None
+	cdef public element_start_handler
+	cdef public element_end_handler
+	cdef public character_data_handler
+	cdef public processing_instruction_handler
+
+	# DefaultHandlerExpand = None
+	# StartElementHandler = None
+	# EndElementHandler = None
+	# StartNamespaceDeclHandler = None
+	# EndNamespaceDeclHandler = None
+	# CharacterDataHandler = None
+	# CommentHandler = None
+	# ProcessingInstructionHandler = None
+
+	def __cinit__(self):
+		self.element_start_handler = None
+		self.element_end_handler = None
+		self.character_data_handler = None
+		self.processing_instruction_handler = None
 
 	cpdef parse(self, str string, int p = 0):
 		cdef STATE state = STATE.BEGIN
 		cdef STATE next_ = STATE.BEGIN
-		cdef str aname
 		cdef int start = 0
-		cdef int nsubs = 0
 		cdef int nbrackets = 0
 		cdef str buf = ""
+		cdef str element_name
+		cdef list element_name_stack = []
 		cdef STATE escape_next = STATE.BEGIN
+		cdef str attr_name
+		cdef dict attrs = {}
 		cdef int attr_val_quote = -1
+		cdef int c
 
 		while p < len(string):
 			c = ord_at(string, p)
@@ -102,8 +116,9 @@ cdef class AlmostXMLParser():
 			elif state == STATE.PCDATA:
 				if c == ord('<'):
 					buf += string[start:p]
-					# TODO
-					print("Create PCDATA", repr(buf))
+					# print("Create PCDATA", repr(buf))
+					if self.character_data_handler is not None:
+						self.character_data_handler(buf)
 					buf = ""
 					state = STATE.IGNORE_SPACES
 					next_ = STATE.BEGIN_NODE
@@ -115,8 +130,9 @@ cdef class AlmostXMLParser():
 
 			elif state == STATE.CDATA:
 				if string[p : p+3] == "]]>":
-					# TODO
-					print("Create CDATA", repr(string[start:p]))
+					# print("Create CDATA", repr(string[start:p]))
+					if self.character_data_handler is not None:
+						self.character_data_handler(string[start:p])
 					p += 2
 					state = STATE.BEGIN
 
@@ -145,9 +161,8 @@ cdef class AlmostXMLParser():
 					state = STATE.HEADER
 					start = p
 				elif c == ord('/'):
-					# TODO
-					# raise AlmostXMLParserException("Expected node name [BEGIN_NODE]", p)
-					print("Check parent for null")
+					if not element_name_stack:
+						raise AlmostXMLParserException("Found closing node with no open elements", p)
 					start = p + 1
 					state = STATE.IGNORE_SPACES
 					next_ = STATE.CLOSE
@@ -159,9 +174,8 @@ cdef class AlmostXMLParser():
 			elif state == STATE.TAG_NAME:
 				if not is_valid_char(c):
 					if p == start:
-						raise AlmostXMLParserException("Expected node name [TAG_NAME]", p)
-					# TODO
-					print("Create element", repr(string[start:p]))
+						raise AlmostXMLParserException("Expected node name", p)
+					element_name = string[start:p]
 					state = STATE.IGNORE_SPACES
 					next_ = STATE.BODY
 					continue
@@ -170,7 +184,12 @@ cdef class AlmostXMLParser():
 				if c == ord('/'):
 					state = STATE.WAIT_END
 				elif c == ord('>'):
-					state = STATE.CHILDS
+					if self.element_start_handler is not None:
+						self.element_start_handler(element_name, attrs)
+					element_name_stack.append(element_name)
+					attrs = {}
+					element_name = ""
+					state = STATE.BEGIN
 				else:
 					state = STATE.ATTRIB_NAME
 					start = p
@@ -180,9 +199,9 @@ cdef class AlmostXMLParser():
 				if not is_valid_char(c):
 					if start == p:
 						raise AlmostXMLParserException("Expected attribute name", p)
-					aname = string[start:p]
-					# TODO
-					print("Check attribute name duplication for", repr(aname))
+					attr_name = string[start:p]
+					if attr_name in attrs:
+						raise AlmostXMLParserException(f"Duplicate attribute name {attr_name!r}", p)
 					state = STATE.IGNORE_SPACES
 					next_ = STATE.EQUALS
 					continue
@@ -212,48 +231,65 @@ cdef class AlmostXMLParser():
 				# no dumb > < check
 				elif c == attr_val_quote:
 					buf += string[start:p]
-					# TODO
-					print("Set attribute name", repr(aname), "to", repr(buf))
+					attrs[attr_name] = buf
 					buf = ""
 					state = STATE.IGNORE_SPACES
 					next_ = STATE.BODY
 
-			elif state == STATE.CHILDS:
-				p = self.parse(string, p)
-				start = p
-				state = STATE.BEGIN
+			# elif state == STATE.CHILDS:
+			# 	p = self.parse(string, p)
+			# 	start = p
+			# 	state = STATE.BEGIN
 
 			elif state == STATE.WAIT_END:
+				# WAIT_END is only entered on an instantly closed element, i.e.
+				# <br />
+				#      ^ here
 				if c == ord('>'):
+					if self.element_start_handler is not None:
+						self.element_start_handler(element_name, attrs)
+					if self.element_end_handler is not None:
+						self.element_end_handler(element_name)
+					attrs = {}
+					element_name = ""
 					state = STATE.BEGIN
 				else:
 					raise AlmostXMLParserException("Expected '>'", p)
 
 			elif state == STATE.WAIT_END_RET:
+				# WAIT_END_RET is only entered after CLOSE (and possibly IGNORE_SPACES) i.e.
+				# <hello>world</hello >
+				#                     ^ here
 				if c == ord('>'):
-					if nsubs == 0:
-						pass
-						# TODO fuck what
-						# parent.addChild(Xml.createPCData(""));
-						print("Add child to parent? Oh no")
-					return p
+					#print(f"Element {element_name_stack[-1]!r} closed")
+					if self.element_end_handler is not None:
+						self.element_end_handler(element_name_stack[-1])
+					element_name_stack.pop()
+
+					state = STATE.BEGIN
 				else:
 					raise AlmostXMLParserException("Expected '>'", p)
 
 			elif state == STATE.CLOSE:
+				# This state is entered right after BEGIN_NODE finds a `/`, i.e.
+				# <hello>world</hello>
+				#               ^ here
 				if not is_valid_char(c):
 					if start == p:
-						raise AlmostXMLParserException("Expected node name [CLOSE]", p)
+						raise AlmostXMLParserException("Expected node name", p)
 
 					tmpsub = string[start:p]
 
-					# TODO
+					# check not required afaict since CLOSE is only reachable in one other place and
+					# that one already checks for `parent == null`, which - due to the original
+					# parser's recursive nature - means that no element opening node exists.
+					# (And I'll gladly ignore what the `parent.nodeType != Element` check may be
+					# responsible for)
 					# if (parent == null || parent.nodeType != Element) {
 					# 	throw new XmlParserException('Unexpected </$v>, tag is not open', str, p);
 					# }
-					# if (v != parent.nodeName)
-					# 	throw new XmlParserException("Expected </" + parent.nodeName + ">", str, p);
-					print("S.CLOSE stuff")
+					if tmpsub != element_name_stack[-1]:
+						raise AlmostXMLParserException(f"Expected </{element_name_stack[-1]}>", p)
 
 					state = STATE.IGNORE_SPACES
 					next_ = STATE.WAIT_END_RET
@@ -281,10 +317,8 @@ cdef class AlmostXMLParser():
 				if c == ord('?') and ord_at(string, p + 1) == ord('>'):
 					p += 1
 
-					# TODO
-					# var str = str.substr(start + 1, p - start - 2);
-					# addChild(Xml.createProcessingInstruction(str));
-					print("Create ProcessingInstruction")
+					if self.processing_instruction_handler is not None:
+						self.processing_instruction_handler(string[start+1 : p-2])
 
 					state = STATE.BEGIN
 
@@ -309,15 +343,15 @@ cdef class AlmostXMLParser():
 			state = STATE.PCDATA
 
 		if state == STATE.PCDATA:
-			# TODO
-			# if (parent.nodeType == Element) {
-			# 	throw new XmlParserException("Unclosed node <" + parent.nodeName + ">", str, p);
-			# }
+			if element_name_stack:
+				raise AlmostXMLParserException(f"Unclosed node <{element_name_stack[-1]}>", p)
+
 			# if (p != start || nsubs == 0) {
 			# 	buf.addSub(str, start, p - start);
 			# 	addChild(Xml.createPCData(buf.toString()));
 			# }
-			print("PCDATA stuff")
+
+			# print("PCDATA stuff")
 			return p
 
 		if state == STATE.ESCAPE and escape_next == STATE.PCDATA:

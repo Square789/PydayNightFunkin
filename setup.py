@@ -7,13 +7,13 @@ Options.fast_fail = True
 
 extensions = [
 	Extension(
-		name = "pyday_night_funkin.stb_vorbis",
-		sources = ["stb_vorbis/__init__.pyx"],
+		name = "pyday_night_funkin.stb_vorbis.stb_vorbis",
+		sources = ["pyday_night_funkin/stb_vorbis/stb_vorbis.pyx"],
 		extra_compile_args = ["-DMS_WIN64"],
 	),
 	Extension(
-		name = "pyday_night_funkin.almost_xml_parser",
-		sources = ["pyday_night_funkin/almost_xml_parser.pyx"],
+		name = "pyday_night_funkin.almost_xml_parser.almost_xml_parser",
+		sources = ["pyday_night_funkin/almost_xml_parser/almost_xml_parser.pyx"],
 		extra_compile_args = ["-DMS_WIN64"],
 	),
 ]

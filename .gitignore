@@ -126,4 +126,4 @@ pyday_night_funkin/stb_vorbis/*.dll
 *.c
 
 # eeeexcept for that one
-!stb_vorbis/stb_vorbis.c
+!pyday_night_funkin/stb_vorbis/c_src/stb_vorbis.c

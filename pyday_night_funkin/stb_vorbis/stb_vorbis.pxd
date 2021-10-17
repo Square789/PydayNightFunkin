@@ -1,5 +1,5 @@
 
-cdef extern from "stb_vorbis.c":
+cdef extern from "c_src/stb_vorbis.c":
 	ctypedef struct stb_vorbis:
 		pass
 
