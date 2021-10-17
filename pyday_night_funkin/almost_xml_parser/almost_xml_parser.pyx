@@ -134,7 +134,6 @@ cdef class AlmostXMLParser():
 			elif state == STATE.PCDATA:
 				if c == ord('<'):
 					buf += string[start:p]
-					# print("Create PCDATA", repr(buf))
 					if self.character_data_handler is not None:
 						self.character_data_handler(buf)
 					buf = ""
@@ -148,7 +147,6 @@ cdef class AlmostXMLParser():
 
 			elif state == STATE.CDATA:
 				if string[p : p+3] == "]]>":
-					# print("Create CDATA", repr(string[start:p]))
 					if self.character_data_handler is not None:
 						self.character_data_handler(string[start:p])
 					p += 2
@@ -274,7 +272,6 @@ cdef class AlmostXMLParser():
 				# <hello>world</hello >
 				#                     ^ here
 				if c == ord('>'):
-					#print(f"Element {element_name_stack[-1]!r} closed")
 					if self.element_end_handler is not None:
 						self.element_end_handler(element_name_stack[-1])
 					element_name_stack.pop()
@@ -323,7 +320,6 @@ cdef class AlmostXMLParser():
 				elif c == ord('>') and nbrackets == 0:
 					# TODO
 					# addChild(Xml.createDocType(str.substr(start, p - start)));
-					print("Create doctype")
 					state = STATE.BEGIN
 
 			elif state == STATE.HEADER:
