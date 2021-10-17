@@ -3,11 +3,13 @@ from collections import defaultdict
 from pathlib import Path
 import re
 import typing as t
-from xml.etree import ElementTree
+from xml.etree.ElementTree import ElementTree
 
 from loguru import logger
 import pyglet
 from pyglet.image import Texture
+
+from pyday_night_funkin.almost_xml_parser import AlmostXMLParser
 
 
 _IMAGE_CACHE = {}
@@ -40,8 +42,9 @@ def load_image(path: Path) -> pyglet.image.AbstractImage:
 	return _IMAGE_CACHE[cache_key]
 
 def load_frames_from_texture_atlas(xml_path: Path) -> t.Dict[str, t.List[FrameInfoTexture]]:
+	et = ElementTree()
 	with xml_path.open("r", encoding = "utf-8") as fp:
-		et = ElementTree.parse(fp)
+		et.parse(fp, AlmostXMLParser())
 
 	texture_atlas = et.getroot() # Should be a TextureAtlas node
 	texture_region_cache = {}

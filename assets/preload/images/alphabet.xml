@@ -86,7 +86,7 @@
 	<SubTexture name=";0001" x="747" y="74" width="15" height="44"/>
 	<SubTexture name=";0002" x="772" y="74" width="15" height="44"/>
 	<SubTexture name=";0003" x="772" y="74" width="15" height="44"/>
-	<!--<SubTexture name="<0000" x="797" y="74" width="38" height="56"/>
+	<SubTexture name="<0000" x="797" y="74" width="38" height="56"/>
 	<SubTexture name="<0001" x="797" y="74" width="38" height="56"/>
 	<SubTexture name="<0002" x="845" y="74" width="38" height="55" frameX="0" frameY="0" frameWidth="38" frameHeight="56"/>
 	<SubTexture name="<0003" x="845" y="74" width="38" height="55" frameX="0" frameY="0" frameWidth="38" frameHeight="56"/>
@@ -98,7 +98,7 @@
 	<SubTexture name=">0001" x="0" y="141" width="38" height="61"/>
 	<SubTexture name=">0002" x="48" y="141" width="38" height="61"/>
 	<SubTexture name=">0003" x="48" y="141" width="38" height="61"/>
-	--><SubTexture name="@0000" x="96" y="141" width="51" height="56" frameX="0" frameY="0" frameWidth="52" frameHeight="56"/>
+	<SubTexture name="@0000" x="96" y="141" width="51" height="56" frameX="0" frameY="0" frameWidth="52" frameHeight="56"/>
 	<SubTexture name="@0001" x="96" y="141" width="51" height="56" frameX="0" frameY="0" frameWidth="52" frameHeight="56"/>
 	<SubTexture name="@0002" x="157" y="141" width="52" height="56"/>
 	<SubTexture name="@0003" x="157" y="141" width="52" height="56"/>

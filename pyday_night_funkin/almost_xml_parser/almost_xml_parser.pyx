@@ -61,29 +61,47 @@ class AlmostXMLParserException(SyntaxError):
 		super().__init__(f"{msg} (pos {p})", *args, **kwargs)
 
 
+
+cdef dict ESCAPES = {
+	"lt": "<",
+	"gt": ">",
+	"amp": "&",
+	"quot": "\"",
+	"apos": "'",
+}
+
+
 cdef class AlmostXMLParser():
+	"""
+	Not fully compliant XML Parser.
+	It also cheats and will concat all calls to `feed`'s strings and
+	process them only once when `close` is called.
+	"""
 
 	cdef public element_start_handler
 	cdef public element_end_handler
 	cdef public character_data_handler
 	cdef public processing_instruction_handler
+	cdef public comment_handler
 
-	# DefaultHandlerExpand = None
-	# StartElementHandler = None
-	# EndElementHandler = None
-	# StartNamespaceDeclHandler = None
-	# EndNamespaceDeclHandler = None
-	# CharacterDataHandler = None
-	# CommentHandler = None
-	# ProcessingInstructionHandler = None
+	cdef str _strbuf
 
 	def __cinit__(self):
 		self.element_start_handler = None
 		self.element_end_handler = None
 		self.character_data_handler = None
 		self.processing_instruction_handler = None
+		self.comment_handler = None
 
-	cpdef parse(self, str string, int p = 0):
+		self._strbuf = ""
+
+	cpdef feed(self, str string):
+		self._strbuf += string
+
+	cpdef close(self):
+		self.parse(self._strbuf)
+
+	cdef parse(self, str string, int p = 0):
 		cdef STATE state = STATE.BEGIN
 		cdef STATE next_ = STATE.BEGIN
 		cdef int start = 0
@@ -236,11 +254,6 @@ cdef class AlmostXMLParser():
 					state = STATE.IGNORE_SPACES
 					next_ = STATE.BODY
 
-			# elif state == STATE.CHILDS:
-			# 	p = self.parse(string, p)
-			# 	start = p
-			# 	state = STATE.BEGIN
-
 			elif state == STATE.WAIT_END:
 				# WAIT_END is only entered on an instantly closed element, i.e.
 				# <br />
@@ -297,8 +310,8 @@ cdef class AlmostXMLParser():
 
 			elif state == STATE.COMMENT:
 				if string[p : p+3] == "-->":
-					# TODO
-					print("Add comment")
+					if self.comment_handler is not None:
+						self.comment_handler(string[start:p])
 					p += 2
 					state = STATE.BEGIN
 
@@ -325,8 +338,18 @@ cdef class AlmostXMLParser():
 			elif state == STATE.ESCAPE:
 				if c == ord(';'):
 					esc_str = string[start:p]
-					if esc_str[0] == ord('#'):
-						pass
+					if ord_at(esc_str, 0) == ord('#'):
+						try:
+							if ord_at(esc_str, 1) == ord('x'):
+								buf += chr(int(esc_str[2:], 16))
+							else:
+								buf += chr(int(esc_str[1:]))
+						except ValueError as e:
+							raise AlmostXMLParserException("Bad integer value", p) from e
+					elif esc_str not in ESCAPES:
+						buf += f"&{esc_str};"
+					else:
+						buf += ESCAPES[esc_str]
 					start = p + 1
 					state = escape_next
 				elif not is_valid_char(c) and c != ord('#'):
@@ -345,20 +368,16 @@ cdef class AlmostXMLParser():
 		if state == STATE.PCDATA:
 			if element_name_stack:
 				raise AlmostXMLParserException(f"Unclosed node <{element_name_stack[-1]}>", p)
-
-			# if (p != start || nsubs == 0) {
-			# 	buf.addSub(str, start, p - start);
-			# 	addChild(Xml.createPCData(buf.toString()));
-			# }
-
-			# print("PCDATA stuff")
+			if p != start:
+				if self.character_data_handler is not None:
+					self.character_data_handler(string[start:p])
 			return p
 
 		if state == STATE.ESCAPE and escape_next == STATE.PCDATA:
 			buf += ord('&')
 			buf += string[start:p]
-			# addChild(Xml.createPCData(buf.toString()));
-			print("Add child ESCAPE -> PCDATA", repr(buf))
+			if self.character_data_handler is not None:
+				self.character_data_handler(buf)
 			return p
 
 		raise AlmostXMLParserException("Unexpected EOF", p)
