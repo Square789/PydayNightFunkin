@@ -25,8 +25,8 @@ class PauseScene(BaseScene):
 		self.background.opacity = 0
 		self.background.start_tween(in_out_quart, {TWEEN_ATTR.OPACITY: 153}, 0.4)
 
-		for i, c in enumerate("PAUSED"):
-			s = self.create_sprite("fg", sprite_class = AlphabetCharacter, char = c)
+		for i, c in enumerate("<PAUSED>"):
+			s = self.create_sprite("fg", sprite_class = AlphabetCharacter, char = c, bold = True)
 			s.y = 200
 			s.x = 200 + (i * 37)
 

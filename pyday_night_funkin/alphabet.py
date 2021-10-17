@@ -1,19 +1,9 @@
 
-from enum import IntEnum
 import typing as t
-
-from pyglet.image import animation
 
 from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.graphics import PNFSprite
 from pyday_night_funkin.graphics.pnf_animation import PNFAnimation, OffsetAnimationFrame
-
-
-# unused right now
-class CHARACTER_STYLE:
-	BOLD = 0
-	CAPITAL = 1
-	LOWERCASE = 2
 
 
 _ALTS = {
@@ -24,13 +14,16 @@ _ALTS = {
 	"!": "exclamation point",
 }
 
-def _map_to_animation(name: str) -> t.Optional[PNFAnimation]:
+def _map_to_animation(name: str, bold: bool) -> t.Optional[PNFAnimation]:
 	if name in _ANIMATIONS:
 		return _ANIMATIONS[name]
 	if name in _ALTS:
 		return _ANIMATIONS[_ALTS[name]]
 	if name.isalpha():
-		return _ANIMATIONS[f"{name} {'lowercase' if name.islower() else 'capital'}"]
+		if bold:
+			return _ANIMATIONS[f"{name.upper()} bold"]
+		else:
+			return _ANIMATIONS[f"{name} {'lowercase' if name.islower() else 'capital'}"]
 	return None
 
 _ANIMATIONS = {
@@ -44,9 +37,9 @@ _ANIMATIONS = {
 }
 
 class AlphabetCharacter(PNFSprite):
-	def __init__(self, char: str, *args, **kwargs) -> None:
+	def __init__(self, char: str, bold: bool = False, *args, **kwargs) -> None:
 		self.char = char
-		anim = _map_to_animation(char)
+		anim = _map_to_animation(char, bold)
 		if anim is None:
 			raise ValueError(f"Couldn't find alphabet animation for {char!r}!")
 

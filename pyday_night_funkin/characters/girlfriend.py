@@ -12,6 +12,6 @@ class Girlfriend(Character):
 
 		anims = load_asset(ASSETS.XML.GIRLFRIEND)
 
-		self.animation.add(
+		self.animation.add_from_frames(
 			"idle_bop", anims["GF Dancing Beat"], 24, True, tags = (ANIMATION_TAG.IDLE, )
 		)

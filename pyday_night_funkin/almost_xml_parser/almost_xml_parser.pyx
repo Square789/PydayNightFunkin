@@ -287,9 +287,6 @@ cdef class AlmostXMLParser():
 				if not is_valid_char(c):
 					if start == p:
 						raise AlmostXMLParserException("Expected node name", p)
-
-					tmpsub = string[start:p]
-
 					# check not required afaict since CLOSE is only reachable in one other place and
 					# that one already checks for `parent == null`, which - due to the original
 					# parser's recursive nature - means that no element opening node exists.
@@ -298,7 +295,7 @@ cdef class AlmostXMLParser():
 					# if (parent == null || parent.nodeType != Element) {
 					# 	throw new XmlParserException('Unexpected </$v>, tag is not open', str, p);
 					# }
-					if tmpsub != element_name_stack[-1]:
+					if string[start:p] != element_name_stack[-1]:
 						raise AlmostXMLParserException(f"Expected </{element_name_stack[-1]}>", p)
 
 					state = STATE.IGNORE_SPACES

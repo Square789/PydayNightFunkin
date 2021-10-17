@@ -16,22 +16,22 @@ class DaddyDearest(Character):
 
 		anims = load_asset(ASSETS.XML.DADDY_DEAREST)
 
-		self.animation.add(
+		self.animation.add_from_frames(
 			"idle_bop", anims["Dad idle dance"], 24, True, tags = (ANIMATION_TAG.IDLE, )
 		)
-		self.animation.add(
+		self.animation.add_from_frames(
 			"sing_note_left", anims["Dad Sing Note LEFT"], 24, False, (-10, 10),
 			(ANIMATION_TAG.SING, )
 		)
-		self.animation.add(
+		self.animation.add_from_frames(
 			"sing_note_down", anims["Dad Sing Note DOWN"], 24, False, (0, -30),
 			(ANIMATION_TAG.SING, )
 		)
-		self.animation.add(
+		self.animation.add_from_frames(
 			"sing_note_up", anims["Dad Sing Note UP"], 24, False, (-6, 50),
 			(ANIMATION_TAG.SING, )
 		)
-		self.animation.add(
+		self.animation.add_from_frames(
 			"sing_note_right", anims["Dad Sing Note RIGHT"], 24, False, (0, 27),
 			(ANIMATION_TAG.SING, )
 		)

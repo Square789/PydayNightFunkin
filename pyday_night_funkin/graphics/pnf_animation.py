@@ -60,6 +60,10 @@ class PNFAnimation(Animation):
 
 
 class AnimationController():
+	"""
+	Animation controller class that works with sprites and delivers a
+	series of texture and position changes that make up an animation.
+	"""
 	def __init__(self) -> None:
 		self._animations: t.Dict[str, PNFAnimation] = {}
 		self.playing: bool = False
@@ -68,16 +72,22 @@ class AnimationController():
 		self._base_box = None
 		self._frame_idx = 0
 		self._next_dt = 0.0
-		# Offset of current animation frame, calculated with animation frame
-		# dimensions, frame info and 
-		# Not final, still needs the sprite's scale.
+
 		self._frame_offset = Vec2()
+		"""
+		Offset of current animation frame, calculated with animation frame
+		dimensions, frame info and 
+		Not final, still needs the sprite's scale.
+		"""
 
 		self._new_offset = None
 		self._new_texture = None
 
 	def _get_post_animate_offset(self) -> Vec2:
 		"""
+		Should be called after the current frame has changed.
+		Calculates the difference between the current frame's and
+		the next frame's offset and returns it, while
 		"""
 		fix, fiy, fiw, fih = self.current_frame.frame_info
 		new_frame_offset = Vec2(
@@ -205,20 +215,20 @@ class AnimationController():
 
 		self._next_dt = _next_dt
 
-	def add(
+	def add_from_frames(
 		self,
 		name: str,
-		anim_data: t.Union[PNFAnimation, t.Sequence["FrameInfoTexture"]],
+		anim_data: t.Sequence["FrameInfoTexture"],
 		fps: float = 24.0,
 		loop: bool = False,
 		offset: t.Optional[t.Union[t.Tuple[int, int], Vec2]] = None,
 		tags: t.Sequence[t.Hashable] = (),
 	) -> None:
 		"""
-		Adds an animation to this AnimationController.
-		If no base box exists yet it will be set on the base of this
-		animation, so try to choose a neutral animation as the first
-		one.
+		Convenience function to create animation frames directly
+		from a sequence of FrameInfoTextures, as retrieved by the
+		animation image loader, build an animation from it and then
+		add it under the given name.
 		"""
 		if fps <= 0:
 			raise ValueError("FPS can't be equal to or less than 0!")
@@ -227,15 +237,20 @@ class AnimationController():
 			offset = Vec2(*offset)
 
 		spf = 1.0 / fps
-		if isinstance(anim_data, PNFAnimation):
-			animation = anim_data
-		else:
-			frames = [
-				OffsetAnimationFrame(tex.texture, spf, tex.frame_info)
-				for tex in anim_data
-			]
-			animation = PNFAnimation(frames, loop, offset, tags)
+		frames = [
+			OffsetAnimationFrame(tex.texture, spf, tex.frame_info)
+			for tex in anim_data
+		]
 
+		self.add(name, PNFAnimation(frames, loop, offset, tags))
+
+	def add(self, name: str, animation: PNFAnimation) -> None:
+		"""
+		Adds an animation to this AnimationController.
+		If no base box exists yet it will be set on the base of this
+		animation, so try to choose a neutral animation as the first
+		one.
+		"""
 		self._animations[name] = animation
 		if self._base_box is None:
 			self._set_base_box(animation)

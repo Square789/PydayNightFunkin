@@ -91,7 +91,7 @@ class Week1Level(InGameScene):
 				atlas_names,
 				(ANIMATION_TAG.STATIC, ANIMATION_TAG.PRESSED, ANIMATION_TAG.CONFIRM),
 			):
-				arrow_sprite.animation.add(
+				arrow_sprite.animation.add_from_frames(
 					anim_name, note_sprites[atlas_name], 24, False, tags = (tag, )
 				)
 			arrow_sprite.scale = .7
