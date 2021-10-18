@@ -46,13 +46,16 @@ class PNFAnimation(Animation):
 		self,
 		frames: t.Sequence[OffsetAnimationFrame],
 		loop: bool = False,
-		offset: t.Optional[Vec2] = None,
+		offset: t.Optional[t.Union[t.Tuple[int, int], Vec2]] = None,
 		tags: t.Sequence[t.Hashable] = (),
 	):
 		"""
 		Creates a PNFAnimation.
 		"""
 		super().__init__(frames)
+
+		if offset is not None and not isinstance(offset, Vec2):
+			offset = Vec2(*offset)
 
 		self.offset = offset
 		self.loop = loop
@@ -227,19 +230,41 @@ class AnimationController():
 		"""
 		Convenience function to create animation frames directly
 		from a sequence of FrameInfoTextures, as retrieved by the
-		animation image loader, build an animation from it and then
-		add it under the given name.
+		animation image loader and then add it under the given name.
 		"""
 		if fps <= 0:
 			raise ValueError("FPS can't be equal to or less than 0!")
-
-		if offset is not None and not isinstance(offset, Vec2):
-			offset = Vec2(*offset)
 
 		spf = 1.0 / fps
 		frames = [
 			OffsetAnimationFrame(tex.texture, spf, tex.frame_info)
 			for tex in anim_data
+		]
+
+		self.add(name, PNFAnimation(frames, loop, offset, tags))
+
+	def add_by_indices(
+		self,
+		name: str,
+		anim_data: t.Sequence["FrameInfoTexture"],
+		indices: t.Sequence[int],
+		fps: float = 24.0,
+		loop: bool = False,
+		offset: t.Optional[t.Union[t.Tuple[int, int], Vec2]] = None,
+		tags: t.Sequence[t.Hashable] = (),
+	):
+		"""
+		Convenience function to create an animation directly from the
+		FrameInfoTextures - retrieved by the animation image loader -
+		specified by the given indices and add it under the given name.
+		"""
+		if fps <= 0:
+			raise ValueError("FPS can't be equal to or less than 0!")
+
+		spf = 1.0 / fps
+		frames = [
+			OffsetAnimationFrame(anim_data[i].texture, spf, anim_data[i].frame_info)
+			for i in indices
 		]
 
 		self.add(name, PNFAnimation(frames, loop, offset, tags))
@@ -258,7 +283,7 @@ class AnimationController():
 	def play(self, name: str, force: bool = False) -> None:
 		if (
 			self.current is not None and
-			self.current_name == name and not force
+			self.current_name == name and self.playing and not force
 		):
 			return
 

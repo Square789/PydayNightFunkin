@@ -16,7 +16,6 @@ class MusicBeatScene(BaseScene):
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
-
 		old_step = self.cur_step
 
 		lc = self.conductor.last_bpm_change

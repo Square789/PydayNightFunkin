@@ -12,12 +12,12 @@ from pyglet.window.key import KeyStateHandler
 from pyday_night_funkin.config import Config, CONTROL
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
-from pyday_night_funkin.enums import DIFFICULTY
 from pyday_night_funkin.graphics import PNFWindow
 from pyday_night_funkin.key_handler import KeyHandler
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin import ogg_decoder
 from pyday_night_funkin.scenes import BaseScene, TestScene
+from pyday_night_funkin.scenes.title import TitleScene
 
 
 __version__ = "0.0.0dev"
@@ -69,7 +69,7 @@ class Game():
 		self._scenes_to_draw: t.List[BaseScene] = []
 		self._scenes_to_update: t.List[BaseScene] = []
 
-		self.push_scene(WEEKS[1].levels[1], DIFFICULTY.HARD)
+		self.push_scene(TitleScene)
 		# self.push_scene(TestScene)
 
 	def _on_scene_stack_change(self, ignore: t.Optional[BaseScene] = None) -> None:
@@ -107,8 +107,14 @@ class Game():
 		scene class, with any args and kwargs following it.
 		"""
 		new_scene = new_scene_cls(self, *args, **kwargs)
-		self._scene_stack.append(new_scene)
-		self._on_scene_stack_change(new_scene)
+		# Scene creation may take a long time and cause it to receive an update
+		# call with an extremely high dt; delay adding the scene to prevent that.
+
+		def _add(_):
+			self._scene_stack.append(new_scene)
+			self._on_scene_stack_change(new_scene)
+
+		pyglet.clock.schedule_once(_add, 0.0)
 
 	def remove_scene(self, scene: BaseScene) -> None:
 		"""

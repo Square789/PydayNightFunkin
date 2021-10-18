@@ -327,13 +327,17 @@ class PNFSprite(sprite.Sprite):
 		)
 		self._update_position()
 
-	def screen_center(self, screen_dims: t.Tuple[int, int]) -> None:
+	def screen_center(self, screen_dims: Vec2, x: bool = True, y: bool = True) -> None:
 		"""
 		Sets the sprite's world position so that it is centered 
 		on screen. (Ignoring camera and scroll factors)
+		`x` and `y` can be set to false to only center the sprite
+		along one of the axes.
 		"""
-		self.x = (screen_dims[0] - self.width) // 2
-		self.y = (screen_dims[1] - self.height) // 2
+		if x:
+			self.x = (screen_dims[0] - self.width) // 2
+		if y:
+			self.y = (screen_dims[1] - self.height) // 2
 
 	def get_midpoint(self) -> Vec2:
 		"""

@@ -135,15 +135,15 @@ class InGameScene(MusicBeatScene):
 					logger.warning(f"Player ahead of conductor by {discrepancy:.4f} ms.")
 					self.resync()
 
+		self.process_input(dt)
+
 		if self.key_handler.just_pressed(CONTROL.ENTER):
 			self.game.push_scene(PauseScene)
 
-		self.process_input(dt)
-
 	def process_input(self, dt: float) -> None:
 		"""
-		Called with `update` every time. Keyboard input should be
-		handled here.
+		Called with `update` every time.
+		Keyboard input should be handled here.
 		"""
 		if self.game.debug:
 			if self.game.key_handler.just_pressed(CONTROL.DEBUG_DESYNC):

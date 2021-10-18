@@ -35,6 +35,9 @@ class ASSETS:
 		ICON_GRID = 3
 		NOTES = 4
 		ALPHABET = 5
+		GAME_LOGO = 6
+		TITLE_ENTER = 7
+		TITLE_GIRLFRIEND = 8
 
 	class IMG:
 		STAGE_BACK = 100000
@@ -58,12 +61,14 @@ class ASSETS:
 		NUM7 = 100018
 		NUM8 = 100019
 		NUM9 = 100020
+		NEWGROUNDS_LOGO = 100021
 
 	class SOUND:
 		INTRO_3 = 200000
 		INTRO_2 = 200001
 		INTRO_1 = 200002
 		INTRO_GO = 200003
+		MENU_CONFIRM = 200004
 
 	class PATH:
 		SONGS = 300000
@@ -74,6 +79,12 @@ class ASSETS:
 		BOPEEBO = 400001
 		FRESH = 400002
 		DAD_BATTLE = 400003
+
+	class MUSIC:
+		MENU = 500001
+
+	class TXT:
+		INTRO_TEXT = 600001
 
 
 class Resource():
@@ -121,6 +132,12 @@ class XmlTextureAtlas(FileResource):
 class Image(FileResource):
 	def load(self) -> AbstractImage:
 		return load_image(self.get_path())
+
+
+class TextFile(FileResource):
+	def load(self) -> str:
+		with open(self.get_path(), "r") as f:
+			return f.read()
 
 
 class OggVorbis(FileResource):
@@ -189,6 +206,9 @@ _DEFAULT_ASSET_SYSTEM = AssetSystem({
 	ASSETS.XML.ICON_GRID: XmlTextureAtlas("preload/images/iconGrid.xml"),
 	ASSETS.XML.NOTES: XmlTextureAtlas("shared/images/NOTE_assets.xml"),
 	ASSETS.XML.ALPHABET: XmlTextureAtlas("preload/images/alphabet.xml"),
+	ASSETS.XML.GAME_LOGO: XmlTextureAtlas("preload/images/logoBumpin.xml"),
+	ASSETS.XML.TITLE_ENTER: XmlTextureAtlas("preload/images/titleEnter.xml"),
+	ASSETS.XML.TITLE_GIRLFRIEND: XmlTextureAtlas("preload/images/gfDanceTitle.xml"),
 
 	ASSETS.IMG.STAGE_BACK: Image("shared/images/stageback.png"),
 	ASSETS.IMG.STAGE_FRONT: Image("shared/images/stagefront.png"),
@@ -211,11 +231,13 @@ _DEFAULT_ASSET_SYSTEM = AssetSystem({
 	ASSETS.IMG.NUM7: Image("preload/images/num7.png"),
 	ASSETS.IMG.NUM8: Image("preload/images/num8.png"),
 	ASSETS.IMG.NUM9: Image("preload/images/num9.png"),
+	ASSETS.IMG.NEWGROUNDS_LOGO: Image("preload/images/newgrounds_logo.png"),
 
 	ASSETS.SOUND.INTRO_3: OggVorbisSound("shared/sounds/intro3.ogg"),
 	ASSETS.SOUND.INTRO_2: OggVorbisSound("shared/sounds/intro2.ogg"),
 	ASSETS.SOUND.INTRO_1: OggVorbisSound("shared/sounds/intro1.ogg"),
 	ASSETS.SOUND.INTRO_GO: OggVorbisSound("shared/sounds/introGo.ogg"),
+	ASSETS.SOUND.MENU_CONFIRM: OggVorbisSound("preload/sounds/confirmMenu.ogg"),
 
 	ASSETS.PATH.SONGS: AssetPath("songs/"),
 	ASSETS.PATH.DATA: AssetPath("preload/data/"),
@@ -224,6 +246,10 @@ _DEFAULT_ASSET_SYSTEM = AssetSystem({
 	ASSETS.SONG.BOPEEBO: OggVorbisSong("bopeebo"),
 	ASSETS.SONG.FRESH: OggVorbisSong("fresh"),
 	ASSETS.SONG.DAD_BATTLE: OggVorbisSong("dadbattle"),
+
+	ASSETS.MUSIC.MENU: OggVorbisSound("preload/music/freakymenu.ogg"),
+
+	ASSETS.TXT.INTRO_TEXT: TextFile("preload/data/introText.txt"),
 })
 
 

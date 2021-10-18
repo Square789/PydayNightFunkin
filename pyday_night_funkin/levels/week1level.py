@@ -124,16 +124,16 @@ class Week1Level(InGameScene):
 
 		self.number_textures = [load_asset(getattr(ASSETS.IMG, f"NUM{i}")) for i in range(10)]
 
+		# No idea if this is a good choice but the dict accesses seem weird and
+		# it's not like there will be more cameras
+		self.main_cam = self.cameras["main"]
+		self.ui_cam = self.cameras["ui"]
+
 	def ready(self) -> None:
 		self.girlfriend.animation.play("idle_bop")
 		self.boyfriend.animation.play("idle_bop")
 		self.opponent.animation.play("idle_bop")
 		self.opponent.check_animation_controller() # for the `main_cam.look_at` below
-
-		# No idea if this is a good choice but the dict accesses seem weird and
-		# it's not like there will be more cameras
-		self.main_cam = self.cameras["main"]
-		self.ui_cam = self.cameras["ui"]
 
 		self.main_cam.zoom = self.DEFAULT_CAM_ZOOM
 		self.main_cam.look_at(self.opponent.get_midpoint() + Vec2(400, 0))
