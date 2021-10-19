@@ -210,12 +210,14 @@ class BaseScene():
 		"""
 		self.batch.draw()
 
-	def destroy(self) -> None:
+	def destroy(self, remove_from_game: bool = True) -> None:
 		"""
-		Destroy the scene by removing it from its game, deleting its
-		sprites and deleting its graphics batch.
+		Destroy the scene by deleting its sprites and graphics batch.
+		If `remove_from_game` is not set to `False`, the scene will
+		also remove itself from the game.
 		"""
-		self.game.remove_scene(self)
+		if remove_from_game:
+			self.game.remove_scene(self)
 
 		# Copy in case __del__ or delete does weird things
 		for spr in self._sprites.copy():
@@ -223,3 +225,4 @@ class BaseScene():
 		self._sprites.clear()
 
 		del self.batch
+		del self.game # reference breaking or something

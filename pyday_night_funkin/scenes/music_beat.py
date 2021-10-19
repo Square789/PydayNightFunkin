@@ -18,6 +18,9 @@ class MusicBeatScene(BaseScene):
 		super().update(dt)
 		old_step = self.cur_step
 
+		# TODO: On high dt's, this will drop calls to on_|x|_hit
+		# TODO: When conductor is rewound, may call ^ twice i think?
+
 		lc = self.conductor.last_bpm_change
 		self.cur_step = lc.step_time + floor(
 			(self.conductor.song_position - lc.song_time) / self.conductor.step_duration

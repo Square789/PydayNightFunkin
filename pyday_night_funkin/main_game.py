@@ -47,7 +47,8 @@ class Game():
 				CONTROL.UP: [key.UP, key.W],
 				CONTROL.RIGHT: [key.RIGHT, key.D],
 				CONTROL.ENTER: key.ENTER,
-				CONTROL.DEBUG_DESYNC: key._1
+				CONTROL.BACKSPACE: key.BACKSPACE,
+				CONTROL.DEBUG_DESYNC: key._1,
 			},
 		)
 
@@ -115,6 +116,17 @@ class Game():
 			self._on_scene_stack_change(new_scene)
 
 		pyglet.clock.schedule_once(_add, 0.0)
+
+	def clear_scene_stack(self):
+		"""
+		Clears the existing scene stack.
+		"""
+		old_stack = self._scene_stack
+		self._scene_stack = []
+		self._on_scene_stack_change()
+
+		for scene in old_stack:
+			scene.destroy(remove_from_game=False)
 
 	def remove_scene(self, scene: BaseScene) -> None:
 		"""

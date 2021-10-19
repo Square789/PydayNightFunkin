@@ -5,9 +5,6 @@ from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.enums import ANIMATION_TAG
 from pyday_night_funkin.characters._base import Character
 
-if t.TYPE_CHECKING:
-	from pyday_night_funkin.scenes import MusicBeatScene
-
 
 class Boyfriend(Character):
 	def __init__(self, *args, **kwargs) -> None:

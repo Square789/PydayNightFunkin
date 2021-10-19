@@ -50,13 +50,14 @@ class NoteHandler(AbstractNoteHandler):
 		self.scroll_speed = game_scene.game.config.scroll_speed
 
 		self.notes: t.List[Note] = []
-		# Notes that are on screen and have a sprite registered.
-		# (May not actually be visible since they may have been played)
 		self.notes_visible = ListWindow(self.notes, 0, 0)
-		# Notes that are playable based solely on their song position.
-		# (These may actually have been played or - for absurd scroll
-		# speeds - be invisible.)
+		"""Notes that are on screen and have a sprite registered.
+		(May not actually be visible since they may have been played)"""
+
 		self.notes_playable = ListWindow(self.notes, 0, 0)
+		"""Notes that are playable based solely on their song position.
+		(These may actually have been played or - for absurd scroll
+		speeds - be invisible.)"""
 
 		note_assets = load_asset(ASSETS.XML.NOTES)
 		self.note_sprites = {

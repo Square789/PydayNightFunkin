@@ -67,20 +67,25 @@ class TitleScene(MusicBeatScene):
 		self.text_lines: t.List[t.List["AlphabetCharacter"]] = []
 
 		self._BEAT_FUNCS = {
-			1: lambda: self._create_text(
+			1: lambda: self._create_text("original game by"),
+			2: lambda: self._create_text(
 				"ninjamuffin99", "phantomArcade", "kawaisprite", "evilsk8er"
 			),
-			3: lambda: self._create_text("present"),
 			4: self._delete_text,
-			5: lambda: self._create_text("In association", "with"),
-			7: lambda: (self._create_text("newgrounds"), setattr(self.ng_logo, "visible", True)),
-			8: lambda: (self._delete_text(), setattr(self.ng_logo, "visible", False)),
-			9: lambda: self._create_text(self.intro_text[0]),
-			11: lambda: self._create_text(self.intro_text[1]),
-			12: self._delete_text,
-			13: lambda: self._create_text("Friday"),
-			14: lambda: self._create_text("Night"),
-			15: lambda: self._create_text("Funkin"),
+			5: lambda: (
+				self._create_text("In association", "with", "newgrounds"),
+				setattr(self.ng_logo, "visible", True)
+			),
+			7: lambda: (self._delete_text(), setattr(self.ng_logo, "visible", False)),
+			8: lambda: self._create_text("Python rewrite by"),
+			9: lambda: self._create_text("Square789"),
+			11: self._delete_text,
+			12: lambda: self._create_text(self.intro_text[0]),
+			13: lambda: self._create_text(self.intro_text[1]),
+			# 13: lambda: self._create_text("Friday"),
+			# 14: lambda: self._create_text("Night"),
+			# 15: lambda: self._create_text("Funkin"), # No cool title sadly
+			15: self._delete_text,
 			16: self._intro_end,
 		}
 
@@ -91,7 +96,12 @@ class TitleScene(MusicBeatScene):
 	def _create_text(self, *lines: str) -> None:
 		for line in lines:
 			sprites = create_text_line(
-				line, self, "main", bold=True, y=len(self.text_lines) * 60 + 200
+				line,
+				self,
+				"main",
+				bold = True,
+				color = (255, ) * 3,
+				y = len(self.text_lines) * 60 + 200,
 			)
 
 			# NOTE screen centering; this is the worst

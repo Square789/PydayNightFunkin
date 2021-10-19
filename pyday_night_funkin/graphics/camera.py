@@ -4,7 +4,7 @@ import typing as t
 from pyglet.math import Vec2
 
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
-from pyday_night_funkin.graphics.pnf_sprite import PNFSprite, pnf_sprite_shader_container
+from pyday_night_funkin.graphics.pnf_sprite import PNFSprite
 
 
 CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
@@ -20,7 +20,7 @@ class Camera:
 	"""
 
 	def __init__(self):
-		self.ubo = pnf_sprite_shader_container.get_camera_ubo()
+		self.ubo = PNFSprite.shader_container.get_camera_ubo()
 
 		self._x = 0
 		self._y = 0

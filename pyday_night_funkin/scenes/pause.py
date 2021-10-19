@@ -1,5 +1,6 @@
 
 import typing as t
+from loguru import logger
 
 from pyglet.image import ImageData
 
@@ -36,3 +37,7 @@ class PauseScene(BaseScene):
 
 		if self.game.key_handler.just_pressed(CONTROL.ENTER):
 			self.destroy()
+		elif self.game.key_handler.just_pressed(CONTROL.BACKSPACE):
+			logger.debug("yeah no try again next week")
+			# self.game.remove_scene(self.game._scene_stack[-2])
+			# self.destroy()
