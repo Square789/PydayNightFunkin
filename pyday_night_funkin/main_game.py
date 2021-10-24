@@ -162,7 +162,7 @@ class Game():
 			scene.draw()
 
 		if self.debug:
-			self.debug_batch.draw()
+			self.debug_pane.draw()
 			self._fps_bump()
 			draw_time = (time() - stime) * 1000
 			# Prints frame x-1's draw time in frame x, but who cares
