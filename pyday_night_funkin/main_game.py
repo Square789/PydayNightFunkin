@@ -14,10 +14,8 @@ from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.graphics import PNFWindow
 from pyday_night_funkin.key_handler import KeyHandler
-from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin import ogg_decoder
-from pyday_night_funkin.scenes import BaseScene, TestScene
-from pyday_night_funkin.scenes.title import TitleScene
+from pyday_night_funkin.scenes import BaseScene, TestScene, TitleScene
 
 
 __version__ = "0.0.0dev"
@@ -31,12 +29,10 @@ class Game():
 		logger.remove(0)
 
 		self.debug = True
-		if self.debug:
-			self._update_time = 0
-			self._fps = [time() * 1000, 0, "?"]
-			self.debug_batch = Batch()
-			self.debug_pane = DebugPane(8, self.debug_batch)
-			logger.add(self.debug_pane.add_message)
+		# These have to be setup later, see `run`
+		self._update_time = 0
+		self._fps = None
+		self.debug_pane = None
 
 		self.config = Config(
 			scroll_speed = 1.0,
@@ -73,30 +69,37 @@ class Game():
 		self.push_scene(TitleScene)
 		# self.push_scene(TestScene)
 
-	def _on_scene_stack_change(self, ignore: t.Optional[BaseScene] = None) -> None:
-		for self_attr, scene_attr, scene_callback in (
-			("_scenes_to_draw", "draw_passthrough", "on_regular_draw_change"),
-			("_scenes_to_update", "update_passthrough", "on_regular_update_change"),
+	def _on_scene_stack_change(self) -> None:
+		for self_attr, scene_attr in (
+			("_scenes_to_draw", "draw_passthrough"),
+			("_scenes_to_update", "update_passthrough"),
 		):
 			start = len(self._scene_stack) - 1
 			while start >= 0 and getattr(self._scene_stack[start], scene_attr):
 				start -= 1
 
-			prev = getattr(self, self_attr)
 			new = self._scene_stack[start:]
-
-			for scene in prev:
-				if scene is not ignore and scene not in new:
-					getattr(scene, scene_callback)(False)
-
-			for scene in new:
-				if scene is not ignore and scene not in prev:
-					getattr(scene, scene_callback)(True)
 
 			setattr(self, self_attr, new)
 
 	def run(self) -> None:
-		logger.debug(f"Game started (v{__version__}), pyglet version {pyglet.version}")
+		"""
+		Run the game.
+		"""
+		# Debug stuff must be set up in the game loop since otherwise the id
+		# `1` (something something standard doesn't guarantee it will be 1)
+		# will be used twice for two different vertex array objects in 2
+		# different contexts? Yeah idk about OpenGL, but it will lead to
+		# unexpected errors later when switching scenes and often recreating
+		# VAOs.
+		if self.debug:
+			def debug_setup(_):
+				self._fps = [time() * 1000, 0, "?"]
+				self.debug_pane = DebugPane(8)
+				logger.add(self.debug_pane.add_message)
+				logger.debug(f"Game started (v{__version__}), pyglet version {pyglet.version}")
+			pyglet.clock.schedule_once(debug_setup, 0.0)
+
 		pyglet.clock.schedule_interval(self.update, 1 / 80.0)
 		pyglet.app.run()
 
@@ -111,22 +114,13 @@ class Game():
 		# Scene creation may take a long time and cause it to receive an update
 		# call with an extremely high dt; delay adding the scene to prevent that.
 
+		new_scene.creation_args = (args, kwargs)
+
 		def _add(_):
 			self._scene_stack.append(new_scene)
-			self._on_scene_stack_change(new_scene)
+			self._on_scene_stack_change()
 
 		pyglet.clock.schedule_once(_add, 0.0)
-
-	def clear_scene_stack(self):
-		"""
-		Clears the existing scene stack.
-		"""
-		old_stack = self._scene_stack
-		self._scene_stack = []
-		self._on_scene_stack_change()
-
-		for scene in old_stack:
-			scene.destroy(remove_from_game=False)
 
 	def remove_scene(self, scene: BaseScene) -> None:
 		"""
@@ -135,6 +129,30 @@ class Game():
 		"""
 		self._scene_stack.remove(scene)
 		self._on_scene_stack_change()
+		scene.destroy()
+
+	def set_scene(self, new_scene_type: t.Type[BaseScene], *args, **kwargs):
+		"""
+		Clears the existing scene stack and then sets the given scene
+		passed in the same manner as in `push_scene` to be its only
+		member.
+		"""
+		old_stack = self._scene_stack
+		self._scene_stack = []
+		self._on_scene_stack_change()
+
+		for scene in old_stack:
+			scene.destroy()
+
+		self.push_scene(new_scene_type, *args, **kwargs)
+
+	def get_previous_scene(self, scene: BaseScene) -> t.Optional[BaseScene]:
+		i = self._scene_stack.index(scene)
+		return self._scene_stack[i - 1] if i > 0 else None
+
+	def get_next_scene(self, scene: BaseScene) -> t.Optional[BaseScene]:
+		i = self._scene_stack.index(scene)
+		return self._scene_stack[i + 1] if i < len(self._scene_stack) - 1 else None
 
 	def draw(self) -> None:
 		stime = time()

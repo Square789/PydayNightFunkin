@@ -9,8 +9,7 @@ from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.enums import DIFFICULTY
-from pyday_night_funkin.levels import WEEKS
-from pyday_night_funkin.scenes import MusicBeatScene
+from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.alphabet import AlphabetCharacter
@@ -128,6 +127,9 @@ class TitleScene(MusicBeatScene):
 		self._intro_ended = True
 
 	def _leave_scene(self):
+		# may god smite you, o cursed circular imports!
+		from pyday_night_funkin.levels import WEEKS
+
 		if self._leaving_scene:
 			return
 
@@ -137,9 +139,10 @@ class TitleScene(MusicBeatScene):
 
 		def _cb(_):
 			self.player.pause()
-			self.game.push_scene(WEEKS[1].levels[1], DIFFICULTY.HARD)
+			self.game.push_scene(WEEKS[1].levels[1], DIFFICULTY.HARD, type(self))
 
-		self.clock.schedule_once(_cb, 2.0)
+		delay = .5 if self.game.debug else 2.0
+		self.clock.schedule_once(_cb, delay)
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()

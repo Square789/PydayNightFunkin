@@ -68,6 +68,9 @@ class BaseScene():
 		:param game: The `Game` the scene belongs to.
 		"""
 		self.game = game
+
+		self.creation_args = None
+
 		self.batch = Batch()
 
 		self.draw_passthrough = True
@@ -117,33 +120,6 @@ class BaseScene():
 
 	def _get_elapsed_time(self) -> float:
 		return self._passed_time
-
-	def on_regular_update_change(self, new: bool) -> None:
-		"""
-		Called when the game's scene stack changes and the scene will
-		now either be updated each game tick when it wasn't before
-		(`new` is `True`) or the scene will now not be updated
-		anymore when it was before (`new` is `False`).
-
-		Should be used to stop/pause/start/play things that are not
-		handled in the scene's `update` function.
-
-		! WARNING ! Due to poor programming, the scene may not delete
-		itself here and should not interact with the game at all.
-		"""
-		pass
-
-	def on_regular_draw_change(self, new: bool) -> None:
-		"""
-		Called when the game's scene stack changes and the scene will
-		now either be drawn each game tick when it wasn't before
-		(`new` is `True`) or the scene will now not be drawn
-		anymore when it was before (`new` is `False`).
-
-		! WARNING ! Due to poor programming, the scene may not delete
-		itself here and should not interact with the game at all.
-		"""
-		pass
 
 	def create_sprite(
 		self,
@@ -210,15 +186,34 @@ class BaseScene():
 		"""
 		self.batch.draw()
 
-	def destroy(self, remove_from_game: bool = True) -> None:
+	def remove(self, *args, **kwargs) -> None:
+		"""
+		Removes a scene by telling the below scene, or the game if
+		this scene is the parent scene, to remove it.
+		All args and kwargs will be passed through to a parent scene's
+		`remove_subscene` method, but ignored if the game receives the
+		removal request.
+		"""
+		destroyer = self.game.get_previous_scene(self)
+		if destroyer is None:
+			self.game.remove_scene(self)
+		else:
+			destroyer.remove_subscene(*args, **kwargs)
+
+	def remove_subscene(self, *args, **kwargs):
+		"""
+		Called by the scene above's `remove` method.
+		"""
+		subscene = self.game.get_next_scene(self)
+		self.game.remove_scene(subscene)
+
+	def destroy(self) -> None:
 		"""
 		Destroy the scene by deleting its sprites and graphics batch.
-		If `remove_from_game` is not set to `False`, the scene will
-		also remove itself from the game.
+		**!** This does not remove the scene from the game's scene
+		stack and will cause errors if used improperly.
+		Chances are you want to use `remove` instead.
 		"""
-		if remove_from_game:
-			self.game.remove_scene(self)
-
 		# Copy in case __del__ or delete does weird things
 		for spr in self._sprites.copy():
 			spr.delete()

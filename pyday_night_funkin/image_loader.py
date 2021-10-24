@@ -73,7 +73,9 @@ def load_frames_from_texture_atlas(xml_path: Path) -> t.Dict[str, t.List[FrameIn
 			) # this sucks; basically none of the first five fields may be None and either
 			#   all or none of the frame_vars must be None.
 		):
-			logger.warning(f"{(name, region, frame_vars)} Invalid attributes for SubTexture entry. Skipping.")
+			logger.warning(
+				f"{(name, region, frame_vars)} Invalid attributes for SubTexture entry. Skipping."
+			)
 			continue
 
 		if (match_res := RE_SPLIT_ANIMATION_NAME.match(name)) is None:

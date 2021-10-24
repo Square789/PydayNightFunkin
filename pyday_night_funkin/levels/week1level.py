@@ -14,7 +14,7 @@ from pyday_night_funkin.enums import ANIMATION_TAG, GAME_STATE
 from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.note import RATING, NOTE_TYPE, SUSTAIN_STAGE
 from pyday_night_funkin.note_handler import AbstractNoteHandler, NoteHandler
-from pyday_night_funkin.scenes import InGameScene
+from pyday_night_funkin.scenes.in_game import InGameScene
 from pyday_night_funkin.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
 from pyday_night_funkin.utils import lerp
 

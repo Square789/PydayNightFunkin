@@ -3,13 +3,10 @@ from queue import Queue
 import queue
 import typing as t
 
-from pyglet.graphics import Group
+from pyglet.graphics import Batch, Group
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.graphics.pyglet_tl_patch import TLLabel, TLRectangle
-
-if t.TYPE_CHECKING:
-	from pyglet.graphics import Batch
 
 
 class DebugPane():
@@ -22,11 +19,11 @@ class DebugPane():
 	LINE_DIST = 2
 	PADDING = 8
 
-	def __init__(self, line_amount: int, batch: "Batch") -> None:
+	def __init__(self, line_amount: int) -> None:
 		self.insert_index = 0
 		self.background = Group(order = 0)
 		self.foreground = Group(order = 1)
-		self.batch = batch
+		self.batch = Batch()
 		self._queue = Queue()
 		self.labels = [
 			TLLabel(
@@ -35,7 +32,7 @@ class DebugPane():
 				font_size = self.FONT_SIZE,
 				x = 10,
 				y = (self.FONT_SIZE * i + self.LINE_DIST * i),
-				batch = batch,
+				batch = self.batch,
 				group = self.foreground,
 			) for i in range(line_amount)
 		]
@@ -45,7 +42,7 @@ class DebugPane():
 			font_size = self.FONT_SIZE + 4,
 			x = 20,
 			y = ((self.FONT_SIZE * (line_amount + 1)) + 4 + self.LINE_DIST * line_amount),
-			batch = batch,
+			batch = self.batch,
 			group = self.foreground,
 		)
 		self.rect = TLRectangle(
@@ -54,7 +51,7 @@ class DebugPane():
 			CNST.GAME_WIDTH - 2 * self.PADDING,
 			(self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1)),
 			color = (20, 20, 100),
-			batch = batch,
+			batch = self.batch,
 			group = self.background,
 		)
 		
@@ -99,3 +96,9 @@ class DebugPane():
 
 			self.labels[self.insert_index].text = message
 			self.insert_index += 1
+
+	def draw(self):
+		"""
+		Draw the DebugPane.
+		"""
+		self.batch.draw()

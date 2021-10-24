@@ -9,8 +9,10 @@ from pyglet.media.player import PlayerGroup
 from pyday_night_funkin.asset_system import load_asset
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin.enums import DIFFICULTY, GAME_STATE
+from pyday_night_funkin.scenes.mainmenu import MainMenuScene
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 from pyday_night_funkin.scenes.pause import PauseScene
+from pyday_night_funkin.scenes.title import TitleScene
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
@@ -26,12 +28,18 @@ class InGameScene(MusicBeatScene):
 	functionality, for it to be playable it needs to be expanded
 	by subclassing it (see existing weeks for examples).
 	"""
-	def __init__(self, game: "Game", difficulty: DIFFICULTY) -> None:
+	def __init__(
+		self,
+		game: "Game",
+		difficulty: DIFFICULTY,
+		created_from: t.Union[t.Type[MainMenuScene], t.Type[TitleScene]],
+	) -> None:
 		super().__init__(game)
 
 		self.draw_passthrough = False
 
 		self.difficulty = difficulty
+		self.created_from = created_from
 
 		self.key_handler = game.key_handler
 		self.note_handler = self.create_note_handler()
@@ -65,15 +73,6 @@ class InGameScene(MusicBeatScene):
 		self.conductor.song_position = self.inst_player.time * 1000
 		self.voice_player.seek(self.conductor.song_position * 0.001)
 		self.voice_player.play()
-
-	def on_regular_update_change(self, new: bool) -> None:
-		if self.state is not GAME_STATE.PLAYING:
-			return
-
-		if new:
-			self.song_players.play()
-		else:
-			self.song_players.pause()
 
 	def load_resources(self) -> None:
 		"""
@@ -138,6 +137,7 @@ class InGameScene(MusicBeatScene):
 		self.process_input(dt)
 
 		if self.key_handler.just_pressed(CONTROL.ENTER):
+			self.song_players.pause()
 			self.game.push_scene(PauseScene)
 
 	def process_input(self, dt: float) -> None:
@@ -150,3 +150,10 @@ class InGameScene(MusicBeatScene):
 				desync = random.randint(-200, 200)
 				logger.debug(f"Desyncing conductor by {desync}ms")
 				self.conductor.song_position += desync
+
+	def remove_subscene(self, end_self, *a, **kw):
+		super().remove_subscene(*a, **kw)
+		if end_self:
+			self.game.set_scene(self.created_from)
+		else:
+			self.song_players.play()

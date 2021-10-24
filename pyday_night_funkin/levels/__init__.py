@@ -21,11 +21,6 @@ class Week:
 
 
 WEEKS: t.Sequence[Week] = (
-	Week(
-		"TUTORIAL",
-		[
-#			LevelBlueprint("Tutorial", Week1Level),
-		]
-	),
+	Week("TUTORIAL", []),
 	Week("WEEK 1", [Bopeebo, Fresh, DadBattle]),
 )

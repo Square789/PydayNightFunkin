@@ -1,5 +1,5 @@
 
-from pyday_night_funkin.scenes import MusicBeatScene
+from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 
 
 class MainMenuScene(MusicBeatScene):
