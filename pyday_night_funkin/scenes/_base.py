@@ -15,9 +15,8 @@ from pyday_night_funkin.sfx_ring import SFXRing
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
+	from pyday_night_funkin.types import PNFSpriteBound
 
-
-T = t.TypeVar("T", bound = PNFSprite)
 
 
 class Layer():
@@ -125,10 +124,10 @@ class BaseScene():
 		self,
 		layer: str,
 		camera: t.Optional[str] = None,
-		sprite_class: t.Type[T] = PNFSprite,
+		sprite_class: t.Type["PNFSpriteBound"] = PNFSprite,
 		*args,
 		**kwargs,
-	) -> T:
+	) -> "PNFSpriteBound":
 		"""
 		Creates a sprite on the given layer belonging to a camera.
 		If a camera name is specified (and the camera exists in the

@@ -94,7 +94,7 @@ class TitleScene(MusicBeatScene):
 
 	def _create_text(self, *lines: str) -> None:
 		for line in lines:
-			sprites = create_text_line(
+			container = create_text_line(
 				line,
 				self,
 				"main",
@@ -103,15 +103,12 @@ class TitleScene(MusicBeatScene):
 				y = len(self.text_lines) * 60 + 200,
 			)
 
-			# NOTE screen centering; this is the worst
-			w = (sprites[-1].x + sprites[-1].width) - sprites[0].x
-			for sprite in sprites:
-				sprite.x += (CNST.GAME_WIDTH - w) // 2
-			self.text_lines.append(sprites)
+			container.screen_center(CNST.GAME_DIMENSIONS, y=False)
+			self.text_lines.append(container)
 
 	def _delete_text(self):
-		for line in self.text_lines:
-			for s in line:
+		for container in self.text_lines:
+			for s in container.sprites:
 				self.remove_sprite(s)
 		self.text_lines = []
 

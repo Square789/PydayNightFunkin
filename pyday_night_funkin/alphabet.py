@@ -4,6 +4,7 @@ import typing as t
 from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.graphics import PNFSprite
 from pyday_night_funkin.graphics.pnf_animation import PNFAnimation, OffsetAnimationFrame
+from pyday_night_funkin.graphics.pnf_sprite_container import PNFSpriteContainer
 from pyday_night_funkin.graphics.shaders import (
 	PNFSpriteFragmentShader, PNFSpriteVertexShader, ShaderContainer
 )
@@ -21,13 +22,13 @@ def create_text_line(
 	color: t.Optional[t.Tuple[int, int, int]] = None,
 	x: float = 0,
 	y: float = 0,
-) -> None:
+) -> PNFSpriteContainer:
 	"""
 	Very cheap text layout function designed to work with the
 	scenes.
 	"""
 	# NOTE: This sucks
-	sprites = []
+	container = PNFSpriteContainer()
 	last_sprite = None
 	last_was_space = False
 	x_pos = x
@@ -53,9 +54,9 @@ def create_text_line(
 			color = color,
 		)
 		last_sprite = sprite
-		sprites.append(sprite)
+		container.add(sprite)
 
-	return sprites
+	return container
 
 
 
@@ -126,7 +127,7 @@ class AlphabetCharacter(PNFSprite):
 		If `bold` is set to `True`, an uppercase bold alt will be used
 		for ONLY letters.
 		If `color` is given as a three-integer tuple and the chosen
-		animation is `not` a bold one (this may still happen if `bold`
+		animation is *not* a bold one (this may still happen if `bold`
 		is True, but the `char` is not a letter), instead of the
 		default shader, which blends a texture's color with the sprite
 		color, a shader that sets the sprite color, ignoring the texture

@@ -211,11 +211,9 @@ class PNFSprite(sprite.Sprite):
 		Returns the middle point of this sprite, based on its current
 		texture and world position.
 		"""
-		# Not using the width / height properties since they return
-		# incorrect values for negative scaling
 		return Vec2(
-			self._x + self._texture.width * self._scale_x * self._scale * 0.5,
-			self._y + self._texture.height * self._scale_y * self._scale * 0.5,
+			self._x + self.signed_width * 0.5,
+			self._y + self.signed_height * 0.5,
 		)
 
 	def start_tween(
@@ -319,9 +317,17 @@ class PNFSprite(sprite.Sprite):
 		self._vertex_list.scroll_factor[:] = new_sf * 4
 
 	@property
+	def signed_width(self) -> float:
+		return self._texture.width * self._scale_x * self._scale
+
+	@property
+	def signed_height(self) -> float:
+		return self._texture.height * self._scale_y * self._scale
+
+	@property
 	def image(self) -> t.Union[PNFAnimation, AbstractImage]:
-		if self._animation is not None:
-			return self._animation
+		if self.animation.is_set:
+			return self.animation.current
 		return self._texture
 
 	@image.setter
