@@ -34,3 +34,12 @@ def out_quart(x: float) -> float:
 
 def in_out_quart(x: float) -> float:
 	return 8 * x**4 if x < 0.5 else 1 - ((-2*x + 2)**4 / 2)
+
+def in_quad(x: float) -> float:
+	return x**2
+
+def out_quad(x: float) -> float:
+	return 1 - (1 - x)**2
+
+def in_out_quad(x: float) -> float:
+	return 2 * x**2 if x < 0.5 else 1 - ((-2*x + 2)**2 / 2)

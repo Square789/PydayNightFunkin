@@ -26,8 +26,6 @@ class Game():
 		if ogg_decoder not in pyglet.media.get_decoders():
 			pyglet.media.add_decoders(ogg_decoder)
 
-		logger.remove(0)
-
 		self.debug = True
 		# These have to be setup later, see `run`
 		self._update_time = 0
@@ -66,6 +64,8 @@ class Game():
 		self._scenes_to_draw: t.List[BaseScene] = []
 		self._scenes_to_update: t.List[BaseScene] = []
 
+		self._pending_scene_stack_operations = []
+
 		self.push_scene(TitleScene)
 		# self.push_scene(TestScene)
 
@@ -92,6 +92,7 @@ class Game():
 		# different contexts? Yeah idk about OpenGL, but it will lead to
 		# unexpected errors later when switching scenes and often recreating
 		# VAOs.
+		logger.remove(0)
 		if self.debug:
 			def debug_setup(_):
 				self._fps = [time() * 1000, 0, "?"]
@@ -127,9 +128,12 @@ class Game():
 		Removes the given scene from anywhere in the scene stack.
 		ValueError is raised if it is not present.
 		"""
-		self._scene_stack.remove(scene)
-		self._on_scene_stack_change()
-		scene.destroy()
+		def _rem():
+			self._scene_stack.remove(scene)
+			self._on_scene_stack_change()
+			scene.destroy()
+
+		self._pending_scene_stack_operations.append(_rem)
 
 	def set_scene(self, new_scene_type: t.Type[BaseScene], *args, **kwargs):
 		"""
@@ -137,14 +141,17 @@ class Game():
 		passed in the same manner as in `push_scene` to be its only
 		member.
 		"""
-		old_stack = self._scene_stack
-		self._scene_stack = []
-		self._on_scene_stack_change()
+		def _set():
+			old_stack = self._scene_stack
+			self._scene_stack = []
+			self._on_scene_stack_change()
 
-		for scene in old_stack:
-			scene.destroy()
+			for scene in old_stack:
+				scene.destroy()
 
-		self.push_scene(new_scene_type, *args, **kwargs)
+			self.push_scene(new_scene_type, *args, **kwargs)
+
+		self._pending_scene_stack_operations.append(_set)
 
 	def get_previous_scene(self, scene: BaseScene) -> t.Optional[BaseScene]:
 		i = self._scene_stack.index(scene)
@@ -170,6 +177,9 @@ class Game():
 
 	def update(self, dt: float) -> None:
 		stime = time()
+
+		while self._pending_scene_stack_operations:
+			self._pending_scene_stack_operations.pop(0)()
 
 		for scene in self._scenes_to_update:
 			scene.update(dt)
