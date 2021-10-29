@@ -213,7 +213,6 @@ class BaseScene():
 		stack and will cause errors if used improperly.
 		Chances are you want to use `remove` instead.
 		"""
-		# Copy in case __del__ or delete does weird things
 		for spr in self._sprites.copy():
 			spr.delete()
 		self._sprites.clear()

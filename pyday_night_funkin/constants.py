@@ -13,4 +13,4 @@ STATIC_ARROW_Y = 50
 
 ERROR_TEXTURE = CheckerImagePattern(PINK, BLACK).create_image(32, 32).create_texture(Texture)
 
-SFX_RING_SIZE = 8
+SFX_RING_SIZE = 4

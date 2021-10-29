@@ -64,7 +64,8 @@ class Game():
 		self._scenes_to_draw: t.List[BaseScene] = []
 		self._scenes_to_update: t.List[BaseScene] = []
 
-		self._pending_scene_stack_operations = []
+		self._pending_scene_stack_removals = []
+		self._pending_scene_stack_additions = []
 
 		self.push_scene(TitleScene)
 		# self.push_scene(TestScene)
@@ -111,29 +112,15 @@ class Game():
 		The game instance will be passed as the first argument to the
 		scene class, with any args and kwargs following it.
 		"""
-		new_scene = new_scene_cls(self, *args, **kwargs)
-		# Scene creation may take a long time and cause it to receive an update
-		# call with an extremely high dt; delay adding the scene to prevent that.
-
-		new_scene.creation_args = (args, kwargs)
-
-		def _add(_):
-			self._scene_stack.append(new_scene)
-			self._on_scene_stack_change()
-
-		pyglet.clock.schedule_once(_add, 0.0)
+		self._pending_scene_stack_additions.append((new_scene_cls, args, kwargs))
 
 	def remove_scene(self, scene: BaseScene) -> None:
 		"""
 		Removes the given scene from anywhere in the scene stack.
 		ValueError is raised if it is not present.
 		"""
-		def _rem():
-			self._scene_stack.remove(scene)
-			self._on_scene_stack_change()
-			scene.destroy()
-
-		self._pending_scene_stack_operations.append(_rem)
+		if scene not in self._pending_scene_stack_removals:
+			self._pending_scene_stack_removals.append(scene)
 
 	def set_scene(self, new_scene_type: t.Type[BaseScene], *args, **kwargs):
 		"""
@@ -141,17 +128,11 @@ class Game():
 		passed in the same manner as in `push_scene` to be its only
 		member.
 		"""
-		def _set():
-			old_stack = self._scene_stack
-			self._scene_stack = []
-			self._on_scene_stack_change()
+		for scene in self._scene_stack:
+			if scene not in self._pending_scene_stack_removals:
+				self._pending_scene_stack_removals.append(scene)
 
-			for scene in old_stack:
-				scene.destroy()
-
-			self.push_scene(new_scene_type, *args, **kwargs)
-
-		self._pending_scene_stack_operations.append(_set)
+		self.push_scene(new_scene_type, *args, **kwargs)
 
 	def get_previous_scene(self, scene: BaseScene) -> t.Optional[BaseScene]:
 		i = self._scene_stack.index(scene)
@@ -178,8 +159,26 @@ class Game():
 	def update(self, dt: float) -> None:
 		stime = time()
 
-		while self._pending_scene_stack_operations:
-			self._pending_scene_stack_operations.pop(0)()
+		if self._pending_scene_stack_removals:
+			while self._pending_scene_stack_removals:
+				scene = self._pending_scene_stack_removals.pop()
+				self._scene_stack.remove(scene)
+				scene.destroy()
+			self._on_scene_stack_change()
+
+		if self._pending_scene_stack_additions:
+			new_scenes = []
+			while self._pending_scene_stack_additions:
+				scene_type, args, kwargs = self._pending_scene_stack_additions.pop()
+				new_scene = scene_type(self, *args, **kwargs)
+				new_scene.creation_args = (args, kwargs)
+				new_scenes.append(new_scene)
+			# Scene creation may take a long time and cause it to receive an update
+			# call with an extremely high dt; delay adding the scene to prevent that.
+			def add(_):
+				self._scene_stack.extend(new_scenes)
+				self._on_scene_stack_change()
+			pyglet.clock.schedule_once(add, 0.0)
 
 		for scene in self._scenes_to_update:
 			scene.update(dt)

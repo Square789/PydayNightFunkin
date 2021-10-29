@@ -117,7 +117,7 @@ class MainMenuScene(MusicBeatScene):
 		# may god smite you, o cursed circular imports!
 		from pyday_night_funkin.levels import WEEKS
 
-		self.game.set_scene(WEEKS[1].levels[0], DIFFICULTY.HARD, type(self))
+		self.game.set_scene(WEEKS[1].levels[1], DIFFICULTY.HARD, type(self))
 
 	def _sel_freeplay(self) -> None:
 		logger.info("Sorry nothing")
