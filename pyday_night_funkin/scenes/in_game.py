@@ -69,7 +69,7 @@ class InGameScene(MusicBeatScene):
 	def resync(self) -> None:
 		logger.info("Resyncing...")
 		self.voice_player.pause()
-		# NOTE Conductor may be rewound here which has potential to screw things up
+		# TODO: Conductor may be rewound here which has potential to screw things up
 		self.conductor.song_position = self.inst_player.time * 1000
 		self.voice_player.seek(self.conductor.song_position * 0.001)
 		self.voice_player.play()
@@ -156,4 +156,11 @@ class InGameScene(MusicBeatScene):
 		if end_self:
 			self.game.set_scene(self.created_from)
 		else:
-			self.song_players.play()
+			if self.state is GAME_STATE.PLAYING:
+				self.song_players.play()
+				self.resync()
+
+	def destroy(self) -> None:
+		super().destroy()
+		self.voice_player.delete()
+		self.inst_player.delete()

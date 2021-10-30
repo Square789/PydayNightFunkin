@@ -21,6 +21,9 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.graphics.camera import Camera
 
 
+EffectBound = t.TypeVar("EffectBound", bound="Effect")
+
+
 _TWEEN_ATTR_NAME_MAP = {
 	TWEEN_ATTR.X: "x",
 	TWEEN_ATTR.Y: "y",
@@ -81,45 +84,78 @@ class Movement():
 		return Vec2(posx_delta, posy_delta)
 
 
-class Tween():
-	__slots__ = (
-		"tween_func", "start_time", "stop_time", "duration", "cur_time",
-		"attr_map", "on_complete", "stopped"
-	)
+class Effect():
+	"""
+	"Abstract" effect class intertwined with the PNFSprite.
+	"""
+	def __init__(
+		self,
+		duration: float,
+		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
+	) -> None:
+		if duration <= 0.0:
+			raise ValueError("Duration may not be negative or zero!")
 
+		self.on_complete = on_complete
+		self.duration = duration
+		self.cur_time = 0.0
+
+	def update(self, dt: float, sprite: "PNFSprite") -> None:
+		raise NotImplementedError("Subclass this")
+
+	def is_finished(self) -> bool:
+		return self.cur_time >= self.duration
+
+
+class Tween(Effect):
 	def __init__(
 		self,
 		tween_func: t.Callable,
-		start_time: float,
-		duration: float,
-		cur_time: float,
 		attr_map: t.Dict[str, t.Tuple[t.Any, t.Any]],
+		duration: float,
 		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
 	) -> None:
+		super().__init__(duration, on_complete)
 		self.tween_func = tween_func
-		self.start_time = start_time
-		self.stop_time = start_time + duration
-		self.duration = duration
-		self.cur_time = cur_time
 		self.attr_map = attr_map
-		self.on_complete = on_complete
 
-	def update(self, dt: float) -> t.Dict[str, t.Any]:
+	def update(self, dt: float, sprite: "PNFSprite") -> None:
 		self.cur_time += dt
-		progress = self.tween_func(
-			(
-				clamp(self.cur_time, self.start_time, self.stop_time) -
-				self.start_time
-			) / self.duration
-		)
+		progress = self.tween_func(clamp(self.cur_time, 0, self.duration) / self.duration)
 
-		return {
-			attr_name: v_ini + v_diff * progress
-			for attr_name, (v_ini, v_diff) in self.attr_map.items()
-		}
+		for attr_name, (v_ini, v_diff) in self.attr_map.items():
+			setattr(sprite, attr_name, v_ini + v_diff * progress)
 
-	def is_finished(self) -> bool:
-		return self.cur_time >= self.stop_time
+
+class Flicker(Effect):
+	def __init__(
+		self,
+		interval: float,
+		start_visibility: bool,
+		end_visibility: bool,
+		duration: float,
+		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
+	) -> None:
+		super().__init__(duration, on_complete)
+		if interval <= 0.0:
+			raise ValueError("Interval may not be negative or zero!")
+
+		self.interval = interval
+		self.end_visibility = end_visibility
+		self._next_toggle = interval
+		self._visible = start_visibility
+
+	def update(self, dt: float, sprite: "PNFSprite") -> None:
+		self.cur_time += dt
+		if self.is_finished():
+			sprite.visible = self.end_visibility
+			return
+
+		if self.cur_time >= self._next_toggle:
+			while self.cur_time >= self._next_toggle:
+				self._next_toggle += self.interval
+			self._visible = not self._visible
+			sprite.visible = self._visible
 
 
 class PNFSprite(sprite.Sprite):
@@ -157,7 +193,7 @@ class PNFSprite(sprite.Sprite):
 		self.camera = camera
 
 		self.movement: t.Optional[Movement] = None
-		self.tweens: t.List[Tween] = []
+		self.effects: t.List[EffectBound] = []
 
 		self._x = x
 		self._y = y
@@ -221,7 +257,7 @@ class PNFSprite(sprite.Sprite):
 		tween_func: t.Callable[[float], float],
 		attributes: t.Dict[TWEEN_ATTR, t.Any],
 		duration: float,
-		on_complete: t.Callable[[], t.Any] = None
+		on_complete: t.Callable[[], t.Any] = None,
 	) -> Tween:
 		"""
 		# TODO write some very cool doc
@@ -233,20 +269,31 @@ class PNFSprite(sprite.Sprite):
 			initial_value = getattr(self, attribute_name)
 			attr_map[attribute_name] = (initial_value, target_value - initial_value)
 
-		start_time = time()
-
 		t = Tween(
 			tween_func,
-			start_time = start_time,
 			duration = duration,
-			cur_time = start_time,
 			attr_map = attr_map,
 			on_complete = on_complete,
 		)
-
-		self.tweens.append(t)
-
+		self.effects.append(t)
 		return t
+
+	def start_flicker(
+		self,
+		duration: float,
+		interval: float,
+		end_visibility: bool = True,
+		on_complete: t.Callable[[], t.Any] = None,
+	) -> Flicker:
+		f = Flicker(
+			interval = interval,
+			start_visibility = self.visible,
+			end_visibility = end_visibility,
+			duration = duration,
+			on_complete = on_complete,
+		)
+		self.effects.append(f)
+		return f
 
 	def start_movement(
 		self,
@@ -291,19 +338,17 @@ class PNFSprite(sprite.Sprite):
 			dx, dy = self.movement.update(dt)
 			self.update(x = self.x + dx, y = self.y + dy)
 
-		finished_tweens = []
-		for tween in self.tweens:
-			if tween.is_finished():
-				finished_tweens.append(tween)
-			else:
-				for attr, v in tween.update(dt).items():
-					setattr(self, attr, v)
+		finished_effects = []
+		for effect in self.effects:
+			effect.update(dt, self)
+			if effect.is_finished():
+				finished_effects.append(effect)
 
-		for tween in finished_tweens:
-			if tween.on_complete is not None:
-				tween.on_complete()
+		for effect in finished_effects:
+			if effect.on_complete is not None:
+				effect.on_complete()
 			try:
-				self.tweens.remove(tween)
+				self.effects.remove(effect)
 			except ValueError:
 				pass
 
@@ -362,7 +407,7 @@ class PNFSprite(sprite.Sprite):
 		else:
 			self._vertex_list.tex_coords[:] = texture.tex_coords
 		self._texture = texture
-		# NOTE: If not done, screws over vertices if the texture changes
+		# If this is not done, screws over vertices if the texture changes
 		# dimension thanks to top left coords
 		if prev_h != texture.height or prev_w != texture.width:
 			self._update_position()

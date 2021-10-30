@@ -9,6 +9,7 @@ from pyday_night_funkin.graphics import pyglet_tl_patch
 
 from pyday_night_funkin.graphics.camera import Camera
 from pyday_night_funkin.graphics.pnf_sprite import PNFSprite
+from pyday_night_funkin.graphics.pnf_sprite_container import PNFSpriteContainer
 from pyday_night_funkin.graphics.pnf_window import PNFWindow
 
-__all__ = ["PNFSprite", "PNFWindow", "Camera", "pyglet_tl_patch"]
+__all__ = ["PNFSprite", "PNFSpriteContainer", "PNFWindow", "Camera", "pyglet_tl_patch"]

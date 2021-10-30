@@ -8,7 +8,7 @@ from pyday_night_funkin.alphabet import create_text_line
 from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.enums import DIFFICULTY
+from pyday_night_funkin.scenes.mainmenu import MainMenuScene
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 
 if t.TYPE_CHECKING:
@@ -108,7 +108,7 @@ class TitleScene(MusicBeatScene):
 
 	def _delete_text(self):
 		for container in self.text_lines:
-			for s in container.sprites:
+			for s in container:
 				self.remove_sprite(s)
 		self.text_lines = []
 
@@ -124,9 +124,6 @@ class TitleScene(MusicBeatScene):
 		self._intro_ended = True
 
 	def _leave_scene(self):
-		# may god smite you, o cursed circular imports!
-		from pyday_night_funkin.levels import WEEKS
-
 		if self._leaving_scene:
 			return
 
@@ -136,7 +133,7 @@ class TitleScene(MusicBeatScene):
 
 		def _cb(_):
 			self.player.pause()
-			self.game.push_scene(WEEKS[1].levels[1], DIFFICULTY.HARD, type(self))
+			self.game.set_scene(MainMenuScene)
 
 		delay = .5 if self.game.debug else 2.0
 		self.clock.schedule_once(_cb, delay)
@@ -153,7 +150,7 @@ class TitleScene(MusicBeatScene):
 				self._BEAT_FUNCS[self.cur_beat]()
 
 	def update(self, dt: float) -> None:
-		# NOTE: 5 IQ song tracking
+		# TODO: 5 IQ song tracking
 		self.conductor.song_position = self.player.time * 1000
 
 		if self.game.key_handler.just_pressed(CONTROL.ENTER):

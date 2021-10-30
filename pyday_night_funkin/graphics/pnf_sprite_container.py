@@ -2,7 +2,6 @@
 import typing as t
 import weakref
 
-
 if t.TYPE_CHECKING:
 	from pyglet.math import Vec2
 	from pyday_night_funkin.types import PNFSpriteBound, Numeric
@@ -72,3 +71,6 @@ class PNFSpriteContainer():
 		if not self.sprites:
 			return None
 		return max(sprite.y + sprite.signed_height for sprite in self.sprites)
+
+	def __iter__(self) -> t.Iterator["PNFSpriteBound"]:
+		yield from self.sprites

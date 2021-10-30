@@ -56,10 +56,10 @@ cdef int ord_at(str string, int idx):
 		return -1
 	return ord(string[idx])
 
+
 class AlmostXMLParserException(SyntaxError):
 	def __init__(self, msg, p, *args, **kwargs):
 		super().__init__(f"{msg} (pos {p})", *args, **kwargs)
-
 
 
 cdef dict ESCAPES = {

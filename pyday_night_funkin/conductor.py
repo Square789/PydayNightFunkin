@@ -45,7 +45,7 @@ class Conductor():
 	@property
 	def last_bpm_change(self) -> BPMChangeEvent:
 		r = BPMChangeEvent(0.0, 0.0, 0.0)
-		# NOTE: pretty intensive loop, could be kept track of way easier by
+		# TODO: pretty intensive loop, could be kept track of way easier by
 		# adding a song_position property
 		# Loop is assuming bpm change events are ordered
 		for change in self._bpm_changes:
