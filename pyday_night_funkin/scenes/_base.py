@@ -39,7 +39,7 @@ class Layer():
 		parent.
 		A layer without forced order will simply return its own group.
 		"""
-		# NOTE: Not really relevant in practice, but the order will
+		# TODO: Not really relevant in practice, but the order will
 		# keep increasing ad infinitum, I don't like that a lot
 		if self.force_order:
 			if group_cls is None:
@@ -193,11 +193,11 @@ class BaseScene():
 		`remove_subscene` method, but ignored if the game receives the
 		removal request.
 		"""
-		destroyer = self.game.get_previous_scene(self)
-		if destroyer is None:
+		remover = self.game.get_previous_scene(self)
+		if remover is None:
 			self.game.remove_scene(self)
 		else:
-			destroyer.remove_subscene(*args, **kwargs)
+			remover.remove_subscene(*args, **kwargs)
 
 	def remove_subscene(self, *args, **kwargs):
 		"""

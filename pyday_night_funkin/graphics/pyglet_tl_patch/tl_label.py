@@ -72,7 +72,7 @@ class _TLGlyphBox(_GlyphBox):
 
 		context.add_list(vertex_list)
 
-		# NOTE: This stuff isn't flipped around because I don't use it
+		# NOTE: The stuff below isn't flipped around because I don't use it
 
 		# Decoration (background color and underline)
 		# -------------------------------------------

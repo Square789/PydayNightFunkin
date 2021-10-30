@@ -27,7 +27,7 @@ def create_text_line(
 	Very cheap text layout function designed to work with the
 	scenes.
 	"""
-	# NOTE: This sucks
+	# This sucks
 	container = PNFSpriteContainer()
 	last_sprite = None
 	last_was_space = False

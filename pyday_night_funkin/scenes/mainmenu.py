@@ -10,8 +10,12 @@ from pyday_night_funkin.enums import DIFFICULTY
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 from pyday_night_funkin.tweens import TWEEN_ATTR, out_quad
 
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.graphics import PNFSprite
+
+
 TitleScene = None
-def _post_init():
+def _cyclic_import_break():
 	global TitleScene
 	from pyday_night_funkin.scenes.title import TitleScene
 
@@ -22,7 +26,7 @@ class MainMenuScene(MusicBeatScene):
 
 		self.conductor.bpm = 102
 
-		_post_init()
+		_cyclic_import_break()
 
 		self._menu_items = [
 			["story mode", self._sel_story_mode, None],
@@ -38,15 +42,15 @@ class MainMenuScene(MusicBeatScene):
 		self.confirm_sound = load_asset(ASSETS.SOUND.MENU_CONFIRM)
 
 		self.bg = self.create_sprite("bg", image=load_asset(ASSETS.IMG.MENU_BG))
-		self.bg_desat = self.create_sprite("bg", image=load_asset(ASSETS.IMG.MENU_DESAT))
+		self.bg_magenta = self.create_sprite("bg_mag", image=load_asset(ASSETS.IMG.MENU_DESAT))
 
-		for bg in (self.bg, self.bg_desat):
+		for bg in (self.bg, self.bg_magenta):
 			bg.scroll_factor = (0.0, 0.18)
 			bg.scale = 1.1
 			bg.screen_center(CNST.GAME_DIMENSIONS)
 
-		self.bg_desat.visible = False
-		self.bg_desat.color = (0xFD, 0x71, 0x9B)
+		self.bg_magenta.visible = False
+		self.bg_magenta.color = (0xFD, 0x71, 0x9B)
 
 		menu_item_assets = load_asset(ASSETS.XML.MAIN_MENU_ASSETS)
 		for i, list_ in enumerate(self._menu_items):
@@ -62,7 +66,7 @@ class MainMenuScene(MusicBeatScene):
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return ("bg", "fg")
+		return ("bg", "bg_mag", "fg")
 
 	def change_item(self, by: int) -> None:
 		self.selected_idx += by
@@ -96,7 +100,7 @@ class MainMenuScene(MusicBeatScene):
 				self.selection_confirmed = True
 				self.sfx_ring.play(self.confirm_sound)
 
-				# TODO flicker
+				self.bg_magenta.start_flicker(1.1, 0.15, False)
 
 				for i, (name, callback, sprite) in enumerate(self._menu_items):
 					if i != self.selected_idx:
@@ -104,11 +108,13 @@ class MainMenuScene(MusicBeatScene):
 							out_quad,
 							{TWEEN_ATTR.OPACITY: 0},
 							0.4,
-							lambda sprite=sprite: self.remove_sprite(sprite),
+							# I don't really have an equivalent to a FlxSpriteGroup's `kill`
+							# Doesn't matter for this precise case anyways
+							lambda sprite=sprite: setattr(sprite, "visible", False),
 						)
 					else:
-						# TODO flicker
-						callback()
+						sprite.start_flicker(1.0, 0.06, False, callback)
+						# callback()
 
 		for _, _, sprite in self._menu_items:
 			sprite.screen_center(CNST.GAME_DIMENSIONS, y=False)

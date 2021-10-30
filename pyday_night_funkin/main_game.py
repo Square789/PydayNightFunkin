@@ -1,5 +1,5 @@
 
-from time import time
+from time import perf_counter, time
 import typing as t
 
 from loguru import logger
@@ -63,8 +63,7 @@ class Game():
 		self._scene_stack: t.List[BaseScene] = []
 		self._scenes_to_draw: t.List[BaseScene] = []
 		self._scenes_to_update: t.List[BaseScene] = []
-
-		self._pending_scene_stack_removals = []
+		self._pending_scene_stack_removals = set()
 		self._pending_scene_stack_additions = []
 
 		self.push_scene(TitleScene)
@@ -107,7 +106,7 @@ class Game():
 
 	def push_scene(self, new_scene_cls: t.Type[BaseScene], *args, **kwargs) -> None:
 		"""
-		Pushes a new scene onto the scene stack which will then
+		Requests push of a new scene onto the scene stack which will then
 		be the topmost scene.
 		The game instance will be passed as the first argument to the
 		scene class, with any args and kwargs following it.
@@ -116,11 +115,10 @@ class Game():
 
 	def remove_scene(self, scene: BaseScene) -> None:
 		"""
-		Removes the given scene from anywhere in the scene stack.
-		ValueError is raised if it is not present.
+		Requests removal of the given scene from anywhere in the
+		scene stack.
 		"""
-		if scene not in self._pending_scene_stack_removals:
-			self._pending_scene_stack_removals.append(scene)
+		self._pending_scene_stack_removals.add(scene)
 
 	def set_scene(self, new_scene_type: t.Type[BaseScene], *args, **kwargs):
 		"""
@@ -129,8 +127,7 @@ class Game():
 		member.
 		"""
 		for scene in self._scene_stack:
-			if scene not in self._pending_scene_stack_removals:
-				self._pending_scene_stack_removals.append(scene)
+			self._pending_scene_stack_removals.add(scene)
 
 		self.push_scene(new_scene_type, *args, **kwargs)
 
@@ -156,29 +153,41 @@ class Game():
 			# Prints frame x-1's draw time in frame x, but who cares
 			self.debug_pane.update(self._fps[2], draw_time, self._update_time)
 
-	def update(self, dt: float) -> None:
-		stime = time()
-
+	def _modify_scene_stack(self) -> float:
+		"""
+		Method to apply outstanding modifications to the scene stack.
+		This stuff can't be done exactly when a scene demands it since
+		then we would be looking at a mess of half-dead scenes still
+		running their update code and erroring out. Scary!
+		"""
+		stk_mod_t = perf_counter()
 		if self._pending_scene_stack_removals:
-			while self._pending_scene_stack_removals:
-				scene = self._pending_scene_stack_removals.pop()
+			for scene in self._scene_stack[::-1]:
+				if scene not in self._pending_scene_stack_removals:
+					continue
 				self._scene_stack.remove(scene)
 				scene.destroy()
 			self._on_scene_stack_change()
+			self._pending_scene_stack_removals.clear()
 
 		if self._pending_scene_stack_additions:
-			new_scenes = []
 			while self._pending_scene_stack_additions:
 				scene_type, args, kwargs = self._pending_scene_stack_additions.pop()
 				new_scene = scene_type(self, *args, **kwargs)
 				new_scene.creation_args = (args, kwargs)
-				new_scenes.append(new_scene)
-			# Scene creation may take a long time and cause it to receive an update
-			# call with an extremely high dt; delay adding the scene to prevent that.
-			def add(_):
-				self._scene_stack.extend(new_scenes)
-				self._on_scene_stack_change()
-			pyglet.clock.schedule_once(add, 0.0)
+				self._scene_stack.append(new_scene)
+			self._on_scene_stack_change()
+
+		return perf_counter() - stk_mod_t
+
+	def update(self, dt: float) -> None:
+		stime = time()
+
+		# TODO: This feels really incorrect, but I can't seem to figure out a
+		# better way to prevent scene creation time leaking into the scene's first
+		# update call.
+		if self._pending_scene_stack_removals or self._pending_scene_stack_additions:
+			dt -= self._modify_scene_stack()
 
 		for scene in self._scenes_to_update:
 			scene.update(dt)

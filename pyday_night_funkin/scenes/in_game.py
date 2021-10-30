@@ -69,7 +69,7 @@ class InGameScene(MusicBeatScene):
 	def resync(self) -> None:
 		logger.info("Resyncing...")
 		self.voice_player.pause()
-		# NOTE Conductor may be rewound here which has potential to screw things up
+		# TODO: Conductor may be rewound here which has potential to screw things up
 		self.conductor.song_position = self.inst_player.time * 1000
 		self.voice_player.seek(self.conductor.song_position * 0.001)
 		self.voice_player.play()
@@ -123,8 +123,6 @@ class InGameScene(MusicBeatScene):
 	def update(self, dt: float) -> None:
 		super().update(dt)
 
-		print(f"// [{__import__('time').perf_counter()}] InGame update called")
-
 		if (
 			self.state is GAME_STATE.COUNTDOWN or
 			self.state is GAME_STATE.PLAYING
@@ -140,7 +138,6 @@ class InGameScene(MusicBeatScene):
 
 		if self.key_handler.just_pressed(CONTROL.ENTER):
 			self.song_players.pause()
-			print("Song players paused!")
 			self.game.push_scene(PauseScene)
 
 	def process_input(self, dt: float) -> None:
@@ -157,7 +154,6 @@ class InGameScene(MusicBeatScene):
 	def remove_subscene(self, end_self, *a, **kw):
 		super().remove_subscene(*a, **kw)
 		if end_self:
-			print("cya")
 			self.game.set_scene(self.created_from)
 		else:
 			if self.state is GAME_STATE.PLAYING:

@@ -150,7 +150,7 @@ class TitleScene(MusicBeatScene):
 				self._BEAT_FUNCS[self.cur_beat]()
 
 	def update(self, dt: float) -> None:
-		# NOTE: 5 IQ song tracking
+		# TODO: 5 IQ song tracking
 		self.conductor.song_position = self.player.time * 1000
 
 		if self.game.key_handler.just_pressed(CONTROL.ENTER):
