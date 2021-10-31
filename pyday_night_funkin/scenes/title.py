@@ -9,6 +9,7 @@ from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.enums import DIFFICULTY
+from pyday_night_funkin.scenes.mainmenu import MainMenuScene
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 
 if t.TYPE_CHECKING:
@@ -56,9 +57,8 @@ class TitleScene(MusicBeatScene):
 		self.confirm_sound = load_asset(ASSETS.SOUND.MENU_CONFIRM)
 
 		self.conductor.bpm = 102
-		self.player = Player()
-		self.player.queue(load_asset(ASSETS.MUSIC.MENU))
-		self.player.play()
+		self.game.player.queue(load_asset(ASSETS.MUSIC.MENU))
+		self.game.player.play()
 
 		self._intro_ended = False
 		self._leaving_scene = False
@@ -135,8 +135,7 @@ class TitleScene(MusicBeatScene):
 		self.sfx_ring.play(self.confirm_sound)
 
 		def _cb(_):
-			self.player.pause()
-			self.game.push_scene(WEEKS[1].levels[1], DIFFICULTY.HARD, type(self))
+			self.game.set_scene(MainMenuScene)
 
 		delay = .5 if self.game.debug else 2.0
 		self.clock.schedule_once(_cb, delay)
@@ -153,8 +152,8 @@ class TitleScene(MusicBeatScene):
 				self._BEAT_FUNCS[self.cur_beat]()
 
 	def update(self, dt: float) -> None:
-		# NOTE: 5 IQ song tracking
-		self.conductor.song_position = self.player.time * 1000
+		# TODO: 5 IQ song tracking
+		self.conductor.song_position = self.game.player.time * 1000
 
 		if self.game.key_handler.just_pressed(CONTROL.ENTER):
 			if not self._intro_ended:
