@@ -8,7 +8,6 @@ from pyday_night_funkin.alphabet import create_text_line
 from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.enums import DIFFICULTY
 from pyday_night_funkin.scenes.mainmenu import MainMenuScene
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 
@@ -108,7 +107,7 @@ class TitleScene(MusicBeatScene):
 
 	def _delete_text(self):
 		for container in self.text_lines:
-			for s in container.sprites:
+			for s in container:
 				self.remove_sprite(s)
 		self.text_lines = []
 
@@ -124,9 +123,6 @@ class TitleScene(MusicBeatScene):
 		self._intro_ended = True
 
 	def _leave_scene(self):
-		# may god smite you, o cursed circular imports!
-		from pyday_night_funkin.levels import WEEKS
-
 		if self._leaving_scene:
 			return
 

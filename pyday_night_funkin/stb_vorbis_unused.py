@@ -158,7 +158,7 @@ class Residue(Structure):
 		("classifications", c_uint8),
 		("classbook", c_uint8),
 		("classdata", POINTER(POINTER(c_uint8))),
-		("residue_books", POINTER(c_int16 * 8)), # NOTE: may be wrong?
+		("residue_books", POINTER(c_int16 * 8)),
 	]
 
 
@@ -389,7 +389,7 @@ class STBVorbis():
 	since I am lazy.
 	"""
 	def __init__(self, file_path: str, path_encoding: str = "utf-8"):
-		# NOTE: can't pass in existing file handles since the dll requires a C FILE struct.
+		# Can't pass in existing file handles since the dll requires a C FILE struct.
 
 		cstr = create_string_buffer(file_path.encode(path_encoding))
 		error = c_int()

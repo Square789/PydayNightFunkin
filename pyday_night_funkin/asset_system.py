@@ -38,6 +38,7 @@ class ASSETS:
 		GAME_LOGO = 6
 		TITLE_ENTER = 7
 		TITLE_GIRLFRIEND = 8
+		MAIN_MENU_ASSETS = 9
 
 	class IMG:
 		STAGE_BACK = 100000
@@ -62,6 +63,8 @@ class ASSETS:
 		NUM8 = 100019
 		NUM9 = 100020
 		NEWGROUNDS_LOGO = 100021
+		MENU_BG = 100022
+		MENU_DESAT = 100023
 
 	class SOUND:
 		INTRO_3 = 200000
@@ -69,6 +72,7 @@ class ASSETS:
 		INTRO_1 = 200002
 		INTRO_GO = 200003
 		MENU_CONFIRM = 200004
+		MENU_SCROLL = 200005
 
 	class PATH:
 		SONGS = 300000
@@ -209,6 +213,7 @@ _DEFAULT_ASSET_SYSTEM = AssetSystem({
 	ASSETS.XML.GAME_LOGO: XmlTextureAtlas("preload/images/logoBumpin.xml"),
 	ASSETS.XML.TITLE_ENTER: XmlTextureAtlas("preload/images/titleEnter.xml"),
 	ASSETS.XML.TITLE_GIRLFRIEND: XmlTextureAtlas("preload/images/gfDanceTitle.xml"),
+	ASSETS.XML.MAIN_MENU_ASSETS: XmlTextureAtlas("preload/images/FNF_main_menu_assets.xml"),
 
 	ASSETS.IMG.STAGE_BACK: Image("shared/images/stageback.png"),
 	ASSETS.IMG.STAGE_FRONT: Image("shared/images/stagefront.png"),
@@ -232,12 +237,15 @@ _DEFAULT_ASSET_SYSTEM = AssetSystem({
 	ASSETS.IMG.NUM8: Image("preload/images/num8.png"),
 	ASSETS.IMG.NUM9: Image("preload/images/num9.png"),
 	ASSETS.IMG.NEWGROUNDS_LOGO: Image("preload/images/newgrounds_logo.png"),
+	ASSETS.IMG.MENU_BG: Image("preload/images/menuBG.png"),
+	ASSETS.IMG.MENU_DESAT: Image("preload/images/menuDesat.png"),
 
 	ASSETS.SOUND.INTRO_3: OggVorbisSound("shared/sounds/intro3.ogg"),
 	ASSETS.SOUND.INTRO_2: OggVorbisSound("shared/sounds/intro2.ogg"),
 	ASSETS.SOUND.INTRO_1: OggVorbisSound("shared/sounds/intro1.ogg"),
 	ASSETS.SOUND.INTRO_GO: OggVorbisSound("shared/sounds/introGo.ogg"),
 	ASSETS.SOUND.MENU_CONFIRM: OggVorbisSound("preload/sounds/confirmMenu.ogg"),
+	ASSETS.SOUND.MENU_SCROLL: OggVorbisSound("preload/sounds/scrollMenu.ogg"),
 
 	ASSETS.PATH.SONGS: AssetPath("songs/"),
 	ASSETS.PATH.DATA: AssetPath("preload/data/"),

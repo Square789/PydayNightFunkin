@@ -124,7 +124,7 @@ class NoteHandler(AbstractNoteHandler):
 				where each value is either the note that was hit or,
 				if the player missed, None.
 		"""
-		# NOTE: Could create methods on the ListWindow to eliminate
+		# TODO: Could create methods on the ListWindow to eliminate
 		# "grow, update-shrink" code duplication
 
 		song_pos = self.game_scene.conductor.song_position
