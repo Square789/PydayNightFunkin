@@ -11,9 +11,11 @@ from pyday_night_funkin.scenes._base import BaseScene
 from pyday_night_funkin.tweens import TWEEN_ATTR, out_quad
 
 
+FreeplayScene = None
 TitleScene = None
 def _cyclic_import_break():
-	global TitleScene
+	global FreeplayScene, TitleScene
+	from pyday_night_funkin.scenes.freeplay import FreeplayScene
 	from pyday_night_funkin.scenes.title import TitleScene
 
 
@@ -125,7 +127,6 @@ class MainMenuScene(BaseScene):
 		self.game.set_scene(WEEKS[1].levels[1], DIFFICULTY.HARD, type(self))
 
 	def _sel_freeplay(self) -> None:
-		logger.info("Sorry nothing")
 		self.game.set_scene(TitleScene)
 
 	def _sel_options(self) -> None:

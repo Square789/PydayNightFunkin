@@ -65,6 +65,7 @@ class ASSETS:
 		NEWGROUNDS_LOGO = 100021
 		MENU_BG = 100022
 		MENU_DESAT = 100023
+		MENU_BG_BLUE = 100024
 
 	class SOUND:
 		INTRO_3 = 200000
@@ -239,6 +240,7 @@ _DEFAULT_ASSET_SYSTEM = AssetSystem({
 	ASSETS.IMG.NEWGROUNDS_LOGO: Image("preload/images/newgrounds_logo.png"),
 	ASSETS.IMG.MENU_BG: Image("preload/images/menuBG.png"),
 	ASSETS.IMG.MENU_DESAT: Image("preload/images/menuDesat.png"),
+	ASSETS.IMG.MENU_BG_BLUE: Image("preload/images/menuBGBlue.png"),
 
 	ASSETS.SOUND.INTRO_3: OggVorbisSound("shared/sounds/intro3.ogg"),
 	ASSETS.SOUND.INTRO_2: OggVorbisSound("shared/sounds/intro2.ogg"),

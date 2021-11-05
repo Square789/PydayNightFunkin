@@ -11,53 +11,57 @@ from pyday_night_funkin.graphics.shaders import (
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import BaseScene
+	from pyday_night_funkin.types import Numeric
 
 
-def create_text_line(
-	text: str,
-	scene: "BaseScene",
-	layer: str,
-	camera: t.Optional[str] = None,
-	bold: bool = False,
-	color: t.Optional[t.Tuple[int, int, int]] = None,
-	x: float = 0,
-	y: float = 0,
-) -> PNFSpriteContainer:
+class TextLine(PNFSpriteContainer):
 	"""
-	Very cheap text layout function designed to work with the
-	scenes.
+	Cheap sprite container subclass that automatically creates
+	letter sprites on creation.
 	"""
-	# This sucks
-	container = PNFSpriteContainer()
-	last_sprite = None
-	last_was_space = False
-	x_pos = x
-	for c in text:
-		if c in " -":
-			last_was_space = True
-			continue
+	def __init__(
+		cls,
+		text: str,
+		scene: "BaseScene",
+		layer: str,
+		camera: t.Optional[str] = None,
+		bold: bool = False,
+		color: t.Optional[t.Tuple[int, int, int]] = None,
+		x: "Numeric" = 0,
+		y: "Numeric" = 0,
+	) -> None:
+		"""
+		# TODO doc probably
+		"""
+		sprites = []
+		last_sprite = None
+		last_was_space = False
+		x_pos = x
+		for c in text:
+			if c in " -":
+				last_was_space = True
+				continue
 
-		if last_sprite:
-			x_pos = last_sprite.x + last_sprite.width
-		if last_was_space:
-			x_pos += 40
-			last_was_space = False
+			if last_sprite:
+				x_pos = last_sprite.x + last_sprite.width
+			if last_was_space:
+				x_pos += 40
+				last_was_space = False
 
-		sprite = scene.create_sprite(
-			layer,
-			camera,
-			AlphabetCharacter,
-			x = x_pos,
-			y = y + (5 * (not c.isalpha())),
-			char = c,
-			bold = bold,
-			color = color,
-		)
-		last_sprite = sprite
-		container.add(sprite)
+			sprite = scene.create_sprite(
+				layer,
+				camera,
+				AlphabetCharacter,
+				x = x_pos,
+				y = y + (5 * (not c.isalpha())),
+				char = c,
+				bold = bold,
+				color = color,
+			)
+			last_sprite = sprite
+			sprites.append(sprite)
 
-	return container
-
+		super().__init__(sprites)
 
 
 _COLOR_SET_SHADER_CONTAINER = ShaderContainer(

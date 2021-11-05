@@ -18,6 +18,7 @@ from pyday_night_funkin.graphics.shaders import (
 from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
+	from pyglet.graphics.shader import UniformBufferObject
 	from pyday_night_funkin.graphics.camera import Camera
 
 
@@ -36,15 +37,17 @@ _TWEEN_ATTR_NAME_MAP = {
 
 
 class PNFSpriteGroup(sprite.SpriteGroup):
-	def __init__(self, sprite: "PNFSprite", *args, **kwargs) -> None:
+	def __init__(self, cam_ubo: "UniformBufferObject", *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
-		self.sprite = sprite
+		self.cam_ubo = cam_ubo
 
 	def set_state(self):
 		self.program.use()
-		self.sprite.camera.ubo.bind()
+		self.cam_ubo.bind()
 
 		gl.glActiveTexture(gl.GL_TEXTURE0)
+		# gl.glTexParameteri(self.texture.target, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
+		# gl.glTexParameteri(self.texture.target, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
 		gl.glBindTexture(self.texture.target, self.texture.id)
 		gl.glEnable(gl.GL_BLEND)
 		gl.glBlendFunc(self.blend_src, self.blend_dest)
@@ -208,7 +211,9 @@ class PNFSprite(sprite.Sprite):
 			program = self.shader_container.get_program()
 
 		self._batch = batch or graphics.get_default_batch()
-		self._group = PNFSpriteGroup(self, self._texture, blend_src, blend_dest, program, parent = group)
+		self._group = PNFSpriteGroup(
+			self.camera.ubo, self._texture, blend_src, blend_dest, program, parent=group
+			)
 		self._usage = usage
 		self._subpixel = subpixel
 		self._create_vertex_list()
@@ -361,14 +366,32 @@ class PNFSprite(sprite.Sprite):
 		self._scroll_factor = new_sf
 		self._vertex_list.scroll_factor[:] = new_sf * 4
 
+	# @property
+	# def width(self) -> float:
+	# 	return abs(self.signed_width)
+
+	# @property
+	# def height(self):
+	# 	return abs(self.signed_height)
+
+	# @property
+	# def signed_width(self) -> float:
+	# 	if self.animation.is_set:
+	# 		return self.animation.current_frame.frame_info[2]
+	# 	return self._texture.width * self._scale_x * self._scale
+
+	# @property
+	# def signed_height(self) -> float:
+	# 	if self.animation.is_set:
+	# 		return self.animation.current_frame.frame_info[3]
+	# 	return self._texture.height * self._scale_y * self._scale
+
 	@property
 	def signed_width(self) -> float:
 		return self._texture.width * self._scale_x * self._scale
-
 	@property
 	def signed_height(self) -> float:
 		return self._texture.height * self._scale_y * self._scale
-
 	@property
 	def image(self) -> t.Union[PNFAnimation, AbstractImage]:
 		if self.animation.is_set:
@@ -398,7 +421,7 @@ class PNFSprite(sprite.Sprite):
 		prev_h, prev_w = self._texture.height, self._texture.width
 		if texture.id is not self._texture.id:
 			self._group = PNFSpriteGroup(
-				self, texture, self._group.blend_src, self._group.blend_dest,
+				self.camera.ubo, texture, self._group.blend_src, self._group.blend_dest,
 				self._group.program, 0, self._group.parent
 			)
 			self._vertex_list.delete()

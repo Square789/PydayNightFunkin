@@ -14,14 +14,12 @@ from pyglet.text.layout import _GlyphBox, TextLayout, get_default_layout_shader
 class _TLGlyphBox(_GlyphBox):
 	def place(self, layout, i, x, y, context):
 		assert self.glyphs
+
 		try:
-			group = layout.groups[self.owner]
+			group = layout.group_cache[self.owner]
 		except KeyError:
-			group = layout.default_group_class(
-				texture=self.owner, order=1,
-				program=get_default_layout_shader(), parent=layout._group
-			)
-			layout.groups[self.owner] = group
+			group = layout.default_group_class(self.owner, get_default_layout_shader(), order=1, parent=layout.group)
+			layout.group_cache[self.owner] = group
 
 		n_glyphs = self.length
 		vertices = []

@@ -2,14 +2,49 @@
 import typing as t
 import weakref
 
+from pyglet.graphics import Group
+
 if t.TYPE_CHECKING:
 	from pyglet.math import Vec2
 	from pyday_night_funkin.types import PNFSpriteBound, Numeric
 
 
+class Layer():
+	"""
+	Layer class over the given group.
+	"""
+	__slots__ = ("group", "force_order", "latest_order")
+
+	def __init__(self, group: Group, force_order: bool) -> None:
+		self.group = group
+		self.force_order = force_order
+		self.latest_order = 0
+
+	def get_group(self, group_cls: t.Type[Group] = Group, *args, **kwargs) -> Group:
+		"""
+		Returns a group to attach an object to on this layer.
+
+		A layer with forced order will create and return an
+		incrementally ordered subgroup with the layer's group as its
+		parent.
+		A layer without forced order will simply return its own group.
+		"""
+		# TODO: Not really relevant in practice, but the order will
+		# keep increasing ad infinitum, I don't like that a lot
+		if self.force_order:
+			kwargs["order"] = self.latest_order
+			kwargs["parent"] = self.group
+			self.latest_order += 1
+
+			return group_cls(*args, **kwargs)
+		else:
+			return self.group
+
+
 class PNFSpriteContainer():
 	"""
-	Util for applying operations to multiple sprites.
+	Sprite container.
+	Tries to be similar to a FlxSpriteGroup.
 	"""
 
 	def __init__(self, sprites: t.Sequence["PNFSpriteBound"] = ()) -> None:

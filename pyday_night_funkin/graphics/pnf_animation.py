@@ -78,8 +78,8 @@ class AnimationController():
 
 		self._frame_offset = Vec2()
 		"""
-		Offset of current animation frame, calculated with animation frame
-		dimensions, frame info and 
+		Offset of current animation frame, calculated with animation
+		frame dimensions, frame info and base box.
 		Not final, still needs the sprite's scale.
 		"""
 
@@ -90,7 +90,7 @@ class AnimationController():
 		"""
 		Should be called after the current frame has changed.
 		Calculates the difference between the current frame's and
-		the next frame's offset and returns it, while
+		the next frame's offset and returns it.
 		"""
 		fix, fiy, fiw, fih = self.current_frame.frame_info
 		new_frame_offset = Vec2(

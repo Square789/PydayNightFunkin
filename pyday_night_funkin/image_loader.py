@@ -49,7 +49,7 @@ def load_frames_from_texture_atlas(xml_path: Path) -> t.Dict[str, t.List[FrameIn
 	texture_atlas = et.getroot() # Should be a TextureAtlas node
 	texture_region_cache = {}
 	spritesheet_path = xml_path.parent / texture_atlas.attrib["imagePath"]
-	atlas_surface: Texture = load_image(spritesheet_path).get_texture() # type: ignore
+	atlas_surface: Texture = load_image(spritesheet_path).get_texture()
 
 	frame_sequences = defaultdict(list)
 	for sub_texture in texture_atlas:
