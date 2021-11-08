@@ -20,8 +20,8 @@ class Character(PNFSprite):
 		self.hold_timer = 0.0
 		self.dont_idle = False
 
-	def update_sprite(self, dt: float) -> None:
-		super().update_sprite(dt)
+	def update(self, dt: float) -> None:
+		super().update(dt)
 		if self.animation.has_tag(ANIMATION_TAG.SING):
 			self.hold_timer += dt
 

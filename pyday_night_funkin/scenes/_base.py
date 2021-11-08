@@ -10,7 +10,8 @@ from pyglet.window.key import B, R
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.graphics import Camera, PNFSprite
-from pyday_night_funkin.graphics.pnf_sprite_container import PNFSpriteContainer, Layer
+from pyday_night_funkin.graphics.pnf_sprite_container import Layer
+from pyday_night_funkin.graphics.scene_object import Container
 from pyday_night_funkin.sfx_ring import SFXRing
 
 if t.TYPE_CHECKING:
@@ -18,7 +19,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.types import PNFSpriteBound
 
 
-class BaseScene(PNFSpriteContainer):
+class BaseScene(Container):
 	"""
 	A scene holds a number of sprites and cameras, functions to
 	manipulate these in a way appropiate to the scene's nature and
@@ -141,7 +142,7 @@ class BaseScene(PNFSpriteContainer):
 			c.update(dt)
 
 		for sprite in self._sprites.copy():
-			sprite.update_sprite(dt)
+			sprite.update(dt)
 
 	def draw(self) -> None:
 		"""

@@ -4,6 +4,9 @@ import weakref
 
 from pyglet.graphics import Group
 
+from pyday_night_funkin.graphics.pnf_sprite import PNFSprite
+from pyday_night_funkin.graphics.scene_object import SceneObject
+
 if t.TYPE_CHECKING:
 	from pyglet.math import Vec2
 	from pyday_night_funkin.types import PNFSpriteBound, Numeric
@@ -41,14 +44,18 @@ class Layer():
 			return self.group
 
 
-class PNFSpriteContainer():
+class PNFSpriteContainer(PNFSprite):
 	"""
 	Sprite container.
-	Tries to be similar to a FlxSpriteGroup.
+	Tries to be similar to a FlxSpriteGroup by copying the Container
+	API, while not inheriting from it, but from PNFSprite instead.
+	It's pretty limited and nothing works.
 	"""
 
-	def __init__(self, sprites: t.Sequence["PNFSpriteBound"] = ()) -> None:
+	def __init__(self, sprites: t.Sequence["PNFSpriteBound"] = (), *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
 		self.sprites = weakref.WeakSet(sprites)
+		self.visible = False
 
 	def add(self, sprite: "PNFSpriteBound") -> None:
 		self.sprites.add(sprite)

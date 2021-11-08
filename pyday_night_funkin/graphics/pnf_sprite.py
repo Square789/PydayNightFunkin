@@ -5,6 +5,7 @@ import typing as t
 
 from pyglet import gl
 from pyglet import graphics
+from pyglet.graphics.shader import ShaderProgram
 from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
 from pyglet import sprite
@@ -12,6 +13,7 @@ from pyglet import sprite
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.tweens import TWEEN_ATTR
 from pyday_night_funkin.graphics.pnf_animation import AnimationController, PNFAnimation
+from pyday_night_funkin.graphics.scene_object import SceneObject
 from pyday_night_funkin.graphics.shaders import (
 	PNFSpriteVertexShader, PNFSpriteFragmentShader, ShaderContainer
 )
@@ -19,7 +21,9 @@ from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import UniformBufferObject
+	from pyglet.graphics import Batch, Group
 	from pyday_night_funkin.graphics.camera import Camera
+	from pyday_night_funkin.types import Numeric
 
 
 EffectBound = t.TypeVar("EffectBound", bound="Effect")
@@ -34,6 +38,39 @@ _TWEEN_ATTR_NAME_MAP = {
 	TWEEN_ATTR.SCALE_X: "scale_x",
 	TWEEN_ATTR.SCALE_Y: "scale_y",
 }
+
+
+# class FakeBatch():
+# 	"""
+# 	Fake class that ignores most operations of a standard pyglet batch.
+# 	If `add_indexed` is called on it, it will deliver a
+# 	`FakeVertexList`.
+# 	"""
+
+# 	def add_indexed(self, _count, _mode, _group, _indices, *data):
+# 		return FakeVertexList([x[0] if isinstance(x, tuple) else x for x in data])
+
+# 	def migrate(self, *_):
+# 		pass
+
+# class FakeVertexList():
+# 	"""
+# 	Fake vertex list that ignores all operations on it.
+# 	"""
+
+# 	def __init__(self, entries) -> None:
+# 		self.entries = set(entries)
+
+# 	def delete(self):
+# 		pass
+
+# 	def draw(self, _):
+# 		pass
+
+# 	def __getattr__(self, name):
+# 		if name not in self.entries:
+# 			raise RuntimeError("Unknown entry")
+# 		return []
 
 
 class PNFSpriteGroup(sprite.SpriteGroup):
@@ -161,7 +198,7 @@ class Flicker(Effect):
 			sprite.visible = self._visible
 
 
-class PNFSprite(sprite.Sprite):
+class PNFSprite(SceneObject):
 	"""
 	TODO doc
 
@@ -175,50 +212,66 @@ class PNFSprite(sprite.Sprite):
 		PNFSpriteVertexShader.generate(),
 		PNFSpriteFragmentShader.generate(),
 	)
+	_dummy_camera = None
 
 	def __init__(
 		self,
-		camera: "Camera",
+		camera: t.Optional["Camera"] = None,
 		image: t.Optional[AbstractImage] = None,
-		x = 0,
-		y = 0,
+		x: "Numeric" = 0,
+		y: "Numeric" = 0,
 		blend_src = gl.GL_SRC_ALPHA,
 		blend_dest = gl.GL_ONE_MINUS_SRC_ALPHA,
-		batch = None,
-		group = None,
-		usage = "dynamic",
-		subpixel = False,
-		program = None,
+		batch: t.Optional["Batch"] = None,
+		group: t.Optional["Group"] = None,
+		usage: t.Literal["dynamic", "stream", "static"] = "dynamic",
+		subpixel: bool = False,
+		program: "ShaderProgram" = None,
 	) -> None:
 		image = CNST.ERROR_TEXTURE if image is None else image
 
 		self.animation = AnimationController()
-		self.camera = camera
+		self.camera = self._get_dummy_camera() if camera is None else camera
 
 		self.movement: t.Optional[Movement] = None
 		self.effects: t.List[EffectBound] = []
 
 		self._x = x
 		self._y = y
+		self._batch = None
+		self._vertex_list = None
+		self._rotation = 0
+		self._opacity = 255
+		self._rgb = (255, 255, 255)
+		self._scale = 1.0
+		self._scale_x = 1.0
+		self._scale_y = 1.0
 		self._scroll_factor = (1.0, 1.0)
-
-		self._texture = image.get_texture()
+		self._visible = True
+		self._texture = eval("image.get_texture()") # stfu pylance
 
 		if isinstance(image, TextureArrayRegion):
-			raise NotImplementedError("What's the deal with TextureArrayRegions?")
-			program = sprite.get_default_array_shader()
+			raise NotImplementedError("Hey VSauce, Michael here. What is a TextureArrayRegion?")
+			# program = sprite.get_default_array_shader()
 		else:
 			program = self.shader_container.get_program()
 
+		self._usage = usage
+		self._subpixel = subpixel
 		self._batch = batch or graphics.get_default_batch()
 		self._group = PNFSpriteGroup(
 			self.camera.ubo, self._texture, blend_src, blend_dest, program, parent=group
-			)
-		self._usage = usage
-		self._subpixel = subpixel
+		)
 		self._create_vertex_list()
 
 		self.image = image
+
+	@classmethod
+	def _get_dummy_camera(cls):
+		if cls._dummy_camera is None:
+			from pyday_night_funkin.graphics.camera import Camera
+			cls._dummy_camera = Camera()
+		return cls._dummy_camera
 
 	def _create_vertex_list(self):
 		usage = self._usage
@@ -234,6 +287,9 @@ class PNFSprite(sprite.Sprite):
 			("tex_coords3f/" + usage, self._texture.tex_coords),
 		)
 		self._update_position()
+
+	def on_scene_add(self, parent):
+		pass
 
 	def screen_center(self, screen_dims: Vec2, x: bool = True, y: bool = True) -> None:
 		"""
@@ -320,28 +376,27 @@ class PNFSprite(sprite.Sprite):
 		"""
 		Tests animation controller for new textures or offsets
 		and applies them to the sprite.
-		Useful for when waiting for `update_sprite` isn't possible during
+		Useful for when waiting for `update` isn't possible during
 		setup which i.e. depends on the first frame of an animation.
 		"""
 		if (new_frame := self.animation.query_new_texture()) is not None:
 			self._set_texture(new_frame)
 
 		if (new_offset := self.animation.query_new_offset()) is not None:
-			self.update(
-				x = self._x + (new_offset[0] * self._scale * self._scale_x),
-				y = self._y + (new_offset[1] * self._scale * self._scale_y),
-			)
+			self.x += new_offset[0] * self._scale * self._scale_x
+			self.y += new_offset[1] * self._scale * self._scale_y
 
 	# Unfortunately, the name `update` clashes with sprite, so have
 	# this as a certified code smell
-	def update_sprite(self, dt: float) -> None:
+	def update(self, dt: float) -> None:
 		if self.animation.is_set:
 			self.animation.update(dt)
 			self.check_animation_controller()
 
 		if self.movement is not None:
 			dx, dy = self.movement.update(dt)
-			self.update(x = self.x + dx, y = self.y + dy)
+			self.x += dx
+			self.y += dy
 
 		finished_effects = []
 		for effect in self.effects:
@@ -358,42 +413,64 @@ class PNFSprite(sprite.Sprite):
 				pass
 
 	@property
-	def scroll_factor(self) -> t.Tuple[float, float]:
-		return self._scroll_factor
+	def width(self) -> float:
+		return abs(self.signed_width)
 
-	@scroll_factor.setter
-	def scroll_factor(self, new_sf: t.Tuple[float, float]) -> None:
-		self._scroll_factor = new_sf
-		self._vertex_list.scroll_factor[:] = new_sf * 4
+	@property
+	def height(self):
+		return abs(self.signed_height)
 
-	# @property
-	# def width(self) -> float:
-	# 	return abs(self.signed_width)
+	@property
+	def signed_width(self) -> float:
+		if self.animation.is_set:
+			return self.animation.current_frame.frame_info[2]
+		return self._texture.width * self._scale_x * self._scale
 
-	# @property
-	# def height(self):
-	# 	return abs(self.signed_height)
+	@property
+	def signed_height(self) -> float:
+		if self.animation.is_set:
+			return self.animation.current_frame.frame_info[3]
+		return self._texture.height * self._scale_y * self._scale
 
 	# @property
 	# def signed_width(self) -> float:
-	# 	if self.animation.is_set:
-	# 		return self.animation.current_frame.frame_info[2]
 	# 	return self._texture.width * self._scale_x * self._scale
 
 	# @property
 	# def signed_height(self) -> float:
-	# 	if self.animation.is_set:
-	# 		return self.animation.current_frame.frame_info[3]
 	# 	return self._texture.height * self._scale_y * self._scale
 
-	@property
-	def signed_width(self) -> float:
-		return self._texture.width * self._scale_x * self._scale
-	@property
-	def signed_height(self) -> float:
-		return self._texture.height * self._scale_y * self._scale
+	# === Copypasted methods from the standard pyglet sprite === #
+
+	def delete(self):
+		"""
+		Deletes this sprite's vertex list immediatedly and remove
+		its texture and group.
+		"""
+		self._vertex_list.delete()
+		self._vertex_list = None
+		self._texture = None
+		self._group = None # GC speedup
+
+	def draw(self):
+		"""
+		Draws this sprite inefficiently.
+		Batches should be used instead.
+		"""
+		self._group.set_state_recursive()
+		self._vertex_list.draw(gl.GL_TRIANGLES)
+		self._group.unset_state_recursive()
+
+	# === Simple/Copypasted properties and private methods below === #
+
 	@property
 	def image(self) -> t.Union[PNFAnimation, AbstractImage]:
+		"""
+		The sprite's image.
+		This will return an animation if one is playing.
+		Setting an animation via this setter is an error, use
+		`animation.play()` for that instead.
+		"""
 		if self.animation.is_set:
 			return self.animation.current
 		return self._texture
@@ -409,13 +486,172 @@ class PNFSprite(sprite.Sprite):
 		self.animation.stop()
 		self._set_texture(image.get_texture())
 
-	def _animate(self, dt: float) -> None:
-		raise RuntimeError(
-			"For PNFSprites and its subclasses, the animation controller must "
-			"be used instead of pyglet's clock-based animation!"
-		)
+	@property
+	def batch(self) -> "Batch":
+		"""
+		This sprite's graphics batch.
+		Changing it can be an expensive operation.
+		"""
+		return self._batch
 
-	# === Below methods are largely copy-pasted from the superclass sprite === #
+	@batch.setter
+	def batch(self, batch: "Batch") -> None:
+		if self._batch == batch:
+			return
+		if batch is not None and self._batch is not None:
+			self._batch.migrate(self._vertex_list, gl.GL_TRIANGLES, self._group, batch)
+			self._batch = batch
+		else:
+			self._vertex_list.delete()
+			self._batch = batch
+			self._create_vertex_list()
+
+	@property
+	def group(self) -> "Group":
+		"""
+		The sprite's graphics group.
+		"""
+		return self._group.parent
+
+	@group.setter
+	def group(self, group: "Group") -> None:
+		if self._group.parent == group:
+			return
+		self._group = PNFSpriteGroup(
+			self.camera.ubo,
+			self._texture,
+			self._group.blend_src,
+			self._group.blend_dest,
+			self._group.program,
+			0,
+			group,
+		)
+		self._batch.migrate(self._vertex_list, gl.GL_TRIANGLES, self._group, self._batch)
+
+	@property
+	def x(self) -> "Numeric":
+		"""
+		The sprite's x coordinate.
+		"""
+		return self._x
+
+	@x.setter
+	def x(self, x: "Numeric") -> None:
+		self._x = x
+		self._vertex_list.translate[:] = (x, self._y) * 4
+
+	@property
+	def y(self) -> "Numeric":
+		"""
+		The sprite's y coordinate.
+		"""
+		return self._y
+
+	@y.setter
+	def y(self, y: "Numeric") -> None:
+		self._y = y
+		self._vertex_list.translate[:] = (self._x, y) * 4
+
+	@property
+	def rotation(self) -> "Numeric":
+		"""
+		The sprite's rotation.
+		"""
+		return self._rotation
+
+	@rotation.setter
+	def rotation(self, rotation: "Numeric") -> None:
+		self._rotation = rotation
+		self._vertex_list.rotation[:] = (self._rotation, ) * 4
+
+	@property
+	def opacity(self) -> "Numeric":
+		"""
+		The sprite's opacity.
+		0 is completely transparent, 255 completely opaque.
+		"""
+		return self._opacity
+
+	@opacity.setter
+	def opacity(self, opacity: "Numeric") -> None:
+		self._opacity = opacity
+		self._vertex_list.colors[:] = (*self._rgb, int(self._opacity)) * 4
+
+	@property
+	def scale(self) -> "Numeric":
+		"""
+		The sprite's scale along both axes.
+		"""
+		return self._scale
+
+	@scale.setter
+	def scale(self, scale: "Numeric") -> None:
+		self._scale = scale
+		self._vertex_list.scale[:] = (scale * self._scale_x, scale * self._scale_y) * 4
+
+	@property
+	def scale_x(self) -> "Numeric":
+		"""
+		The sprite's scale along the x axis.
+		"""
+		return self._scale_x
+
+	@scale_x.setter
+	def scale_x(self, scale_x: "Numeric") -> None:
+		self._scale_x = scale_x
+		self._vertex_list.scale[:] = (self._scale * scale_x, self._scale * self._scale_y) * 4
+
+	@property
+	def scale_y(self) -> "Numeric":
+		"""
+		The sprite's scale along the y axis.
+		"""
+		return self._scale_y
+
+	@scale_y.setter
+	def scale_y(self, scale_y: "Numeric") -> None:
+		self._scale_y = scale_y
+		self._vertex_list.scale[:] = (self._scale * self._scale_x, self._scale * scale_y) * 4
+
+	@property
+	def scroll_factor(self) -> t.Tuple[float, float]:
+		"""
+		The sprite's scroll factor.
+		Determines how hard camera movement will displace the sprite.
+		Very useful for parallax effects etc.
+		"""
+		return self._scroll_factor
+
+	@scroll_factor.setter
+	def scroll_factor(self, new_sf: t.Tuple[float, float]) -> None:
+		self._scroll_factor = new_sf
+		self._vertex_list.scroll_factor[:] = new_sf * 4
+
+	@property
+	def color(self) -> t.List[int]:
+		"""
+		The sprite's color tint.
+		This may have wildly varying results if a special shader
+		was set.
+		"""
+		return self._rgb
+
+	@color.setter
+	def color(self, color: t.Iterable[int]) -> None:
+		self._rgb = list(map(int, color))
+		self._vertex_list.colors[:] = (*self._rgb, int(self._opacity)) * 4
+
+	@property
+	def visible(self) -> bool:
+		"""
+		Whether the sprite should be drawn.
+		"""
+		return self._visible
+
+	@visible.setter
+	def visible(self, visible: bool) -> None:
+		self._visible = visible
+		self._update_position()
 
 	def _set_texture(self, texture):
 		prev_h, prev_w = self._texture.height, self._texture.width

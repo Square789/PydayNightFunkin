@@ -89,19 +89,17 @@ class HealthBar():
 		player_bar_x = opponent_bar_x + opponent_bar_width
 		player_bar_width = bar_width - opponent_bar_width
 
-		self.opponent_bar.update(x = opponent_bar_x, scale_x = opponent_bar_width)
-		self.player_bar.update(x = player_bar_x, scale_x = player_bar_width)
+		self.opponent_bar.x = opponent_bar_x
+		self.opponent_bar.scale_x = opponent_bar_width
+		self.player_bar.x = player_bar_x
+		self.player_bar.scale_x = player_bar_width
 		self.opponent_sprite.x = player_bar_x - ICON_X_DISPLACEMENT
 		self.player_sprite.x = player_bar_x + ICON_X_DISPLACEMENT
 
 		if new_health > (1.0 - self.ded_icon_threshold):
-			if self.opponent_sprite.image != self.opponent_icons[1]:
-				self.opponent_sprite.image = self.opponent_icons[1]
+			self.opponent_sprite.image = self.opponent_icons[1]
 		elif new_health < self.ded_icon_threshold:
-			if self.player_sprite.image != self.player_icons[1]:
-				self.player_sprite.image = self.player_icons[1]
+			self.player_sprite.image = self.player_icons[1]
 		else:
-			if self.player_sprite.image != self.player_icons[0]:
-				self.player_sprite.image = self.player_icons[0]
-			if self.opponent_sprite.image != self.opponent_icons[0]:
-				self.opponent_sprite.image = self.opponent_icons[0]
+			self.player_sprite.image = self.player_icons[0]
+			self.opponent_sprite.image = self.opponent_icons[0]

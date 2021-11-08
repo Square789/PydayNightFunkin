@@ -148,23 +148,7 @@ class ShaderContainer():
 		`CameraAttrs` uniform block, which will bind at the binding
 		index the program expects.
 		"""
-		ubo = self.get_program().uniform_blocks["CameraAttrs"].create_ubo(1)
-		# HACK: WARNING OH GOD WHY
-		# HACK: I have to re-emphasize, this right here?
-		# This is cancer [insert papa franku copypasta here]
-		# Relies on the std140 layout specifier and patches the UBO with
-		# a hardcoded alignment structure just for it.
-		class _CA_struct(ctypes.Structure):
-			_fields_ = [
-				("zoom", ctypes.c_float),
-				("_padding0", ctypes.c_float * 1),
-				("position", ctypes.c_float * 2),
-				("GAME_DIMENSIONS", ctypes.c_float * 2),
-			]
-
-		ubo.view = _CA_struct()
-		ubo._view_ptr = ctypes.pointer(ubo.view)
-		return ubo
+		return self.get_program().uniform_blocks["CameraAttrs"].create_ubo(1)
 
 	def _compile(self) -> None:
 		"""

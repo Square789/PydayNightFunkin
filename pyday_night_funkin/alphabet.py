@@ -14,56 +14,6 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.types import Numeric
 
 
-class TextLine(PNFSpriteContainer):
-	"""
-	Cheap sprite container subclass that automatically creates
-	letter sprites on creation.
-	"""
-	def __init__(
-		cls,
-		text: str,
-		scene: "BaseScene",
-		layer: str,
-		camera: t.Optional[str] = None,
-		bold: bool = False,
-		color: t.Optional[t.Tuple[int, int, int]] = None,
-		x: "Numeric" = 0,
-		y: "Numeric" = 0,
-	) -> None:
-		"""
-		# TODO doc probably
-		"""
-		sprites = []
-		last_sprite = None
-		last_was_space = False
-		x_pos = x
-		for c in text:
-			if c in " -":
-				last_was_space = True
-				continue
-
-			if last_sprite:
-				x_pos = last_sprite.x + last_sprite.width
-			if last_was_space:
-				x_pos += 40
-				last_was_space = False
-
-			sprite = scene.create_sprite(
-				layer,
-				camera,
-				AlphabetCharacter,
-				x = x_pos,
-				y = y + (5 * (not c.isalpha())),
-				char = c,
-				bold = bold,
-				color = color,
-			)
-			last_sprite = sprite
-			sprites.append(sprite)
-
-		super().__init__(sprites)
-
-
 _COLOR_SET_SHADER_CONTAINER = ShaderContainer(
 	PNFSpriteVertexShader.generate(),
 	PNFSpriteFragmentShader.generate(0.01, PNFSpriteFragmentShader.COLOR.SET),
@@ -158,3 +108,54 @@ class AlphabetCharacter(PNFSprite):
 		self.animation.add("main", anim)
 		self.animation.play("main")
 		self.check_animation_controller()
+
+
+class TextLine(PNFSpriteContainer):
+	"""
+	Cheap sprite container subclass that automatically creates
+	letter sprites on creation.
+	"""
+	def __init__(
+		cls,
+		text: str,
+		scene: "BaseScene",
+		layer: str,
+		camera: t.Optional[str] = None,
+		bold: bool = False,
+		color: t.Optional[t.Tuple[int, int, int]] = None,
+		x: "Numeric" = 0,
+		y: "Numeric" = 0,
+		sprite_class: t.Type[AlphabetCharacter] = AlphabetCharacter,
+	) -> None:
+		"""
+		# TODO doc probably
+		"""
+		sprites = []
+		last_sprite = None
+		last_was_space = False
+		x_pos = x
+		for c in text:
+			if c in " -":
+				last_was_space = True
+				continue
+
+			if last_sprite:
+				x_pos = last_sprite.x + last_sprite.width
+			if last_was_space:
+				x_pos += 40
+				last_was_space = False
+
+			sprite = scene.create_sprite(
+				layer,
+				camera,
+				sprite_class,
+				x = x_pos,
+				y = y + (5 * (not c.isalpha())),
+				char = c,
+				bold = bold,
+				color = color,
+			)
+			last_sprite = sprite
+			sprites.append(sprite)
+
+		super().__init__(sprites)
