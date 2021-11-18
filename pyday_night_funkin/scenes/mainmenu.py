@@ -6,7 +6,6 @@ from loguru import logger
 from pyday_night_funkin.asset_system import load_asset, ASSETS
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.enums import DIFFICULTY
 from pyday_night_funkin.scenes._base import BaseScene
 from pyday_night_funkin.tweens import TWEEN_ATTR, out_quad
 
@@ -121,13 +120,11 @@ class MainMenuScene(BaseScene):
 			sprite.screen_center(CNST.GAME_DIMENSIONS, y=False)
 
 	def _sel_story_mode(self) -> None:
-		# may god smite you, o cursed circular imports!
-		from pyday_night_funkin.levels import WEEKS
-
-		self.game.set_scene(WEEKS[1].levels[1], DIFFICULTY.HARD, type(self))
+		logger.info("No story menu, sorreh")
+		self.game.set_scene(TitleScene)
 
 	def _sel_freeplay(self) -> None:
-		self.game.set_scene(TitleScene)
+		self.game.set_scene(FreeplayScene)
 
 	def _sel_options(self) -> None:
 		logger.info("No options yet")

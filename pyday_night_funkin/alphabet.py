@@ -8,6 +8,7 @@ from pyday_night_funkin.graphics.pnf_sprite_container import PNFSpriteContainer
 from pyday_night_funkin.graphics.shaders import (
 	PNFSpriteFragmentShader, PNFSpriteVertexShader, ShaderContainer
 )
+from pyday_night_funkin.utils import lerp
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import BaseScene
@@ -153,3 +154,20 @@ class TextLine(PNFSpriteContainer):
 			sprites.append(sprite)
 
 		super().__init__(sprites, x=x, y=y)
+
+
+class MenuTextLine(TextLine):
+	"""
+	TextLine subclass that will force itself to a specific
+	x and y coordinate.
+	"""
+
+	def __init__(self, target_y, game_dims, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+		self.target_y = target_y
+		self.game_height = game_dims[1]
+
+	def update(self, dt: float) -> None:
+		self.x = lerp(self._x, self.target_y * 20 + 90, .16)
+		self.y = lerp(self._y, self.target_y * 1.3 * 120 + self.game_height * 0.48, .16)
+		super().update(dt)

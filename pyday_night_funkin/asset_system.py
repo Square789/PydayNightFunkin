@@ -274,10 +274,10 @@ class _AssetSystemManager():
 		self.asset_system_stack = [_DEFAULT_ASSET_SYSTEM]
 		self.asset_dir = Path.cwd() / "assets"
 
-	def _add_asset_system(self, asset_system: AssetSystem):
+	def _add_asset_system(self, asset_system: AssetSystem) -> None:
 		self.asset_system_stack.append(asset_system)
 
-	def _remove_asset_system(self, asset_system: AssetSystem):
+	def _remove_asset_system(self, asset_system: AssetSystem) -> None:
 		try:
 			self.asset_system_stack.remove(asset_system)
 		except ValueError:

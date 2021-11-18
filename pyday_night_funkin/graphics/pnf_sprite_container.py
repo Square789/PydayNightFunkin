@@ -3,8 +3,10 @@ import typing as t
 
 from pyglet.graphics import Group, get_default_batch
 
+from pyday_night_funkin.tweens import TWEEN_ATTR
 from pyday_night_funkin.graphics.context import Context
 from pyday_night_funkin.graphics.pnf_sprite import EffectBound, Movement, PNFSprite
+from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
 	from pyglet.math import Vec2
@@ -23,6 +25,12 @@ class PNFSpriteContainer(PNFSprite):
 	It's important to note that the Container itself should never
 	have any sort of graphical representation.
 	"""
+
+	_TWEEN_ATTR_NAME_MAP = {
+		TWEEN_ATTR.X: "x",
+		TWEEN_ATTR.Y: "y",
+		TWEEN_ATTR.OPACITY: "opacity",
+	}
 
 	def __init__(
 		self,
@@ -70,12 +78,20 @@ class PNFSpriteContainer(PNFSprite):
 		self.set_context(Context(get_default_batch(), None))
 
 	def add(self, sprite: PNFSprite) -> None:
+		"""
+		Adds a sprite to this sprite container. Will modify the
+		sprite's position etc., so in a way it now belongs to this
+		container.
+		"""
 		sprite.x += self._x
 		sprite.y += self._y
 		self._sprites.add(sprite)
 		sprite.set_context(self._context)
 
 	def remove(self, sprite: PNFSprite) -> None:
+		"""
+		Removes a sprite from this sprite container.
+		"""
 		sprite.x -= self._x
 		sprite.y -= self._y
 		sprite.invalidate_context()
@@ -104,7 +120,7 @@ class PNFSpriteContainer(PNFSprite):
 	# === PNFSprite property overrides === #
 
 	@property
-	def signed_width(self) -> float:
+	def signed_width(self) -> "Numeric":
 		if not self._sprites:
 			return 0
 		return (
@@ -113,7 +129,7 @@ class PNFSpriteContainer(PNFSprite):
 		)
 
 	@property
-	def signed_height(self) -> float:
+	def signed_height(self) -> "Numeric":
 		if not self._sprites:
 			return 0
 		return (
@@ -131,14 +147,27 @@ class PNFSpriteContainer(PNFSprite):
 	def _transform_y(sprite: PNFSprite, y: "Numeric") -> None:
 		sprite.y += y
 
+	@staticmethod
+	def _transform_opacity(sprite: PNFSprite, opacity: int) -> None:
+		sprite.opacity += opacity
+
 	def _set_x(self, x: "Numeric") -> None:
 		self.transform_children(self._transform_x, x - self._x)
 		self._x = x
 
 	x = property(PNFSprite.x.fget, _set_x)
 
+
 	def _set_y(self, y: "Numeric") -> None:
 		self.transform_children(self._transform_y, y - self._y)
 		self._y = y
 
 	y = property(PNFSprite.y.fget, _set_y)
+
+
+	def _set_opacity(self, opacity: int) -> None:
+		opacity = clamp(opacity, 0, 255)
+		self.transform_children(self._transform_opacity, opacity - self._opacity)
+		self._opacity = opacity
+
+	opacity = property(PNFSprite.opacity.fset, _set_opacity)
