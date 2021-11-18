@@ -10,13 +10,45 @@ from pyglet.window.key import B, R
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.graphics import Camera, PNFSprite
-from pyday_night_funkin.graphics.pnf_sprite_container import Layer
-from pyday_night_funkin.graphics.scene_object import Container
+from pyday_night_funkin.graphics.context import Context
+from pyday_night_funkin.graphics.scene_object import Container, SceneObject
 from pyday_night_funkin.sfx_ring import SFXRing
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
 	from pyday_night_funkin.types import PNFSpriteBound
+
+
+class Layer():
+	"""
+	Layer class over the given group.
+	"""
+	__slots__ = ("group", "force_order", "latest_order")
+
+	def __init__(self, group: Group, force_order: bool) -> None:
+		self.group = group
+		self.force_order = force_order
+		self.latest_order = 0
+
+	def get_group(self, group_cls: t.Type[Group] = Group, *args, **kwargs) -> Group:
+		"""
+		Returns a group to attach an object to on this layer.
+
+		A layer with forced order will create and return an
+		incrementally ordered subgroup with the layer's group as its
+		parent.
+		A layer without forced order will simply return its group.
+		"""
+		# TODO: Not really relevant in practice, but the order will
+		# keep increasing ad infinitum, I don't like that a lot
+		if self.force_order:
+			kwargs["order"] = self.latest_order
+			kwargs["parent"] = self.group
+			self.latest_order += 1
+
+			return group_cls(*args, **kwargs)
+		else:
+			return self.group
 
 
 class BaseScene(Container):
@@ -32,30 +64,30 @@ class BaseScene(Container):
 
 		:param game: The `Game` the scene belongs to.
 		"""
+		super().__init__()
+
 		self.game = game
-
 		self.creation_args = None
-
 		self.batch = Batch()
 
 		self.draw_passthrough = True
 		self.update_passthrough = False
 
 		self.layers = OrderedDict(
-			(name, Layer(Group(order = i), force_order))
+			(name, Layer(Group(order=i), force_order))
 			for i, (name, force_order) in enumerate(
 				(x, False) if not isinstance(x, tuple) else x
 				for x in self.get_layer_names()
 			)
 		)
+		if not self.layers:
+			raise ValueError("Scenes must at least have one layer!")
 
 		self._passed_time = 0.0
 		self.clock = Clock(self._get_elapsed_time)
 
 		self._default_camera = Camera()
 		self.cameras = {name: Camera() for name in self.get_camera_names()}
-
-		self._sprites: t.Set[PNFSprite] = set()
 
 		self.sfx_ring = SFXRing(CNST.SFX_RING_SIZE)
 
@@ -88,7 +120,7 @@ class BaseScene(Container):
 
 	def create_sprite(
 		self,
-		layer: str,
+		layer: t.Optional[str] = None,
 		camera: t.Optional[str] = None,
 		sprite_class: t.Type["PNFSpriteBound"] = PNFSprite,
 		*args,
@@ -102,29 +134,48 @@ class BaseScene(Container):
 		specified, the sprite will be attached to a default camera
 		that is never moved.
 		The sprite class will be created with all args and kwargs,
-		as well as a fitting `batch` and `group` filled in by the scene
-		if not otherwise given. (And if you give it another batch or
-		group you better know what you're doing.)
+		as well as a fitting `context` filled in by the scene
+		if not otherwise given. (And if you give it another one, you
+		better know what you're doing.)
 		"""
-		kwargs.setdefault("batch", self.batch)
-		kwargs.setdefault("group", self.layers[layer].get_group())
-		kwargs.setdefault("camera", self._default_camera if camera is None else self.cameras[camera])
+		kwargs.setdefault("context", self.get_context(layer))
+		kwargs.setdefault(
+			"camera",
+			self._default_camera if camera is None else self.cameras[camera]
+		)
 
 		sprite = sprite_class(*args, **kwargs)
 
-		self._sprites.add(sprite)
+		self._members.add(sprite)
 
 		return sprite
 
-	def remove_sprite(self, sprite: PNFSprite) -> None:
+	def set_context(self, _: Context) -> None:
+		raise RuntimeError("Can't set a scene's context, it's the scene hierarchy root!")
+
+	def invalidate_context(self) -> None:
+		raise RuntimeError("Can't invalidate a scene's context; try `remove_scene` instead!")
+
+	def add(self, obj: SceneObject, layer: t.Optional[str] = None):
 		"""
-		Removes a sprite from this scene's sprite registry and deletes
-		it.
-		If the sprite is unknown to the scene, does nothing.
+		Add a SceneObject to the scene on the given layer.
+		If no layer is supplied, will default to the first layer.
 		"""
-		if sprite in self._sprites:
-			self._sprites.remove(sprite)
-			sprite.delete()
+		self._members.add(obj)
+		obj.set_context(self.get_context(layer))
+
+	def remove(self, obj: SceneObject, keep: bool = False) -> None:
+		"""
+		Removes a scene object from this scene's registry.
+		If `keep` is set to `True`, will not delete the removed object.
+		If the object is unknown to the scene, does nothing.
+		"""
+		if obj in self._members:
+			self._members.remove(obj)
+			if keep:
+				obj.invalidate_context()
+			else:
+				obj.delete()
 
 	def update(self, dt: float) -> None:
 		if self.game.debug:
@@ -141,8 +192,8 @@ class BaseScene(Container):
 		for c in self.cameras.values():
 			c.update(dt)
 
-		for sprite in self._sprites.copy():
-			sprite.update(dt)
+		for x in self._members.copy():
+			x.update(dt)
 
 	def draw(self) -> None:
 		"""
@@ -151,9 +202,18 @@ class BaseScene(Container):
 		"""
 		self.batch.draw()
 
-	def remove(self, *args, **kwargs) -> None:
+	def get_context(self, layer: t.Optional[str] = None) -> Context:
 		"""
-		Removes a scene by telling the below scene, or the game if
+		Returns a context for the given layer. # TODO or none bla bla
+		"""
+		return Context(self.batch, self.get_layer(layer).get_group())
+
+	def get_layer(self, layer: t.Optional[str] = None) -> Layer:
+		return next(iter(self.layers.values())) if layer is None else self.layers[layer]
+
+	def remove_scene(self, *args, **kwargs) -> None:
+		"""
+		Removes this scene by telling the below scene, or the game if
 		this scene is the parent scene, to remove it.
 		All args and kwargs will be passed through to a parent scene's
 		`remove_subscene` method, but ignored if the game receives the
@@ -167,7 +227,7 @@ class BaseScene(Container):
 
 	def remove_subscene(self, *args, **kwargs):
 		"""
-		Called by the scene above's `remove` method.
+		Called by the scene above's `remove_scene` method.
 		"""
 		subscene = self.game.get_next_scene(self)
 		self.game.remove_scene(subscene)
@@ -177,11 +237,11 @@ class BaseScene(Container):
 		Destroy the scene by deleting its sprites and graphics batch.
 		**!** This does not remove the scene from the game's scene
 		stack and will cause errors if used improperly.
-		Chances are you want to use `remove` instead.
+		Chances are you want to use `remove_scene` instead.
 		"""
-		for spr in self._sprites.copy():
-			spr.delete()
-		self._sprites.clear()
+		for x in self._members.copy():
+			x.delete()
+		self._members.clear()
 
 		del self.batch
 		del self.game # reference breaking or something

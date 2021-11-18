@@ -1,5 +1,5 @@
 
-from time import perf_counter, time
+from time import perf_counter
 import typing as t
 
 from loguru import logger
@@ -98,13 +98,13 @@ class Game():
 		logger.remove(0)
 		if self.debug:
 			def debug_setup(_):
-				self._fps = [time() * 1000, 0, "?"]
+				self._fps = [perf_counter() * 1000, 0, "?"]
 				self.debug_pane = DebugPane(8)
 				logger.add(self.debug_pane.add_message)
 				logger.debug(f"Game started (v{__version__}), pyglet version {pyglet.version}")
 			pyglet.clock.schedule_once(debug_setup, 0.0)
 
-		pyglet.clock.schedule_interval(self.update, 1 / 80.0)
+		pyglet.clock.schedule_interval(self.update, 1 / 60.0)
 		pyglet.app.run()
 
 	def push_scene(self, new_scene_cls: t.Type[BaseScene], *args, **kwargs) -> None:
@@ -143,7 +143,7 @@ class Game():
 		return self._scene_stack[i + 1] if i < len(self._scene_stack) - 1 else None
 
 	def draw(self) -> None:
-		stime = time()
+		stime = perf_counter()
 		self.window.clear()
 
 		for scene in self._scenes_to_draw:
@@ -152,9 +152,10 @@ class Game():
 		if self.debug:
 			self.debug_pane.draw()
 			self._fps_bump()
-			draw_time = (time() - stime) * 1000
+			draw_time = (perf_counter() - stime) * 1000
 			# Prints frame x-1's draw time in frame x, but who cares
 			self.debug_pane.update(self._fps[2], draw_time, self._update_time)
+			# print(draw_time, self._update_time)
 
 	def _modify_scene_stack(self) -> float:
 		"""
@@ -184,7 +185,7 @@ class Game():
 		return perf_counter() - stk_mod_t
 
 	def update(self, dt: float) -> None:
-		stime = time()
+		stime = perf_counter()
 
 		# TODO: This feels really incorrect, but I can't seem to figure out a
 		# better way to prevent scene creation time leaking into the scene's first
@@ -195,11 +196,11 @@ class Game():
 		for scene in self._scenes_to_update:
 			scene.update(dt)
 
-		self._update_time = (time() - stime) * 1000
+		self._update_time = (perf_counter() - stime) * 1000
 
 	def _fps_bump(self):
 		self._fps[1] += 1
-		t = time() * 1000
+		t = perf_counter() * 1000
 		if t - self._fps[0] >= 1000:
 			self._fps[0] = t
 			self._fps[2] = self._fps[1]

@@ -1,6 +1,4 @@
 
-import ctypes
-from enum import IntEnum
 import typing as t
 
 from pyglet.gl import gl

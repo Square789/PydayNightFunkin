@@ -329,6 +329,9 @@ class InGameScene(MusicBeatScene):
 			self.main_cam.zoom += 0.015
 			self.hud_cam.zoom += 0.03
 
+		if not self.boyfriend.animation.has_tag(ANIMATION_TAG.SING):
+			self.boyfriend.animation.play("idle_bop")
+
 	def countdown(self, dt: float) -> None:
 		if self._countdown_stage == 4:
 			self.start_song()

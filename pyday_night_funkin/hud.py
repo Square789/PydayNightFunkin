@@ -118,7 +118,7 @@ class HUD():
 				tween_func = out_cubic,
 				attributes = {TWEEN_ATTR.OPACITY: 0},
 				duration = 0.2,
-				on_complete = lambda: scene.remove_sprite(combo_sprite),
+				on_complete = lambda: scene.remove(combo_sprite),
 			),
 			scene.conductor.beat_duration * 0.001,
 		)
@@ -143,7 +143,7 @@ class HUD():
 					tween_func = linear,
 					attributes = {TWEEN_ATTR.OPACITY: 0},
 					duration = 0.2,
-					on_complete = lambda: scene.remove_sprite(sprite),
+					on_complete = lambda: scene.remove(sprite),
 				),
 				scene.conductor.beat_duration * 0.002,
 			)
@@ -161,7 +161,7 @@ class HUD():
 				in_out_cubic,
 				{TWEEN_ATTR.OPACITY: 0},
 				scene.conductor.beat_duration * 0.001,
-				lambda sprite = sprite: scene.remove_sprite(sprite),
+				lambda sprite = sprite: scene.remove(sprite),
 			)
 
 		if self.countdown_sounds[countdown_stage] is not None:

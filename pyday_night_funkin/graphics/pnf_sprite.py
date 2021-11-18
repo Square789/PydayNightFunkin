@@ -1,6 +1,4 @@
 
-import ctypes
-from time import time
 import typing as t
 
 from pyglet import gl
@@ -12,6 +10,7 @@ from pyglet import sprite
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.tweens import TWEEN_ATTR
+from pyday_night_funkin.graphics.context import Context
 from pyday_night_funkin.graphics.pnf_animation import AnimationController, PNFAnimation
 from pyday_night_funkin.graphics.scene_object import SceneObject
 from pyday_night_funkin.graphics.shaders import (
@@ -21,23 +20,10 @@ from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import UniformBufferObject
-	from pyglet.graphics import Batch, Group
 	from pyday_night_funkin.graphics.camera import Camera
 	from pyday_night_funkin.types import Numeric
 
-
 EffectBound = t.TypeVar("EffectBound", bound="Effect")
-
-
-_TWEEN_ATTR_NAME_MAP = {
-	TWEEN_ATTR.X: "x",
-	TWEEN_ATTR.Y: "y",
-	TWEEN_ATTR.ROTATION: "rotation",
-	TWEEN_ATTR.OPACITY: "opacity",
-	TWEEN_ATTR.SCALE: "scale",
-	TWEEN_ATTR.SCALE_X: "scale_x",
-	TWEEN_ATTR.SCALE_Y: "scale_y",
-}
 
 
 # class FakeBatch():
@@ -95,6 +81,16 @@ class PNFSpriteGroup(sprite.SpriteGroup):
 
 		self.program.stop()
 
+	# def __eq__(self, other) -> bool:
+	# 	return (
+	# 		self.__class__ is other.__class__ and
+	# 		self.program is other.program and
+	# 		self.parent is other.parent and
+	# 		self.texture.target == other.texture.target and
+	# 		self.texture.id == other.texture.id and
+	# 		self.blend_src == other.blend_src and
+	# 		self.blend_dest == other.blend_dest
+	# 	)
 
 class Movement():
 	__slots__ = ("velocity", "acceleration")
@@ -201,13 +197,17 @@ class Flicker(Effect):
 class PNFSprite(SceneObject):
 	"""
 	TODO doc
-
-	WARNING: This subclass meddles with many underscore-prepended
-	attributes of the standard pyglet Sprite, which may completely
-	break it in any other pyglet releases.
-	Also, it breaks pyglet's animation events.
 	"""
 
+	_TWEEN_ATTR_NAME_MAP = {
+		TWEEN_ATTR.X: "x",
+		TWEEN_ATTR.Y: "y",
+		TWEEN_ATTR.ROTATION: "rotation",
+		TWEEN_ATTR.OPACITY: "opacity",
+		TWEEN_ATTR.SCALE: "scale",
+		TWEEN_ATTR.SCALE_X: "scale_x",
+		TWEEN_ATTR.SCALE_Y: "scale_y",
+	}
 	shader_container = ShaderContainer(
 		PNFSpriteVertexShader.generate(),
 		PNFSpriteFragmentShader.generate(),
@@ -222,8 +222,7 @@ class PNFSprite(SceneObject):
 		y: "Numeric" = 0,
 		blend_src = gl.GL_SRC_ALPHA,
 		blend_dest = gl.GL_ONE_MINUS_SRC_ALPHA,
-		batch: t.Optional["Batch"] = None,
-		group: t.Optional["Group"] = None,
+		context: Context = None,
 		usage: t.Literal["dynamic", "stream", "static"] = "dynamic",
 		subpixel: bool = False,
 		program: "ShaderProgram" = None,
@@ -233,8 +232,10 @@ class PNFSprite(SceneObject):
 		self.animation = AnimationController()
 		self.camera = self._get_dummy_camera() if camera is None else camera
 
+		# NOTE: Copypaste of this exists at PNFSpriteContainer.__init__,
+		# modify it when modifying this!
 		self.movement: t.Optional[Movement] = None
-		self.effects: t.List[EffectBound] = []
+		self.effects: t.List["EffectBound"] = []
 
 		self._x = x
 		self._y = y
@@ -258,10 +259,19 @@ class PNFSprite(SceneObject):
 
 		self._usage = usage
 		self._subpixel = subpixel
-		self._batch = batch or graphics.get_default_batch()
-		self._group = PNFSpriteGroup(
-			self.camera.ubo, self._texture, blend_src, blend_dest, program, parent=group
+
+		self._context = Context(
+			graphics.get_default_batch() if context is None else context.batch,
+			PNFSpriteGroup(
+				self.camera.ubo,
+				self._texture,
+				blend_src,
+				blend_dest,
+				program,
+				parent = None if context is None else context.group,
+			)
 		)
+
 		self._create_vertex_list()
 
 		self.image = image
@@ -275,8 +285,8 @@ class PNFSprite(SceneObject):
 
 	def _create_vertex_list(self):
 		usage = self._usage
-		self._vertex_list = self._batch.add_indexed(
-			4, gl.GL_TRIANGLES, self._group, [0, 1, 2, 0, 2, 3],
+		self._vertex_list = self._context.batch.add_indexed(
+			4, gl.GL_TRIANGLES, self._context.group, [0, 1, 2, 0, 2, 3],
 			"position2f/" + usage,
 			("colors4Bn/" + usage, (*self._rgb, int(self._opacity)) * 4),
 			("translate2f/" + usage, (self._x, self._y) * 4),
@@ -288,8 +298,36 @@ class PNFSprite(SceneObject):
 		)
 		self._update_position()
 
-	def on_scene_add(self, parent):
-		pass
+	def set_context(self, parent_context: "Context") -> None:
+		new_batch = parent_context.batch
+		new_group = parent_context.group
+		old_batch = self._context.batch
+		old_group = self._context.group
+
+		# NOTE: migrate may be called twice here which is inefficient but unlikely since
+		# why should batches ever be switched anyways
+		if new_batch != old_batch:
+			if new_batch is not None and old_batch is not None:
+				old_batch.migrate(self._vertex_list, gl.GL_TRIANGLES, self._context.group, new_batch)
+				self._context.batch = new_batch
+			else:
+				self._vertex_list.delete()
+				self._context.batch = new_batch
+				self._create_vertex_list()
+
+		if new_group != old_group.parent:
+			self._context.group = PNFSpriteGroup(
+				self.camera.ubo,
+				self._texture,
+				old_group.blend_src,
+				old_group.blend_dest,
+				old_group.program,
+				0,
+				new_group,
+			)
+			self._context.batch.migrate(
+				self._vertex_list, gl.GL_TRIANGLES, self._context.group, self._context.batch
+			)
 
 	def screen_center(self, screen_dims: Vec2, x: bool = True, y: bool = True) -> None:
 		"""
@@ -326,7 +364,7 @@ class PNFSprite(SceneObject):
 		# 0: initial value; 1: difference
 		attr_map = {}
 		for attribute, target_value in attributes.items():
-			attribute_name = _TWEEN_ATTR_NAME_MAP[attribute]
+			attribute_name = self._TWEEN_ATTR_NAME_MAP[attribute]
 			initial_value = getattr(self, attribute_name)
 			attr_map[attribute_name] = (initial_value, target_value - initial_value)
 
@@ -386,8 +424,6 @@ class PNFSprite(SceneObject):
 			self.x += new_offset[0] * self._scale * self._scale_x
 			self.y += new_offset[1] * self._scale * self._scale_y
 
-	# Unfortunately, the name `update` clashes with sprite, so have
-	# this as a certified code smell
 	def update(self, dt: float) -> None:
 		if self.animation.is_set:
 			self.animation.update(dt)
@@ -450,16 +486,16 @@ class PNFSprite(SceneObject):
 		self._vertex_list.delete()
 		self._vertex_list = None
 		self._texture = None
-		self._group = None # GC speedup
+		self._context = None # GC speedup, probably
 
 	def draw(self):
 		"""
 		Draws this sprite inefficiently.
 		Batches should be used instead.
 		"""
-		self._group.set_state_recursive()
+		self._context.group.set_state_recursive()
 		self._vertex_list.draw(gl.GL_TRIANGLES)
-		self._group.unset_state_recursive()
+		self._context.group.unset_state_recursive()
 
 	# === Simple/Copypasted properties and private methods below === #
 
@@ -485,48 +521,6 @@ class PNFSprite(SceneObject):
 
 		self.animation.stop()
 		self._set_texture(image.get_texture())
-
-	@property
-	def batch(self) -> "Batch":
-		"""
-		This sprite's graphics batch.
-		Changing it can be an expensive operation.
-		"""
-		return self._batch
-
-	@batch.setter
-	def batch(self, batch: "Batch") -> None:
-		if self._batch == batch:
-			return
-		if batch is not None and self._batch is not None:
-			self._batch.migrate(self._vertex_list, gl.GL_TRIANGLES, self._group, batch)
-			self._batch = batch
-		else:
-			self._vertex_list.delete()
-			self._batch = batch
-			self._create_vertex_list()
-
-	@property
-	def group(self) -> "Group":
-		"""
-		The sprite's graphics group.
-		"""
-		return self._group.parent
-
-	@group.setter
-	def group(self, group: "Group") -> None:
-		if self._group.parent == group:
-			return
-		self._group = PNFSpriteGroup(
-			self.camera.ubo,
-			self._texture,
-			self._group.blend_src,
-			self._group.blend_dest,
-			self._group.program,
-			0,
-			group,
-		)
-		self._batch.migrate(self._vertex_list, gl.GL_TRIANGLES, self._group, self._batch)
 
 	@property
 	def x(self) -> "Numeric":
@@ -656,9 +650,15 @@ class PNFSprite(SceneObject):
 	def _set_texture(self, texture):
 		prev_h, prev_w = self._texture.height, self._texture.width
 		if texture.id is not self._texture.id:
-			self._group = PNFSpriteGroup(
-				self.camera.ubo, texture, self._group.blend_src, self._group.blend_dest,
-				self._group.program, 0, self._group.parent
+			old_group = self._context.group
+			self._context.group = PNFSpriteGroup(
+				self.camera.ubo,
+				texture,
+				old_group.blend_src,
+				old_group.blend_dest,
+				old_group.program,
+				0,
+				old_group.parent,
 			)
 			self._vertex_list.delete()
 			self._texture = texture

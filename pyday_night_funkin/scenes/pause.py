@@ -26,7 +26,7 @@ class PauseScene(BaseScene):
 		self.background.opacity = 0
 		self.background.start_tween(in_out_quart, {TWEEN_ATTR.OPACITY: 153}, 0.4)
 
-		TextLine("<PAUSED>", self, "fg", bold=True, x=910, y=650)
+		self.add(TextLine("<PAUSED>", bold=True, x=910, y=650), "fg")
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
@@ -36,6 +36,6 @@ class PauseScene(BaseScene):
 		super().update(dt)
 
 		if self.game.key_handler.just_pressed(CONTROL.ENTER):
-			self.remove(False)
+			self.remove_scene(False)
 		elif self.game.key_handler.just_pressed(CONTROL.BACKSPACE):
-			self.remove(True)
+			self.remove_scene(True)

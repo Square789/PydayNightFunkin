@@ -118,9 +118,6 @@ class TextLine(PNFSpriteContainer):
 	def __init__(
 		cls,
 		text: str,
-		scene: "BaseScene",
-		layer: str,
-		camera: t.Optional[str] = None,
 		bold: bool = False,
 		color: t.Optional[t.Tuple[int, int, int]] = None,
 		x: "Numeric" = 0,
@@ -133,24 +130,21 @@ class TextLine(PNFSpriteContainer):
 		sprites = []
 		last_sprite = None
 		last_was_space = False
-		x_pos = x
+		sprite_x = 0
 		for c in text:
 			if c in " -":
 				last_was_space = True
 				continue
 
 			if last_sprite:
-				x_pos = last_sprite.x + last_sprite.width
+				sprite_x = last_sprite.x + last_sprite.width
 			if last_was_space:
-				x_pos += 40
+				sprite_x += 40
 				last_was_space = False
 
-			sprite = scene.create_sprite(
-				layer,
-				camera,
-				sprite_class,
-				x = x_pos,
-				y = y + (5 * (not c.isalpha())),
+			sprite = sprite_class(
+				x = sprite_x,
+				y = 5 * (not c.isalpha()),
 				char = c,
 				bold = bold,
 				color = color,
@@ -158,4 +152,4 @@ class TextLine(PNFSpriteContainer):
 			last_sprite = sprite
 			sprites.append(sprite)
 
-		super().__init__(sprites)
+		super().__init__(sprites, x=x, y=y)

@@ -168,7 +168,7 @@ class NoteHandler(AbstractNoteHandler):
 			else:
 				note.sprite.y = note_y
 		for idx in range(self.notes_visible.start, self.notes_visible.start + deletion_bound):
-			self.game_scene.remove_sprite(self.notes[idx].sprite)
+			self.game_scene.remove(self.notes[idx].sprite)
 			self.notes[idx].sprite = None
 			self.notes_visible.start += 1
 

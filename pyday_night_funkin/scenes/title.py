@@ -95,8 +95,6 @@ class TitleScene(MusicBeatScene):
 		for line in lines:
 			container = TextLine(
 				line,
-				self,
-				"main",
 				bold = True,
 				color = (255, ) * 3,
 				y = len(self.text_lines) * 60 + 200,
@@ -104,18 +102,18 @@ class TitleScene(MusicBeatScene):
 
 			container.screen_center(CNST.GAME_DIMENSIONS, y=False)
 			self.text_lines.append(container)
+			self.add(container, "title_text")
 
 	def _delete_text(self):
 		for container in self.text_lines:
-			for s in container:
-				self.remove_sprite(s)
+			self.remove(container)
 		self.text_lines = []
 
 	def _intro_end(self):
 		if self._intro_ended:
 			return
 
-		self.remove_sprite(self.ng_logo)
+		self.remove(self.ng_logo)
 		self._delete_text()
 		self.gf.visible = True
 		self.logo.visible = True
