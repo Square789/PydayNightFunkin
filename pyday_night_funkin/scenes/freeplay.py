@@ -42,6 +42,8 @@ class FreeplayScene(BaseScene):
 			self._text_lines.append(m)
 			self.add(m, "fg")
 
+		self._change_selection(0)
+
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		return ("bg", "fg")

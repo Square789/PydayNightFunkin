@@ -78,6 +78,7 @@ class MainMenuScene(BaseScene):
 				self._default_camera.set_follow_target(sprite.get_midpoint(), 0.06)
 			else:
 				sprite.animation.play("idle", True)
+			sprite.screen_center(CNST.GAME_DIMENSIONS, y=False)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
@@ -114,10 +115,6 @@ class MainMenuScene(BaseScene):
 						)
 					else:
 						sprite.start_flicker(1.0, 0.06, False, callback)
-						# callback()
-
-		for _, _, sprite in self._menu_items:
-			sprite.screen_center(CNST.GAME_DIMENSIONS, y=False)
 
 	def _sel_story_mode(self) -> None:
 		logger.info("No story menu, sorreh")

@@ -8,6 +8,7 @@ if t.TYPE_CHECKING:
 	from pyglet.image import Texture
 	from pyday_night_funkin.graphics.pnf_sprite import PNFSprite
 	from pyday_night_funkin.image_loader import FrameInfoTexture
+	from pyday_night_funkin.types import Numeric
 
 
 class OffsetAnimationFrame():
@@ -76,30 +77,17 @@ class AnimationController():
 		self._frame_idx = 0
 		self._next_dt = 0.0
 
-		self._frame_offset = Vec2()
+		self._frame_offset = (0, 0)
 		"""
 		Offset of current animation frame, calculated with animation
 		frame dimensions, frame info and base box.
 		Not final, still needs the sprite's scale.
 		"""
-
 		self._new_offset = None
+		"""
+		Per-animation offset.
+		"""
 		self._new_texture = None
-
-	def _get_post_animate_offset(self) -> Vec2:
-		"""
-		Should be called after the current frame has changed.
-		Calculates the difference between the current frame's and
-		the next frame's offset and returns it.
-		"""
-		fix, fiy, fiw, fih = self.current_frame.frame_info
-		new_frame_offset = Vec2(
-			round(fix - (self._base_box[0] - fiw) // 2),
-			round(fiy - (self._base_box[1] - fih) // 2),
-		)
-		old_frame_offset = self._frame_offset
-		self._frame_offset = new_frame_offset
-		return old_frame_offset - new_frame_offset
 
 	def _set_base_box(
 		self, what: t.Union[PNFAnimation, OffsetAnimationFrame, Vec2],
@@ -122,37 +110,41 @@ class AnimationController():
 	def _set_frame(self, frame: "Texture") -> None:
 		self._new_texture = frame
 
-	def _set_offset(self, offset: Vec2) -> None:
-		if self._new_offset is None:
-			self._new_offset = offset
-		else:
-			self._new_offset += offset
+	def _set_offset(self, offset: t.Optional[t.Tuple["Numeric", "Numeric"]]) -> None:
+		self._new_offset = offset
+
+	def _set_frame_offset(self, frame_offset: t.Optional[t.Tuple["Numeric", "Numeric"]]) -> None:
+		self._frame_offset = frame_offset
 
 	def query_new_texture(self) -> t.Optional["Texture"]:
 		r = self._new_texture
 		self._new_texture = None
 		return r
 
-	def query_new_offset(self) -> t.Optional[Vec2]:
+	def query_new_offset(self) -> t.Optional[t.Tuple["Numeric", "Numeric"]]:
 		r = self._new_offset
 		self._new_offset = None
 		return r
 
-	def _detach_animation(self) -> Vec2:
-		offset_delta = self._frame_offset
-		if self.current.offset is not None:
-			offset_delta += self.current.offset
+	def query_new_frame_offset(self) -> t.Optional[t.Tuple["Numeric", "Numeric"]]:
+		r = self._frame_offset
+		self._frame_offset = None
+		return r
 
-		self._frame_offset = Vec2()
-
+	def _detach_animation(self) -> None:
+		self._set_frame_offset((0, 0))
+		self._set_offset((0, 0))
 		self.playing = False
 		self.current = self.current_name = None
 
-		return offset_delta
-
 	def _on_new_frame(self) -> None:
 		self._set_frame(self.current_frame.image.get_texture())
-		self._set_offset(self._get_post_animate_offset())
+
+		fix, fiy, fiw, fih = self.current_frame.frame_info
+		self._set_frame_offset((
+			-round(fix - (self._base_box[0] - fiw) // 2),
+			-round(fiy - (self._base_box[1] - fih) // 2),
+		))
 
 	@property
 	def current_frame(self) -> t.Optional[OffsetAnimationFrame]:
@@ -287,10 +279,9 @@ class AnimationController():
 		):
 			return
 
-		# Remove old animation and its offsets
-		offset_delta = Vec2()
+		# Remove old animation
 		if self.current is not None:
-			offset_delta += self._detach_animation()
+			self._detach_animation()
 
 		# Set some variables for new animation
 		self.current = self._animations[name]
@@ -298,15 +289,15 @@ class AnimationController():
 		self._frame_idx = 0
 		self.playing = True
 
-		# Add new animation's offset
+		c_off = Vec2(0, 0)
 		if self.current.offset is not None:
-			offset_delta -= self.current.offset
+			c_off -= self.current.offset
 			self._set_base_box(self.current)
 
 		# Set first frame
 		frame = self.current.frames[0]
 		self._next_dt = frame.duration
-		self._set_offset(offset_delta)
+		self._set_offset(tuple(c_off))
 		self._on_new_frame()
 
 	def pause(self) -> None:
@@ -314,4 +305,4 @@ class AnimationController():
 
 	def stop(self) -> None:
 		if self.current is not None:
-			self._set_offset(self._detach_animation())
+			self._detach_animation()

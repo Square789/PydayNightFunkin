@@ -8,6 +8,8 @@ from pyglet.graphics.shader import Shader, ShaderProgram, UniformBufferObject
 _PNF_SPRITE_VERTEX_SHADER_SOURCE = """
 #version 330
 
+in vec2 anim_offset;
+in vec2 frame_offset;
 in vec2 translate;
 in vec4 colors;
 in vec3 tex_coords;
@@ -41,8 +43,8 @@ mat4 m_camera_pre_trans = mat4(1.0);
 
 
 void main() {{
-	m_trans_scale[3][0] = translate.x;
-	m_trans_scale[3][1] = translate.y;
+	m_trans_scale[3][0] = translate.x + anim_offset.x + frame_offset.x * scale.x;
+	m_trans_scale[3][1] = translate.y + anim_offset.y + frame_offset.y * scale.y;
 	m_trans_scale[0][0] = scale.x;
 	m_trans_scale[1][1] = scale.y;
 	m_rotation[0][0] =  cos(-radians(rotation));

@@ -196,7 +196,9 @@ class Flicker(Effect):
 
 class PNFSprite(SceneObject):
 	"""
-	TODO doc
+	Pretty much *the* core scene object, the sprite!
+	It can show images or animations, do all sort of transforms, have
+	a shader as well as a camera on it and comes with tween support.
 	"""
 
 	_TWEEN_ATTR_NAME_MAP = {
@@ -290,6 +292,8 @@ class PNFSprite(SceneObject):
 			"position2f/" + usage,
 			("colors4Bn/" + usage, (*self._rgb, int(self._opacity)) * 4),
 			("translate2f/" + usage, (self._x, self._y) * 4),
+			("anim_offset2f/" + usage, (0, 0) * 4),
+			("frame_offset2f/" + usage, (0, 0) * 4),
 			("scale2f/" + usage,
 				(self._scale * self._scale_x, self._scale * self._scale_y) * 4),
 			("rotation1f/" + usage, (self._rotation, ) * 4),
@@ -421,8 +425,10 @@ class PNFSprite(SceneObject):
 			self._set_texture(new_frame)
 
 		if (new_offset := self.animation.query_new_offset()) is not None:
-			self.x += new_offset[0] * self._scale * self._scale_x
-			self.y += new_offset[1] * self._scale * self._scale_y
+			self._vertex_list.anim_offset[:] = new_offset * 4
+
+		if (new_frame_offset := self.animation.query_new_frame_offset()) is not None:
+			self._vertex_list.frame_offset[:] = new_frame_offset * 4
 
 	def update(self, dt: float) -> None:
 		if self.animation.is_set:
@@ -459,13 +465,13 @@ class PNFSprite(SceneObject):
 	@property
 	def signed_width(self) -> float:
 		if self.animation.is_set:
-			return self.animation.current_frame.frame_info[2]
+			return self.animation._base_box[0]
 		return self._texture.width * self._scale_x * self._scale
 
 	@property
 	def signed_height(self) -> float:
 		if self.animation.is_set:
-			return self.animation.current_frame.frame_info[3]
+			return self.animation._base_box[1]
 		return self._texture.height * self._scale_y * self._scale
 
 	# @property
@@ -480,7 +486,7 @@ class PNFSprite(SceneObject):
 
 	def delete(self):
 		"""
-		Deletes this sprite's vertex list immediatedly and remove
+		Deletes this sprite's vertex list immediatedly and removes
 		its texture and group.
 		"""
 		self._vertex_list.delete()
