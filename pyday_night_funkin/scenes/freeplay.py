@@ -58,7 +58,7 @@ class FreeplayScene(BaseScene):
 		if kh.just_pressed(CONTROL.DOWN):
 			self._change_selection(1)
 
-		if kh.just_pressed(CONTROL.BACKSPACE):
+		if kh.just_pressed(CONTROL.BACK):
 			from pyday_night_funkin.scenes.mainmenu import MainMenuScene
 			self.game.set_scene(MainMenuScene)
 			return # Don't want the ENTER block below to trigger when this one does

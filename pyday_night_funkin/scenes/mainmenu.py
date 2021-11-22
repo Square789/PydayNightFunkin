@@ -94,7 +94,7 @@ class MainMenuScene(BaseScene):
 				self.sfx_ring.play(self.scroll_sound)
 				self.change_item(1)
 
-			if kh.just_pressed(CONTROL.BACKSPACE):
+			if kh.just_pressed(CONTROL.BACK):
 				self.game.set_scene(TitleScene)
 
 			if kh.just_pressed(CONTROL.ENTER):

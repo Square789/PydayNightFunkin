@@ -37,5 +37,5 @@ class PauseScene(BaseScene):
 
 		if self.game.key_handler.just_pressed(CONTROL.ENTER):
 			self.remove_scene(False)
-		elif self.game.key_handler.just_pressed(CONTROL.BACKSPACE):
+		elif self.game.key_handler.just_pressed(CONTROL.BACK):
 			self.remove_scene(True)

@@ -1,12 +1,11 @@
 
 from collections import OrderedDict
-from time import time
 import typing as t
 
 from loguru import logger
 from pyglet.clock import Clock
 from pyglet.graphics import Batch, Group
-from pyglet.window.key import B, R
+from pyglet.window.key import B, R, Y
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.graphics import Camera, PNFSprite

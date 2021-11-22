@@ -2,6 +2,9 @@
 from itertools import islice
 import typing as t
 
+if t.TYPE_CHECKING:
+	from pyglet.image import Texture
+
 
 T = t.TypeVar("T")
 
@@ -21,18 +24,22 @@ class ListWindow(t.Generic[T]):
 		return islice(self.list, self.start, self.end)
 
 
-class CtxGuard():
-	def __init__(self):
-		self._active = False
-
-	def __bool__(self):
-		return self._active
-
-	def __enter__(self):
-		self._active = True
-
-	def __exit__(self, *_):
-		self._active = False
+class FrameInfoTexture():
+	"""
+	Composite class to store the special per-frame offsets found in
+	the xml files alongside a Texture (or TextureRegion).
+	"""
+	def __init__(
+		self,
+		texture: "Texture",
+		has_frame_info: bool,
+		frame_info: t.Optional[t.Tuple[int, int, int, int]] = None,
+	) -> None:
+		self.texture = texture
+		self.has_frame_info = has_frame_info
+		self.frame_info = frame_info \
+			if has_frame_info and frame_info is not None \
+			else (0, 0, texture.width, texture.height)
 
 
 def clamp(value, min_, max_):

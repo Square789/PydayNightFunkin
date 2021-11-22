@@ -8,12 +8,15 @@ import pyglet.media
 from pyglet.window import key
 from pyglet.window.key import KeyStateHandler
 
+from pyday_night_funkin import ogg_decoder
+if ogg_decoder not in pyglet.media.get_decoders():
+	pyglet.media.add_decoders(ogg_decoder)
+
 from pyday_night_funkin.config import Config, CONTROL
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT, SFX_RING_SIZE
 from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.graphics import PNFWindow
 from pyday_night_funkin.key_handler import KeyHandler
-from pyday_night_funkin import ogg_decoder
 from pyday_night_funkin.scenes import BaseScene, TestScene, TitleScene
 from pyday_night_funkin.sfx_ring import SFXRing
 
@@ -23,9 +26,6 @@ __version__ = "0.0.0dev"
 
 class Game():
 	def __init__(self) -> None:
-		if ogg_decoder not in pyglet.media.get_decoders():
-			pyglet.media.add_decoders(ogg_decoder)
-
 		self.debug = True
 		# These have to be setup later, see `run`
 		self._update_time = 0
@@ -41,7 +41,7 @@ class Game():
 				CONTROL.UP: [key.UP, key.W],
 				CONTROL.RIGHT: [key.RIGHT, key.D],
 				CONTROL.ENTER: key.ENTER,
-				CONTROL.BACKSPACE: key.BACKSPACE,
+				CONTROL.BACK: key.BACKSPACE,
 				CONTROL.DEBUG_DESYNC: key._1,
 			},
 		)

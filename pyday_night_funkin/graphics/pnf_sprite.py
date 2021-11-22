@@ -26,39 +26,6 @@ if t.TYPE_CHECKING:
 EffectBound = t.TypeVar("EffectBound", bound="Effect")
 
 
-# class FakeBatch():
-# 	"""
-# 	Fake class that ignores most operations of a standard pyglet batch.
-# 	If `add_indexed` is called on it, it will deliver a
-# 	`FakeVertexList`.
-# 	"""
-
-# 	def add_indexed(self, _count, _mode, _group, _indices, *data):
-# 		return FakeVertexList([x[0] if isinstance(x, tuple) else x for x in data])
-
-# 	def migrate(self, *_):
-# 		pass
-
-# class FakeVertexList():
-# 	"""
-# 	Fake vertex list that ignores all operations on it.
-# 	"""
-
-# 	def __init__(self, entries) -> None:
-# 		self.entries = set(entries)
-
-# 	def delete(self):
-# 		pass
-
-# 	def draw(self, _):
-# 		pass
-
-# 	def __getattr__(self, name):
-# 		if name not in self.entries:
-# 			raise RuntimeError("Unknown entry")
-# 		return []
-
-
 class PNFSpriteGroup(sprite.SpriteGroup):
 	def __init__(self, cam_ubo: "UniformBufferObject", *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
@@ -66,19 +33,16 @@ class PNFSpriteGroup(sprite.SpriteGroup):
 
 	def set_state(self):
 		self.program.use()
+		# print(self.program, end=" ")
 		self.cam_ubo.bind()
 
 		gl.glActiveTexture(gl.GL_TEXTURE0)
-		# gl.glTexParameteri(self.texture.target, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
-		# gl.glTexParameteri(self.texture.target, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
 		gl.glBindTexture(self.texture.target, self.texture.id)
 		gl.glEnable(gl.GL_BLEND)
 		gl.glBlendFunc(self.blend_src, self.blend_dest)
 
 	def unset_state(self):
 		gl.glDisable(gl.GL_BLEND)
-		gl.glBindTexture(self.texture.target, 0)
-
 		self.program.stop()
 
 	# def __eq__(self, other) -> bool:
@@ -464,23 +428,17 @@ class PNFSprite(SceneObject):
 
 	@property
 	def signed_width(self) -> float:
-		if self.animation.is_set:
-			return self.animation._base_box[0]
-		return self._texture.width * self._scale_x * self._scale
+		return self._scale_x * self._scale * (
+			self.animation._base_box[0] if self.animation.is_set else
+			self._texture.width
+		)
 
 	@property
 	def signed_height(self) -> float:
-		if self.animation.is_set:
-			return self.animation._base_box[1]
-		return self._texture.height * self._scale_y * self._scale
-
-	# @property
-	# def signed_width(self) -> float:
-	# 	return self._texture.width * self._scale_x * self._scale
-
-	# @property
-	# def signed_height(self) -> float:
-	# 	return self._texture.height * self._scale_y * self._scale
+		return self._scale_y * self._scale * (
+			self.animation._base_box[1] if self.animation.is_set else
+			self._texture.height
+		)
 
 	# === Copypasted methods from the standard pyglet sprite === #
 

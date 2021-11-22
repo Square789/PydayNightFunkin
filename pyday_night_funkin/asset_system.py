@@ -5,20 +5,34 @@ modding scene's lifetime.
 """
 # ^ if i ever get around to implementing a 2nd one, lol
 
-from pathlib import Path
+from collections import defaultdict
 import json
+from pathlib import Path
+from random import randint
+import re
 import typing as t
+from weakref import WeakSet
+from xml.etree.ElementTree import ElementTree
 
-from pyglet.image import AbstractImage
-from pyglet.media import load as load_media, Source
+from loguru import logger
+from pyglet import image
+from pyglet import media
 
-from pyday_night_funkin.image_loader import (
-	FrameInfoTexture, load_frames_from_texture_atlas, load_image
-)
-import pyday_night_funkin.ogg_decoder
+from pyday_night_funkin.almost_xml_parser import AlmostXMLParser
+from pyday_night_funkin import ogg_decoder
+from pyday_night_funkin.utils import FrameInfoTexture
 
 if t.TYPE_CHECKING:
+	from pyglet.image import AbstractImage, Texture
 	from pyday_night_funkin.enums import DIFFICULTY
+
+
+RE_SPLIT_ANIMATION_NAME = re.compile(r"^(.*)(\d{4})$")
+
+
+class AssetNotFoundError(ValueError):
+	pass
+
 
 
 class ASSETS:
@@ -93,113 +107,228 @@ class ASSETS:
 
 
 class Resource():
-	def load(self) -> None:
-		raise NotImplementedError("Must by defined by Resource subclass.")
+	"""
+	A resource is a class representing a relative file location on disk.
+	They are compared and hashed by the path they point to.
+	"""
 
-
-class FileResource(Resource):
 	def __init__(self, path: t.Union[str, Path]) -> None:
 		"""
 		Creates a resource to be found at the given path.
 		"""
-		self.path = path
+		self.path = Path(path)
 
-	def get_path(self) -> Path:
+	def get_full_path(self, asm: "_AssetSystemManager") -> Path:
 		"""
-		Returns a path that is the concatted path of the absolute root
-		asset directory and this resource's path. 
+		Returns a path that is the concatted path of the given
+		asset system manager's absolute root asset directory and this
+		resource's path.
 		"""
-		return _asm.asset_dir / self.path
+		return asm.asset_dir / self.path
 
-
-class LazyResource(Resource):
-	def __init__(self, asset: "ASSETS") -> None:
+	def load(self, asm: "_AssetSystemManager") -> t.Any:
 		"""
-		Creates a resource that is lazily fetched in the context of the
-		then current asset system stack.
+		Loads the asset in the context of the given asset system manager.
 		"""
-		self.asset = asset
+		raise NotImplementedError("Implement this in a subclass!")
 
-	def load(self) -> t.Any:
-		return load_asset(self.asset)
+	def __eq__(self, o: object) -> bool:
+		if isinstance(o, Resource):
+			return self.path.resolve() == o.path.resolve()
 
+		return NotImplemented
 
-class AssetPath(FileResource):
-	def load(self) -> Path:
-		return self.get_path()
-
-
-class XmlTextureAtlas(FileResource):
-	def load(self) -> t.Dict[str, t.List[FrameInfoTexture]]:
-		return load_frames_from_texture_atlas(self.get_path())
+	def __hash__(self) -> int:
+		return hash(str(self.path.resolve()))
 
 
-class Image(FileResource):
-	def load(self) -> AbstractImage:
-		return load_image(self.get_path())
+class AssetPath(Resource):
+	def load(self, asm: "_AssetSystemManager") -> Path:
+		return self.get_full_path(asm)
 
 
-class TextFile(FileResource):
-	def load(self) -> str:
-		with open(self.get_path(), "r") as f:
+class Image(Resource):
+	def __init__(
+		self,
+		path: t.Union[str, Path],
+		atlas_hint: t.Optional[t.Hashable] = None,
+	) -> None:
+		"""
+		Creates an image. The path will be passed on to the Resource
+		constructor as usual, but the atlas_hint can be used to force
+		images to be placed in a common texture atlas.
+		"""
+		super().__init__(path)
+		self._atlas_hint = atlas_hint
+
+	def load(self, asm: "_AssetSystemManager") -> "AbstractImage":
+		"""
+		Loads an image.
+		"""
+		img = image.load(self.get_full_path(asm)).get_texture()
+		# TODO atlas merging and caching etc
+		return img
+
+
+class TextFile(Resource):
+	def load(self, asm: "_AssetSystemManager", mode: str = "r", *open_args) -> str:
+		with open(self.get_full_path(asm), mode, *open_args) as f:
 			return f.read()
 
 
-class OggVorbis(FileResource):
-	_decoder = pyday_night_funkin.ogg_decoder.get_decoders()[0]
+class JSONFile(Resource):
+	def load(self, asm: "_AssetSystemManager") -> t.Any:
+		with open(self.get_full_path(asm), "r") as f:
+			return json.load(f)
 
-	def _load(self, path: Path, streaming_source: bool) -> Source:
-		return load_media(str(path), None, streaming_source, self._decoder)
 
+class OggVorbis(Resource):
+	_decoder = ogg_decoder.get_decoders()[0]
 
-class OggVorbisSound(OggVorbis):
-	def load(self, streaming_source: bool = False) -> Source:
-		return self._load(self.get_path(), streaming_source)
+	def load(
+		self,
+		asm: "_AssetSystemManager",
+		streaming_source: bool = False,
+	) -> media.Source:
+		return media.load(
+			str(self.get_full_path(asm)),
+			streaming = streaming_source,
+			decoder = self._decoder,
+		)
 
 
 class OggVorbisSong(OggVorbis):
 	def __init__(self, name: str) -> None:
 		"""
 		Creates a song resource. They are handled differently than the
-		other resources and `get_path` will fail for them.
+		other resources and will set their path to `""`.
 		Songs query the data and song directory from the current asset
 		system context and read their data and ogg files from there.
 
 		Some songs may only consist out of an instrumental, in which
 		case `load`'s 2nd return value will be `None`.
 		"""
-		super().__init__(None)
+		super().__init__("")
 		self.name = name
 
 	def load(
 		self,
+		asm: "_AssetSystemManager",
 		stream: t.Tuple[bool, bool],
 		difficulty: "DIFFICULTY",
-	) -> t.Tuple[Source, t.Optional[Source], t.Dict[str, t.Any]]:
-		data_dir = load_asset(ASSETS.PATH.DATA)
-		song_dir = load_asset(ASSETS.PATH.SONGS)
+	) -> t.Tuple[media.Source, t.Optional[media.Source], t.Dict[str, t.Any]]:
+		data_dir = asm.resolve_resource(ASSETS.PATH.DATA).path
+		song_dir = asm.resolve_resource(ASSETS.PATH.SONGS).path
 		json_path = data_dir / self.name / f"{self.name}{difficulty.to_song_json_suffix()}.json"
 		song_path = song_dir / self.name / "Inst.ogg"
 		voic_path = song_dir / self.name / "Voices.ogg"
-		with open(json_path, "r") as json_handle:
-			# TODO verify integrity of song dict
-			data = json.load(json_handle)["song"]
-		inst = self._load(song_path, stream[0])
-		voic = None
-		if data["needsVoices"]:  # Should be more like "hasVoices":
-			voic = self._load(voic_path, stream[1])
 
-		return (inst, voic, data)
+		data = asm.load_direct(JSONFile(json_path))
+		# TODO verify integrity of song dict
+		data = data["song"]
 
-# Just a dict wrapped in a class, mostly.
+		return (
+			asm.load_direct(OggVorbis(song_path), stream[0]),
+			# Should be more like "hasVoices":
+			asm.load_direct(OggVorbis(voic_path), stream[1]) if data["needsVoices"] else None,
+			data,
+		)
+
+	def __eq__(self, o: object) -> bool:
+		if isinstance(o, OggVorbisSong):
+			return self.name == o.name
+		return NotImplemented
+
+	def __hash__(self) -> int:
+		return hash(self.name)
+
+
+class XmlTextureAtlas(Resource):
+	def load(self, asm: "_AssetSystemManager") -> t.Dict[str, t.List[FrameInfoTexture]]:
+		xml_path = self.get_full_path(asm)
+		et = ElementTree()
+		with open(xml_path, "r", encoding="utf-8") as fp:
+			et.parse(fp, AlmostXMLParser())
+
+		texture_atlas = et.getroot() # Should be a TextureAtlas node
+		texture_region_cache = {}
+		image_resource = Image(self.path.parent / texture_atlas.attrib["imagePath"])
+		atlas_surface: "Texture" = asm.load_direct(image_resource)
+
+		frame_sequences: t.DefaultDict[str, t.List[FrameInfoTexture]] = defaultdict(list)
+		for sub_texture in texture_atlas:
+			if sub_texture.tag != "SubTexture":
+				logger.warning(f"Expected 'SubTexture' tag, got {sub_texture.tag!r}. Skipping.")
+				continue
+
+			name, x, y, w, h, fx, fy, fw, fh = (
+				sub_texture.attrib.get(k) for k in (
+					"name", "x", "y", "width", "height", "frameX", "frameY", "frameWidth",
+					"frameHeight"
+				)
+			)
+			region = (x, y, w, h)
+			frame_vars = (fx, fy, fw, fh)
+
+			if (
+				name is None or any(i is None for i in region) or (
+					any(i is None for i in frame_vars) and
+					any(i is not None for i in frame_vars)
+				) # this sucks; basically none of the first five fields may be None and either
+				#   all or none of the frame_vars must be None.
+			):
+				logger.warning(
+					f"{(name, region, frame_vars)} Invalid attributes for SubTexture entry. Skipping."
+				)
+				continue
+
+			if (match_res := RE_SPLIT_ANIMATION_NAME.match(name)) is None:
+				logger.warning(f"Invalid SubTexture name in {xml_path.name}: {name!r}")
+				continue
+
+			animation_name = match_res[1]
+			frame_id = int(match_res[2])
+			if frame_id > len(frame_sequences[animation_name]):
+				logger.warning(
+					f"Frames for animation {animation_name!r} inconsistent: current is "
+					f"frame {frame_id}, but only {len(frame_sequences[animation_name])} frames "
+					f"exist so far."
+				)
+
+			x, y, w, h = region = (int(e) for e in region)
+			frame_vars = tuple(None if e is None else int(e) for e in frame_vars)
+			if region not in texture_region_cache:
+				texture_region_cache[region] = atlas_surface.get_region(
+					x, atlas_surface.height - h - y, w, h,
+				)
+			has_frame_vars = frame_vars[0] is not None
+			frame_sequences[animation_name].append(
+				FrameInfoTexture(texture_region_cache[region], has_frame_vars, frame_vars)
+			)
+
+		return dict(frame_sequences) # Don't return a defaultdict!
+
+
 class AssetSystem():
-	def __init__(self, asset_res_map: t.Dict["ASSETS", "Resource"]) -> None:
-		self.asset_res_map = asset_res_map
+	"""
+	An asset system is pretty much just a dict mapping asset enum values
+	to their actual resources.
+	"""
+	def __init__(self, asset_res_map: t.Dict[t.Hashable, Resource]) -> None:
+		self._asset_res_map = asset_res_map
 
-	def load_asset(self, asset: "ASSETS", *args, **kwargs) -> t.Any:
-		if asset not in self.asset_res_map:
-			return None
-		return self.asset_res_map[asset].load(*args, **kwargs)
+	def __contains__(self, x: t.Hashable) -> bool:
+		return x in self._asset_res_map
+
+	def __len__(self) -> int:
+		return len(self._asset_res_map)
+
+	def __getitem__(self, x: t.Hashable) -> Resource:
+		return self._asset_res_map[x]
+
+	@property
+	def assets(self):
+		return self._asset_res_map.keys()
 
 
 # The "default" asset system, as seen in the Funkin github
@@ -223,31 +352,31 @@ _DEFAULT_ASSET_SYSTEM = AssetSystem({
 	ASSETS.IMG.READY: Image("shared/images/ready.png"),
 	ASSETS.IMG.SET: Image("shared/images/set.png"),
 	ASSETS.IMG.GO: Image("shared/images/go.png"),
-	ASSETS.IMG.SICK: Image("shared/images/sick.png"),
-	ASSETS.IMG.GOOD: Image("shared/images/good.png"),
-	ASSETS.IMG.BAD: Image("shared/images/bad.png"),
-	ASSETS.IMG.SHIT: Image("shared/images/shit.png"),
-	ASSETS.IMG.NUM0: Image("preload/images/num0.png"),
-	ASSETS.IMG.NUM1: Image("preload/images/num1.png"),
-	ASSETS.IMG.NUM2: Image("preload/images/num2.png"),
-	ASSETS.IMG.NUM3: Image("preload/images/num3.png"),
-	ASSETS.IMG.NUM4: Image("preload/images/num4.png"),
-	ASSETS.IMG.NUM5: Image("preload/images/num5.png"),
-	ASSETS.IMG.NUM6: Image("preload/images/num6.png"),
-	ASSETS.IMG.NUM7: Image("preload/images/num7.png"),
-	ASSETS.IMG.NUM8: Image("preload/images/num8.png"),
-	ASSETS.IMG.NUM9: Image("preload/images/num9.png"),
+	ASSETS.IMG.SICK: Image("shared/images/sick.png", 0), # Throw all of these into the same atlas
+	ASSETS.IMG.GOOD: Image("shared/images/good.png", 0), # For more efficient combo sprite
+	ASSETS.IMG.BAD: Image("shared/images/bad.png", 0),   # rendering
+	ASSETS.IMG.SHIT: Image("shared/images/shit.png", 0),
+	ASSETS.IMG.NUM0: Image("preload/images/num0.png", 0),
+	ASSETS.IMG.NUM1: Image("preload/images/num1.png", 0),
+	ASSETS.IMG.NUM2: Image("preload/images/num2.png", 0),
+	ASSETS.IMG.NUM3: Image("preload/images/num3.png", 0),
+	ASSETS.IMG.NUM4: Image("preload/images/num4.png", 0),
+	ASSETS.IMG.NUM5: Image("preload/images/num5.png", 0),
+	ASSETS.IMG.NUM6: Image("preload/images/num6.png", 0),
+	ASSETS.IMG.NUM7: Image("preload/images/num7.png", 0),
+	ASSETS.IMG.NUM8: Image("preload/images/num8.png", 0),
+	ASSETS.IMG.NUM9: Image("preload/images/num9.png", 0),
 	ASSETS.IMG.NEWGROUNDS_LOGO: Image("preload/images/newgrounds_logo.png"),
 	ASSETS.IMG.MENU_BG: Image("preload/images/menuBG.png"),
 	ASSETS.IMG.MENU_DESAT: Image("preload/images/menuDesat.png"),
 	ASSETS.IMG.MENU_BG_BLUE: Image("preload/images/menuBGBlue.png"),
 
-	ASSETS.SOUND.INTRO_3: OggVorbisSound("shared/sounds/intro3.ogg"),
-	ASSETS.SOUND.INTRO_2: OggVorbisSound("shared/sounds/intro2.ogg"),
-	ASSETS.SOUND.INTRO_1: OggVorbisSound("shared/sounds/intro1.ogg"),
-	ASSETS.SOUND.INTRO_GO: OggVorbisSound("shared/sounds/introGo.ogg"),
-	ASSETS.SOUND.MENU_CONFIRM: OggVorbisSound("preload/sounds/confirmMenu.ogg"),
-	ASSETS.SOUND.MENU_SCROLL: OggVorbisSound("preload/sounds/scrollMenu.ogg"),
+	ASSETS.SOUND.INTRO_3: OggVorbis("shared/sounds/intro3.ogg"),
+	ASSETS.SOUND.INTRO_2: OggVorbis("shared/sounds/intro2.ogg"),
+	ASSETS.SOUND.INTRO_1: OggVorbis("shared/sounds/intro1.ogg"),
+	ASSETS.SOUND.INTRO_GO: OggVorbis("shared/sounds/introGo.ogg"),
+	ASSETS.SOUND.MENU_CONFIRM: OggVorbis("preload/sounds/confirmMenu.ogg"),
+	ASSETS.SOUND.MENU_SCROLL: OggVorbis("preload/sounds/scrollMenu.ogg"),
 
 	ASSETS.PATH.SONGS: AssetPath("songs/"),
 	ASSETS.PATH.DATA: AssetPath("preload/data/"),
@@ -257,7 +386,7 @@ _DEFAULT_ASSET_SYSTEM = AssetSystem({
 	ASSETS.SONG.FRESH: OggVorbisSong("fresh"),
 	ASSETS.SONG.DAD_BATTLE: OggVorbisSong("dadbattle"),
 
-	ASSETS.MUSIC.MENU: OggVorbisSound("preload/music/freakymenu.ogg"),
+	ASSETS.MUSIC.MENU: OggVorbis("preload/music/freakyMenu.ogg"),
 
 	ASSETS.TXT.INTRO_TEXT: TextFile("preload/data/introText.txt"),
 })
@@ -270,49 +399,80 @@ class _AssetSystemManager():
 	Will be created with the default asset system as its only one.
 	"""
 	def __init__(self) -> None:
-		self._cwd = Path.cwd()
-		self.asset_system_stack = [_DEFAULT_ASSET_SYSTEM]
-		self.asset_dir = Path.cwd() / "assets"
+		self.asset_system_stack = []
+		self.add_asset_system(_DEFAULT_ASSET_SYSTEM)
 
-	def _add_asset_system(self, asset_system: AssetSystem) -> None:
+		self.asset_dir = Path.cwd() / "assets"
+		self._cache = {}
+		self._image_atlases = {}
+
+	def add_asset_system(self, asset_system: AssetSystem) -> None:
+		"""
+		Adds an asset system to the asset system stack, which may
+		influence the path assets are retrieved from via `load_asset`.
+		"""
 		self.asset_system_stack.append(asset_system)
 
-	def _remove_asset_system(self, asset_system: AssetSystem) -> None:
+	def remove_asset_system(self, asset_system: AssetSystem) -> None:
+		"""
+		Removes an asset system.
+		"""
 		try:
 			self.asset_system_stack.remove(asset_system)
 		except ValueError:
 			pass
 
-	def _load_asset(self, asset: ASSETS, *args, **kwargs) -> t.Any:
+	def resolve_resource(self, asset: t.Hashable) -> Resource:
+		"""
+		Resolves the resource for the given asset depending on the
+		current asset system stack.
+		"""
 		for i in range(len(self.asset_system_stack) - 1, -1, -1):
-			res = self.asset_system_stack[i].load_asset(asset, *args, **kwargs)
-			if res is not None:
-				return res
+			as_ = self.asset_system_stack[i]
+			if asset in as_:
+				return as_[asset]
 
-		raise FileNotFoundError(f"Asset {asset} not found in registered asset systems.")
+		raise AssetNotFoundError(f"Asset {asset} not found in registered asset systems.")
 
+	def load_asset(self, asset: t.Hashable, *args, cache: bool = True, **kwargs) -> t.Any:
+		"""
+		Loads the given asset in the context of the current asset system
+		stack.
+		The kwarg `cache` can be set to prevent caching of this asset.
+		All other args and kwargs will be passed through to the
+		resource's `load` method, if it can be found.
+		"""
+		return self.load_direct(self.resolve_resource(asset), *args, cache=cache, **kwargs)
+
+	def load_direct(self, res: Resource, *args, cache: bool = True, **kwargs) -> t.Any:
+		"""
+		Loads the given resource directly, bypassing the
+		asset -> resource resolving step.
+		"""
+		if res in self._cache:
+			return self._cache[res]
+
+		result = res.load(self, *args, **kwargs)
+		if cache:
+			self._cache[res] = result
+		return result
+
+	def invalidate_cache(self, entries: t.Optional[t.Iterable[Resource]] = None) -> None:
+		"""
+		Invalidates the asset system's cache.
+		If an iterable of resources is specified, only those will
+		be removed from the cache, otherwise the entire cache is
+		cleared.
+		"""
+		if entries:
+			for e in entries:
+				self._cache.pop(e, None) # don't error on nonexistent cache entries
+		else:
+			self._cache.clear()
 
 _asm = _AssetSystemManager()
 
-def add_asset_system(asset_system: AssetSystem) -> None:
-	"""
-	Adds an asset system to the asset system stack, which may
-	influence the path assets are retrieved from via `load_asset`.
-	"""
-	_asm._add_asset_system(asset_system)
-
-def remove_asset_system(asset_system: AssetSystem) -> None:
-	"""
-	Removes an asset system.
-	"""
-	_asm._remove_asset_system(asset_system)
-
-def load_asset(asset: "ASSETS", *args, **kwargs) -> t.Any:
-	"""
-	Loads the given asset in the context of the current asset system
-	stack.
-	All args and kwargs will be passed through to the resource's `load`
-	method, if it can be found.
-	"""
-	return _asm._load_asset(asset, *args, **kwargs)
-
+add_asset_system = _asm.add_asset_system
+remove_asset_system = _asm.remove_asset_system
+load_asset = _asm.load_asset
+invalidate_cache = _asm.invalidate_cache

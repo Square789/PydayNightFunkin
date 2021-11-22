@@ -21,8 +21,6 @@ class Week1Level(InGameScene):
 			"background0", "background1", "girlfriend", "stage", "curtains",
 			("ui_combo", True), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
 		)
-		# TODO: change health bar, creating 3 layers for it like this seems really wrong
-		# countdown sprites on ui0
 
 	@staticmethod
 	def get_default_cam_zoom() -> float:

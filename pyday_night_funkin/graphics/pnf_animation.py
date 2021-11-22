@@ -6,8 +6,7 @@ from pyglet.math import Vec2
 
 if t.TYPE_CHECKING:
 	from pyglet.image import Texture
-	from pyday_night_funkin.graphics.pnf_sprite import PNFSprite
-	from pyday_night_funkin.image_loader import FrameInfoTexture
+	from pyday_night_funkin.utils import FrameInfoTexture
 	from pyday_night_funkin.types import Numeric
 
 

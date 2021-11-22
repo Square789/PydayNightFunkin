@@ -10,7 +10,7 @@ class CONTROL(IntEnum):
 	UP = 2
 	RIGHT = 3
 	ENTER = 4
-	BACKSPACE = 5
+	BACK = 5
 	DEBUG_DESYNC = 100
 
 
