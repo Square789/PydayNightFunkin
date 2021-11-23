@@ -5,6 +5,7 @@ from pyglet.image import ImageData, Texture
 
 from pyday_night_funkin.asset_system import ASSETS, load_asset
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin import health_icons
 from pyday_night_funkin.utils import clamp, to_rgba_bytes
 
 if t.TYPE_CHECKING:
@@ -22,8 +23,8 @@ class HealthBar():
 		self,
 		scene: "InGameScene",
 		camera: str,
-		opponent_icon: str,
-		player_icon: str,
+		opponent_icon_name: str,
+		player_icon_name: str,
 		layers: t.Tuple[str, str, str],
 		ded_icon_threshold: float = 0.2,
 		opponent_color: t.Union[t.Tuple[int, int, int, int], int] = 0xFF0000FF,
@@ -60,9 +61,8 @@ class HealthBar():
 			image = self._create_bar_part(bar_image.height - 8, player_color),
 		)
 
-		healthbar_icons = load_asset(ASSETS.XML.ICON_GRID)
-		self.opponent_icons = [fi_tex.texture for fi_tex in healthbar_icons[opponent_icon]]
-		self.player_icons = [fi_tex.texture for fi_tex in healthbar_icons[player_icon]]
+		self.opponent_icons = health_icons.get(opponent_icon_name)
+		self.player_icons = health_icons.get(player_icon_name)
 		# This assumes all opponent and player icons are of same height (i mean, they are)
 		icon_y = self.health_bar.y + (bar_image.height - self.opponent_icons[0].height) // 2
 		self.opponent_sprite = scene.create_sprite(

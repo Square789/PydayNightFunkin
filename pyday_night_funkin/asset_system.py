@@ -47,13 +47,12 @@ class ASSETS:
 		BOYFRIEND = 0
 		GIRLFRIEND = 1
 		DADDY_DEAREST = 2
-		ICON_GRID = 3
-		NOTES = 4
-		ALPHABET = 5
-		GAME_LOGO = 6
-		TITLE_ENTER = 7
-		TITLE_GIRLFRIEND = 8
-		MAIN_MENU_ASSETS = 9
+		NOTES = 3
+		ALPHABET = 4
+		GAME_LOGO = 5
+		TITLE_ENTER = 6
+		TITLE_GIRLFRIEND = 7
+		MAIN_MENU_ASSETS = 8
 
 	class IMG:
 		STAGE_BACK = 100000
@@ -81,6 +80,7 @@ class ASSETS:
 		MENU_BG = 100022
 		MENU_DESAT = 100023
 		MENU_BG_BLUE = 100024
+		ICON_GRID = 100025
 
 	class SOUND:
 		INTRO_3 = 200000
@@ -347,7 +347,6 @@ _DEFAULT_ASSET_SYSTEM = AssetSystem({
 	ASSETS.XML.BOYFRIEND: XmlTextureAtlas("shared/images/BOYFRIEND.xml"),
 	ASSETS.XML.GIRLFRIEND: XmlTextureAtlas("shared/images/GF_assets.xml"),
 	ASSETS.XML.DADDY_DEAREST: XmlTextureAtlas("shared/images/DADDY_DEAREST.xml"),
-	ASSETS.XML.ICON_GRID: XmlTextureAtlas("preload/images/iconGrid.xml"),
 	ASSETS.XML.NOTES: XmlTextureAtlas("shared/images/NOTE_assets.xml"),
 	ASSETS.XML.ALPHABET: XmlTextureAtlas("preload/images/alphabet.xml"),
 	ASSETS.XML.GAME_LOGO: XmlTextureAtlas("preload/images/logoBumpin.xml"),
@@ -380,6 +379,7 @@ _DEFAULT_ASSET_SYSTEM = AssetSystem({
 	ASSETS.IMG.MENU_BG: Image("preload/images/menuBG.png"),
 	ASSETS.IMG.MENU_DESAT: Image("preload/images/menuDesat.png"),
 	ASSETS.IMG.MENU_BG_BLUE: Image("preload/images/menuBGBlue.png"),
+	ASSETS.IMG.ICON_GRID: Image("preload/images/iconGrid.png"),
 
 	ASSETS.SOUND.INTRO_3: OggVorbis("shared/sounds/intro3.ogg"),
 	ASSETS.SOUND.INTRO_2: OggVorbis("shared/sounds/intro2.ogg"),
