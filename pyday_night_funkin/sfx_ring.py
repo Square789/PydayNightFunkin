@@ -1,7 +1,7 @@
 
 import typing as t
 
-from pyglet.media import Player
+from pyday_night_funkin.core.pnf_player import PNFPlayer
 
 if t.TYPE_CHECKING:
 	from pyglet.media import Source
@@ -20,7 +20,7 @@ class SFXRing():
 	def __init__(self, player_amount: int) -> None:
 		if player_amount <= 0:
 			raise ValueError("You must construct additional players! (Seriously, at least 1.)")
-		self.players = [Player() for _ in range(player_amount)]
+		self.players = [PNFPlayer() for _ in range(player_amount)]
 		self._busy = set()
 
 	def play(self, source: "Source", fail_loudly: bool = False) -> None:
@@ -36,8 +36,7 @@ class SFXRing():
 		def _unregister_busy():
 			self._busy.remove(free_player)
 
-		player.queue(source)
-		player.play()
+		player.set(source)
 		self._busy.add(free_player)
 
 	def _get_free_player(self) -> t.Optional[int]:

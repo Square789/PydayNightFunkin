@@ -8,9 +8,9 @@ from pyglet.graphics import Batch, Group
 from pyglet.window.key import B, R, Y
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.graphics import Camera, PNFSprite
-from pyday_night_funkin.graphics.context import Context
-from pyday_night_funkin.graphics.scene_object import Container, SceneObject
+from pyday_night_funkin.core import Camera, PNFSprite
+from pyday_night_funkin.core.context import Context
+from pyday_night_funkin.core.scene_object import Container, SceneObject
 from pyday_night_funkin.sfx_ring import SFXRing
 
 if t.TYPE_CHECKING:

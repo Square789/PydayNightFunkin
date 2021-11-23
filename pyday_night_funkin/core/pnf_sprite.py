@@ -10,17 +10,17 @@ from pyglet import sprite
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.tweens import TWEEN_ATTR
-from pyday_night_funkin.graphics.context import Context
-from pyday_night_funkin.graphics.pnf_animation import AnimationController, PNFAnimation
-from pyday_night_funkin.graphics.scene_object import SceneObject
-from pyday_night_funkin.graphics.shaders import (
+from pyday_night_funkin.core.context import Context
+from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
+from pyday_night_funkin.core.scene_object import SceneObject
+from pyday_night_funkin.core.shaders import (
 	PNFSpriteVertexShader, PNFSpriteFragmentShader, ShaderContainer
 )
 from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import UniformBufferObject
-	from pyday_night_funkin.graphics.camera import Camera
+	from pyday_night_funkin.core.camera import Camera
 	from pyday_night_funkin.types import Numeric
 
 EffectBound = t.TypeVar("EffectBound", bound="Effect")
@@ -245,7 +245,7 @@ class PNFSprite(SceneObject):
 	@classmethod
 	def _get_dummy_camera(cls):
 		if cls._dummy_camera is None:
-			from pyday_night_funkin.graphics.camera import Camera
+			from pyday_night_funkin.core.camera import Camera
 			cls._dummy_camera = Camera()
 		return cls._dummy_camera
 

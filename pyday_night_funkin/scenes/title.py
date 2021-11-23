@@ -2,8 +2,6 @@
 import random
 import typing as t
 
-from pyglet.media import Player
-
 from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.config import CONTROL
@@ -56,8 +54,7 @@ class TitleScene(MusicBeatScene):
 		self.confirm_sound = load_asset(ASSETS.SOUND.MENU_CONFIRM)
 
 		self.conductor.bpm = 102
-		self.game.player.queue(load_asset(ASSETS.MUSIC.MENU))
-		self.game.player.play()
+		self.game.player.set(load_asset(ASSETS.MUSIC.MENU))
 
 		self._intro_ended = False
 		self._leaving_scene = False

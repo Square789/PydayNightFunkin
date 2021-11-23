@@ -5,7 +5,7 @@ import weakref
 from pyglet.graphics import Batch, Group, get_default_batch
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.graphics.context import Context
+	from pyday_night_funkin.core.context import Context
 
 
 class SceneObject:

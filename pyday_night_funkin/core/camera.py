@@ -4,7 +4,7 @@ import typing as t
 from pyglet.math import Vec2
 
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
-from pyday_night_funkin.graphics.pnf_sprite import PNFSprite
+from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 
 CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)

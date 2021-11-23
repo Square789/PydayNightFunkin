@@ -5,14 +5,14 @@ import typing as t
 
 from loguru import logger
 from pyglet.math import Vec2
-from pyglet.media import Player
-from pyglet.media.player import PlayerGroup
+from pyglet.media import PlayerGroup
 
 from pyday_night_funkin.asset_system import load_asset
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin.enums import ANIMATION_TAG, DIFFICULTY, GAME_STATE
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.note import NOTE_TYPE, SUSTAIN_STAGE, Note
+from pyday_night_funkin.core.pnf_player import PNFPlayer
 from pyday_night_funkin.scenes.mainmenu import MainMenuScene
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 from pyday_night_funkin.scenes.pause import PauseScene
@@ -54,8 +54,8 @@ class InGameScene(MusicBeatScene):
 
 		self.state = GAME_STATE.LOADING
 
-		self.inst_player = Player()
-		self.voice_player = Player()
+		self.inst_player = PNFPlayer()
+		self.voice_player = PNFPlayer()
 		self.song_players = PlayerGroup((self.inst_player, self.voice_player))
 
 		self.song_data = None

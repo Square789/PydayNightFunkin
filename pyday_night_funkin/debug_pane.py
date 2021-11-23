@@ -6,7 +6,7 @@ import typing as t
 from pyglet.graphics import Batch, Group
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.graphics.pyglet_tl_patch import TLLabel, TLRectangle
+from pyday_night_funkin.core.pyglet_tl_patch import TLLabel, TLRectangle
 
 
 class DebugPane():

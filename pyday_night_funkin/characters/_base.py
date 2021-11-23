@@ -2,7 +2,7 @@
 import typing as t
 
 from pyday_night_funkin.enums import ANIMATION_TAG
-from pyday_night_funkin.graphics.pnf_sprite import PNFSprite
+from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import MusicBeatScene

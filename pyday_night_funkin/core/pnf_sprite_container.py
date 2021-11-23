@@ -4,13 +4,13 @@ import typing as t
 from pyglet.graphics import Group, get_default_batch
 
 from pyday_night_funkin.tweens import TWEEN_ATTR
-from pyday_night_funkin.graphics.context import Context
-from pyday_night_funkin.graphics.pnf_sprite import EffectBound, Movement, PNFSprite
+from pyday_night_funkin.core.context import Context
+from pyday_night_funkin.core.pnf_sprite import EffectBound, Movement, PNFSprite
 from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
 	from pyglet.math import Vec2
-	from pyday_night_funkin.graphics.context import Context
+	from pyday_night_funkin.core.context import Context
 	from pyday_night_funkin.types import Numeric
 
 V = t.TypeVar("V")

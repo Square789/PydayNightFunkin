@@ -2,10 +2,10 @@
 import typing as t
 
 from pyday_night_funkin.asset_system import ASSETS, load_asset
-from pyday_night_funkin.graphics import PNFSprite
-from pyday_night_funkin.graphics.pnf_animation import PNFAnimation, OffsetAnimationFrame
-from pyday_night_funkin.graphics.pnf_sprite_container import PNFSpriteContainer
-from pyday_night_funkin.graphics.shaders import (
+from pyday_night_funkin.core import PNFSprite
+from pyday_night_funkin.core.pnf_animation import PNFAnimation, OffsetAnimationFrame
+from pyday_night_funkin.core.pnf_sprite_container import PNFSpriteContainer
+from pyday_night_funkin.core.shaders import (
 	PNFSpriteFragmentShader, PNFSpriteVertexShader, ShaderContainer
 )
 from pyday_night_funkin.utils import lerp

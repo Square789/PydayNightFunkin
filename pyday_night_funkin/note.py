@@ -5,7 +5,7 @@ from enum import IntEnum
 from loguru import logger
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.graphics.pnf_sprite import PNFSprite
+	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 
 class RATING(IntEnum):
