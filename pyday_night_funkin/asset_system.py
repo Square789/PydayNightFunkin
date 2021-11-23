@@ -8,14 +8,14 @@ modding scene's lifetime.
 from collections import defaultdict
 import json
 from pathlib import Path
-from random import randint
 import re
+import sys
 import typing as t
-from weakref import WeakSet
 from xml.etree.ElementTree import ElementTree
 
 from loguru import logger
 from pyglet import image
+from pyglet.image.atlas import AllocatorException, TextureBin
 from pyglet import media
 
 from pyday_night_funkin.almost_xml_parser import AlmostXMLParser
@@ -27,8 +27,9 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.enums import DIFFICULTY
 
 
-RE_SPLIT_ANIMATION_NAME = re.compile(r"^(.*)(\d{4})$")
 
+RE_SPLIT_ANIMATION_NAME = re.compile(r"^(.*)(\d{4})$")
+ADDRESS_PADDING = (sys.maxsize.bit_length() + 1) // 4
 
 class AssetNotFoundError(ValueError):
 	pass
@@ -141,6 +142,12 @@ class Resource():
 	def __hash__(self) -> int:
 		return hash(str(self.path.resolve()))
 
+	def __repr__(self) -> str:
+		return (
+			f"<{self.__class__.__name__} {self.path!r} at "
+			f"0x{id(self):0>{ADDRESS_PADDING}X}>"
+		)
+
 
 class AssetPath(Resource):
 	def load(self, asm: "_AssetSystemManager") -> Path:
@@ -155,19 +162,17 @@ class Image(Resource):
 	) -> None:
 		"""
 		Creates an image. The path will be passed on to the Resource
-		constructor as usual, but the atlas_hint can be used to force
-		images to be placed in a common texture atlas.
+		constructor as usual, but the atlas_hint can be used to try
+		and place images in a common texture atlas.
 		"""
 		super().__init__(path)
 		self._atlas_hint = atlas_hint
 
-	def load(self, asm: "_AssetSystemManager") -> "AbstractImage":
-		"""
-		Loads an image.
-		"""
-		img = image.load(self.get_full_path(asm)).get_texture()
-		# TODO atlas merging and caching etc
-		return img
+	def load(self, asm: "_AssetSystemManager") -> "Texture":
+		return asm.store_image(
+			image.load(self.get_full_path(asm)),
+			self._atlas_hint,
+		)[0].get_texture()
 
 
 class TextFile(Resource):
@@ -242,6 +247,11 @@ class OggVorbisSong(OggVorbis):
 	def __hash__(self) -> int:
 		return hash(self.name)
 
+	def __repr__(self) -> str:
+		return (
+			f"<{self.__class__.__name__} {self.name!r} at "
+			f"0x{id(self):0>{ADDRESS_PADDING}X}>"
+		)
 
 class XmlTextureAtlas(Resource):
 	def load(self, asm: "_AssetSystemManager") -> t.Dict[str, t.List[FrameInfoTexture]]:
@@ -295,7 +305,7 @@ class XmlTextureAtlas(Resource):
 					f"exist so far."
 				)
 
-			x, y, w, h = region = (int(e) for e in region)
+			x, y, w, h = region = tuple(int(e) for e in region)
 			frame_vars = tuple(None if e is None else int(e) for e in frame_vars)
 			if region not in texture_region_cache:
 				texture_region_cache[region] = atlas_surface.get_region(
@@ -403,8 +413,10 @@ class _AssetSystemManager():
 		self.add_asset_system(_DEFAULT_ASSET_SYSTEM)
 
 		self.asset_dir = Path.cwd() / "assets"
-		self._cache = {}
-		self._image_atlases = {}
+		self._cache: t.Dict[Resource, t.Any] = {}
+
+		self._hinted_tex_bin: t.Dict[t.Hashable, TextureBin] = defaultdict(TextureBin)
+		self._tex_bin = TextureBin()
 
 	def add_asset_system(self, asset_system: AssetSystem) -> None:
 		"""
@@ -433,6 +445,28 @@ class _AssetSystemManager():
 				return as_[asset]
 
 		raise AssetNotFoundError(f"Asset {asset} not found in registered asset systems.")
+
+	def store_image(
+		self,
+		img: "AbstractImage",
+		atlas_hint: t.Optional[t.Hashable],
+	) -> t.Tuple["AbstractImage", bool]:
+		"""
+		Stores an image in a TextureBin for merging and potential
+		drawing speedup.
+		Returns the image and whether it was successfully stored in an
+		atlas.
+		"""
+		target_bin = (
+			self._tex_bin if atlas_hint is None else
+			self._hinted_tex_bin[atlas_hint]
+		)
+		try:
+			return (target_bin.add(img), True)
+		except AllocatorException:
+			# NOTE: idk how OpenGL handles textures it can't fit into an
+			# atlas, probably horribly slowly but whatever
+			return (img, False)
 
 	def load_asset(self, asset: t.Hashable, *args, cache: bool = True, **kwargs) -> t.Any:
 		"""
