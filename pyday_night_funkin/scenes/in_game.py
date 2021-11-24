@@ -137,6 +137,12 @@ class InGameScene(MusicBeatScene):
 		raise NotImplementedError("Subclass this!")
 
 	def create_opponent(self) -> "Character":
+		"""
+		Creates the opponent sprite.
+		It's expected to have the following animations:
+		`idle_bop` and
+		`sing_note_[x]` for x in (`left`, `down`, `right`, `up`).
+		"""
 		raise NotImplementedError("Subclass this!")
 
 	def setup(self) -> None:
@@ -193,8 +199,10 @@ class InGameScene(MusicBeatScene):
 		"""
 		Starts the song by making the players play, zeroing
 		conductor's position and setting the state to PLAYING.
+		This will also attach `self.on_song_end` to the inst player.
 		"""
 		self.conductor.song_position = 0
+		self.inst_player.on_eos = self.on_song_end
 		self.song_players.play()
 		self.state = GAME_STATE.PLAYING
 
@@ -339,6 +347,14 @@ class InGameScene(MusicBeatScene):
 
 		if not self.boyfriend.animation.has_tag(ANIMATION_TAG.SING):
 			self.boyfriend.animation.play("idle_bop")
+
+	def on_song_end(self) -> None:
+		"""
+		Song has ended. Default implementation sets the game's state
+		to `ENDED` and returns to the previous scene.
+		"""
+		self.state = GAME_STATE.ENDED
+		self.game.set_scene(self.created_from)
 
 	def countdown(self, dt: float) -> None:
 		if self._countdown_stage == 4:

@@ -45,16 +45,6 @@ class PNFSpriteGroup(sprite.SpriteGroup):
 		gl.glDisable(gl.GL_BLEND)
 		self.program.stop()
 
-	# def __eq__(self, other) -> bool:
-	# 	return (
-	# 		self.__class__ is other.__class__ and
-	# 		self.program is other.program and
-	# 		self.parent is other.parent and
-	# 		self.texture.target == other.texture.target and
-	# 		self.texture.id == other.texture.id and
-	# 		self.blend_src == other.blend_src and
-	# 		self.blend_dest == other.blend_dest
-	# 	)
 
 class Movement():
 	__slots__ = ("velocity", "acceleration")
@@ -162,7 +152,7 @@ class PNFSprite(SceneObject):
 	"""
 	Pretty much *the* core scene object, the sprite!
 	It can show images or animations, do all sort of transforms, have
-	a shader as well as a camera on it and comes with tween support.
+	a shader as well as a camera on it and comes with effect support.
 	"""
 
 	_TWEEN_ATTR_NAME_MAP = {
