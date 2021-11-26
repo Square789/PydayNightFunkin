@@ -7,16 +7,16 @@ import pyglet
 from pyglet.window import key
 from pyglet.window.key import KeyStateHandler
 
-from pyday_night_funkin import ogg_decoder
+from pyday_night_funkin.core import ogg_decoder
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
 from pyday_night_funkin.config import Config, CONTROL
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT, SFX_RING_SIZE
 from pyday_night_funkin.debug_pane import DebugPane
-from pyday_night_funkin.core import PNFWindow
 from pyday_night_funkin.key_handler import KeyHandler
 from pyday_night_funkin.core.pnf_player import PNFPlayer
+from pyday_night_funkin.core.pnf_window import PNFWindow
 from pyday_night_funkin.scenes import BaseScene, TestScene, TitleScene
 from pyday_night_funkin.sfx_ring import SFXRing
 

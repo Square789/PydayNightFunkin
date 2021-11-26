@@ -5,7 +5,7 @@ import typing as t
 from pyglet.media import Source, StaticSource, StreamingSource
 from pyglet.media.codecs import AudioData, AudioFormat, MediaDecoder
 
-from pyday_night_funkin.stb_vorbis import STBVorbis
+from pyday_night_funkin.core.stb_vorbis import STBVorbis
 
 if t.TYPE_CHECKING:
 	from pathlib import Path

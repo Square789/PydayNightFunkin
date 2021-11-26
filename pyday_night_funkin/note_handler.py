@@ -96,14 +96,17 @@ class NoteHandler(AbstractNoteHandler):
 					type_ %= len(NOTE_TYPE)
 					singer ^= 1
 				type_ = NOTE_TYPE(type_)
-				note = Note(singer, time_, type_, sustain, SUSTAIN_STAGE.NONE)
-				self.notes.append(note)
+
+				self.notes.append(Note(singer, time_, type_, sustain, SUSTAIN_STAGE.NONE))
 				trail_notes = math.ceil(sustain / self.game_scene.conductor.step_duration)
 				for i in range(trail_notes): # 0 and effectless for non-sustain notes.
-					sust_time = time_ + (self.game_scene.conductor.step_duration * (i + 1))
-					stage = SUSTAIN_STAGE.END if i == trail_notes - 1 else SUSTAIN_STAGE.TRAIL
-					sust_note = Note(singer, sust_time, type_, sustain, stage)
-					self.notes.append(sust_note)
+					self.notes.append(Note(
+						singer,
+						time_ + (self.game_scene.conductor.step_duration * (i + 1)),
+						type_,
+						sustain,
+						SUSTAIN_STAGE.END if i == trail_notes - 1 else SUSTAIN_STAGE.TRAIL,
+					))
 		self.notes.sort()
 
 	def update(

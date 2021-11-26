@@ -18,8 +18,8 @@ from pyglet import image
 from pyglet.image.atlas import AllocatorException, TextureBin
 from pyglet import media
 
-from pyday_night_funkin.almost_xml_parser import AlmostXMLParser
-from pyday_night_funkin import ogg_decoder
+from pyday_night_funkin.core.almost_xml_parser import AlmostXMLParser
+from pyday_night_funkin.core import ogg_decoder
 from pyday_night_funkin.utils import FrameInfoTexture
 
 if t.TYPE_CHECKING:

@@ -12,9 +12,9 @@ c_uchar = c_ubyte # don't like the name. it reminds me of java. *shudders*
 
 cwd = Path.cwd()
 if cwd.name == "PydayNightFunkin":
-	dll_path = cwd / "pyday_night_funkin/stb_vorbis/stb_vorbis.dll"
+	dll_path = cwd / "pyday_night_funkin/core/stb_vorbis/stb_vorbis.dll"
 elif cwd.name == "pyday_night_funkin":
-	dll_path = cwd / "stb_vorbis/stb_vorbis.dll"
+	dll_path = cwd / "core/stb_vorbis/stb_vorbis.dll"
 else:
 	dll_path = Path("./stb_vorbis.dll")
 stb_vorbis_lib = ctypes.windll.LoadLibrary(str(dll_path))

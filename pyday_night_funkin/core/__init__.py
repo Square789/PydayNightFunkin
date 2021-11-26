@@ -1,21 +1,10 @@
 """
-This submodule contains classes either expanding on graphics or
-subclassing them in a very thrown together and hacky way to
-invert their vertex order in order to not have them display upside
-down when using general top left coordinates.
+PydayNightFunkin core submodule.
+If it's something behind-the-scene-ish that a normal mortal
+doesn't really ever need to modify, it goes here.
+This includes, but is certainly not limited to:
+ - The custom XML parser
+ - The ogg vorbis converter
+ - All of the pyglet vertex flip hacks
+ - All of the other pyglet-incompatibility hacks
 """
-
-from pyday_night_funkin.core import pyglet_tl_patch
-
-from pyday_night_funkin.core.camera import Camera
-from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.core.pnf_sprite_container import PNFSpriteContainer
-from pyday_night_funkin.core.pnf_window import PNFWindow
-
-__all__ = (
-	"pyglet_tl_patch",
-	"Camera",
-	"PNFSprite",
-	"PNFSpriteContainer",
-	"PNFWindow",
-)

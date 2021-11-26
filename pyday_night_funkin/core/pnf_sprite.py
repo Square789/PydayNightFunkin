@@ -242,14 +242,16 @@ class PNFSprite(SceneObject):
 	def _create_vertex_list(self):
 		usage = self._usage
 		self._vertex_list = self._context.batch.add_indexed(
-			4, gl.GL_TRIANGLES, self._context.group, [0, 1, 2, 0, 2, 3],
+			4,
+			gl.GL_TRIANGLES,
+			self._context.group,
+			[0, 1, 2, 0, 2, 3],
 			"position2f/" + usage,
-			("colors4Bn/" + usage, (*self._rgb, int(self._opacity)) * 4),
-			("translate2f/" + usage, (self._x, self._y) * 4),
 			("anim_offset2f/" + usage, (0, 0) * 4),
 			("frame_offset2f/" + usage, (0, 0) * 4),
-			("scale2f/" + usage,
-				(self._scale * self._scale_x, self._scale * self._scale_y) * 4),
+			("colors4Bn/" + usage, (*self._rgb, int(self._opacity)) * 4),
+			("translate2f/" + usage, (self._x, self._y) * 4),
+			("scale2f/" + usage, (self._scale * self._scale_x, self._scale * self._scale_y) * 4),
 			("rotation1f/" + usage, (self._rotation, ) * 4),
 			("scroll_factor2f/" + usage, self._scroll_factor * 4),
 			("tex_coords3f/" + usage, self._texture.tex_coords),

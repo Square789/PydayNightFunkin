@@ -2,8 +2,8 @@
 import typing as t
 
 from pyday_night_funkin.asset_system import ASSETS, load_asset
-from pyday_night_funkin.core import PNFSprite
 from pyday_night_funkin.core.pnf_animation import PNFAnimation, OffsetAnimationFrame
+from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.pnf_sprite_container import PNFSpriteContainer
 from pyday_night_funkin.core.shaders import (
 	PNFSpriteFragmentShader, PNFSpriteVertexShader, ShaderContainer
@@ -39,7 +39,6 @@ class AlphabetCharacter(PNFSprite):
 		"/": "forward slash",
 		".": "period",
 		"?": "question mark",
-
 	}
 
 	_ANIMATIONS = {
