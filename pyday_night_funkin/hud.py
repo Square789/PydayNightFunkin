@@ -176,4 +176,4 @@ class HUD():
 			self.static_arrows[1][type_].animation.play("pressed")
 
 	def arrow_confirm(self, type_: NOTE_TYPE) -> None:
-		self.static_arrows[1][type_].animation.play("confirm")
+		self.static_arrows[1][type_].animation.play("confirm", True)
