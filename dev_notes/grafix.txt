@@ -1,0 +1,35 @@
+
+=== Hello and welcome to the insane ramblings about OpenGL from someone who doesn't know OpenGL ===
+
+A vertex domain is an abstract concept of pyglet
+A vertex domain groups vertex lists by (
+	formats: str[], # ('position2f', 'colors4Bn') ('position2f/dynamic', 'colors4Bn/dynamic', 'tex_coords3f/dynamic', 'translation2f/dynamic')
+	mode: GLEnum,
+	indexed: bool,
+	shader_prog: GLuint,
+)
+# In that sense, it does what i want to do, but the amount of layers in the game throws this entire thing off heavily since every single ordered group sets up all the shader programs, attribute bindings etc. again when they could just be retained while a 2nd seperate draw call is made
+
+
+
+VAOs store a state that describes the current vibe of all things vertex-related.
+== Stuff that is recorded by VAOs:
+ //These describe a buffer's data layout.
+ - glVertexAttribPointer
+ - glVertexAttribIPointer
+ - glVertexAttribLPointer
+   - All of these source from the buffer bound to GL_ARRAY_BUFFER!
+     - GL_ARRAY_BUFFER is not part of the VAO state, but kinda still is since glVertexAttrib*Pointer
+	   memorizes it. [?]
+
+ - The index buffer binding (Must be bound *after* the VAO is bound via glBindVertexArray)
+
+ // Below functions have some terribly named alts that take a VAO id directly and don't require
+ // it to be bound ("Direct State Access")
+
+ - glVertexAttribDivisor
+
+ - glEnableVertexAttribArray / 
+
+ - glVertexAttribBinding / "which shader attribute locations the vertex data is associated with" [https://dokipen.com/modern-opengl-part-5-feeding-vertex-data-to-shaders/]
+

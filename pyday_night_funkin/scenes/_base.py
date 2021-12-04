@@ -4,12 +4,13 @@ import typing as t
 
 from loguru import logger
 from pyglet.clock import Clock
-from pyglet.graphics import Batch, Group
+from pyglet.graphics import Group
 from pyglet.window.key import B, R, Y
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.context import Context
+from pyday_night_funkin.core.pnf_batch import PNFBatch
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene_object import Container, SceneObject
 from pyday_night_funkin.sfx_ring import SFXRing
@@ -68,7 +69,7 @@ class BaseScene(Container):
 
 		self.game = game
 		self.creation_args = None
-		self.batch = Batch()
+		self.batch = PNFBatch()
 
 		self.draw_passthrough = True
 		self.update_passthrough = False

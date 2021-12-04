@@ -3,7 +3,7 @@ import typing as t
 
 from pyglet.graphics import Group, get_default_batch
 
-from pyday_night_funkin.tweens import TWEEN_ATTR
+from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.pnf_sprite import EffectBound, Movement, PNFSprite
 from pyday_night_funkin.utils import clamp

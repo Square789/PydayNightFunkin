@@ -4,22 +4,28 @@ import typing as t
 
 from loguru import logger
 import pyglet
+
+# # IF THIS LANDS ON GITHUB I FAILED
+# # Ok see I commented out I remembered it ha
+# pyglet.options["debug_gl_trace"] = True
+# pyglet.options["debug_gl_trace_args"] = True
+
 from pyglet.window import key
 from pyglet.window.key import KeyStateHandler
 
 from pyday_night_funkin.core import ogg_decoder
-if ogg_decoder not in pyglet.media.get_decoders():
-	pyglet.media.add_decoders(ogg_decoder)
-
+from pyday_night_funkin.core.pnf_player import PNFPlayer
+from pyday_night_funkin.core.pnf_window import PNFWindow
 from pyday_night_funkin.config import Config, CONTROL
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT, SFX_RING_SIZE
 from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.key_handler import KeyHandler
-from pyday_night_funkin.core.pnf_player import PNFPlayer
-from pyday_night_funkin.core.pnf_window import PNFWindow
 from pyday_night_funkin.scenes import BaseScene, TestScene, TitleScene
 from pyday_night_funkin.sfx_ring import SFXRing
 
+
+if ogg_decoder not in pyglet.media.get_decoders():
+	pyglet.media.add_decoders(ogg_decoder)
 
 __version__ = "0.0.0dev"
 
@@ -146,11 +152,15 @@ class Game():
 		stime = perf_counter()
 		self.window.clear()
 
+		print("// DRAWING SCENES")
 		for scene in self._scenes_to_draw:
 			scene.draw()
+		print("// DONE DRAWING SCENES")
 
 		if self.debug:
+			print("// DRAWING DEBUG PANE")
 			self.debug_pane.draw()
+			print("// DONE DRAWING DEBUG PANE")
 			self._fps_bump()
 			draw_time = (perf_counter() - stime) * 1000
 			# Prints frame x-1's draw time in frame x, but who cares

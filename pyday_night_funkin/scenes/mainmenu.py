@@ -7,7 +7,7 @@ from pyday_night_funkin.asset_system import load_asset, ASSETS
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.scenes._base import BaseScene
-from pyday_night_funkin.tweens import TWEEN_ATTR, out_quad
+from pyday_night_funkin.core.tweens import TWEEN_ATTR, out_quad
 
 
 FreeplayScene = None

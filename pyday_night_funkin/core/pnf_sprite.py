@@ -9,7 +9,7 @@ from pyglet.math import Vec2
 from pyglet import sprite
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.tweens import TWEEN_ATTR
+from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
 from pyday_night_funkin.core.scene_object import SceneObject
@@ -240,6 +240,11 @@ class PNFSprite(SceneObject):
 		return cls._dummy_camera
 
 	def _create_vertex_list(self):
+		#  0- - - - -3
+		#  |\D>      ^
+		#  A    \    E
+		#  v      <C\|
+		#  1----B>---2
 		usage = self._usage
 		self._vertex_list = self._context.batch.add_indexed(
 			4,

@@ -11,7 +11,6 @@ from pyday_night_funkin.core.shaders import (
 from pyday_night_funkin.utils import lerp
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.scenes import BaseScene
 	from pyday_night_funkin.types import Numeric
 
 
