@@ -10,7 +10,7 @@ from pyglet.graphics import allocation, vertexarray, vertexbuffer
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics import Group
-
+	from pyglet.graphics.shader import ShaderProgram
 
 
 INDEX_TYPE = gl.GLuint
@@ -76,10 +76,11 @@ def _parse_vertex_data(data):
 class PNFGroup:
 	def __init__(
 		self,
-		program,
-
+		shader_program: "ShaderProgram",
+		parent: t.Optional["PNFGroup"] = None,
 	) -> None:
-		self.program = program
+		self.shader_program = shader_program
+		self.parent = parent
 
 
 class PNFVertexList:
@@ -90,9 +91,15 @@ class PNFVertexList:
 	those.
 	"""
 
-	def __init__(self, batch, group) -> None:
-		self.batch = batch
-		self.group = group
+	def __init__(
+		self,
+		vertex_domain: "PNFVertexDomain",
+		start: int,
+		count: int,
+	) -> None:
+		self.vtxd = vertex_domain
+		self.start = start
+		self.count = count
 
 	def delete(self):
 		pass
@@ -110,28 +117,63 @@ class PNFVertexDomain:
 		self._attributes = {}
 		for attr in attribute_bundle:
 			buf = vertexbuffer.create_buffer(4096)
-			name, count, fmt, usage = self._parse_attribute(attr)
-			self._attributes[name] = (buf, count, fmt, usage)
+			name, count, type_, usage = self._parse_attribute(attr)
+			self._attributes[name] = (buf, count, type_, usage)
 
-		self.vao = vertexarray.VertexArray()
-		with self.vao:
-			for i, (name, (count, fmt, usage)) in enumerate(self._attributes.items()):
-				gl.glEnableVertexAttribArray(i)
-				gl.glVertexArrayAttribBinding
+		self._vaos = {}
 
 	def _parse_attribute(self, attr: str) -> t.Tuple[str, int, int, int]:
 		if (re_res := RE_VERTEX_FORMAT.match(attr)) is None:
 			raise ValueError(f"Invalid attribute format string {attr!r}")
-		name, count, fmt, usage = re_res.groups()
+		name, count, type_, usage = re_res.groups()
 
 		count = int(count)
-		fmt = _TYPE_MAP[fmt]
+		type_ = _TYPE_MAP[type_]
 		usage = _USAGE_MAP[usage]
 
 		if count not in range(1, 5):
 			raise ValueError(f"Vertex attribute count must be 1, 2, 3 or 4; was {count}!")
 
-		return (name, count, fmt, usage)
+		return (name, count, type_, usage)
+
+	def ensure_vao(self, shader: "ShaderProgram") -> None:
+		"""
+		If no VAO for this shader has been created yet,
+		sets up all attribute bindings for this vertex domain's managed
+		attribute bundle in context of the given shader program
+		and stores them in an internal VAO for future use.
+		"""
+		if shader.id in self._vaos:
+			return
+
+		vao = vertexarray.VertexArray()
+		with vao:
+			for shader_attr in shader.attributes:
+				# Attributes are linked with shaders by their name as passed
+				# in the vertex list
+				if shader_attr.name not in self._attributes:
+					raise ValueError(
+						f"Shader program {shader.id!r} contained vertex attribute {shader_attr},"
+						f"but {self.__class__.__name__} does not know {shader_attr.name!r}."
+					)
+				buf, count, type_, usage = self._attributes[shader_attr.name]
+
+				# NOTE: This may be replacable with the newer glVertexAttribFormat and
+				# glBindVertexBuffers!
+
+				# glVertexAttribPointer depends on this binding
+				gl.glBindBuffer(gl.GL_ARRAY_BUFFER, buf.id)
+				gl.glEnableVertexAttribArray(shader_attr.location)
+				gl.glVertexAttribPointer(shader_attr.location, count, type_, gl.GL_FALSE, 0, 0)
+
+		# WARNING: Should shaders be deleted and their ids reassigned,
+		# this may fail in disgusting ways
+		self._vaos[shader.id] = vao
+
+	def create_vertex_list(self, vertex_count: int, group: "PNFGroup") -> PNFVertexList:
+		self.ensure_vao(group.shader_program)
+		self.alloc(vertex_count)
+		return PNFVertexList(self)
 
 class MemoryManagedBuffer:
 	"""
@@ -201,7 +243,7 @@ class PNFBatch:
 
 		self._vertex_domains = {}
 
-	def _add_group(self, group):
+	def _add_group(self, group: "PNFGroup") -> None:
 		if group.parent is None:
 			self._top_groups.append(group)
 		else:
@@ -211,7 +253,7 @@ class PNFBatch:
 
 		self._draw_list_dirty = True
 
-	def _get_vertex_domain(self, parsed_data):
+	def _get_vertex_domain(self, parsed_data) -> PNFVertexDomain:
 		"""
 		Get an existing or newly created vertexdomain for the given
 		vertex attribute bundle.
@@ -222,24 +264,20 @@ class PNFBatch:
 
 		return self._vertex_domains[attr_bundle]
 
-	def _regenerate_draw_list(self):
+	def _regenerate_draw_list(self) -> None:
 		for grp in sorted(self._top_groups):
 			pass
 
-	def add(self, vertex_amount, draw_mode, group, *data) -> PNFVertexList:
+	def add(self, vertex_count, draw_mode, group, *data) -> PNFVertexList:
 		raise NotImplementedError("yeah yeah")
 
-	def add_indexed(self, vertex_amount, draw_mode, group, indices, *data) -> PNFVertexList:
+	def add_indexed(self, vertex_count, draw_mode, group, indices, *data) -> PNFVertexList:
 		data = _parse_vertex_data(data)
 		self._add_group(group)
 		vtxd = self._get_vertex_domain(data)
 		self._group_data[group].vertex_domain = vtxd
 
-		vtx_list = PNFVertexList(self, group, vtxd)
-		for _, ini_data in data:
-			if ini_data is None:
-				continue
-			vtx_list.set_attribute()
+		vtx_list = vtxd.create_vertex_list(vertex_count)
 
 	def draw(self):
 		if self._draw_list_dirty:

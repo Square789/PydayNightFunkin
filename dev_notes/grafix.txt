@@ -33,3 +33,18 @@ VAOs store a state that describes the current vibe of all things vertex-related.
 
  - glVertexAttribBinding / "which shader attribute locations the vertex data is associated with" [https://dokipen.com/modern-opengl-part-5-feeding-vertex-data-to-shaders/]
 
+
+
+== Concepts and stuff
+ - Give each vertex domain a VAO for each shader program!
+   (This should mean that my vertex domains only are created for `formats` as opposed to pyglet's (`formats`, `mode`, `indexed`, `shader_prog`)),
+   severely reducing the amount of buffers created, but introducing some sort of internal key in them as well.
+ - Groups don't have a set_state function anymore but only describe state which the batch manages/sets/unsets smoothly across order groups etc.
+ - Order doesn't have to be created by multiple draw calls (I think), just having referring to the proper vertices in correct order should be enough!
+
+== Links
+ - https://stackoverflow.com/questions/37972229/glvertexattribpointer-and-glvertexattribformat-whats-the-difference
+   Good description for format descriptors for vertex arrays
+
+ - https://dokipen.com/modern-opengl-part-5-feeding-vertex-data-to-shaders/
+   Quality site
