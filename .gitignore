@@ -116,9 +116,6 @@ dmypy.json
 # VSCode settings and stuff
 .vscode/
 
-# No binary on github
-pyday_night_funkin/core/stb_vorbis/*.dll
-
 # Some local test files, mostly profiling. Root directory only. 
 /_*
 
