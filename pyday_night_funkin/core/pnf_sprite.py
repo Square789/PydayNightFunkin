@@ -12,6 +12,7 @@ import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
+from pyday_night_funkin.core.graphics import PNFGroup
 from pyday_night_funkin.core.scene_object import SceneObject
 from pyday_night_funkin.core.shaders import (
 	PNFSpriteVertexShader, PNFSpriteFragmentShader, ShaderContainer
@@ -44,6 +45,11 @@ class PNFSpriteGroup(sprite.SpriteGroup):
 	def unset_state(self):
 		gl.glDisable(gl.GL_BLEND)
 		self.program.stop()
+
+class PNFSpriteGroup2(PNFGroup):
+	def __init__(self, cam_ubo: "UniformBufferObject", _tex, _bsrc, _bdest, program, order=0, parent=None) -> None:
+		super().__init__(program, parent)
+		self.ubos = [cam_ubo]
 
 
 class Movement():
@@ -218,7 +224,7 @@ class PNFSprite(SceneObject):
 
 		self._context = Context(
 			graphics.get_default_batch() if context is None else context.batch,
-			PNFSpriteGroup(
+			PNFSpriteGroup2(
 				self.camera.ubo,
 				self._texture,
 				blend_src,
@@ -281,11 +287,11 @@ class PNFSprite(SceneObject):
 				self._create_vertex_list()
 
 		if new_group != old_group.parent:
-			self._context.group = PNFSpriteGroup(
+			self._context.group = PNFSpriteGroup2(
 				self.camera.ubo,
 				self._texture,
-				old_group.blend_src,
-				old_group.blend_dest,
+				None, # old_group.blend_src,
+				None, # old_group.blend_dest,
 				old_group.program,
 				0,
 				new_group,
@@ -612,11 +618,11 @@ class PNFSprite(SceneObject):
 		prev_h, prev_w = self._texture.height, self._texture.width
 		if texture.id is not self._texture.id:
 			old_group = self._context.group
-			self._context.group = PNFSpriteGroup(
+			self._context.group = PNFSpriteGroup2(
 				self.camera.ubo,
 				texture,
-				old_group.blend_src,
-				old_group.blend_dest,
+				None, # old_group.blend_src,
+				None, # old_group.blend_dest,
 				old_group.program,
 				0,
 				old_group.parent,

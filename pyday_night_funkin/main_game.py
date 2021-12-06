@@ -75,8 +75,8 @@ class Game():
 		self._pending_scene_stack_removals = set()
 		self._pending_scene_stack_additions = []
 
-		self.push_scene(TitleScene)
-		# self.push_scene(TestScene)
+		# self.push_scene(TitleScene)
+		self.push_scene(TestScene)
 
 	def _on_scene_stack_change(self) -> None:
 		for self_attr, scene_attr in (
@@ -101,14 +101,15 @@ class Game():
 		# different contexts? Yeah idk about OpenGL, but it will lead to
 		# unexpected errors later when switching scenes and often recreating
 		# VAOs.
-		logger.remove(0)
 		if self.debug:
 			def debug_setup(_):
 				self._fps = [perf_counter() * 1000, 0, "?"]
 				self.debug_pane = DebugPane(8)
 				logger.add(self.debug_pane.add_message)
-				logger.debug(f"Game started (v{__version__}), pyglet version {pyglet.version}")
+				logger.info(f"Game started (v{__version__}), pyglet version {pyglet.version}")
 			pyglet.clock.schedule_once(debug_setup, 0.0)
+		else:
+			logger.remove(0)
 
 		pyglet.clock.schedule_interval(self.update, 1 / 60.0)
 		pyglet.app.run()
@@ -152,20 +153,15 @@ class Game():
 		stime = perf_counter()
 		self.window.clear()
 
-		print("// DRAWING SCENES")
 		for scene in self._scenes_to_draw:
 			scene.draw()
-		print("// DONE DRAWING SCENES")
 
 		if self.debug:
-			print("// DRAWING DEBUG PANE")
 			self.debug_pane.draw()
-			print("// DONE DRAWING DEBUG PANE")
 			self._fps_bump()
 			draw_time = (perf_counter() - stime) * 1000
 			# Prints frame x-1's draw time in frame x, but who cares
 			self.debug_pane.update(self._fps[2], draw_time, self._update_time)
-			# print(draw_time, self._update_time)
 
 	def _modify_scene_stack(self) -> float:
 		"""

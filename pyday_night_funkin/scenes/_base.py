@@ -10,7 +10,7 @@ from pyglet.window.key import B, R, Y
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.context import Context
-from pyday_night_funkin.core.pnf_batch import PNFBatch
+from pyday_night_funkin.core.graphics import PNFBatch
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene_object import Container, SceneObject
 from pyday_night_funkin.sfx_ring import SFXRing
