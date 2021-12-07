@@ -8,6 +8,8 @@ from loguru import logger
 from pyglet.gl import gl
 from pyglet.graphics import allocation, vertexarray, vertexbuffer
 
+from pyday_night_funkin.core.graphics.draw_list_builder import DrawListBuilder
+
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
 	from .pnf_group import PNFGroup
@@ -53,6 +55,17 @@ _TYPE_MAP = {
 	's': gl.GL_SHORT,
 }
 
+_C_TYPE_MAP = {
+	gl.GL_UNSIGNED_BYTE: ctypes.c_ubyte,
+	gl.GL_BYTE: ctypes.c_byte,
+	gl.GL_DOUBLE: ctypes.c_double,
+	gl.GL_UNSIGNED_INT: ctypes.c_uint,
+	gl.GL_INT: ctypes.c_int,
+	gl.GL_FLOAT: ctypes.c_float,
+	gl.GL_UNSIGNED_SHORT: ctypes.c_ushort,
+	gl.GL_SHORT: ctypes.c_short,
+}
+
 _GL_TYPE_SIZES = {
 	gl.GL_UNSIGNED_BYTE: 1,
 	gl.GL_BYTE: 1,
@@ -71,59 +84,6 @@ _USAGE_MAP = {
 }
 
 
-class MemoryManagedBuffer:
-	"""
-	Composite class holding a pyglet allocator and a vertexbuffer.
-	Exposes just the buffer operations needed.
-	"""
-
-	def __init__(self, capacity: int = 65536, *args, **kwargs) -> None:
-		"""
-		Initializes a MemoryManagedBuffer. Will pass through all
-		args and kwargs to `vertexbuffer.create_buffer`.
-		"""
-		self._buffer = vertexbuffer.create_buffer(capacity, *args, **kwargs)
-		self._allocator = allocation.Allocator(capacity)
-
-	def safe_alloc(self, size: int) -> int:
-		"""
-		Effectively stolen from vertexdomain's `safe_alloc` method,
-		it tries to get a fitting starting region from the allocator and -
-		should that fail - resizes both the allocator and its buffer and
-		retries the allocation.
-		"""
-		try:
-			return self._allocator.alloc(size)
-		except allocation.AllocatorMemoryException as exc:
-			new_size = nearest_pow2(exc.requested_capacity)
-			self._buffer.resize(new_size * ctypes.sizeof(INDEX_TYPE))
-			self._allocator.set_capacity(new_size)
-			return self._allocator.alloc(size)
-
-	def set_data_region(self, data: ctypes.pointer, start: int, length: int) -> None:
-		"""
-		Sets the buffer's data to the given data from `start` for
-		`length` bytes.
-		"""
-		# NOTE: Involves memmove and a technically unnecessary duplication of data,
-		# but workarounds are annoying and probably not that worth it
-		self._buffer.set_data_region(data, start, length)
-
-	def map(self, invalidate: bool = False) -> ctypes.pointer:
-		return self._buffer.map(invalidate)
-
-	def unmap(self) -> None:
-		return self._buffer.unmap()
-
-	def delete(self) -> None:
-		self._buffer.delete()
-		self._buffer = self._allocator = None
-
-	@property
-	def id(self) -> int:
-		return self._buffer.id
-
-
 class PNFVertexList:
 	"""
 	Yet more intellectual property theft from pyglet, this bootleg
@@ -135,18 +95,42 @@ class PNFVertexList:
 	def __init__(
 		self,
 		vertex_domain: "PNFVertexDomain",
-		start: int,
-		amount: int,
+		domain_position: int,
+		size: int,
 	) -> None:
 		self.vtxd = vertex_domain
-		self.start = start
-		self.amount = amount
+
+		self.domain_position = domain_position
+		"""
+		Position inside the vertex domain. Consider:
+		```
+		pos2f   . . . .-. . . .|X X X X.X X X X|X X X X.X X ...
+		color3B .-.-.|X.X.X|X.X.X|.-.-.|.-.-.|.-.-.|.-.-.|. ...
+		```
+		A vertex list of `domain_position` 1 and `size` 2 would
+		span the region whose bytes are denoted with `X`.
+		"""
+
+		self.size = size
+		"""
+		Amount of vertices in the vertex list.
+		"""
 
 	def __getattr__(self, name: str) -> t.Any:
-		return []
+		att = self.vtxd.attributes[name]
+		byte_size = self.size * att.element_size
+
+		return att.gl_buffer.get_region(
+			self.domain_position * att.element_size,
+			byte_size,
+			ctypes.POINTER(att.c_type * (self.size * att.count)),
+		).array
 
 	def __setattr__(self, name: str, value: t.Any) -> None:
-		super().__setattr__(name, value)
+		if "domain" in self.__dict__ and name in self.__dict__["domain"].attributes:
+			self.__getattr__(name)[:] = value
+		else:
+			super().__setattr__(name, value)
 
 	def delete(self):
 		pass
@@ -155,28 +139,47 @@ class PNFVertexList:
 class PNFVertexDomainAttribute:
 	def __init__(
 		self,
-		gl_buffer_id: int,
 		count: int,
 		type_: int,
 		normalize: bool,
 		usage: int,
 	) -> None:
-		self.gl_buffer_id = gl_buffer_id
 		self.count = count
+		"""Vertex attribute count. One of 1, 2, 3 or 4."""
+
 		self.type = type_
+		self.c_type = _C_TYPE_MAP[type_]
+		self.element_size = _GL_TYPE_SIZES[type_] * count
+		"""
+		Size of a single attribute in bytes, i. e. `2f` -> 8; `3B` -> 3
+		"""
+
+		self.buffer_size = self.element_size * PNFVertexDomain.INITIAL_VERTEX_CAPACITY
+		"""Size of this attribute's OpenGL buffer, in bytes."""
+
 		self.normalize = normalize
 		self.usage = usage
-		self.buffer_dirty = False
 
-		self.system_buffer = (ctypes.c_ubyte * _GL_TYPE_SIZES[type_])()
+		self.gl_buffer = vertexbuffer.create_buffer(self.buffer_size, usage=usage)
 
-	def set_data(self) -> None:
-		pass
+	def set_data_region(self, data: ctypes.Array, start: int, length: int) -> None:
+		self.gl_buffer.set_data_region(data, start, length)
+
+	def resize(self, new_capacity: int) -> None:
+		"""
+		Resizes the attribute's buffer to fit `new_capacity` vertex
+		attributes.
+		No checks of any kind are made, be sure to pass in an
+		acceptable `new_capacity`!
+		"""
+		self.gl_buffer.resize(new_capacity * self.element_size)
+		self.buffer_size = self.gl_buffer.size
 
 	def __repr__(self) -> str:
 		return (
-			f"<{self.__class__.__name__} gl_buffer_id={self.gl_buffer_id} count={self.count} "
-			f"type={self.type} normalize={self.normalize} usage={self.usage} at 0x{id(self):>016X}>"
+			f"<{self.__class__.__name__} (OpenGL buffer id {self.gl_buffer.id}) "
+			f"count={self.count} type={self.type} normalize={self.normalize} usage={self.usage} "
+			f"at 0x{id(self):>016X}>"
 		)
 
 
@@ -191,19 +194,22 @@ class PNFVertexDomain:
 	The vertex attribute bundle is unchangable.
 	"""
 
+	INITIAL_VERTEX_CAPACITY = 2048
+
 	def __init__(self, attribute_bundle: t.Sequence[str]) -> None:
 		"""
 		Creates a new vertex domain.
 		`attribute_bundle` should be a sequence of valid vertex attribute
 		format strings.
 		"""
-		self._attributes: t.Dict[str, PNFVertexDomainAttribute] = {}
+		# NOTE: This allocator does not track bytes, but only vertices.
+		self._allocator = allocation.Allocator(self.INITIAL_VERTEX_CAPACITY)
+		self.attributes: t.Dict[str, PNFVertexDomainAttribute] = {}
 		self._vaos: t.Dict[int, vertexarray.VertexArray] = {}
 
 		for attr in attribute_bundle:
-			gl_buf = MemoryManagedBuffer(4096)
 			name, *ctnu = self._parse_attribute(attr)
-			self._attributes[name] = PNFVertexDomainAttribute(gl_buf.id, *ctnu)
+			self.attributes[name] = PNFVertexDomainAttribute(*ctnu)
 
 	def _parse_attribute(self, attr: str) -> t.Tuple[str, int, int, bool, int]:
 		"""
@@ -241,18 +247,18 @@ class PNFVertexDomain:
 			for shader_attr in shader.attributes.values():
 				# Attributes are linked with shaders by their name as passed
 				# in the vertex list
-				if shader_attr.name not in self._attributes:
+				if shader_attr.name not in self.attributes:
 					raise ValueError(
 						f"Shader program {shader.id!r} contained vertex attribute {shader_attr},"
 						f"but {self.__class__.__name__} does not know {shader_attr.name!r}."
 					)
-				attr = self._attributes[shader_attr.name]
+				attr = self.attributes[shader_attr.name]
 
 				# NOTE: This may be replacable with the newer glVertexAttribFormat and
 				# glBindVertexBuffers!
 
 				# glVertexAttribPointer depends on this binding
-				gl.glBindBuffer(gl.GL_ARRAY_BUFFER, attr.gl_buffer_id)
+				gl.glBindBuffer(gl.GL_ARRAY_BUFFER, attr.gl_buffer.id)
 				gl.glEnableVertexAttribArray(shader_attr.location)
 				gl.glVertexAttribPointer(
 					shader_attr.location, attr.count, attr.type, gl.GL_FALSE, 0, 0
@@ -262,14 +268,28 @@ class PNFVertexDomain:
 		# this may fail in disgusting ways
 		self._vaos[shader.id] = vao
 
-	def allocate(self, size: int):
+	def allocate(self, size: int) -> int:
 		"""
 		Tries to safely allocate `size` vertices.
 		"""
+		try:
+			return self._allocator.alloc(size)
+		except allocation.AllocatorMemoryException:
+			new_size = max(nearest_pow2(self._allocator.capacity + 1), nearest_pow2(size))
+			self._resize(new_size)
+			return self._allocator.alloc(size)
+
+	def _resize(self, new_size: int) -> None:
+		# The buffers in `self.attributes` can always hold `self._allocator.capacity`
+		# vertices. Resize them if needed.
+		self._allocator.set_capacity(new_size)
+		for attr in self.attributes.values():
+			attr.resize(new_size)
 
 	def create_vertex_list(self, vertex_amount: int, group: "PNFGroup") -> PNFVertexList:
 		self.ensure_vao(group.program)
-		return PNFVertexList(self, 0, 0)
+		start = self.allocate(vertex_amount)
+		return PNFVertexList(self, start, vertex_amount)
 
 
 class PNFBatch:
@@ -313,26 +333,27 @@ class PNFBatch:
 		return self._vertex_domains[attr_bundle]
 
 	def _regenerate_draw_list(self) -> None:
-		def visit(group: "PNFGroup", n: int = 0) -> None:
-			logger.debug((" " * n) + f"Yooo {group}")
-			for sub_group in self._group_data[group].children:
-				visit(sub_group, n + 1)
-
-		for group in sorted(self._top_groups):
-			visit(group)
-
+		self._draw_list = DrawListBuilder().build(self._top_groups, self._group_data)
 		self._draw_list_dirty = False
 
-	def add(self, vertex_amount, draw_mode, group, *data) -> PNFVertexList:
+	def add(self, size, draw_mode, group, *data) -> PNFVertexList:
 		raise NotImplementedError("yeah yeah")
 
-	def add_indexed(self, vertex_amount, draw_mode, group, indices, *data) -> PNFVertexList:
+	def add_indexed(self, size, draw_mode, group, indices, *data) -> PNFVertexList:
 		attr_names = [x[0] if isinstance(x, tuple) else str(x) for x in data]
 		self._add_group(group)
+
 		vtxd = self._get_vertex_domain(attr_names)
 		self._group_data[group].vertex_domain = vtxd
+		vtx_list = vtxd.create_vertex_list(size, group)
 
-		vtx_list = vtxd.create_vertex_list(vertex_amount, group)
+		# Set initial data
+		for x in data:
+			if not isinstance(x, tuple):
+				continue
+			name = RE_VERTEX_FORMAT.match(x[0])[1]
+			getattr(vtx_list, name)[:] = x[1]
+
 		return vtx_list
 
 	def draw(self):

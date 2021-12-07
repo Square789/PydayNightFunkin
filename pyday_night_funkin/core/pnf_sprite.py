@@ -4,15 +4,15 @@ import typing as t
 from pyglet import gl
 from pyglet import graphics
 from pyglet.graphics.shader import ShaderProgram
-from pyglet.image import AbstractImage, TextureArrayRegion
+from pyglet.image import AbstractImage, Texture, TextureArrayRegion
 from pyglet.math import Vec2
-from pyglet import sprite
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
 from pyday_night_funkin.core.graphics import PNFGroup
+import pyday_night_funkin.core.graphics.states as s
 from pyday_night_funkin.core.scene_object import SceneObject
 from pyday_night_funkin.core.shaders import (
 	PNFSpriteVertexShader, PNFSpriteFragmentShader, ShaderContainer
@@ -27,29 +27,21 @@ if t.TYPE_CHECKING:
 EffectBound = t.TypeVar("EffectBound", bound="Effect")
 
 
-class PNFSpriteGroup(sprite.SpriteGroup):
-	def __init__(self, cam_ubo: "UniformBufferObject", *args, **kwargs) -> None:
-		super().__init__(*args, **kwargs)
-		self.cam_ubo = cam_ubo
-
-	def set_state(self):
-		self.program.use()
-		# print(self.program, end=" ")
-		self.cam_ubo.bind()
-
-		gl.glActiveTexture(gl.GL_TEXTURE0)
-		gl.glBindTexture(self.texture.target, self.texture.id)
-		gl.glEnable(gl.GL_BLEND)
-		gl.glBlendFunc(self.blend_src, self.blend_dest)
-
-	def unset_state(self):
-		gl.glDisable(gl.GL_BLEND)
-		self.program.stop()
-
-class PNFSpriteGroup2(PNFGroup):
-	def __init__(self, cam_ubo: "UniformBufferObject", _tex, _bsrc, _bdest, program, order=0, parent=None) -> None:
-		super().__init__(program, parent)
-		self.ubos = [cam_ubo]
+def make_states(
+	cam_ubo: "UniformBufferObject",
+	tex: "Texture",
+	blend_src: int,
+	blend_dest: int,
+	program: "ShaderProgram",
+):
+	return (
+		s.ProgramState(program),
+		s.UBOBindingState(cam_ubo),
+		s.TextureUnitState(gl.GL_TEXTURE0),
+		s.TextureState(tex),
+		s.EnableState(gl.GL_BLEND),
+		s.BlendFuncState(blend_src, blend_dest),
+	)
 
 
 class Movement():
@@ -224,13 +216,11 @@ class PNFSprite(SceneObject):
 
 		self._context = Context(
 			graphics.get_default_batch() if context is None else context.batch,
-			PNFSpriteGroup2(
-				self.camera.ubo,
-				self._texture,
-				blend_src,
-				blend_dest,
-				program,
+			PNFGroup(
 				parent = None if context is None else context.group,
+				states = make_states(
+					self.camera.ubo, self._texture, blend_src, blend_dest, program
+				)
 			)
 		)
 
@@ -287,14 +277,15 @@ class PNFSprite(SceneObject):
 				self._create_vertex_list()
 
 		if new_group != old_group.parent:
-			self._context.group = PNFSpriteGroup2(
-				self.camera.ubo,
-				self._texture,
-				None, # old_group.blend_src,
-				None, # old_group.blend_dest,
-				old_group.program,
-				0,
-				new_group,
+			self._context.group = PNFGroup(
+				parent = new_group,
+				states = make_states(
+					self.camera.ubo,
+					self._texture,
+					old_group.states[s.BlendFuncState].src,
+					old_group.states[s.BlendFuncState].dest,
+					old_group.program,
+				)
 			)
 			self._context.batch.migrate(
 				self._vertex_list, gl.GL_TRIANGLES, self._context.group, self._context.batch
@@ -618,14 +609,15 @@ class PNFSprite(SceneObject):
 		prev_h, prev_w = self._texture.height, self._texture.width
 		if texture.id is not self._texture.id:
 			old_group = self._context.group
-			self._context.group = PNFSpriteGroup2(
-				self.camera.ubo,
-				texture,
-				None, # old_group.blend_src,
-				None, # old_group.blend_dest,
-				old_group.program,
-				0,
-				old_group.parent,
+			self._context.group = PNFGroup(
+				parent = old_group.parent,
+				states = make_states(
+					self.camera.ubo,
+					self._texture,
+					old_group.states[s.BlendFuncState].src,
+					old_group.states[s.BlendFuncState].dest,
+					old_group.program,
+				)
 			)
 			self._vertex_list.delete()
 			self._texture = texture

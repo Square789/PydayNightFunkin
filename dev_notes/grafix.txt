@@ -42,6 +42,17 @@ VAOs store a state that describes the current vibe of all things vertex-related.
  - Groups don't have a set_state function anymore but only describe state which the batch manages/sets/unsets smoothly across order groups etc.
  - Order doesn't have to be created by multiple draw calls (I think), just having referring to the proper vertices in correct order should be enough!
 
+ - http://media.steampowered.com/apps/steamdevdays/slides/beyondporting.pdf p48 allows for
+   construction of cost values that some state changes incur:
+   - Render target    167
+   - Program          33
+   - ROP (?)          10
+   - Texture Binding  7
+   - Vertex Format    6
+   - UBO Binding      4
+   - Vertex Binding   2
+   - Uniform Update   1
+
 == Links
  - https://stackoverflow.com/questions/37972229/glvertexattribpointer-and-glvertexattribformat-whats-the-difference
    Good description for format descriptors for vertex arrays

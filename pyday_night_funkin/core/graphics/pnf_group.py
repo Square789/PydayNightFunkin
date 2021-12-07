@@ -1,20 +1,34 @@
 
 import typing as t
 
+from pyday_night_funkin.core.graphics.states import ProgramState
+
 if t.TYPE_CHECKING:
-	from pyglet.graphics.shader import ShaderProgram
+	from .states import AbstractState
 
 
 class PNFGroup:
 	def __init__(
 		self,
-		program: "ShaderProgram",
-		parent: t.Optional["PNFGroup"],
+		parent: t.Optional["PNFGroup"] = None,
 		order: int = 0,
+		states: t.Sequence["AbstractState"] = (),
 	) -> None:
-		self.program = program
 		self.parent = parent
 		self.order = order
+		self.states = {}
+		for state in states:
+			if (type_ := type(state)) in self.states:
+				raise ValueError(
+					"Can't have duplicate states! "
+					"I may get around to creating something for that or I may not."
+				)
+			self.states[type_] = state
+
+		if not ProgramState in self.states:
+			raise ValueError("Each group requires a `ProgramState`!")
+
+		self.program = self.states[ProgramState].program
 
 	def __gt__(self, other) -> bool:
 		if not isinstance(other, PNFGroup):
