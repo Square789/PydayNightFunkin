@@ -1,10 +1,10 @@
 
 import typing as t
 
-from pyday_night_funkin.core.graphics.states import ProgramState
+from pyday_night_funkin.core.graphics.states import ProgramStateMutator
 
 if t.TYPE_CHECKING:
-	from .states import AbstractState
+	from .states import AbstractStateMutator
 
 
 class PNFGroup:
@@ -12,7 +12,7 @@ class PNFGroup:
 		self,
 		parent: t.Optional["PNFGroup"] = None,
 		order: int = 0,
-		states: t.Sequence["AbstractState"] = (),
+		states: t.Sequence["AbstractStateMutator"] = (),
 	) -> None:
 		self.parent = parent
 		self.order = order
@@ -25,10 +25,10 @@ class PNFGroup:
 				)
 			self.states[type_] = state
 
-		if not ProgramState in self.states:
-			raise ValueError("Each group requires a `ProgramState`!")
+		if not ProgramStateMutator in self.states:
+			raise ValueError("Each group requires a `ProgramStateMutator`!")
 
-		self.program = self.states[ProgramState].program
+		self.program = self.states[ProgramStateMutator].program
 
 	def __gt__(self, other) -> bool:
 		if not isinstance(other, PNFGroup):

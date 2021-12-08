@@ -18,14 +18,14 @@ if t.TYPE_CHECKING:
 INDEX_TYPE = gl.GLuint
 
 class GroupData:
-	__slots__ = ("vertex_domain", "children")
+	__slots__ = ("vertex_list", "children")
 
 	def __init__(
 		self,
-		vertex_domain: t.Optional["PNFVertexDomain"] = None,
+		vertex_list: t.Optional["PNFVertexList"] = None,
 		children: t.Iterable["PNFGroup"] = (),
 	) -> None:
-		self.vertex_domain = vertex_domain
+		self.vertex_list = vertex_list
 		self.children = list(children)
 
 
@@ -206,10 +206,18 @@ class PNFVertexDomain:
 		self._allocator = allocation.Allocator(self.INITIAL_VERTEX_CAPACITY)
 		self.attributes: t.Dict[str, PNFVertexDomainAttribute] = {}
 		self._vaos: t.Dict[int, vertexarray.VertexArray] = {}
+		self._active_vao: t.Optional[vertexarray.VertexArray] = None
 
 		for attr in attribute_bundle:
 			name, *ctnu = self._parse_attribute(attr)
 			self.attributes[name] = PNFVertexDomainAttribute(*ctnu)
+
+		self._switch_cost = 7 * len(self.attributes)
+		"""
+		Cost value to switch to this vertex domain.
+		Hardcoded to be 7 per vertex format set per length of attributes.
+		Please note that I have no idea if this is a proper value at all.
+		"""
 
 	def _parse_attribute(self, attr: str) -> t.Tuple[str, int, int, bool, int]:
 		"""
@@ -267,6 +275,28 @@ class PNFVertexDomain:
 		# WARNING: Should shaders be deleted and their ids reassigned,
 		# this may fail in disgusting ways
 		self._vaos[shader.id] = vao
+
+	def bind_vao(self, program: "ShaderProgram") -> None:
+		"""
+		Binds the VAO for the shader program with the given ID.
+		Remember to call `unbind_vao` before calling **any** vertex
+		gl functions afterwards, otherwise it will be erroneously
+		affected.
+		Raises `KeyError` if `ensure_vao` was never called for the
+		given program.
+		"""
+		vao = self._vaos[program.id]
+		vao.bind()
+		self._active_vao = vao
+
+	def unbind_vao(self) -> None:
+		"""
+		Unbinds the active VAO. No action if none is bound.
+		"""
+		if self._active_vao is None:
+			return
+		self._active_vao.unbind()
+		self._active_vao = None
 
 	def allocate(self, size: int) -> int:
 		"""
@@ -343,9 +373,8 @@ class PNFBatch:
 		attr_names = [x[0] if isinstance(x, tuple) else str(x) for x in data]
 		self._add_group(group)
 
-		vtxd = self._get_vertex_domain(attr_names)
-		self._group_data[group].vertex_domain = vtxd
-		vtx_list = vtxd.create_vertex_list(size, group)
+		vtx_list = self._get_vertex_domain(attr_names).create_vertex_list(size, group)
+		self._group_data[group].vertex_list = vtx_list
 
 		# Set initial data
 		for x in data:

@@ -7,7 +7,7 @@ if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
 
 
-class AbstractState:
+class AbstractStateMutator:
 	def set(self) -> None:
 		pass
 
@@ -15,7 +15,7 @@ class AbstractState:
 		pass
 
 
-class ProgramState(AbstractState):
+class ProgramStateMutator(AbstractStateMutator):
 	cost = 333
 
 	def __init__(self, program: "ShaderProgram") -> None:
@@ -28,7 +28,7 @@ class ProgramState(AbstractState):
 		return self.program.id
 
 
-class TextureUnitState(AbstractState):
+class TextureUnitStateMutator(AbstractStateMutator):
 	cost = 5
 
 	def __init__(self, unit) -> None:
@@ -41,7 +41,7 @@ class TextureUnitState(AbstractState):
 		return self.unit
 
 
-class TextureState(AbstractState):
+class TextureStateMutator(AbstractStateMutator):
 	cost = 66
 
 	def __init__(self, texture) -> None:
@@ -54,7 +54,7 @@ class TextureState(AbstractState):
 		return self.texture
 
 
-class UBOBindingState(AbstractState):
+class UBOBindingStateMutator(AbstractStateMutator):
 	cost = 20
 
 	def __init__(self, ubo) -> None:
@@ -67,7 +67,7 @@ class UBOBindingState(AbstractState):
 		return self.ubo
 
 
-class EnableState(AbstractState):
+class EnableStateMutator(AbstractStateMutator):
 	cost = 1
 
 	def __init__(self, capability) -> None:
@@ -80,7 +80,7 @@ class EnableState(AbstractState):
 		return self.capability
 
 
-class BlendFuncState(AbstractState):
+class BlendFuncStateMutator(AbstractStateMutator):
 	cost = 1
 
 	def __init__(self, src, dest) -> None:
@@ -94,7 +94,12 @@ class BlendFuncState(AbstractState):
 		return (self.src, self.dest)
 
 
+class State:
+	def __init__(self) -> None:
+		self._states = {state: None for state in states}
+
+
 states = [
-	ProgramState, TextureUnitState, TextureState, UBOBindingState,
-	EnableState, BlendFuncState
+	ProgramStateMutator, TextureUnitStateMutator, TextureStateMutator, UBOBindingStateMutator,
+	EnableStateMutator, BlendFuncStateMutator
 ]

@@ -35,12 +35,12 @@ def make_states(
 	program: "ShaderProgram",
 ):
 	return (
-		s.ProgramState(program),
-		s.UBOBindingState(cam_ubo),
-		s.TextureUnitState(gl.GL_TEXTURE0),
-		s.TextureState(tex),
-		s.EnableState(gl.GL_BLEND),
-		s.BlendFuncState(blend_src, blend_dest),
+		s.ProgramStateMutator(program),
+		s.UBOBindingStateMutator(cam_ubo),
+		s.TextureUnitStateMutator(gl.GL_TEXTURE0),
+		s.TextureStateMutator(tex),
+		s.EnableStateMutator(gl.GL_BLEND),
+		s.BlendFuncStateMutator(blend_src, blend_dest),
 	)
 
 
@@ -282,8 +282,8 @@ class PNFSprite(SceneObject):
 				states = make_states(
 					self.camera.ubo,
 					self._texture,
-					old_group.states[s.BlendFuncState].src,
-					old_group.states[s.BlendFuncState].dest,
+					old_group.states[s.BlendFuncStateMutator].src,
+					old_group.states[s.BlendFuncStateMutator].dest,
 					old_group.program,
 				)
 			)
@@ -614,8 +614,8 @@ class PNFSprite(SceneObject):
 				states = make_states(
 					self.camera.ubo,
 					self._texture,
-					old_group.states[s.BlendFuncState].src,
-					old_group.states[s.BlendFuncState].dest,
+					old_group.states[s.BlendFuncStateMutator].src,
+					old_group.states[s.BlendFuncStateMutator].dest,
 					old_group.program,
 				)
 			)
