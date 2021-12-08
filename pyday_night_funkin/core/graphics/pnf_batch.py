@@ -23,7 +23,7 @@ class GroupData:
 	def __init__(
 		self,
 		vertex_domain: t.Optional["PNFVertexDomain"] = None,
-		children: t.Sequence["PNFGroup"] = (),
+		children: t.Iterable["PNFGroup"] = (),
 	) -> None:
 		self.vertex_domain = vertex_domain
 		self.children = list(children)
@@ -364,7 +364,7 @@ class PNFBatch:
 			f()
 
 	def draw_subset(self) -> None:
-		raise NotImplementedError()
+		raise NotImplementedError("This function was unused anyways")
 
 	def migrate(self, *args, **kwargs) -> None:
 		raise NotImplementedError("shut up pls")
