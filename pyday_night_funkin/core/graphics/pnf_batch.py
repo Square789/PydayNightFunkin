@@ -6,7 +6,7 @@ import typing as t
 
 from loguru import logger
 from pyglet.gl import gl
-from pyglet.graphics import allocation, vertexarray, vertexbuffer
+from pyglet.graphics import allocation, draw, vertexarray, vertexbuffer
 
 from pyday_night_funkin.core.graphics.draw_list_builder import DrawListBuilder
 
@@ -83,6 +83,8 @@ _USAGE_MAP = {
 	"stream": gl.GL_STREAM_DRAW,
 }
 
+_INDEX_TYPE = gl.GL_UNSIGNED_INT
+
 
 class PNFVertexList:
 	"""
@@ -97,6 +99,8 @@ class PNFVertexList:
 		vertex_domain: "PNFVertexDomain",
 		domain_position: int,
 		size: int,
+		draw_mode: int,
+		indices: t.Sequence[int],
 	) -> None:
 		self.vtxd = vertex_domain
 
@@ -114,6 +118,15 @@ class PNFVertexList:
 		self.size = size
 		"""
 		Amount of vertices in the vertex list.
+		"""
+
+		self.draw_mode = draw_mode
+		self.indices = indices
+		"""
+		Indices the vertex list's vertices should be drawn with.
+		These are absolute to the vertex domain's buffers, so taking
+		the example from `domain_position`'s docstring, [1, 2, 1] would
+		be valid and [0, 1, 3] would not.
 		"""
 
 	def __getattr__(self, name: str) -> t.Any:
@@ -250,6 +263,7 @@ class PNFVertexDomain:
 		if shader.id in self._vaos:
 			return
 
+		print(f"/// VAO SETUP FOR PROGRAM {shader.id}")
 		vao = vertexarray.VertexArray()
 		with vao:
 			for shader_attr in shader.attributes.values():
@@ -272,6 +286,7 @@ class PNFVertexDomain:
 					shader_attr.location, attr.count, attr.type, gl.GL_FALSE, 0, 0
 				)
 
+		print("/// VAO SETUP DONE")
 		# WARNING: Should shaders be deleted and their ids reassigned,
 		# this may fail in disgusting ways
 		self._vaos[shader.id] = vao
@@ -316,10 +331,13 @@ class PNFVertexDomain:
 		for attr in self.attributes.values():
 			attr.resize(new_size)
 
-	def create_vertex_list(self, vertex_amount: int, group: "PNFGroup") -> PNFVertexList:
+	def create_vertex_list(
+		self, vertex_amount: int, group: "PNFGroup", draw_mode: int, indices: t.Sequence[int]
+	) -> PNFVertexList:
 		self.ensure_vao(group.program)
 		start = self.allocate(vertex_amount)
-		return PNFVertexList(self, start, vertex_amount)
+		indices = tuple(start + i for i in indices)
+		return PNFVertexList(self, start, vertex_amount, draw_mode, indices)
 
 
 class PNFBatch:
@@ -340,6 +358,7 @@ class PNFBatch:
 		needs to be drawn."""
 
 		self._vertex_domains = {}
+		self._index_buffer = None
 
 	def _add_group(self, group: "PNFGroup") -> None:
 		if group.parent is None:
@@ -363,7 +382,18 @@ class PNFBatch:
 		return self._vertex_domains[attr_bundle]
 
 	def _regenerate_draw_list(self) -> None:
-		self._draw_list = DrawListBuilder().build(self._top_groups, self._group_data)
+		dl, indices = DrawListBuilder().build(self._top_groups, self._group_data)
+
+		indices = (_C_TYPE_MAP[_INDEX_TYPE] * len(indices))(*indices)
+		self._index_buffer = vertexbuffer.create_buffer(
+			_GL_TYPE_SIZES[_INDEX_TYPE] * len(indices),
+			gl.GL_ELEMENT_ARRAY_BUFFER,
+			gl.GL_STATIC_DRAW,
+		)
+		self._index_buffer.set_data(indices)
+		self._index_buffer.bind()
+
+		self._draw_list = dl
 		self._draw_list_dirty = False
 
 	def add(self, size, draw_mode, group, *data) -> PNFVertexList:
@@ -373,7 +403,9 @@ class PNFBatch:
 		attr_names = [x[0] if isinstance(x, tuple) else str(x) for x in data]
 		self._add_group(group)
 
-		vtx_list = self._get_vertex_domain(attr_names).create_vertex_list(size, group)
+		vtx_list = self._get_vertex_domain(attr_names).create_vertex_list(
+			size, group, draw_mode, indices
+		)
 		self._group_data[group].vertex_list = vtx_list
 
 		# Set initial data
@@ -389,8 +421,12 @@ class PNFBatch:
 		if self._draw_list_dirty:
 			self._regenerate_draw_list()
 
+		self._index_buffer.bind()
+		print("/// DRAWING")
 		for f in self._draw_list:
+			print("  / Calling", f)
 			f()
+		print("/// OK")
 
 	def draw_subset(self) -> None:
 		raise NotImplementedError("This function was unused anyways")

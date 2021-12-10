@@ -5,10 +5,10 @@ import typing as t
 from loguru import logger
 import pyglet
 
-# # IF THIS LANDS ON GITHUB I FAILED
-# # Ok see I commented out I remembered it ha
-# pyglet.options["debug_gl_trace"] = True
-# pyglet.options["debug_gl_trace_args"] = True
+# IF THIS LANDS ON GITHUB I FAILED
+# Ok see I commented out I remembered it ha
+pyglet.options["debug_gl_trace"] = True
+pyglet.options["debug_gl_trace_args"] = True
 
 from pyglet.window import key
 from pyglet.window.key import KeyStateHandler
@@ -75,8 +75,8 @@ class Game():
 		self._pending_scene_stack_removals = set()
 		self._pending_scene_stack_additions = []
 
-		self.push_scene(TitleScene)
-		# self.push_scene(TestScene)
+		# self.push_scene(TitleScene)
+		self.push_scene(TestScene)
 
 	def _on_scene_stack_change(self) -> None:
 		for self_attr, scene_attr in (

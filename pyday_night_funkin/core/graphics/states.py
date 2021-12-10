@@ -7,6 +7,7 @@ if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
 
 
+
 class AbstractStateMutator:
 	def set(self) -> None:
 		pass
@@ -94,10 +95,28 @@ class BlendFuncStateMutator(AbstractStateMutator):
 		return (self.src, self.dest)
 
 
-class State:
+class PseudoStateWall:
+	"""
+	I know, I'm great at naming things.
+	This class stores a pseudo GL state and provides methods
+	to run state mutators through it.
+	"""
 	def __init__(self) -> None:
 		self._states = {state: None for state in states}
 
+	def switch(
+		self,
+		muts: t.Dict[t.Type[AbstractStateMutator], AbstractStateMutator],
+	) -> t.List[t.Callable[[], None]]:
+		funcs = []
+		for t, m in muts.items():
+			cur = m.get_state_descriptor()
+			if self._states[t] == cur:
+				continue
+			funcs.append(m.set)
+			self._states[t] = cur
+
+		return funcs
 
 states = [
 	ProgramStateMutator, TextureUnitStateMutator, TextureStateMutator, UBOBindingStateMutator,
