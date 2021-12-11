@@ -20,7 +20,7 @@ from pyday_night_funkin.config import Config, CONTROL
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT, SFX_RING_SIZE
 from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.key_handler import KeyHandler
-from pyday_night_funkin.scenes import BaseScene, TestScene, TitleScene
+from pyday_night_funkin.scenes import BaseScene, TestScene, TitleScene, TriangleScene
 from pyday_night_funkin.sfx_ring import SFXRing
 
 
@@ -32,7 +32,7 @@ __version__ = "0.0.0dev"
 
 class Game():
 	def __init__(self) -> None:
-		self.debug = True
+		self.debug = False
 		# These have to be setup later, see `run`
 		self._update_time = 0
 		self._fps = None
@@ -75,8 +75,9 @@ class Game():
 		self._pending_scene_stack_removals = set()
 		self._pending_scene_stack_additions = []
 
-		# self.push_scene(TitleScene)
-		self.push_scene(TestScene)
+		self.push_scene(TriangleScene)
+		#self.push_scene(TitleScene)
+		#self.push_scene(TestScene)
 
 	def _on_scene_stack_change(self) -> None:
 		for self_attr, scene_attr in (

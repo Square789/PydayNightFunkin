@@ -6,7 +6,7 @@ import typing as t
 
 from loguru import logger
 from pyglet.gl import gl
-from pyglet.graphics import allocation, draw, vertexarray, vertexbuffer
+from pyglet.graphics import allocation, vertexarray, vertexbuffer
 
 from pyday_night_funkin.core.graphics.draw_list_builder import DrawListBuilder
 
@@ -83,7 +83,7 @@ _USAGE_MAP = {
 	"stream": gl.GL_STREAM_DRAW,
 }
 
-_INDEX_TYPE = gl.GL_UNSIGNED_INT
+_INDEX_TYPE = gl.GL_UNSIGNED_BYTE
 
 
 class PNFVertexList:
@@ -152,6 +152,7 @@ class PNFVertexList:
 class PNFVertexDomainAttribute:
 	def __init__(
 		self,
+		binding_point: int,
 		count: int,
 		type_: int,
 		normalize: bool,
@@ -159,6 +160,12 @@ class PNFVertexDomainAttribute:
 	) -> None:
 		self.count = count
 		"""Vertex attribute count. One of 1, 2, 3 or 4."""
+
+		self.binding_point = binding_point
+		"""
+		Binding point the attribute should be bound to. This is NOT the
+		shader location!
+		"""
 
 		self.type = type_
 		self.c_type = _C_TYPE_MAP[type_]
@@ -218,12 +225,12 @@ class PNFVertexDomain:
 		# NOTE: This allocator does not track bytes, but only vertices.
 		self._allocator = allocation.Allocator(self.INITIAL_VERTEX_CAPACITY)
 		self.attributes: t.Dict[str, PNFVertexDomainAttribute] = {}
-		self._vaos: t.Dict[int, vertexarray.VertexArray] = {}
+		self._vaos: t.Dict[int, gl.GLuint] = {}
 		self._active_vao: t.Optional[vertexarray.VertexArray] = None
 
-		for attr in attribute_bundle:
+		for i, attr in enumerate(attribute_bundle):
 			name, *ctnu = self._parse_attribute(attr)
-			self.attributes[name] = PNFVertexDomainAttribute(*ctnu)
+			self.attributes[name] = PNFVertexDomainAttribute(i, *ctnu)
 
 		self._switch_cost = 7 * len(self.attributes)
 		"""
@@ -264,32 +271,29 @@ class PNFVertexDomain:
 			return
 
 		print(f"/// VAO SETUP FOR PROGRAM {shader.id}")
-		vao = vertexarray.VertexArray()
-		with vao:
-			for shader_attr in shader.attributes.values():
-				# Attributes are linked with shaders by their name as passed
-				# in the vertex list
-				if shader_attr.name not in self.attributes:
-					raise ValueError(
-						f"Shader program {shader.id!r} contained vertex attribute {shader_attr},"
-						f"but {self.__class__.__name__} does not know {shader_attr.name!r}."
-					)
-				attr = self.attributes[shader_attr.name]
+		vao_id = gl.GLuint()
+		gl.glCreateVertexArrays(1, vao_id)
 
-				# NOTE: This may be replacable with the newer glVertexAttribFormat and
-				# glBindVertexBuffers!
-
-				# glVertexAttribPointer depends on this binding
-				gl.glBindBuffer(gl.GL_ARRAY_BUFFER, attr.gl_buffer.id)
-				gl.glEnableVertexAttribArray(shader_attr.location)
-				gl.glVertexAttribPointer(
-					shader_attr.location, attr.count, attr.type, gl.GL_FALSE, 0, 0
+		for shader_attr in shader.attributes.values():
+			# Attributes are linked with shaders by their name as passed
+			# in the vertex list
+			if shader_attr.name not in self.attributes:
+				raise ValueError(
+					f"Shader program {shader.id!r} contained vertex attribute {shader_attr},"
+					f"but {self.__class__.__name__} does not know {shader_attr.name!r}."
 				)
+			attr = self.attributes[shader_attr.name]
+			bp = attr.binding_point
+
+			gl.glEnableVertexArrayAttrib(vao_id.value, bp)
+			gl.glVertexArrayVertexBuffer(vao_id.value, bp, attr.gl_buffer.id, 0, attr.element_size)
+			gl.glVertexArrayAttribBinding(vao_id.value, shader_attr.location, bp)
+			gl.glVertexArrayAttribFormat(vao_id.value, bp, attr.count, attr.type, attr.normalize, 0)
 
 		print("/// VAO SETUP DONE")
 		# WARNING: Should shaders be deleted and their ids reassigned,
 		# this may fail in disgusting ways
-		self._vaos[shader.id] = vao
+		self._vaos[shader.id] = vao_id
 
 	def bind_vao(self, program: "ShaderProgram") -> None:
 		"""
@@ -301,16 +305,14 @@ class PNFVertexDomain:
 		given program.
 		"""
 		vao = self._vaos[program.id]
-		vao.bind()
+		gl.glBindVertexArray(vao.value)
 		self._active_vao = vao
 
 	def unbind_vao(self) -> None:
 		"""
-		Unbinds the active VAO. No action if none is bound.
+		Unbinds the active VAO.
 		"""
-		if self._active_vao is None:
-			return
-		self._active_vao.unbind()
+		gl.glBindVertexArray(0)
 		self._active_vao = None
 
 	def allocate(self, size: int) -> int:
@@ -339,7 +341,6 @@ class PNFVertexDomain:
 		indices = tuple(start + i for i in indices)
 		return PNFVertexList(self, start, vertex_amount, draw_mode, indices)
 
-
 class PNFBatch:
 	"""
 	Poor attempt at turning pyglet's drawing system upside down.
@@ -357,7 +358,7 @@ class PNFBatch:
 		"""List of functions to call in-order to draw everything that
 		needs to be drawn."""
 
-		self._vertex_domains = {}
+		self._vertex_domains: t.Dict[t.Tuple[str, ...], "PNFVertexDomain"] = {}
 		self._index_buffer = None
 
 	def _add_group(self, group: "PNFGroup") -> None:
@@ -382,7 +383,7 @@ class PNFBatch:
 		return self._vertex_domains[attr_bundle]
 
 	def _regenerate_draw_list(self) -> None:
-		dl, indices = DrawListBuilder().build(self._top_groups, self._group_data)
+		dl, indices = DrawListBuilder(_INDEX_TYPE).build(self._top_groups, self._group_data)
 
 		indices = (_C_TYPE_MAP[_INDEX_TYPE] * len(indices))(*indices)
 		self._index_buffer = vertexbuffer.create_buffer(
@@ -391,7 +392,11 @@ class PNFBatch:
 			gl.GL_STATIC_DRAW,
 		)
 		self._index_buffer.set_data(indices)
-		self._index_buffer.bind()
+		for dom in self._vertex_domains.values():
+			for vao in dom._vaos.values():
+				gl.glBindVertexArray(vao.value)
+				gl.glBindBuffer(self._index_buffer.target, self._index_buffer.id)
+				gl.glBindVertexArray(0)
 
 		self._draw_list = dl
 		self._draw_list_dirty = False
@@ -422,14 +427,30 @@ class PNFBatch:
 			self._regenerate_draw_list()
 
 		self._index_buffer.bind()
-		print("/// DRAWING")
+		# print("/// DRAWING")
 		for f in self._draw_list:
-			print("  / Calling", f)
+		#	print("  / Calling", f)
 			f()
-		print("/// OK")
+		#print("/// OK")
 
 	def draw_subset(self) -> None:
 		raise NotImplementedError("This function was unused anyways")
 
 	def migrate(self, *args, **kwargs) -> None:
 		raise NotImplementedError("shut up pls")
+
+	def _dump_draw_list(self) -> None:
+		print(self._dump())
+
+	def _dump(self) -> str:
+		r = ""
+		for k, v in self._vertex_domains.items():
+			r += repr(k) + ": " + repr(v) + "\n"
+			for an, attr in v.attributes.items():
+				r += f"  {an:<20}: {attr!r}\n"
+				r += (" " * 22) + ": " + ' '.join(f"{b}" for b in (attr.c_type * 100)(*attr.gl_buffer.data[:100])) + "\n"
+			r += "\n"
+
+		r += f"\nIndex buffer: {' '.join(map(str, self._index_buffer.data))}"
+
+		return r

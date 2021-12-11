@@ -1,5 +1,4 @@
 
-from ctypes import create_unicode_buffer
 import typing as t
 
 from loguru import logger
@@ -46,9 +45,7 @@ class GroupChain:
 def visit(group, group_data):
 	ret_chains = [[group]]
 	if not group_data[group].children:
-		# Don't nest childless groups in another GroupChain.
-		# I think this is right. Maybe. Hopefully.
-		return [group]
+		return ret_chains
 
 	sc = sorted(group_data[group].children)
 	cur_order = sc[0].order
@@ -67,9 +64,9 @@ def visit(group, group_data):
 
 
 class DrawListBuilder:
-	def __init__(self) -> None:
+	def __init__(self, index_type: int) -> None:
 		self.state = {type_: None for type_ in states.states}
-		self._index_type = gl.GL_UNSIGNED_INT
+		self._index_type = index_type
 
 	def build(self, top_groups, group_data):
 		chains = []
@@ -129,7 +126,6 @@ class DrawListBuilder:
 
 				# This unfortunately forces a new draw call
 				if (n_draw_mode != cur_draw_mode or cur_vertex_layout != n_vertex_layout):
-					logger.info(f"New draw call @ {agroup}")
 					if cur_vertex_layout != n_vertex_layout:
 						def bind_vao(d=agroup.vertex_list.vtxd, p=agroup.group.program):
 							d.bind_vao(p)
@@ -161,5 +157,7 @@ class DrawListBuilder:
 		):
 			gl.glDrawElements(m, c, t, s)
 		draw_list.append(final_draw_elements)
+
+		print(indices)
 
 		return draw_list, indices
