@@ -272,7 +272,6 @@ class PNFVertexDomain:
 		if shader.id in self._vaos:
 			return
 
-		print(f"/// VAO SETUP FOR PROGRAM {shader.id}")
 		vao_id = gl.GLuint()
 		gl.glCreateVertexArrays(1, ctypes.byref(vao_id))
 
@@ -292,7 +291,6 @@ class PNFVertexDomain:
 			gl.glVertexArrayAttribBinding(vao_id, shader_attr.location, bp)
 			gl.glVertexArrayAttribFormat(vao_id, bp, attr.count, attr.type, attr.normalize, 0)
 
-		print("/// VAO SETUP DONE")
 		# WARNING: Should shaders be deleted and their ids reassigned,
 		# this may fail in disgusting ways
 		self._vaos[shader.id] = vao_id
@@ -384,10 +382,12 @@ class PNFBatch:
 
 		return self._vertex_domains[attr_bundle]
 
-	def _regenerate_draw_list(self) -> None:
-		dl, indices = DrawListBuilder(_INDEX_TYPE).build(self._top_groups, self._group_data)
-
-		indices = (_C_TYPE_MAP[_INDEX_TYPE] * len(indices))(*indices)
+	def _set_index_buffer(self, data: t.Sequence[int]) -> None:
+		"""
+		Sets the content of the index buffer to the given data and
+		refreshes all VAOs of all vertex domains to use it.
+		"""
+		indices = (_C_TYPE_MAP[_INDEX_TYPE] * len(data))(*data)
 		self._index_buffer = vertexbuffer.create_buffer(
 			_GL_TYPE_SIZES[_INDEX_TYPE] * len(indices),
 			gl.GL_ELEMENT_ARRAY_BUFFER,
@@ -400,6 +400,9 @@ class PNFBatch:
 				gl.glBindBuffer(self._index_buffer.target, self._index_buffer.id)
 				gl.glBindVertexArray(0)
 
+	def _regenerate_draw_list(self) -> None:
+		dl, indices = DrawListBuilder(_INDEX_TYPE).build(self._top_groups, self._group_data)
+		self._set_index_buffer(indices)
 		self._draw_list = dl
 		self._draw_list_dirty = False
 

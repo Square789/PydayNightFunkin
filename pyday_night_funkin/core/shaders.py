@@ -62,14 +62,14 @@ void main() {{
 	m_camera_pre_trans[3][0] = -camera.GAME_DIMENSIONS.x / 2;
 	m_camera_pre_trans[3][1] = -camera.GAME_DIMENSIONS.y / 2;
 
-	gl_Position = \\
-		window.projection * \\
-		window.view * \\
-		m_camera_trans_scale * \\
-		m_camera_pre_trans * \\
-		m_trans_scale * \\
-		m_rotation * \\
-		vec4(position, 0, 1) \\
+	gl_Position =
+		window.projection *
+		window.view *
+		m_camera_trans_scale *
+		m_camera_pre_trans *
+		m_trans_scale *
+		m_rotation *
+		vec4(position, 0, 1)
 	;
 
 	vertex_colors = colors;

@@ -7,7 +7,9 @@ from pyglet import gl
 from pyday_night_funkin.core.graphics import states
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.graphics.pnf_batch import PNFVertexList, PNFVertexDomain
+	from pyday_night_funkin.core.graphics.pnf_batch import (
+		PNFVertexList, PNFVertexDomain, GroupData
+	)
 	from pyday_night_funkin.core.graphics.pnf_group import PNFGroup
 
 
@@ -42,21 +44,26 @@ class GroupChain:
 		return r
 
 
-def visit(group, group_data):
+def visit(
+	group: "PNFGroup", group_data: t.Dict["PNFGroup", "GroupData"]
+) -> t.List[t.List["PNFGroup"]]:
 	ret_chains = [[group]]
 	if not group_data[group].children:
 		return [[group]]
 
+	# The only case where order can be dropped is if many childless
+	# groups of same order are on the same level.
 	sc = sorted(group_data[group].children)
 	cur_order = sc[0].order
-	cur_group_list = []
+	cur_group_list: t.List["PNFGroup"] = []
 	for child_group in sc:
 		if child_group.order != cur_order:
 			ret_chains.append(cur_group_list)
 			cur_group_list = []
 			cur_order = child_group.order
 
-		cur_group_list.extend(visit(child_group, group_data))
+		for subchain in visit(child_group, group_data):
+			cur_group_list.extend(subchain)
 
 	if cur_group_list:
 		ret_chains.append(cur_group_list)
@@ -73,6 +80,10 @@ class DrawListBuilder:
 		for group in sorted(top_groups):
 			chains.extend(visit(group, group_data))
 
+		# Le debug block
+		print("=== Raw group chains:")
+		print(*chains, sep="\n", end="\n\n")
+
 		new_chains = []
 		for chain in chains:
 			groups = []
@@ -84,8 +95,6 @@ class DrawListBuilder:
 				new_chains.append(GroupChain(groups))
 
 		# Le debug block
-		print("=== Raw group chains:")
-		print(*chains, sep="\n", end="\n\n")
 		print("=== Chains:")
 		print(*new_chains, sep="\n", end="\n\n")
 
@@ -128,13 +137,17 @@ class DrawListBuilder:
 				if (n_draw_mode != cur_draw_mode or cur_vertex_layout != n_vertex_layout):
 					if cur_vertex_layout != n_vertex_layout:
 						def bind_vao(d=agroup.vertex_list.vtxd, p=agroup.group.program):
-							for n, att in d.attributes.items():
+							# TODO: Buffers store their data locally and need to be bound
+							# to upload it. Maybe there's something that would be able to
+							# get rid of these bind calls below.
+							# (glMapNamedBufferRange?)
+							for att in d.attributes.values():
 								att.gl_buffer.bind()
 							d.bind_vao(p)
 						draw_list.append(bind_vao)
 
 					# Accumulate all indices so far into a draw call if there were any
-					# (Should just catch the first group)
+					# (The if statement should just catch the first group)
 					if cur_index_run > 0:
 						def draw_elements(
 							m=cur_draw_mode, c=cur_index_run, t=self._index_type, s=cur_index_start
@@ -159,7 +172,5 @@ class DrawListBuilder:
 		):
 			gl.glDrawElements(m, c, t, s)
 		draw_list.append(final_draw_elements)
-
-		print(indices)
 
 		return draw_list, indices
