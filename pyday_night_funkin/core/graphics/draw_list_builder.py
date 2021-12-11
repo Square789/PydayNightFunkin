@@ -45,7 +45,7 @@ class GroupChain:
 def visit(group, group_data):
 	ret_chains = [[group]]
 	if not group_data[group].children:
-		return ret_chains
+		return [[group]]
 
 	sc = sorted(group_data[group].children)
 	cur_order = sc[0].order
@@ -103,7 +103,7 @@ class DrawListBuilder:
 		# Unfortunately, I am too stupid to figure out how.
 
 		if not chains:
-			return []
+			return [], []
 
 		draw_list = []
 		state_wall = states.PseudoStateWall()
@@ -128,6 +128,8 @@ class DrawListBuilder:
 				if (n_draw_mode != cur_draw_mode or cur_vertex_layout != n_vertex_layout):
 					if cur_vertex_layout != n_vertex_layout:
 						def bind_vao(d=agroup.vertex_list.vtxd, p=agroup.group.program):
+							for n, att in d.attributes.items():
+								att.gl_buffer.bind()
 							d.bind_vao(p)
 						draw_list.append(bind_vao)
 

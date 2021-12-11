@@ -1,3 +1,7 @@
+"""
+Extremely rudimentary test scene used for custom
+batch debugging.
+"""
 
 import typing as t
 
@@ -19,7 +23,7 @@ vertex_shader = """
 in vec2 position;
 in vec3 color;
 
-out vec4 color_vo;
+out vec3 color_vo;
 
 
 uniform WindowBlock {
@@ -38,18 +42,18 @@ layout (std140) uniform CameraAttrs {
 
 
 void main() {
-	color_vo = vec4(color, 1.0);
-	gl_Position = vec4(position.xy, 0.0, 1.0);
+	color_vo = color;
+	gl_Position = window.projection * window.view * vec4(position.xy, 0.0, 1.0);
 }
 """
 
 fragment_shader = """
 #version 450
-in vec4 color_vo;
+in vec3 color_vo;
 out vec4 color_fo;
 
 void main() {
-	color_fo = color_vo;
+	color_fo = vec4(color_vo, 1.0);
 }
 
 """
@@ -58,7 +62,7 @@ triangle_shader_container = ShaderContainer(vertex_shader, fragment_shader)
 
 
 class Triangle(SceneObject):
-	def __init__(self, batch, group) -> None:
+	def __init__(self, batch, group, x, y) -> None:
 		self._context = Context(
 			batch, 
 			PNFGroup(
@@ -67,8 +71,9 @@ class Triangle(SceneObject):
 				[st.ProgramStateMutator(triangle_shader_container.get_program())]
 			),
 		)
+		self._x = x
+		self._y = y
 		self._create_vertex_list()
-
 
 	def set_context(self, parent_context: "Context") -> None:
 		self._context = Context(
@@ -83,8 +88,12 @@ class Triangle(SceneObject):
 	def _create_vertex_list(self) -> None:
 		self._vl = self._context.batch.add_indexed(
 			3, gl.GL_TRIANGLES, self._context.group, [0, 1, 2],
-			("position2f/dynamic", (1.0, 1.0, 100.0, 1.0, 1.0, 100.0)),
-			("color3Bn/static", (170, 0, 0) * 3),
+			("position2f/dynamic", (
+				self._x,         self._y,
+				self._x + 100.0, self._y,
+				self._x,         self._y + 100.0,
+			)),
+			("color3Bn/static", (170, 0, 0, 0, 170, 0, 0, 0, 170)),
 		)
 
 
@@ -92,7 +101,9 @@ class TriangleScene(BaseScene):
 	def __init__(self, game: "Game") -> None:
 		super().__init__(game)
 
-		self.triangle = Triangle(self.batch, None)
+		self.tri0 = Triangle(self.batch, None, 0, 0.7)
+		self.tri1 = Triangle(self.batch, None, -20, 60)
+		self.tri2 = Triangle(self.batch, None, 200, 100)
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:

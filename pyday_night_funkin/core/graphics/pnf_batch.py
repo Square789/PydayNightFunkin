@@ -133,11 +133,13 @@ class PNFVertexList:
 		att = self.vtxd.attributes[name]
 		byte_size = self.size * att.element_size
 
-		return att.gl_buffer.get_region(
+		region = att.gl_buffer.get_region(
 			self.domain_position * att.element_size,
 			byte_size,
 			ctypes.POINTER(att.c_type * (self.size * att.count)),
-		).array
+		)
+		region.invalidate()
+		return region.array
 
 	def __setattr__(self, name: str, value: t.Any) -> None:
 		if "domain" in self.__dict__ and name in self.__dict__["domain"].attributes:
@@ -155,7 +157,7 @@ class PNFVertexDomainAttribute:
 		binding_point: int,
 		count: int,
 		type_: int,
-		normalize: bool,
+		normalize: int,
 		usage: int,
 	) -> None:
 		self.count = count
@@ -252,7 +254,7 @@ class PNFVertexDomain:
 
 		count = int(count)
 		type_ = _TYPE_MAP[type_]
-		normalize = bool(norm)
+		normalize = gl.GL_TRUE if norm else gl.GL_FALSE
 		usage = _USAGE_MAP[usage]
 
 		if count not in range(1, 5):
@@ -272,7 +274,7 @@ class PNFVertexDomain:
 
 		print(f"/// VAO SETUP FOR PROGRAM {shader.id}")
 		vao_id = gl.GLuint()
-		gl.glCreateVertexArrays(1, vao_id)
+		gl.glCreateVertexArrays(1, ctypes.byref(vao_id))
 
 		for shader_attr in shader.attributes.values():
 			# Attributes are linked with shaders by their name as passed
@@ -285,10 +287,10 @@ class PNFVertexDomain:
 			attr = self.attributes[shader_attr.name]
 			bp = attr.binding_point
 
-			gl.glEnableVertexArrayAttrib(vao_id.value, bp)
-			gl.glVertexArrayVertexBuffer(vao_id.value, bp, attr.gl_buffer.id, 0, attr.element_size)
-			gl.glVertexArrayAttribBinding(vao_id.value, shader_attr.location, bp)
-			gl.glVertexArrayAttribFormat(vao_id.value, bp, attr.count, attr.type, attr.normalize, 0)
+			gl.glEnableVertexArrayAttrib(vao_id, bp)
+			gl.glVertexArrayVertexBuffer(vao_id, bp, attr.gl_buffer.id, 0, attr.element_size)
+			gl.glVertexArrayAttribBinding(vao_id, shader_attr.location, bp)
+			gl.glVertexArrayAttribFormat(vao_id, bp, attr.count, attr.type, attr.normalize, 0)
 
 		print("/// VAO SETUP DONE")
 		# WARNING: Should shaders be deleted and their ids reassigned,
@@ -305,7 +307,7 @@ class PNFVertexDomain:
 		given program.
 		"""
 		vao = self._vaos[program.id]
-		gl.glBindVertexArray(vao.value)
+		gl.glBindVertexArray(vao)
 		self._active_vao = vao
 
 	def unbind_vao(self) -> None:
@@ -353,7 +355,7 @@ class PNFBatch:
 		self._top_groups = []
 		self._group_data = defaultdict(GroupData)
 
-		self._draw_list_dirty = False
+		self._draw_list_dirty = True
 		self._draw_list = []
 		"""List of functions to call in-order to draw everything that
 		needs to be drawn."""
@@ -394,7 +396,7 @@ class PNFBatch:
 		self._index_buffer.set_data(indices)
 		for dom in self._vertex_domains.values():
 			for vao in dom._vaos.values():
-				gl.glBindVertexArray(vao.value)
+				gl.glBindVertexArray(vao)
 				gl.glBindBuffer(self._index_buffer.target, self._index_buffer.id)
 				gl.glBindVertexArray(0)
 
@@ -448,7 +450,13 @@ class PNFBatch:
 			r += repr(k) + ": " + repr(v) + "\n"
 			for an, attr in v.attributes.items():
 				r += f"  {an:<20}: {attr!r}\n"
-				r += (" " * 22) + ": " + ' '.join(f"{b}" for b in (attr.c_type * 100)(*attr.gl_buffer.data[:100])) + "\n"
+				arr_ptr = ctypes.cast(attr.gl_buffer.data, ctypes.POINTER(attr.c_type))
+				r += (" " * 22) + ": "
+				r += ' '.join(
+					str(arr_ptr[x])
+					for x in range(min(100, attr.gl_buffer.size // ctypes.sizeof(attr.c_type)))
+				)
+				r += "\n"
 			r += "\n"
 
 		r += f"\nIndex buffer: {' '.join(map(str, self._index_buffer.data))}"

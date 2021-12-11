@@ -5,10 +5,10 @@ import typing as t
 from loguru import logger
 import pyglet
 
-# IF THIS LANDS ON GITHUB I FAILED
-# Ok see I commented out I remembered it ha
-pyglet.options["debug_gl_trace"] = True
-pyglet.options["debug_gl_trace_args"] = True
+# # IF THIS LANDS ON GITHUB I FAILED
+# # Ok see I commented out I remembered it ha
+# pyglet.options["debug_gl_trace"] = True
+# pyglet.options["debug_gl_trace_args"] = True
 
 from pyglet.window import key
 from pyglet.window.key import KeyStateHandler
@@ -32,7 +32,8 @@ __version__ = "0.0.0dev"
 
 class Game():
 	def __init__(self) -> None:
-		self.debug = False
+		self.debug = True
+		self.use_debug_pane = False
 		# These have to be setup later, see `run`
 		self._update_time = 0
 		self._fps = None
@@ -75,9 +76,9 @@ class Game():
 		self._pending_scene_stack_removals = set()
 		self._pending_scene_stack_additions = []
 
-		self.push_scene(TriangleScene)
 		#self.push_scene(TitleScene)
 		#self.push_scene(TestScene)
+		self.push_scene(TriangleScene)
 
 	def _on_scene_stack_change(self) -> None:
 		for self_attr, scene_attr in (
@@ -102,7 +103,7 @@ class Game():
 		# different contexts? Yeah idk about OpenGL, but it will lead to
 		# unexpected errors later when switching scenes and often recreating
 		# VAOs.
-		if self.debug:
+		if self.debug and self.use_debug_pane:
 			def debug_setup(_):
 				self._fps = [perf_counter() * 1000, 0, "?"]
 				self.debug_pane = DebugPane(8)
@@ -157,7 +158,7 @@ class Game():
 		for scene in self._scenes_to_draw:
 			scene.draw()
 
-		if self.debug:
+		if self.use_debug_pane:
 			self.debug_pane.draw()
 			self._fps_bump()
 			draw_time = (perf_counter() - stime) * 1000
