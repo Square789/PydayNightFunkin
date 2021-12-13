@@ -108,7 +108,7 @@ class DrawListBuilder:
 		Takes a list of annotated groups and spits out a series of
 		OpenGL calls and index arrays to render them.
 		"""
-		# TODO: This can be optimized further.
+		# TODO: This can certainly be optimized further by reordering groups.
 		# Unfortunately, I am too stupid to figure out how.
 
 		if not chains:
@@ -123,24 +123,29 @@ class DrawListBuilder:
 		cur_index_start = 0
 		cur_index_run = 0
 
-		# Things that WILL require another draw call:
-		# VertexDomain switches
-		# Draw mode switches
-		# VertexDomain change is much more serious than using a different draw mode!
-
 		for chain in chains:
 			for agroup in chain.groups:
+				# Extend the draw list with necessary state switch calls
+				state_switches = state_wall.switch(agroup.group.states)
+
 				n_vertex_layout = (agroup.vertex_list.vtxd, agroup.group.program.id)
 				n_draw_mode = agroup.vertex_list.draw_mode
 
-				# This unfortunately forces a new draw call
-				if (n_draw_mode != cur_draw_mode or cur_vertex_layout != n_vertex_layout):
+				# Any of these unfortunately force a new draw call
+				if (
+					state_switches or
+					n_draw_mode != cur_draw_mode or
+					cur_vertex_layout != n_vertex_layout
+				):
 					if cur_vertex_layout != n_vertex_layout:
 						def bind_vao(d=agroup.vertex_list.vtxd, p=agroup.group.program):
 							# TODO: Buffers store their data locally and need to be bound
-							# to upload it. Maybe there's something that would be able to
-							# get rid of these bind calls below.
-							# (glMapNamedBufferRange?)
+							# to upload it.
+							# This binding would always occurr in pyglet's default renderer
+							# since it does not utilize VAOs, but needs to be
+							# done explicitly here.
+							# Maybe there's something that would be able to
+							# get rid of these bind calls. (glMapNamedBufferRange?)
 							for att in d.attributes.values():
 								att.gl_buffer.bind()
 							d.bind_vao(p)
@@ -159,9 +164,8 @@ class DrawListBuilder:
 
 					cur_vertex_layout = n_vertex_layout
 					cur_draw_mode = n_draw_mode
+					draw_list.extend(state_switches)
 
-				# Extend the draw list with necessary state switch calls
-				draw_list.extend(state_wall.switch(agroup.group.states))
 				# Extend vertex indices
 				indices.extend(agroup.vertex_list.indices)
 				cur_index_run += len(agroup.vertex_list.indices)

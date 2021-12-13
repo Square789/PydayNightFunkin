@@ -407,7 +407,12 @@ class PNFBatch:
 		self._draw_list_dirty = False
 
 	def add(self, size, draw_mode, group, *data) -> PNFVertexList:
-		raise NotImplementedError("yeah yeah")
+		# NOTE: This is somewhat iffy, but on the other hand allowing non-
+		# indexed vertex lists would mean even more frequent switches between
+		# draw calls.
+		# Plus, in this project, most things are sprites anyways, which are
+		# always indexed.
+		return self.add_indexed(self, size, draw_mode, group, [*range(size)], *data)
 
 	def add_indexed(self, size, draw_mode, group, indices, *data) -> PNFVertexList:
 		attr_names = [x[0] if isinstance(x, tuple) else str(x) for x in data]
