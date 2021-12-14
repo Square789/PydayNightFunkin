@@ -5,6 +5,7 @@ from loguru import logger
 from pyglet import gl
 
 from pyday_night_funkin.core.graphics import states
+from pyday_night_funkin.core.graphics.shared import GL_TYPE_SIZES
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.graphics.pnf_batch import (
@@ -74,6 +75,7 @@ class DrawListBuilder:
 	def __init__(self, index_type: int) -> None:
 		self.state = {type_: None for type_ in states.states}
 		self._index_type = index_type
+		self._index_type_size = GL_TYPE_SIZES[index_type]
 
 	def build(self, top_groups, group_data):
 		chains = []
@@ -137,6 +139,17 @@ class DrawListBuilder:
 					n_draw_mode != cur_draw_mode or
 					cur_vertex_layout != n_vertex_layout
 				):
+					# Accumulate all indices so far into a draw call if there were any
+					if cur_index_run > 0:
+						def draw_elements(
+							m=cur_draw_mode, c=cur_index_run, t=self._index_type, s=cur_index_start
+						):
+							gl.glDrawElements(m, c, t, s * self._index_type_size)
+						draw_list.append(draw_elements)
+
+						cur_index_start += cur_index_run
+						cur_index_run = 0
+
 					if cur_vertex_layout != n_vertex_layout:
 						def bind_vao(d=agroup.vertex_list.vtxd, p=agroup.group.program):
 							# TODO: Buffers store their data locally and need to be bound
@@ -149,20 +162,10 @@ class DrawListBuilder:
 							for att in d.attributes.values():
 								att.gl_buffer.bind()
 							d.bind_vao(p)
+
 						draw_list.append(bind_vao)
+						cur_vertex_layout = n_vertex_layout
 
-					# Accumulate all indices so far into a draw call if there were any
-					# (The if statement should just catch the first group)
-					if cur_index_run > 0:
-						def draw_elements(
-							m=cur_draw_mode, c=cur_index_run, t=self._index_type, s=cur_index_start
-						):
-							gl.glDrawElements(m, c, t, s)
-						draw_list.append(draw_elements)
-						cur_index_start += cur_index_run
-						cur_index_run = 0
-
-					cur_vertex_layout = n_vertex_layout
 					cur_draw_mode = n_draw_mode
 					draw_list.extend(state_switches)
 
@@ -172,9 +175,12 @@ class DrawListBuilder:
 
 		# Final draw call
 		def final_draw_elements(
-			m=cur_draw_mode, c=cur_index_run, t=self._index_type, s=cur_index_start
+			m=cur_draw_mode, c=cur_index_run, t=self._index_type, s=cur_index_start,
+			v=cur_vertex_layout[0]
 		):
-			gl.glDrawElements(m, c, t, s)
+			gl.glDrawElements(m, c, t, s * self._index_type_size)
+			v.unbind_vao()
+
 		draw_list.append(final_draw_elements)
 
 		return draw_list, indices

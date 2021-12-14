@@ -9,13 +9,12 @@ from pyglet.gl import gl
 from pyglet.graphics import allocation, vertexarray, vertexbuffer
 
 from pyday_night_funkin.core.graphics.draw_list_builder import DrawListBuilder
+from pyday_night_funkin.core.graphics.shared import C_TYPE_MAP, GL_TYPE_SIZES, TYPE_MAP, USAGE_MAP
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
 	from .pnf_group import PNFGroup
 
-
-INDEX_TYPE = gl.GLuint
 
 class GroupData:
 	__slots__ = ("vertex_list", "children")
@@ -44,46 +43,7 @@ def nearest_pow2(v):
 
 RE_VERTEX_FORMAT = re.compile("(.*)(\d)(.)(n?)/(static|dynamic|stream)")
 
-_TYPE_MAP = {
-	'B': gl.GL_UNSIGNED_BYTE,
-	'b': gl.GL_BYTE,
-	'd': gl.GL_DOUBLE,
-	'I': gl.GL_UNSIGNED_INT,
-	'i': gl.GL_INT,
-	'f': gl.GL_FLOAT,
-	'S': gl.GL_UNSIGNED_SHORT,
-	's': gl.GL_SHORT,
-}
-
-_C_TYPE_MAP = {
-	gl.GL_UNSIGNED_BYTE: ctypes.c_ubyte,
-	gl.GL_BYTE: ctypes.c_byte,
-	gl.GL_DOUBLE: ctypes.c_double,
-	gl.GL_UNSIGNED_INT: ctypes.c_uint,
-	gl.GL_INT: ctypes.c_int,
-	gl.GL_FLOAT: ctypes.c_float,
-	gl.GL_UNSIGNED_SHORT: ctypes.c_ushort,
-	gl.GL_SHORT: ctypes.c_short,
-}
-
-_GL_TYPE_SIZES = {
-	gl.GL_UNSIGNED_BYTE: 1,
-	gl.GL_BYTE: 1,
-	gl.GL_DOUBLE: 8,
-	gl.GL_UNSIGNED_INT: 4,
-	gl.GL_INT: 4,
-	gl.GL_FLOAT: 4,
-	gl.GL_UNSIGNED_SHORT: 2,
-	gl.GL_SHORT: 2,
-}
-
-_USAGE_MAP = {
-	"static": gl.GL_STATIC_DRAW,
-	"dynamic": gl.GL_DYNAMIC_DRAW,
-	"stream": gl.GL_STREAM_DRAW,
-}
-
-_INDEX_TYPE = gl.GL_UNSIGNED_BYTE
+_INDEX_TYPE = gl.GL_UNSIGNED_INT
 
 
 class PNFVertexList:
@@ -170,8 +130,8 @@ class PNFVertexDomainAttribute:
 		"""
 
 		self.type = type_
-		self.c_type = _C_TYPE_MAP[type_]
-		self.element_size = _GL_TYPE_SIZES[type_] * count
+		self.c_type = C_TYPE_MAP[type_]
+		self.element_size = GL_TYPE_SIZES[type_] * count
 		"""
 		Size of a single attribute in bytes, i. e. `2f` -> 8; `3B` -> 3
 		"""
@@ -253,9 +213,9 @@ class PNFVertexDomain:
 		name, count, type_, norm, usage = re_res.groups()
 
 		count = int(count)
-		type_ = _TYPE_MAP[type_]
+		type_ = TYPE_MAP[type_]
 		normalize = gl.GL_TRUE if norm else gl.GL_FALSE
-		usage = _USAGE_MAP[usage]
+		usage = USAGE_MAP[usage]
 
 		if count not in range(1, 5):
 			raise ValueError(f"Vertex attribute count must be 1, 2, 3 or 4; was {count}!")
@@ -387,9 +347,12 @@ class PNFBatch:
 		Sets the content of the index buffer to the given data and
 		refreshes all VAOs of all vertex domains to use it.
 		"""
-		indices = (_C_TYPE_MAP[_INDEX_TYPE] * len(data))(*data)
+		indices = (C_TYPE_MAP[_INDEX_TYPE] * len(data))(*data)
+		if self._index_buffer is not None:
+			self._index_buffer.delete()
+
 		self._index_buffer = vertexbuffer.create_buffer(
-			_GL_TYPE_SIZES[_INDEX_TYPE] * len(indices),
+			GL_TYPE_SIZES[_INDEX_TYPE] * len(indices),
 			gl.GL_ELEMENT_ARRAY_BUFFER,
 			gl.GL_STATIC_DRAW,
 		)
@@ -437,11 +400,11 @@ class PNFBatch:
 			self._regenerate_draw_list()
 
 		self._index_buffer.bind()
-		# print("/// DRAWING")
+		# print("<<< DRAWING")
 		for f in self._draw_list:
-		#	print("  / Calling", f)
+			# print("/ Calling", f)
 			f()
-		#print("/// OK")
+		# print("    DRAWING DONE >>>\n")
 
 	def draw_subset(self) -> None:
 		raise NotImplementedError("This function was unused anyways")

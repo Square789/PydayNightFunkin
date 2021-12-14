@@ -9,9 +9,11 @@ import typing as t
 from pyglet import gl
 from pyglet.window.key import LEFT, UP, DOWN, RIGHT, V, X, Z
 
+from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.states as st
+from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene_object import SceneObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 
@@ -19,6 +21,7 @@ from pyday_night_funkin.scenes import BaseScene
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
+	from pyday_night_funkin.types import Numeric
 
 vertex_shader = """
 #version 450
@@ -58,8 +61,8 @@ void main() {
 	gl_Position =
 		window.projection *
 		window.view *
-		// m_camera_trans_scale *
-		// m_camera_pre_trans *
+		m_camera_trans_scale *
+		m_camera_pre_trans *
 		vec4(position.xy, 0.0, 1.0)
 	;
 }
@@ -85,7 +88,7 @@ class Triangle(SceneObject):
 		self.cam_ubo = cam_ubo
 
 		self._context = Context(
-			batch, 
+			batch,
 			PNFGroup(group, 0, self.build_mutators()),
 		)
 
@@ -114,18 +117,37 @@ class Triangle(SceneObject):
 			("color3Bn/static", (170, 0, 0, 0, 170, 0, 0, 0, 170)),
 		)
 
+	@property
+	def x(self) -> "Numeric":
+		return self._x
+
+	@x.setter
+	def x(self, new_x: "Numeric") -> None:
+		self._x = new_x
+		self._vl.position[:] = (new_x, self._y, new_x + 100.0, self._y, new_x, self._y + 100.0)
+
+	@property
+	def y(self) -> "Numeric":
+		return self._y
+
+	@y.setter
+	def y(self, new_y: "Numeric") -> None:
+		self._y = new_y
+		self._vl.position[:] = (self._x, new_y, self._x + 100.0, new_y, self._x, new_y + 100.0)
+
 
 class TriangleScene(BaseScene):
 	def __init__(self, game: "Game") -> None:
 		super().__init__(game)
 
 		ubo = self._default_camera.ubo
-		self.tri0 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, 0, 0.7)
-		self.tri1 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, -20, 60)
-		self.tri2 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, 200, 100)
-		# self.tri0 = Triangle(self.batch, None, ubo, 0, 0.7)
-		# self.tri1 = Triangle(self.batch, None, ubo, -20, 60)
-		# self.tri2 = Triangle(self.batch, None, ubo, 200, 100)
+		#self.tri0 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, 0, 0.7)
+		#self.tri1 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, -20, 60)
+		#self.tri2 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, 200, 100)
+
+		self.please_work = self.create_sprite(
+			"main", None, image=load_asset(ASSETS.IMG.NEWGROUNDS_LOGO), x=50, y=50
+		)
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
@@ -146,11 +168,3 @@ class TriangleScene(BaseScene):
 			self._default_camera.zoom += .01
 		if self.game.pyglet_ksh[X]:
 			self._default_camera.zoom -= .01
-
-		if self.game.pyglet_ksh[V]:
-			print(self._default_camera.ubo.read())
-			fmt = "f4x2f2f"
-			print(struct.unpack(fmt, self._default_camera.ubo.read()[:struct.calcsize(fmt)]))
-
-		# self._default_camera.ubo.buffer.bind()
-		# self._default_camera.ubo.bind()

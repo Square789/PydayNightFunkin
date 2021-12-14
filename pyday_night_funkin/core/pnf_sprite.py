@@ -14,9 +14,7 @@ from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimat
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.states as s
 from pyday_night_funkin.core.scene_object import SceneObject
-from pyday_night_funkin.core.shaders import (
-	PNFSpriteVertexShader, PNFSpriteFragmentShader, ShaderContainer
-)
+from pyday_night_funkin.core.shaders import ShaderContainer
 from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
@@ -27,21 +25,123 @@ if t.TYPE_CHECKING:
 EffectBound = t.TypeVar("EffectBound", bound="Effect")
 
 
-def make_states(
-	cam_ubo: "UniformBufferObject",
-	tex: "Texture",
-	blend_src: int,
-	blend_dest: int,
-	program: "ShaderProgram",
-):
-	return (
-		s.ProgramStateMutator(program),
-		s.UBOBindingStateMutator(cam_ubo),
-		s.TextureUnitStateMutator(gl.GL_TEXTURE0),
-		s.TextureStateMutator(tex),
-		s.EnableStateMutator(gl.GL_BLEND),
-		s.BlendFuncStateMutator(blend_src, blend_dest),
-	)
+_PNF_SPRITE_VERTEX_SHADER_SOURCE = """
+#version 330
+
+in vec2 anim_offset;
+in vec2 frame_offset;
+in vec2 translate;
+in vec4 colors;
+in vec3 tex_coords;
+in vec2 scale;
+in vec2 position;
+in vec2 scroll_factor;
+in float rotation;
+
+out vec4 vertex_colors;
+out vec3 texture_coords;
+
+uniform WindowBlock {{
+	mat4 projection;
+	mat4 view;
+}} window;
+
+// Not really sure about having GAME_DIMENSIONS here
+// since it's by all means a constant
+
+layout (std140) uniform CameraAttrs {{
+	float zoom;
+	vec2  position;
+	vec2  GAME_DIMENSIONS;
+}} camera;
+
+
+mat4 m_trans_scale = mat4(1.0);
+mat4 m_rotation = mat4(1.0);
+mat4 m_camera_trans_scale = mat4(1.0);
+mat4 m_camera_pre_trans = mat4(1.0);
+
+
+void main() {{
+	m_trans_scale[3][0] = translate.x + anim_offset.x + frame_offset.x * scale.x;
+	m_trans_scale[3][1] = translate.y + anim_offset.y + frame_offset.y * scale.y;
+	m_trans_scale[0][0] = scale.x;
+	m_trans_scale[1][1] = scale.y;
+	m_rotation[0][0] =  cos(-radians(rotation));
+	m_rotation[0][1] =  sin(-radians(rotation));
+	m_rotation[1][0] = -sin(-radians(rotation));
+	m_rotation[1][1] =  cos(-radians(rotation));
+	// Camera transform and zoom scale
+	m_camera_trans_scale[3][0] = (camera.zoom * scroll_factor.x * -camera.position.x) + \\
+		(camera.GAME_DIMENSIONS.x / 2);
+	m_camera_trans_scale[3][1] = (camera.zoom * scroll_factor.y * -camera.position.y) + \\
+		(camera.GAME_DIMENSIONS.y / 2);
+	m_camera_trans_scale[0][0] = camera.zoom;
+	m_camera_trans_scale[1][1] = camera.zoom;
+	// Camera pre-scale-transform
+	m_camera_pre_trans[3][0] = -camera.GAME_DIMENSIONS.x / 2;
+	m_camera_pre_trans[3][1] = -camera.GAME_DIMENSIONS.y / 2;
+
+	gl_Position =
+		window.projection *
+		window.view *
+		m_camera_trans_scale *
+		m_camera_pre_trans *
+		m_trans_scale *
+		m_rotation *
+		vec4(position, 0, 1)
+	;
+
+	vertex_colors = colors;
+	texture_coords = tex_coords;
+}}
+"""
+
+_PNF_SPRITE_FRAGMENT_SHADER_SOURCE = """
+#version 450
+
+in vec4 vertex_colors;
+in vec3 texture_coords;
+
+out vec4 final_colors;
+
+uniform sampler2D sprite_texture;
+
+
+void main() {{
+	if (vertex_colors.a < {alpha_limit}) {{
+		discard;
+	}}
+
+	final_colors = {color_behavior};
+}}
+"""
+
+class PNFSpriteVertexShader():
+	src = _PNF_SPRITE_VERTEX_SHADER_SOURCE
+
+	@classmethod
+	def generate(cls) -> str:
+		return cls.src.format()
+
+
+class PNFSpriteFragmentShader():
+	src = _PNF_SPRITE_FRAGMENT_SHADER_SOURCE 
+
+	class COLOR:
+		BLEND = "texture(sprite_texture, texture_coords.xy) * vertex_colors"
+		SET =   "vec4(vertex_colors.rgb, texture(sprite_texture, texture_coords.xy).a)"
+
+	@classmethod
+	def generate(
+		cls,
+		alpha_limit: float = 0.01,
+		color_behavior: str = COLOR.BLEND,
+	) -> str:
+		return cls.src.format(
+			alpha_limit=alpha_limit,
+			color_behavior=color_behavior,
+		)
 
 
 class Movement():
@@ -213,14 +313,14 @@ class PNFSprite(SceneObject):
 
 		self._usage = usage
 		self._subpixel = subpixel
+		self._blend_src = blend_src
+		self._blend_dest = blend_dest
 
 		self._context = Context(
 			graphics.get_default_batch() if context is None else context.batch,
 			PNFGroup(
 				parent = None if context is None else context.group,
-				states = make_states(
-					self.camera.ubo, self._texture, blend_src, blend_dest, program
-				)
+				states = self._build_mutators(program)
 			)
 		)
 
@@ -234,6 +334,16 @@ class PNFSprite(SceneObject):
 			from pyday_night_funkin.core.camera import Camera
 			cls._dummy_camera = Camera()
 		return cls._dummy_camera
+
+	def _build_mutators(self, program: "ShaderProgram"):
+		return (
+			s.ProgramStateMutator(program),
+			s.UBOBindingStateMutator(self.camera.ubo),
+			s.TextureUnitStateMutator(gl.GL_TEXTURE0),
+			s.TextureStateMutator(self._texture),
+			s.EnableStateMutator(gl.GL_BLEND),
+			s.BlendFuncStateMutator(self._blend_src, self._blend_dest),
+		)
 
 	def _create_vertex_list(self):
 		#  0- - - - -3
@@ -279,13 +389,7 @@ class PNFSprite(SceneObject):
 		if new_group != old_group.parent:
 			self._context.group = PNFGroup(
 				parent = new_group,
-				states = make_states(
-					self.camera.ubo,
-					self._texture,
-					old_group.states[s.BlendFuncStateMutator].src,
-					old_group.states[s.BlendFuncStateMutator].dest,
-					old_group.program,
-				)
+				states = self._build_mutators(old_group.program)
 			)
 			self._context.batch.migrate(
 				self._vertex_list, gl.GL_TRIANGLES, self._context.group, self._context.batch
@@ -611,13 +715,7 @@ class PNFSprite(SceneObject):
 			old_group = self._context.group
 			self._context.group = PNFGroup(
 				parent = old_group.parent,
-				states = make_states(
-					self.camera.ubo,
-					self._texture,
-					old_group.states[s.BlendFuncStateMutator].src,
-					old_group.states[s.BlendFuncStateMutator].dest,
-					old_group.program,
-				)
+				states = self._build_mutators(old_group.program)
 			)
 			self._vertex_list.delete()
 			self._texture = texture
@@ -631,8 +729,8 @@ class PNFSprite(SceneObject):
 			self._update_position()
 
 	def _update_position(self):
-		# Contains some manipulations to creation to the
-		# vertex array since otherwise it would be displayed
+		# Contains some manipulations to the creation of position
+		# vertices since otherwise the sprite would be displayed
 		# upside down
 		if not self._visible:
 			self._vertex_list.position[:] = (0, 0, 0, 0, 0, 0, 0, 0)
