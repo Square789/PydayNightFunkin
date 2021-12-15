@@ -244,12 +244,16 @@ class PNFVertexDomain:
 					f"but {self.__class__.__name__} does not know {shader_attr.name!r}."
 				)
 			attr = self.attributes[shader_attr.name]
-			bp = attr.binding_point
 
-			gl.glEnableVertexArrayAttrib(vao_id, bp)
-			gl.glVertexArrayVertexBuffer(vao_id, bp, attr.gl_buffer.id, 0, attr.element_size)
-			gl.glVertexArrayAttribBinding(vao_id, shader_attr.location, bp)
-			gl.glVertexArrayAttribFormat(vao_id, bp, attr.count, attr.type, attr.normalize, 0)
+			gl.glBindVertexArray(vao_id)
+			attr.gl_buffer.bind()
+			gl.glEnableVertexArrayAttrib(vao_id, shader_attr.location)
+			gl.glVertexAttribPointer(shader_attr.location, attr.count, attr.type, attr.normalize, 0, 0)
+			gl.glBindVertexArray(0)
+
+			#gl.glVertexArrayVertexBuffer(vao_id, bp, attr.gl_buffer.id, 0, attr.element_size)
+			#gl.glVertexArrayAttribBinding(vao_id, shader_attr.location, bp)
+			#gl.glVertexArrayAttribFormat(vao_id, bp, attr.count, attr.type, attr.normalize, 0)
 
 		# WARNING: Should shaders be deleted and their ids reassigned,
 		# this may fail in disgusting ways
@@ -296,6 +300,10 @@ class PNFVertexDomain:
 	def create_vertex_list(
 		self, vertex_amount: int, group: "PNFGroup", draw_mode: int, indices: t.Sequence[int]
 	) -> PNFVertexList:
+		"""
+		Creates and returns a vertex list in the domain for the
+		given group.
+		"""
 		self.ensure_vao(group.program)
 		start = self.allocate(vertex_amount)
 		indices = tuple(start + i for i in indices)
@@ -400,11 +408,8 @@ class PNFBatch:
 			self._regenerate_draw_list()
 
 		self._index_buffer.bind()
-		# print("<<< DRAWING")
 		for f in self._draw_list:
-			# print("/ Calling", f)
 			f()
-		# print("    DRAWING DONE >>>\n")
 
 	def draw_subset(self) -> None:
 		raise NotImplementedError("This function was unused anyways")
@@ -430,6 +435,12 @@ class PNFBatch:
 				r += "\n"
 			r += "\n"
 
-		r += f"\nIndex buffer: {' '.join(map(str, self._index_buffer.data))}"
+		idx_type = C_TYPE_MAP[_INDEX_TYPE]
+		idx_ptr = ctypes.cast(self._index_buffer.data, ctypes.POINTER(idx_type))
+		r += "\nIndex buffer: "
+		r += ' '.join(
+			str(idx_ptr[x])
+			for x in range(min(100, self._index_buffer.size // ctypes.sizeof(idx_type)))
+		)
 
 		return r

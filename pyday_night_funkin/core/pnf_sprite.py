@@ -26,7 +26,7 @@ EffectBound = t.TypeVar("EffectBound", bound="Effect")
 
 
 _PNF_SPRITE_VERTEX_SHADER_SOURCE = """
-#version 330
+#version 450
 
 in vec2 anim_offset;
 in vec2 frame_offset;

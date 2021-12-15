@@ -141,7 +141,7 @@ class TriangleScene(BaseScene):
 		super().__init__(game)
 
 		ubo = self._default_camera.ubo
-		#self.tri0 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, 0, 0.7)
+		self.tri0 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, 0, 0.7)
 		#self.tri1 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, -20, 60)
 		#self.tri2 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, 200, 100)
 

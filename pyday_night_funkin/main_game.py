@@ -206,6 +206,11 @@ class Game():
 
 		self._update_time = (perf_counter() - stime) * 1000
 
+		# if hasattr(self, "_close_next_time"):
+		# 	self.window.close()
+		# else:
+		# 	self._close_next_time = True
+
 	def _fps_bump(self):
 		self._fps[1] += 1
 		t = perf_counter() * 1000
