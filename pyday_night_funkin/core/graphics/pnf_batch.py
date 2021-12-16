@@ -106,7 +106,7 @@ class PNFBatch:
 		return self.add_indexed(self, size, draw_mode, group, [*range(size)], *data)
 
 	def add_indexed(self, size, draw_mode, group, indices, *data) -> PNFVertexList:
-		attr_names = [x[0] if isinstance(x, tuple) else str(x) for x in data]
+		attr_names = [x[0] if isinstance(x, tuple) else x for x in data]
 		self._add_group(group)
 
 		vtx_list = self._get_vertex_domain(attr_names).create_vertex_list(

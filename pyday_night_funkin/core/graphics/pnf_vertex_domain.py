@@ -1,6 +1,5 @@
 
 import ctypes
-import re
 import typing as t
 
 from pyglet.graphics import allocation, vertexarray, vertexbuffer
@@ -34,6 +33,8 @@ class PNFVertexList:
 	vertex list tracks a position in a vertex buffer its vertices
 	belong to and is passed to higher drawables for management of
 	those.
+	! WARNING ! Forgetting to call `delete` on vertex lists will leak
+	memory in the list's domain.
 	"""
 
 	def __init__(
@@ -102,9 +103,6 @@ class PNFVertexList:
 			self.__getattr__(name)[:] = value
 		else:
 			super().__setattr__(name, value)
-
-	def __del__(self):
-		self.delete()
 
 
 class PNFVertexDomainAttribute:
