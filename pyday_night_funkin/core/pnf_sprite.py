@@ -712,17 +712,17 @@ class PNFSprite(SceneObject):
 	def _set_texture(self, texture):
 		prev_h, prev_w = self._texture.height, self._texture.width
 		if texture.id is not self._texture.id:
+			self._texture = texture
 			old_group = self._context.group
 			self._context.group = PNFGroup(
 				parent = old_group.parent,
 				states = self._build_mutators(old_group.program)
 			)
 			self._vertex_list.delete()
-			self._texture = texture
 			self._create_vertex_list()
 		else:
 			self._vertex_list.tex_coords[:] = texture.tex_coords
-		self._texture = texture
+			self._texture = texture
 		# If this is not done, screws over vertices if the texture changes
 		# dimension thanks to top left coords
 		if prev_h != texture.height or prev_w != texture.width:
