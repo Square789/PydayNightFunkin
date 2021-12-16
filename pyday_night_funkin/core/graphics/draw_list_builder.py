@@ -34,7 +34,7 @@ class _AnnotatedGroup:
 class GroupChain:
 	def __init__(self, groups: t.Sequence[_AnnotatedGroup]) -> None:
 		self.groups = groups
-		self.used_vertex_domains = {g.vertex_list.vtxd for g in groups}
+		self.used_vertex_domains = {g.vertex_list.domain for g in groups}
 		self.used_draw_modes = {g.vertex_list.draw_mode for g in groups}
 
 	def _dump(self) -> str:
@@ -130,7 +130,7 @@ class DrawListBuilder:
 				# Extend the draw list with necessary state switch calls
 				state_switches = state_wall.switch(agroup.group.states)
 
-				n_vertex_layout = (agroup.vertex_list.vtxd, agroup.group.program.id)
+				n_vertex_layout = (agroup.vertex_list.domain, agroup.group.program.id)
 				n_draw_mode = agroup.vertex_list.draw_mode
 
 				# Any of these unfortunately force a new draw call
@@ -151,7 +151,7 @@ class DrawListBuilder:
 						cur_index_run = 0
 
 					if cur_vertex_layout != n_vertex_layout:
-						def bind_vao(d=agroup.vertex_list.vtxd, p=agroup.group.program):
+						def bind_vao(d=agroup.vertex_list.domain, p=agroup.group.program):
 							# TODO: Buffers store their data locally and need to be bound
 							# to upload it.
 							# This binding would always occurr in pyglet's default renderer

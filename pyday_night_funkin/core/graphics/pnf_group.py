@@ -4,7 +4,7 @@ import typing as t
 from pyday_night_funkin.core.graphics.states import ProgramStateMutator
 
 if t.TYPE_CHECKING:
-	from .states import AbstractStateMutator
+	from pyday_night_funkin.core.graphics.states import AbstractStateMutator
 
 
 class PNFGroup:
