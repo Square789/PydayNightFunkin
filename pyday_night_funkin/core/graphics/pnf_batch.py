@@ -48,7 +48,7 @@ class GroupChain:
 
 
 class GroupData:
-	__slots__ = ("vertex_list", "vertex_list_deleted", "children")
+	__slots__ = ("vertex_list", "children")
 
 	def __init__(
 		self,
@@ -56,7 +56,6 @@ class GroupData:
 		children: t.Iterable["PNFGroup"] = (),
 	) -> None:
 		self.vertex_list = vertex_list
-		self.vertex_list_deleted = False
 		self.children = list(children)
 
 
@@ -122,34 +121,52 @@ class PNFBatch:
 				gl.glBindBuffer(self._index_buffer.target, self._index_buffer.id)
 				gl.glBindVertexArray(0)
 
+	def _group_drawability_check(self, group: "PNFGroup") -> bool:
+		"""
+		Checks whether a group's vertex list has been deleted.
+		If it was, removes it from the group's group data.
+		Returns whether a group has a vertex list and is visible.
+		"""
+		gd = self._group_data[group]
+		if gd.vertex_list is None:
+			return False
+
+		if gd.vertex_list.deleted:
+			gd.vertex_list = None
+			return False
+
+		return group.visible
+
 	def visit(self, group: "PNFGroup") -> t.List[t.List["PNFGroup"]]:
 		"""
 		Visits groups recursively.
 		Returns a list of lists of Groups where all of the inner list's
 		order between groups is irrelevant, but the order of outer
-		lists is.
+		lists must be kept.
 		"""
-		ret_chains = [[group]]
-		if not self._group_data[group].children:
-			return ret_chains
+		chains = []
+		if self._group_drawability_check(group):
+			chains.append([group])
 
-		# The only case where order can be dropped is if many childless
-		# groups of same order are on the same level.
-		sc = sorted(self._group_data[group].children)
-		cur_order = sc[0].order
-		cur_group_list: t.List["PNFGroup"] = []
-		for child_group in sc:
-			if child_group.order != cur_order:
-				ret_chains.append(cur_group_list)
-				cur_group_list = []
-				cur_order = child_group.order
+		if self._group_data[group].children:
+			# The only case where order can be dropped is if many childless
+			# groups of same order are on the same level.
+			sc = sorted(self._group_data[group].children)
+			cur_order = sc[0].order
+			cur_group_list: t.List["PNFGroup"] = []
+			for child_group in sc:
+				if child_group.order != cur_order:
+					chains.append(cur_group_list)
+					cur_group_list = []
+					cur_order = child_group.order
 
-			for subchain in self.visit(child_group):
-				cur_group_list.extend(subchain)
+				for subchain in self.visit(child_group):
+					cur_group_list.extend(subchain)
 
-		if cur_group_list:
-			ret_chains.append(cur_group_list)
-		return ret_chains
+			if cur_group_list:
+				chains.append(cur_group_list)
+
+		return chains
 
 	def _create_draw_list(self) -> t.Tuple[t.List[t.Callable[[], t.Any]], t.List[int]]:
 		"""
@@ -158,17 +175,14 @@ class PNFBatch:
 		"""
 		chains: t.List[GroupChain] = []
 		for group in sorted(self._top_groups):
-			for raw_chain in self.visit(group):
-				groups = []
-				for group in raw_chain:
-					gd = self._group_data[group]
-					if gd.vertex_list is not None:
-						groups.append(_AnnotatedGroup(group, gd))
-				if groups:
-					chains.append(GroupChain(groups))
+			chains.extend(
+				GroupChain(_AnnotatedGroup(g, self._group_data[g]) for g in raw_chain)
+				for raw_chain in self.visit(group)
+			)
 
 		# Below converts the group chains into GL calls.
-		# TODO: This can certainly be optimized further by reordering groups.
+		# TODO: This can certainly be optimized further by reordering
+		# groups that share a GroupChain.
 		# Unfortunately, I am too stupid to figure out how.
 
 		if not chains:

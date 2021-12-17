@@ -72,7 +72,12 @@ class PNFVertexList:
 		be valid and [0, 1, 3] would not.
 		"""
 
-		self._deleted = False
+		self.deleted = False
+		"""
+		Whether this vertex list has been deleted and is effectively
+		junk. Modify this and suffer the consequences; Use `delete()`
+		to delete the vertex list!
+		"""
 
 	def delete(self):
 		"""
@@ -80,11 +85,11 @@ class PNFVertexList:
 		free the space occupied by this list's vertices.
 		After deletion, the vertex list should not be used anymore.
 		"""
-		if self._deleted:
+		if self.deleted:
 			return
 
 		self.domain.deallocate(self.domain_position, self.size)
-		self._deleted = True
+		self.deleted = True
 
 	def __getattr__(self, name: str) -> t.Any:
 		att = self.domain.attributes[name]
