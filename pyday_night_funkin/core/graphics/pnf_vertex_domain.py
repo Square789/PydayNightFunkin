@@ -104,8 +104,8 @@ class PNFVertexList:
 		index_shift = -self.domain_position + new_start
 		for k, cur_attr in self.domain.attributes.items():
 			new_attr = new_domain.attributes[k]
-			cur_attr.get_region(self.domain_position, self.size).array[:] = \
-				new_attr.get_region(new_start, self.size).array[:]
+			new_attr.get_region(new_start, self.size).array[:] = \
+				cur_attr.get_region(self.domain_position, self.size).array[:]
 
 		self.domain.deallocate(self.domain_position, self.size)
 		self.domain = new_domain
