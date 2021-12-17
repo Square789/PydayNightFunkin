@@ -4,13 +4,12 @@ import typing as t
 
 from loguru import logger
 from pyglet.clock import Clock
-from pyglet.graphics import Group
 from pyglet.window.key import B, R, Y
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.context import Context
-from pyday_night_funkin.core.graphics import PNFBatch
+from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene_object import Container, SceneObject
 from pyday_night_funkin.sfx_ring import SFXRing
@@ -26,12 +25,12 @@ class Layer():
 	"""
 	__slots__ = ("group", "force_order", "latest_order")
 
-	def __init__(self, group: Group, force_order: bool) -> None:
+	def __init__(self, group: PNFGroup, force_order: bool) -> None:
 		self.group = group
 		self.force_order = force_order
 		self.latest_order = 0
 
-	def get_group(self, group_cls: t.Type[Group] = Group, *args, **kwargs) -> Group:
+	def get_group(self, group_cls: t.Type[PNFGroup] = PNFGroup, *args, **kwargs) -> PNFGroup:
 		"""
 		Returns a group to attach an object to on this layer.
 
@@ -75,7 +74,7 @@ class BaseScene(Container):
 		self.update_passthrough = False
 
 		self.layers = OrderedDict(
-			(name, Layer(Group(order=i), force_order))
+			(name, Layer(PNFGroup(order=i), force_order))
 			for i, (name, force_order) in enumerate(
 				(x, False) if not isinstance(x, tuple) else x
 				for x in self.get_layer_names()

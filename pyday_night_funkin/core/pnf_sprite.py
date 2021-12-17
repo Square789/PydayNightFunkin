@@ -379,7 +379,7 @@ class PNFSprite(SceneObject):
 		# why should batches ever be switched anyways
 		if new_batch != old_batch:
 			if new_batch is not None and old_batch is not None:
-				old_batch.migrate(self._vertex_list, gl.GL_TRIANGLES, self._context.group, new_batch)
+				old_batch.migrate(self._vertex_list, self._context.group, new_batch)
 				self._context.batch = new_batch
 			else:
 				self._vertex_list.delete()
@@ -392,7 +392,7 @@ class PNFSprite(SceneObject):
 				states = self._build_mutators(old_group.program)
 			)
 			self._context.batch.migrate(
-				self._vertex_list, gl.GL_TRIANGLES, self._context.group, self._context.batch
+				self._vertex_list, self._context.group, self._context.batch
 			)
 
 	def screen_center(self, screen_dims: Vec2, x: bool = True, y: bool = True) -> None:

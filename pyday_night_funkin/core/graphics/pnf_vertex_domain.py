@@ -202,15 +202,18 @@ class PNFVertexDomain:
 
 	INITIAL_VERTEX_CAPACITY = 2048
 
-	def __init__(self, attribute_bundle: t.Iterable[str]) -> None:
+	def __init__(self, attribute_bundle: "frozenset[str]") -> None:
 		"""
 		Creates a new vertex domain.
 		`attribute_bundle` should be an iterable of valid vertex attribute
 		format strings.
 		"""
 		# NOTE: This allocator does not track bytes, but only vertices.
-		self._allocator = allocation.Allocator(self.INITIAL_VERTEX_CAPACITY)
 		self.attributes: t.Dict[str, PNFVertexDomainAttribute] = {}
+		self.attribute_bundle = attribute_bundle
+		"""Attribute bundle the domain was created with."""
+
+		self._allocator = allocation.Allocator(self.INITIAL_VERTEX_CAPACITY)
 		self._vaos: t.Dict[int, gl.GLuint] = {}
 		self._active_vao: t.Optional[vertexarray.VertexArray] = None
 

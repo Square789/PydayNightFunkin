@@ -26,9 +26,11 @@ class PNFGroup:
 			self.states[type_] = state
 
 		if not ProgramStateMutator in self.states:
-			raise ValueError("Each group requires a `ProgramStateMutator`!")
-
-		self.program = self.states[ProgramStateMutator].program
+			# raise ValueError("Each group requires a `ProgramStateMutator`!")
+			# Errors way later when a draw list is built with this group
+			self.program = None
+		else:
+			self.program = self.states[ProgramStateMutator].program
 		self.visible = True
 
 	def __gt__(self, other) -> bool:

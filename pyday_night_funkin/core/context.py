@@ -2,7 +2,7 @@
 import typing as t
 
 if t.TYPE_CHECKING:
-	from pyglet.graphics import Batch, Group
+	from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 
 
 class Context():
@@ -13,6 +13,6 @@ class Context():
 
 	__slots__ = ("batch", "group")
 
-	def __init__(self, batch: "Batch", group: "Group") -> None:
+	def __init__(self, batch: "PNFBatch", group: "PNFGroup") -> None:
 		self.batch = batch
 		self.group = group

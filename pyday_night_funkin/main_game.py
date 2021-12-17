@@ -76,8 +76,8 @@ class Game():
 		self._pending_scene_stack_removals = set()
 		self._pending_scene_stack_additions = []
 
-		#self.push_scene(TitleScene)
-		self.push_scene(TestScene)
+		self.push_scene(TitleScene)
+		#self.push_scene(TestScene)
 		#self.push_scene(TriangleScene)
 
 	def _on_scene_stack_change(self) -> None:

@@ -350,7 +350,8 @@ class PNFBatch:
 		if self is not new_batch:
 			new_batch._introduce_vtx_list_and_group(vertex_list, new_group)
 
-		vertex_list.migrate(new_batch._get_vertex_domain(vertex_list.domain.attributes.keys()))
+		vertex_list.migrate(new_batch._get_vertex_domain(vertex_list.domain.attribute_bundle))
+		vertex_list.domain.ensure_vao(new_group.program)
 
 	def _dump_draw_list(self) -> None:
 		print(self._dump())
