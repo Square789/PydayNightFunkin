@@ -7,19 +7,48 @@ from loguru import logger
 from pyglet.gl import gl
 from pyglet.graphics import vertexbuffer
 
-from pyday_night_funkin.core.graphics.draw_list_builder import DrawListBuilder
 from pyday_night_funkin.core.graphics.pnf_vertex_domain import PNFVertexDomain, PNFVertexList
 from pyday_night_funkin.core.graphics.shared import C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT
+from pyday_night_funkin.core.graphics import states
 
 if t.TYPE_CHECKING:
 	from .pnf_group import PNFGroup
 
 
 _INDEX_TYPE = gl.GL_UNSIGNED_INT
+_INDEX_TYPE_SIZE = GL_TYPE_SIZES[_INDEX_TYPE]
+
+
+class _AnnotatedGroup:
+	"""
+	Tiny dataclass to store a group along with its vertex list.
+	To be used only during draw list creation.
+	"""
+	__slots__ = ("group", "vertex_list")
+
+	def __init__(self, group: "PNFGroup", data: "GroupData") -> None:
+		self.group = group
+		self.vertex_list = data.vertex_list
+
+
+# NOTE: This is just a class with a list. May be useful for further
+# work, may also turn out completely useless.
+class GroupChain:
+	def __init__(self, groups: t.Sequence["_AnnotatedGroup"]) -> None:
+		self.groups = groups
+		# self.used_vertex_domains = {g.vertex_list.domain for g in groups}
+		# self.used_draw_modes = {g.vertex_list.draw_mode for g in groups}
+
+	def _dump(self) -> str:
+		r = f"<{self.__class__.__name__}\n"
+		for c in self.groups:
+			r += "  " + repr(c) + "\n"
+		r += ">"
+		return r
 
 
 class GroupData:
-	__slots__ = ("vertex_list", "children")
+	__slots__ = ("vertex_list", "vertex_list_deleted", "children")
 
 	def __init__(
 		self,
@@ -27,6 +56,7 @@ class GroupData:
 		children: t.Iterable["PNFGroup"] = (),
 	) -> None:
 		self.vertex_list = vertex_list
+		self.vertex_list_deleted = False
 		self.children = list(children)
 
 
@@ -39,8 +69,8 @@ class PNFBatch:
 	"""
 
 	def __init__(self) -> None:
-		self._top_groups = []
-		self._group_data = defaultdict(GroupData)
+		self._top_groups: t.List["PNFGroup"] = []
+		self._group_data: t.Dict["PNFGroup", "GroupData"] = defaultdict(GroupData)
 
 		self._draw_list_dirty = True
 		self._draw_list = []
@@ -92,8 +122,130 @@ class PNFBatch:
 				gl.glBindBuffer(self._index_buffer.target, self._index_buffer.id)
 				gl.glBindVertexArray(0)
 
+	def visit(self, group: "PNFGroup") -> t.List[t.List["PNFGroup"]]:
+		"""
+		Visits groups recursively.
+		Returns a list of lists of Groups where all of the inner list's
+		order between groups is irrelevant, but the order of outer
+		lists is.
+		"""
+		ret_chains = [[group]]
+		if not self._group_data[group].children:
+			return ret_chains
+
+		# The only case where order can be dropped is if many childless
+		# groups of same order are on the same level.
+		sc = sorted(self._group_data[group].children)
+		cur_order = sc[0].order
+		cur_group_list: t.List["PNFGroup"] = []
+		for child_group in sc:
+			if child_group.order != cur_order:
+				ret_chains.append(cur_group_list)
+				cur_group_list = []
+				cur_order = child_group.order
+
+			for subchain in self.visit(child_group):
+				cur_group_list.extend(subchain)
+
+		if cur_group_list:
+			ret_chains.append(cur_group_list)
+		return ret_chains
+
+	def _create_draw_list(self) -> t.Tuple[t.List[t.Callable[[], t.Any]], t.List[int]]:
+		"""
+		Builds a draw list and an index array from the given top groups
+		and group data.
+		"""
+		chains: t.List[GroupChain] = []
+		for group in sorted(self._top_groups):
+			for raw_chain in self.visit(group):
+				groups = []
+				for group in raw_chain:
+					gd = self._group_data[group]
+					if gd.vertex_list is not None:
+						groups.append(_AnnotatedGroup(group, gd))
+				if groups:
+					chains.append(GroupChain(groups))
+
+		# Below converts the group chains into GL calls.
+		# TODO: This can certainly be optimized further by reordering groups.
+		# Unfortunately, I am too stupid to figure out how.
+
+		if not chains:
+			return [], []
+
+		state_wall = states.PseudoStateWall()
+		draw_list = []
+		indices = []
+		# Vertex layout is dictated by vertex domain and a group's program.
+		cur_vertex_layout = None
+		cur_draw_mode = None
+		cur_index_start = 0
+		cur_index_run = 0
+
+		for chain in chains:
+			for agroup in chain.groups:
+				# Extend the draw list with necessary state switch calls
+				state_switches = state_wall.switch(agroup.group.states)
+
+				n_vertex_layout = (agroup.vertex_list.domain, agroup.group.program.id)
+				n_draw_mode = agroup.vertex_list.draw_mode
+
+				# Any of these unfortunately force a new draw call
+				if (
+					state_switches or
+					n_draw_mode != cur_draw_mode or
+					cur_vertex_layout != n_vertex_layout
+				):
+					# Accumulate all indices so far into a draw call (if there were any)
+					if cur_index_run > 0:
+						def draw_elements(
+							m=cur_draw_mode, c=cur_index_run, t=_INDEX_TYPE,
+							s=cur_index_start*_INDEX_TYPE_SIZE
+						):
+							gl.glDrawElements(m, c, t, s)
+						draw_list.append(draw_elements)
+
+						cur_index_start += cur_index_run
+						cur_index_run = 0
+
+					if cur_vertex_layout != n_vertex_layout:
+						def bind_vao(d=agroup.vertex_list.domain, p=agroup.group.program):
+							# TODO: Buffers store their data locally and need to be bound
+							# to upload it.
+							# This binding would always occurr in pyglet's default renderer
+							# since it does not utilize VAOs, but needs to be
+							# done explicitly here.
+							# Maybe there's something that would be able to
+							# get rid of these bind calls. (glMapNamedBufferRange?)
+							for att in d.attributes.values():
+								att.gl_buffer.bind()
+							d.bind_vao(p)
+
+						draw_list.append(bind_vao)
+						cur_vertex_layout = n_vertex_layout
+
+					cur_draw_mode = n_draw_mode
+					draw_list.extend(state_switches)
+
+				# Extend vertex indices
+				indices.extend(agroup.vertex_list.indices)
+				cur_index_run += len(agroup.vertex_list.indices)
+
+		# Final draw call
+		def final_draw_elements(
+			m=cur_draw_mode, c=cur_index_run, t=_INDEX_TYPE,
+			s=cur_index_start*_INDEX_TYPE_SIZE, v=cur_vertex_layout[0]
+		):
+			gl.glDrawElements(m, c, t, s)
+			v.unbind_vao()
+
+		draw_list.append(final_draw_elements)
+
+		return draw_list, indices
+
 	def _regenerate_draw_list(self) -> None:
-		dl, indices = DrawListBuilder(_INDEX_TYPE).build(self._top_groups, self._group_data)
+		dl, indices = self._create_draw_list()
 		self._set_index_buffer(indices)
 		self._draw_list = dl
 		self._draw_list_dirty = False

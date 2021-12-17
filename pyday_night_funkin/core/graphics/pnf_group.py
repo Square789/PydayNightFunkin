@@ -29,6 +29,7 @@ class PNFGroup:
 			raise ValueError("Each group requires a `ProgramStateMutator`!")
 
 		self.program = self.states[ProgramStateMutator].program
+		self.visible = True
 
 	def __gt__(self, other) -> bool:
 		if not isinstance(other, PNFGroup):
