@@ -64,7 +64,7 @@ class PNFVertexList:
 		"""
 
 		self.draw_mode = draw_mode
-		self.indices = indices
+		self.indices = tuple(domain_position + i for i in indices)
 		"""
 		Indices the vertex list's vertices should be drawn with.
 		These are absolute to the vertex domain's buffers, so taking
@@ -96,6 +96,7 @@ class PNFVertexList:
 			raise ValueError("Vertex domain attribute bundle mismatch!")
 
 		new_start = new_domain.allocate(self.size)
+		index_shift = -self.domain_position + new_start
 		for k, cur_attr in self.domain.attributes.items():
 			new_attr = new_domain.attributes[k]
 			cur_attr.get_region(self.domain_position, self.size).array[:] = \
@@ -104,6 +105,7 @@ class PNFVertexList:
 		self.domain.deallocate(self.domain_position, self.size)
 		self.domain = new_domain
 		self.domain_position = new_start
+		self.indices = tuple(i + index_shift for i in self.indices)
 
 	def __getattr__(self, name: str) -> t.Any:
 		att = self.domain.attributes[name]
@@ -342,5 +344,4 @@ class PNFVertexDomain:
 		"""
 		self.ensure_vao(group.program)
 		start = self.allocate(vertex_amount)
-		indices = tuple(start + i for i in indices)
 		return PNFVertexList(self, start, vertex_amount, draw_mode, indices)
