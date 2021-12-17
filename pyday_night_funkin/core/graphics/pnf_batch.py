@@ -57,7 +57,7 @@ class GroupData:
 		children: t.Iterable["PNFGroup"] = (),
 	) -> None:
 		self.vertex_list = vertex_list
-		self.children = list(children)
+		self.children = set(children)
 
 
 class PNFBatch:
@@ -69,7 +69,7 @@ class PNFBatch:
 	"""
 
 	def __init__(self) -> None:
-		self._top_groups: t.List["PNFGroup"] = []
+		self._top_groups: t.Set["PNFGroup"] = set()
 		self._group_data: t.Dict["PNFGroup", "GroupData"] = defaultdict(GroupData)
 
 		self._draw_list_dirty = True
@@ -91,29 +91,26 @@ class PNFBatch:
 			return
 
 		if group.parent is None:
-			self._top_groups.append(group)
+			self._top_groups.add(group)
 		else:
 			if group.parent not in self._group_data:
 				self._add_group(group.parent)
-			self._group_data[group.parent].children.append(group)
+			self._group_data[group.parent].children.add(group)
 
 		self._draw_list_dirty = True
 
 	def _delete_group(self, group: "PNFGroup") -> None:
 		"""
-		Deletes a group and its children from the batch's
-		group data.
+		Deletes a group from the group registry and marks the draw
+		list as dirty. If a non-leaf node is deleted, it will leave
+		a hole in the continuity of the group tree.
 		"""
-		gd = self._group_data[group]
-		if group in self._top_groups:
-			self._top_groups.remove(group)
-
-		for child in gd.children:
-			self._delete_group(child)
-
-		if gd.vertex_list is not None:
-			gd.vertex_list.delete()
+		if group.parent is not None and group.parent in self._group_data:
+			self._group_data[group.parent].children.remove(group)
+		self._top_groups.discard(group)
 		self._group_data.pop(group)
+
+		self._draw_list_dirty = True
 
 	def _get_vertex_domain(self, attr_bundle: t.Iterable[str]) -> PNFVertexDomain:
 		"""
@@ -147,11 +144,11 @@ class PNFBatch:
 				gl.glBindBuffer(self._index_buffer.target, self._index_buffer.id)
 				gl.glBindVertexArray(0)
 
-	def _group_drawability_check(self, group: "PNFGroup") -> bool:
+	def _group_vertex_list_check(self, group: "PNFGroup") -> bool:
 		"""
 		Checks whether a group's vertex list has been deleted.
-		If it was, removes the list from the group's group data.
-		Returns whether a group has a vertex list and is visible.
+		If it was, sets the vertex list to `None` to clear the
+		reference.
 		"""
 		gd = self._group_data[group]
 		if gd.vertex_list is None:
@@ -161,9 +158,9 @@ class PNFBatch:
 			gd.vertex_list = None
 			return False
 
-		return group.visible
+		return True
 
-	def visit(self, group: "PNFGroup") -> t.List[t.List["PNFGroup"]]:
+	def visit(self, group: "PNFGroup") -> t.Tuple[t.List[t.List["PNFGroup"]], bool]:
 		"""
 		Visits groups recursively.
 		Returns a list of lists of Groups where all of the inner list's
@@ -171,7 +168,8 @@ class PNFBatch:
 		lists must be kept.
 		"""
 		chains = []
-		if self._group_drawability_check(group):
+		group_intact = self._group_vertex_list_check(group)
+		if group_intact and group.visible:
 			chains.append([group])
 
 		if self._group_data[group].children:
@@ -180,19 +178,37 @@ class PNFBatch:
 			sc = sorted(self._group_data[group].children)
 			cur_order = sc[0].order
 			cur_group_list: t.List["PNFGroup"] = []
+
 			for child_group in sc:
+				# If a child group breaks order, add chain so far and reset
 				if child_group.order != cur_order:
-					chains.append(cur_group_list)
-					cur_group_list = []
+					if cur_group_list:
+						chains.append(cur_group_list)
+						cur_group_list = []
 					cur_order = child_group.order
 
-				for subchain in self.visit(child_group):
+				# Extend current chain with all of the child group's subgroups
+				subchains, cg_intact = self.visit(child_group)
+				# If this group is a connecting group, consider it intact if they
+				# bridge to any drawable child group
+				group_intact = group_intact or cg_intact or bool(subchains)
+				for subchain in subchains:
 					cur_group_list.extend(subchain)
 
+			# Add last outstanding group list
 			if cur_group_list:
 				chains.append(cur_group_list)
 
-		return chains
+		# This group is dangling, delete it.
+		if not group_intact:
+			if chains:
+				raise RuntimeError(
+					"This should not have happened: Group was considered dangling "
+					"but delivered chains!"
+				)
+			self._delete_group(group)
+
+		return chains, group_intact
 
 	def _create_draw_list(self) -> t.Tuple[t.List[t.Callable[[], t.Any]], t.List[int]]:
 		"""
@@ -203,7 +219,7 @@ class PNFBatch:
 		for group in sorted(self._top_groups):
 			chains.extend(
 				GroupChain(_AnnotatedGroup(g, self._group_data[g]) for g in raw_chain)
-				for raw_chain in self.visit(group)
+				for raw_chain in self.visit(group)[0]
 			)
 
 		# Below converts the group chains into GL calls.
@@ -340,12 +356,8 @@ class PNFBatch:
 	) -> None:
 		# Steal vertex list from the group that owns it in this batch
 		if vertex_list in self._vertex_lists:
-			if self is new_batch:
-				return
-
 			this_group = self._vertex_lists[vertex_list]
-			if this_group is not new_group:
-				self._group_data[this_group].vertex_list = None
+			self._group_data[this_group].vertex_list = None
 
 		if self is not new_batch:
 			new_batch._introduce_vtx_list_and_group(vertex_list, new_group)
@@ -379,8 +391,11 @@ class PNFBatch:
 			for x in range(min(100, self._index_buffer.size // ctypes.sizeof(idx_type)))
 		)
 
-		return r
+		r += f"\n\nVertex lists created and alive: {len(self._vertex_lists)}"
+		r += f"\nGroups in group registry: {len(self._group_data)}"
+		r += f"\nCalls in draw list: {len(self._draw_list)}"
 
+		return r
 
 
 _fake_batch = PNFBatch()
