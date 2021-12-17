@@ -11,7 +11,7 @@ import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
-from pyday_night_funkin.core.graphics import PNFGroup
+from pyday_night_funkin.core.graphics import get_default_batch, PNFGroup
 import pyday_night_funkin.core.graphics.states as s
 from pyday_night_funkin.core.scene_object import SceneObject
 from pyday_night_funkin.core.shaders import ShaderContainer
@@ -317,7 +317,7 @@ class PNFSprite(SceneObject):
 		self._blend_dest = blend_dest
 
 		self._context = Context(
-			graphics.get_default_batch() if context is None else context.batch,
+			get_default_batch() if context is None else context.batch,
 			PNFGroup(
 				parent = None if context is None else context.group,
 				states = self._build_mutators(program)

@@ -2,6 +2,7 @@
 from collections import defaultdict
 import ctypes
 import typing as t
+from weakref import WeakKeyDictionary
 
 from loguru import logger
 from pyglet.gl import gl
@@ -76,10 +77,19 @@ class PNFBatch:
 		"""List of functions to call in-order to draw everything that
 		needs to be drawn."""
 
-		self._vertex_domains: t.Dict[t.Tuple[str, ...], "PNFVertexDomain"] = {}
+		self._vertex_domains: t.Dict["frozenset[str]", "PNFVertexDomain"] = {}
+		self._vertex_lists: "WeakKeyDictionary[PNFVertexList, PNFGroup]" = WeakKeyDictionary()
 		self._index_buffer = None
 
 	def _add_group(self, group: "PNFGroup") -> None:
+		"""
+		Add a group and all its parents to this batch's group data
+		registry and mark the draw list as dirty.
+		If the group is already known, has no effect.
+		"""
+		if group in self._group_data:
+			return
+
 		if group.parent is None:
 			self._top_groups.append(group)
 		else:
@@ -89,12 +99,28 @@ class PNFBatch:
 
 		self._draw_list_dirty = True
 
-	def _get_vertex_domain(self, attr_bundle: t.Sequence[str]) -> PNFVertexDomain:
+	def _delete_group(self, group: "PNFGroup") -> None:
+		"""
+		Deletes a group and its children from the batch's
+		group data.
+		"""
+		gd = self._group_data[group]
+		if group in self._top_groups:
+			self._top_groups.remove(group)
+
+		for child in gd.children:
+			self._delete_group(child)
+
+		if gd.vertex_list is not None:
+			gd.vertex_list.delete()
+		self._group_data.pop(group)
+
+	def _get_vertex_domain(self, attr_bundle: t.Iterable[str]) -> PNFVertexDomain:
 		"""
 		Get an existing or newly created vertexdomain for the given
 		vertex attribute bundle.
 		"""
-		attr_bundle = tuple(attr_bundle)
+		attr_bundle = frozenset(attr_bundle)
 		if attr_bundle not in self._vertex_domains:
 			self._vertex_domains[attr_bundle] = PNFVertexDomain(attr_bundle)
 
@@ -124,7 +150,7 @@ class PNFBatch:
 	def _group_drawability_check(self, group: "PNFGroup") -> bool:
 		"""
 		Checks whether a group's vertex list has been deleted.
-		If it was, removes it from the group's group data.
+		If it was, removes the list from the group's group data.
 		Returns whether a group has a vertex list and is visible.
 		"""
 		gd = self._group_data[group]
@@ -273,12 +299,11 @@ class PNFBatch:
 
 	def add_indexed(self, size, draw_mode, group, indices, *data) -> PNFVertexList:
 		attr_names = [x[0] if isinstance(x, tuple) else x for x in data]
-		self._add_group(group)
 
 		vtx_list = self._get_vertex_domain(attr_names).create_vertex_list(
 			size, group, draw_mode, indices
 		)
-		self._group_data[group].vertex_list = vtx_list
+		self._introduce_vtx_list_and_group(vtx_list, group)
 
 		# Set initial data
 		for x in data:
@@ -291,6 +316,11 @@ class PNFBatch:
 
 		return vtx_list
 
+	def _introduce_vtx_list_and_group(self, vtx_list: "PNFVertexList", group: "PNFGroup") -> None:
+		self._add_group(group)
+		self._vertex_lists[vtx_list] = group
+		self._group_data[group].vertex_list = vtx_list
+
 	def draw(self):
 		if self._draw_list_dirty:
 			self._regenerate_draw_list()
@@ -302,8 +332,25 @@ class PNFBatch:
 	def draw_subset(self) -> None:
 		raise NotImplementedError("This function was unused anyways")
 
-	def migrate(self, *args, **kwargs) -> None:
-		raise NotImplementedError("shut up pls")
+	def migrate(
+		self,
+		vertex_list: "PNFVertexList",
+		new_group: "PNFGroup",
+		new_batch: "PNFBatch",
+	) -> None:
+		# Steal vertex list from the group that owns it in this batch
+		if vertex_list in self._vertex_lists:
+			if self is new_batch:
+				return
+
+			this_group = self._vertex_lists[vertex_list]
+			if this_group is not new_group:
+				self._group_data[this_group].vertex_list = None
+
+		if self is not new_batch:
+			new_batch._introduce_vtx_list_and_group(vertex_list, new_group)
+
+		vertex_list.migrate(new_batch._get_vertex_domain(vertex_list.domain.attributes.keys()))
 
 	def _dump_draw_list(self) -> None:
 		print(self._dump())
@@ -332,3 +379,9 @@ class PNFBatch:
 		)
 
 		return r
+
+
+
+_fake_batch = PNFBatch()
+def get_default_batch():
+	return _fake_batch

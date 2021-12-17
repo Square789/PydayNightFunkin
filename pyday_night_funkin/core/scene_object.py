@@ -1,8 +1,7 @@
 
 import typing as t
-import weakref
 
-from pyglet.graphics import Batch, Group, get_default_batch
+from pyday_night_funkin.core.graphics import PNFGroup, get_default_batch
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.context import Context
@@ -72,7 +71,7 @@ class Container(SceneObject):
 		object.invalidate_context()
 
 	def set_context(self, parent_context: "Context") -> None:
-		self._context = Context(parent_context.batch, Group(parent=parent_context.group))
+		self._context = Context(parent_context.batch, PNFGroup(parent=parent_context.group))
 		for spr in self._members:
 			spr.set_context(self._context)
 

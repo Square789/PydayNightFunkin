@@ -91,15 +91,24 @@ class PNFVertexList:
 		self.domain.deallocate(self.domain_position, self.size)
 		self.deleted = True
 
+	def migrate(self, new_domain: "PNFVertexDomain") -> None:
+		if self.domain.attributes.keys() != new_domain.attributes.keys():
+			raise ValueError("Vertex domain attribute bundle mismatch!")
+
+		new_start = new_domain.allocate(self.size)
+		for k, cur_attr in self.domain.attributes.items():
+			new_attr = new_domain.attributes[k]
+			cur_attr.get_region(self.domain_position, self.size).array[:] = \
+				new_attr.get_region(new_start, self.size).array[:]
+
+		self.domain.deallocate(self.domain_position, self.size)
+		self.domain = new_domain
+		self.domain_position = new_start
+
 	def __getattr__(self, name: str) -> t.Any:
 		att = self.domain.attributes[name]
-		byte_size = self.size * att.element_size
 
-		region = att.gl_buffer.get_region(
-			self.domain_position * att.element_size,
-			byte_size,
-			ctypes.POINTER(att.c_type * (self.size * att.count)),
-		)
+		region = att.get_region(self.domain_position, self.size)
 		region.invalidate()
 		return region.array
 
@@ -111,6 +120,11 @@ class PNFVertexList:
 
 
 class PNFVertexDomainAttribute:
+	"""
+	Class representing the vertex attribute of a domain.
+	Contains a buffer for the attribute's data.
+	"""
+
 	def __init__(
 		self,
 		binding_point: int,
@@ -143,6 +157,20 @@ class PNFVertexDomainAttribute:
 
 		self.gl_buffer = vertexbuffer.create_buffer(self.buffer_size, usage=usage)
 
+	def get_region(self, start: int, size: int) -> vertexbuffer.BufferObjectRegion:
+		"""
+		Returns a buffer object region over the area of `size` vertices
+		occupying this vertex domain attribute's buffer starting at
+		vertex `start`.
+		"""
+		region = self.gl_buffer.get_region(
+			self.element_size * start,
+			self.element_size * size,
+			ctypes.POINTER(self.c_type * (size * self.count)),
+		)
+		region.invalidate()
+		return region
+
 	def resize(self, new_capacity: int) -> None:
 		"""
 		Resizes the attribute's buffer to fit `new_capacity` vertex
@@ -174,10 +202,10 @@ class PNFVertexDomain:
 
 	INITIAL_VERTEX_CAPACITY = 2048
 
-	def __init__(self, attribute_bundle: t.Sequence[str]) -> None:
+	def __init__(self, attribute_bundle: t.Iterable[str]) -> None:
 		"""
 		Creates a new vertex domain.
-		`attribute_bundle` should be a sequence of valid vertex attribute
+		`attribute_bundle` should be an iterable of valid vertex attribute
 		format strings.
 		"""
 		# NOTE: This allocator does not track bytes, but only vertices.
@@ -197,7 +225,7 @@ class PNFVertexDomain:
 		Please note that I have no idea if this is a proper value at all.
 		"""
 
-	def _parse_attribute(self, attr: str) -> t.Tuple[str, int, int, bool, int]:
+	def _parse_attribute(self, attr: str) -> t.Tuple[str, int, int, int, int]:
 		"""
 		Parses a pyglet attribute descriptor string (`asdf2f/stream`
 		for example), then returns a tuple of its name, count, type,
