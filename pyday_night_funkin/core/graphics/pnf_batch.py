@@ -65,7 +65,7 @@ class PNFBatch:
 	Poor attempt at turning pyglet's drawing system upside down.
 	This batch only works in conjunction with PNFGroups and tries
 	to minimize the amount of OpenGL calls made during a draw cycle
-	while facing many sprites of a different order.
+	while facing many drawables of a strictly different order.
 	"""
 
 	def __init__(self) -> None:
@@ -163,13 +163,16 @@ class PNFBatch:
 	def visit(self, group: "PNFGroup") -> t.Tuple[t.List[t.List["PNFGroup"]], bool]:
 		"""
 		Visits groups recursively.
-		Returns a list of lists of Groups where all of the inner list's
-		order between groups is irrelevant, but the order of outer
-		lists must be kept.
+		Returns a tuple of:
+		0: A list of lists of Groups where all
+		of the inner list's order between groups is irrelevant, but
+		the order of outer lists must be kept.
+		1: Whether the group visited was considered dangling and has
+		been deleted from the group tree.
 		"""
 		chains = []
 		group_intact = self._group_vertex_list_check(group)
-		if group_intact and group.visible:
+		if group_intact and group.visible: # Don't draw invisible groups now
 			chains.append([group])
 
 		if self._group_data[group].children:

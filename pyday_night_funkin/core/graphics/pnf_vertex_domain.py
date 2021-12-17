@@ -92,6 +92,11 @@ class PNFVertexList:
 		self.deleted = True
 
 	def migrate(self, new_domain: "PNFVertexDomain") -> None:
+		"""
+		Migrates the vertex list into a new domain, deallocating its
+		used space in the old one and occupying new space in the, well,
+		new one.
+		"""
 		if self.domain.attributes.keys() != new_domain.attributes.keys():
 			raise ValueError("Vertex domain attribute bundle mismatch!")
 
