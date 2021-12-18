@@ -5,11 +5,6 @@ import typing as t
 from loguru import logger
 import pyglet
 
-# # IF THIS LANDS ON GITHUB I FAILED
-# # Ok see I commented out I remembered it ha
-# pyglet.options["debug_gl_trace"] = True
-# pyglet.options["debug_gl_trace_args"] = True
-
 from pyglet.window import key
 from pyglet.window.key import KeyStateHandler
 
@@ -33,7 +28,7 @@ __version__ = "0.0.0dev"
 class Game():
 	def __init__(self) -> None:
 		self.debug = True
-		self.use_debug_pane = True
+		self.use_debug_pane = False
 		# These have to be setup later, see `run`
 		self._update_time = 0
 		self._fps = None
@@ -205,11 +200,6 @@ class Game():
 			scene.update(dt)
 
 		self._update_time = (perf_counter() - stime) * 1000
-
-		# if hasattr(self, "_close_next_time"):
-		# 	self.window.close()
-		# else:
-		# 	self._close_next_time = True
 
 	def _fps_bump(self):
 		self._fps[1] += 1
