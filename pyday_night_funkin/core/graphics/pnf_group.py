@@ -31,7 +31,6 @@ class PNFGroup:
 			self.program = None
 		else:
 			self.program = self.states[ProgramStateMutator].program
-		self.visible = True
 
 	def __gt__(self, other) -> bool:
 		if not isinstance(other, PNFGroup):

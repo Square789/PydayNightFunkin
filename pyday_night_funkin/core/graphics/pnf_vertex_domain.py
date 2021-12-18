@@ -11,7 +11,7 @@ from pyday_night_funkin.core.graphics.shared import (
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
-	from pyday_night_funkin.core.graphics import PNFGroup
+	from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 
 
 # Copypasted from pyglet/graphics/vertexdomain since it's underscore-prefixed
@@ -44,6 +44,7 @@ class PNFVertexList:
 		size: int,
 		draw_mode: int,
 		indices: t.Sequence[int],
+		batch: "PNFBatch",
 	) -> None:
 		self.domain = vertex_domain
 
@@ -79,23 +80,29 @@ class PNFVertexList:
 		to delete the vertex list!
 		"""
 
+		self.batch = batch
+
 	def delete(self):
 		"""
-		Tells this vertex domain this vertex list belongs to to
-		free the space occupied by this list's vertices.
+		Deletes this vertex domain.
+		Tells the vertex domain this vertex list belongs to to
+		free the space occupied by this list's vertices and notifies
+		its batch of its removal.
 		After deletion, the vertex list should not be used anymore.
 		"""
 		if self.deleted:
 			return
 
 		self.domain.deallocate(self.domain_position, self.size)
+		self.batch.on_vertex_list_removal(self)
+		self.batch = None # Friendship ended
 		self.deleted = True
 
-	def migrate(self, new_domain: "PNFVertexDomain") -> None:
+	def migrate(self, new_batch: "PNFBatch", new_domain: "PNFVertexDomain") -> None:
 		"""
-		Migrates the vertex list into a new domain, deallocating its
-		used space in the old one and occupying new space in the, well,
-		new one.
+		Migrates the vertex list into a new batch and a new domain,
+		deallocating its used space in the old one and occupying new
+		space in the, well, new one.
 		"""
 		if self.domain.attributes.keys() != new_domain.attributes.keys():
 			raise ValueError("Vertex domain attribute bundle mismatch!")
@@ -111,6 +118,7 @@ class PNFVertexList:
 		self.domain = new_domain
 		self.domain_position = new_start
 		self.indices = tuple(i + index_shift for i in self.indices)
+		self.batch = new_batch
 
 	def __getattr__(self, name: str) -> t.Any:
 		att = self.domain.attributes[name]
@@ -318,7 +326,8 @@ class PNFVertexDomain:
 
 	def allocate(self, size: int) -> int:
 		"""
-		Tries to safely allocate `size` vertices.
+		Tries to safely allocate `size` vertices, resizing as
+		necessary.
 		"""
 		try:
 			return self._allocator.alloc(size)
@@ -341,7 +350,12 @@ class PNFVertexDomain:
 			attr.resize(new_size)
 
 	def create_vertex_list(
-		self, vertex_amount: int, group: "PNFGroup", draw_mode: int, indices: t.Sequence[int]
+		self,
+		vertex_amount: int,
+		batch: "PNFBatch",
+		group: "PNFGroup",
+		draw_mode: int,
+		indices: t.Sequence[int],
 	) -> PNFVertexList:
 		"""
 		Creates and returns a vertex list in the domain for the
@@ -349,4 +363,4 @@ class PNFVertexDomain:
 		"""
 		self.ensure_vao(group.program)
 		start = self.allocate(vertex_amount)
-		return PNFVertexList(self, start, vertex_amount, draw_mode, indices)
+		return PNFVertexList(self, start, vertex_amount, draw_mode, indices, batch)

@@ -172,7 +172,7 @@ class PNFBatch:
 		"""
 		chains = []
 		group_intact = self._group_vertex_list_check(group)
-		if group_intact and group.visible: # Don't draw invisible groups now
+		if group_intact: # and group.visible: # Don't draw invisible groups now # See issue 28
 			chains.append([group])
 
 		if self._group_data[group].children:
@@ -320,7 +320,7 @@ class PNFBatch:
 		attr_names = [x[0] if isinstance(x, tuple) else x for x in data]
 
 		vtx_list = self._get_vertex_domain(attr_names).create_vertex_list(
-			size, group, draw_mode, indices
+			size, self, group, draw_mode, indices
 		)
 		self._introduce_vtx_list_and_group(vtx_list, group)
 
@@ -335,11 +335,6 @@ class PNFBatch:
 
 		return vtx_list
 
-	def _introduce_vtx_list_and_group(self, vtx_list: "PNFVertexList", group: "PNFGroup") -> None:
-		self._add_group(group)
-		self._vertex_lists[vtx_list] = group
-		self._group_data[group].vertex_list = vtx_list
-
 	def draw(self):
 		if self._draw_list_dirty:
 			self._regenerate_draw_list()
@@ -348,9 +343,6 @@ class PNFBatch:
 		for f in self._draw_list:
 			f()
 
-	def draw_subset(self) -> None:
-		raise NotImplementedError("This function was unused anyways")
-
 	def migrate(
 		self,
 		vertex_list: "PNFVertexList",
@@ -358,15 +350,35 @@ class PNFBatch:
 		new_batch: "PNFBatch",
 	) -> None:
 		# Steal vertex list from the group that owns it in this batch
-		if vertex_list in self._vertex_lists:
-			this_group = self._vertex_lists[vertex_list]
-			self._group_data[this_group].vertex_list = None
+		self.on_vertex_list_removal(vertex_list)
+		new_batch._introduce_vtx_list_and_group(vertex_list, new_group)
+		new_domain = new_batch._get_vertex_domain(vertex_list.domain.attribute_bundle)
+		new_domain.ensure_vao(new_group.program)
+		vertex_list.migrate(new_batch, new_domain)
 
-		if self is not new_batch:
-			new_batch._introduce_vtx_list_and_group(vertex_list, new_group)
+	def _introduce_vtx_list_and_group(self, vtx_list: "PNFVertexList", group: "PNFGroup") -> None:
+		"""
+		Introduces a vertex list and a group it was created under to
+		the batch.
+		"""
+		self._add_group(group)
+		self._vertex_lists[vtx_list] = group
+		self._group_data[group].vertex_list = vtx_list
 
-		vertex_list.migrate(new_batch._get_vertex_domain(vertex_list.domain.attribute_bundle))
-		vertex_list.domain.ensure_vao(new_group.program)
+	def on_vertex_list_removal(self, vertex_list: "PNFVertexList") -> None:
+		"""
+		To be called when a vertex list leaves this batch.
+		Removes the vertex list from its group's data and marks the
+		draw list as dirty.
+		"""
+		if vertex_list not in self._vertex_lists:
+			return
+
+		gd = self._group_data[self._vertex_lists[vertex_list]]
+		if gd.vertex_list is not None:
+			gd.vertex_list = None
+			self._draw_list_dirty = True
+		self._vertex_lists.pop(vertex_list)
 
 	def _dump_draw_list(self) -> None:
 		print(self._dump())
