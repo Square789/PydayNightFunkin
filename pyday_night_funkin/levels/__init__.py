@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 import typing as t
 
+from pyday_night_funkin.levels.tutorial import Tutorial
 from pyday_night_funkin.levels.week1level import Bopeebo, Fresh, DadBattle
 
 if t.TYPE_CHECKING:
@@ -11,9 +12,10 @@ if t.TYPE_CHECKING:
 @dataclass
 class Week:
 	"""
-	Week dataclass containing its name and levels.
+	Week dataclass containing a week's name, levels and other things.
 	"""
 	name: str
+	story_menu_chars: t.Tuple[str, str, str]
 	levels: t.Sequence["InGameScene"]
 
 	def __getitem__(self, idx: int) -> "InGameScene":
@@ -21,6 +23,6 @@ class Week:
 
 
 WEEKS: t.Sequence[Week] = (
-	Week("TUTORIAL", []),
-	Week("WEEK 1", [Bopeebo, Fresh, DadBattle]),
+	Week("TUTORIAL", ("dad", "bf", "gf"), (Tutorial, )),
+	Week("WEEK 1",   ("dad", "bf", "gf"), (Bopeebo, Fresh, DadBattle)),
 )

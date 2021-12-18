@@ -7,6 +7,7 @@ from pyglet.math import Vec2
 from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.characters import Boyfriend, DaddyDearest, Girlfriend
 from pyday_night_funkin.hud import HUD
+from pyday_night_funkin.levels import common
 from pyday_night_funkin.note_handler import AbstractNoteHandler, NoteHandler
 from pyday_night_funkin.scenes.in_game import InGameScene
 
@@ -17,10 +18,7 @@ if t.TYPE_CHECKING:
 class Week1Level(InGameScene):
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return (
-			"background0", "background1", "girlfriend", "stage", "curtains",
-			("ui_combo", True), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
-		)
+		return common.get_layer_names()
 
 	@staticmethod
 	def get_default_cam_zoom() -> float:
@@ -31,29 +29,14 @@ class Week1Level(InGameScene):
 		return "dad"
 
 	def create_note_handler(self) -> AbstractNoteHandler:
-		return NoteHandler(self, "ui_notes", "hud")
+		return common.create_note_handler(self)
 
 	def create_hud(self) -> HUD:
-		return HUD(self, "hud", "ui", "ui_arrows", ("ui0", "ui1", "ui2"), "ui_combo")
+		return common.create_hud(self)
 
 	def setup(self) -> None:
 		super().setup()
-
-		stageback = self.create_sprite(
-			"background0", "main", x=-600, y=-200, image=load_asset(ASSETS.IMG.STAGE_BACK)
-		)
-		stageback.scroll_factor = (.9, .9)
-		stagefront = self.create_sprite(
-			"background1", "main", x=-650, y=600, image=load_asset(ASSETS.IMG.STAGE_FRONT)
-		)
-		stagefront.scroll_factor = (.9, .9)
-		stagefront.scale = 1.1
-
-		stagecurtains = self.create_sprite(
-			"curtains", "main", x=-500, y=-300, image=load_asset(ASSETS.IMG.STAGE_CURTAINS)
-		)
-		stagecurtains.scroll_factor = (1.3, 1.3)
-		stagecurtains.scale = 0.9
+		common.setup_default_stage(self)
 
 	def create_boyfriend(self) -> "Boyfriend":
 		return self.create_sprite("stage", "main", Boyfriend, scene=self, x=770, y=450)

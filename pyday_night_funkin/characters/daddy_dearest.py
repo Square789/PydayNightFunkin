@@ -17,7 +17,7 @@ class DaddyDearest(Character):
 		anims = load_asset(ASSETS.XML.DADDY_DEAREST)
 
 		self.animation.add_from_frames(
-			"idle_bop", anims["Dad idle dance"], 24, True, tags = (ANIMATION_TAG.IDLE, )
+			"idle_bop", anims["Dad idle dance"], 24, True, tags=(ANIMATION_TAG.IDLE, )
 		)
 		self.animation.add_from_frames(
 			"sing_note_left", anims["Dad Sing Note LEFT"], 24, False, (-10, 10),
