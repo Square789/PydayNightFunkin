@@ -1,10 +1,9 @@
 
 import typing as t
 
-from pyglet.graphics import Group, get_default_batch
-
-from pyday_night_funkin.tweens import TWEEN_ATTR
+from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.core.context import Context
+from pyday_night_funkin.core.graphics import get_default_batch, PNFGroup
 from pyday_night_funkin.core.pnf_sprite import EffectBound, Movement, PNFSprite
 from pyday_night_funkin.utils import clamp
 
@@ -60,7 +59,7 @@ class PNFSpriteContainer(PNFSprite):
 		self._scroll_factor = (1.0, 1.0)
 		self._visible = True
 
-		self._context = Context(get_default_batch(), Group()) if context is None else context
+		self._context = Context(get_default_batch(), PNFGroup()) if context is None else context
 
 		self._sprites: t.Set[PNFSprite] = set()
 		for spr in sprites:
@@ -69,7 +68,7 @@ class PNFSpriteContainer(PNFSprite):
 	def set_context(self, parent_context: "Context") -> None:
 		self._context = Context(
 			parent_context.batch,
-			Group(parent=parent_context.group),
+			PNFGroup(parent=parent_context.group),
 		)
 		for x in self._sprites:
 			x.set_context(self._context)

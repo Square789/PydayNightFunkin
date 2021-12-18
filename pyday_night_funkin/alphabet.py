@@ -3,15 +3,14 @@ import typing as t
 
 from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.core.pnf_animation import PNFAnimation, OffsetAnimationFrame
-from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.core.pnf_sprite_container import PNFSpriteContainer
-from pyday_night_funkin.core.shaders import (
-	PNFSpriteFragmentShader, PNFSpriteVertexShader, ShaderContainer
+from pyday_night_funkin.core.pnf_sprite import (
+	PNFSprite, PNFSpriteFragmentShader, PNFSpriteVertexShader
 )
+from pyday_night_funkin.core.pnf_sprite_container import PNFSpriteContainer
+from pyday_night_funkin.core.shaders import ShaderContainer
 from pyday_night_funkin.utils import lerp
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.scenes import BaseScene
 	from pyday_night_funkin.types import Numeric
 
 

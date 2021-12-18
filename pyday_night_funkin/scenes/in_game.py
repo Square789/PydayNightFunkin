@@ -30,7 +30,7 @@ class InGameScene(MusicBeatScene):
 	Main game driver scene.
 	Meant to be a jumble of sprites, players, handlers etc. running the
 	entire game.
-	Note that this base class only provides a very small shred of
+	Note that this base class only provides a small shred of
 	functionality, for it to be playable it needs to be expanded
 	by subclassing it (see existing weeks for examples).
 	"""

@@ -4,22 +4,23 @@ import typing as t
 
 from loguru import logger
 import pyglet
+
 from pyglet.window import key
 from pyglet.window.key import KeyStateHandler
 
 from pyday_night_funkin.core import ogg_decoder
-if ogg_decoder not in pyglet.media.get_decoders():
-	pyglet.media.add_decoders(ogg_decoder)
-
+from pyday_night_funkin.core.pnf_player import PNFPlayer
+from pyday_night_funkin.core.pnf_window import PNFWindow
 from pyday_night_funkin.config import Config, CONTROL
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT, SFX_RING_SIZE
 from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.key_handler import KeyHandler
-from pyday_night_funkin.core.pnf_player import PNFPlayer
-from pyday_night_funkin.core.pnf_window import PNFWindow
-from pyday_night_funkin.scenes import BaseScene, TestScene, TitleScene
+from pyday_night_funkin.scenes import BaseScene, TestScene, TitleScene, TriangleScene
 from pyday_night_funkin.sfx_ring import SFXRing
 
+
+if ogg_decoder not in pyglet.media.get_decoders():
+	pyglet.media.add_decoders(ogg_decoder)
 
 __version__ = "0.0.0dev"
 
@@ -27,6 +28,7 @@ __version__ = "0.0.0dev"
 class Game():
 	def __init__(self) -> None:
 		self.debug = True
+		self.use_debug_pane = False
 		# These have to be setup later, see `run`
 		self._update_time = 0
 		self._fps = None
@@ -70,7 +72,8 @@ class Game():
 		self._pending_scene_stack_additions = []
 
 		self.push_scene(TitleScene)
-		# self.push_scene(TestScene)
+		#self.push_scene(TestScene)
+		#self.push_scene(TriangleScene)
 
 	def _on_scene_stack_change(self) -> None:
 		for self_attr, scene_attr in (
@@ -95,14 +98,15 @@ class Game():
 		# different contexts? Yeah idk about OpenGL, but it will lead to
 		# unexpected errors later when switching scenes and often recreating
 		# VAOs.
-		logger.remove(0)
-		if self.debug:
+		if self.debug and self.use_debug_pane:
 			def debug_setup(_):
 				self._fps = [perf_counter() * 1000, 0, "?"]
 				self.debug_pane = DebugPane(8)
 				logger.add(self.debug_pane.add_message)
-				logger.debug(f"Game started (v{__version__}), pyglet version {pyglet.version}")
+				logger.info(f"Game started (v{__version__}), pyglet version {pyglet.version}")
 			pyglet.clock.schedule_once(debug_setup, 0.0)
+		else:
+			logger.remove(0)
 
 		pyglet.clock.schedule_interval(self.update, 1 / 60.0)
 		pyglet.app.run()
@@ -149,13 +153,12 @@ class Game():
 		for scene in self._scenes_to_draw:
 			scene.draw()
 
-		if self.debug:
+		if self.use_debug_pane:
 			self.debug_pane.draw()
 			self._fps_bump()
 			draw_time = (perf_counter() - stime) * 1000
 			# Prints frame x-1's draw time in frame x, but who cares
 			self.debug_pane.update(self._fps[2], draw_time, self._update_time)
-			# print(draw_time, self._update_time)
 
 	def _modify_scene_stack(self) -> float:
 		"""
