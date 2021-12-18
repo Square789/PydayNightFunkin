@@ -28,7 +28,7 @@ __version__ = "0.0.0dev"
 class Game():
 	def __init__(self) -> None:
 		self.debug = True
-		self.use_debug_pane = False
+		self.use_debug_pane = True
 		# These have to be setup later, see `run`
 		self._update_time = 0
 		self._fps = None
@@ -100,7 +100,7 @@ class Game():
 		# VAOs.
 		if self.debug and self.use_debug_pane:
 			def debug_setup(_):
-				self._fps = [perf_counter() * 1000, 0, "?"]
+				self._fps = [perf_counter() * 1000, 0, "?", 0, float("nan")]
 				self.debug_pane = DebugPane(8)
 				logger.add(self.debug_pane.add_message)
 				logger.info(f"Game started (v{__version__}), pyglet version {pyglet.version}")
@@ -155,10 +155,10 @@ class Game():
 
 		if self.use_debug_pane:
 			self.debug_pane.draw()
-			self._fps_bump()
 			draw_time = (perf_counter() - stime) * 1000
+			self._fps_bump(draw_time + self._update_time)
 			# Prints frame x-1's draw time in frame x, but who cares
-			self.debug_pane.update(self._fps[2], draw_time, self._update_time)
+			self.debug_pane.update(self._fps[2], self._fps[4], draw_time, self._update_time)
 
 	def _modify_scene_stack(self) -> float:
 		"""
@@ -201,10 +201,13 @@ class Game():
 
 		self._update_time = (perf_counter() - stime) * 1000
 
-	def _fps_bump(self):
+	def _fps_bump(self, frame_time: float):
 		self._fps[1] += 1
+		self._fps[3] += frame_time
 		t = perf_counter() * 1000
 		if t - self._fps[0] >= 1000:
 			self._fps[0] = t
 			self._fps[2] = self._fps[1]
 			self._fps[1] = 0
+			self._fps[4] = self._fps[3] / self._fps[2] if self._fps[2] != 0 else float("nan")
+			self._fps[3] = 0

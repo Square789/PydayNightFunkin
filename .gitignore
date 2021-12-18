@@ -124,3 +124,6 @@ dmypy.json
 
 # eeeexcept for that one
 !pyday_night_funkin/core/stb_vorbis/c_src/stb_vorbis.c
+
+# Who uses paint.NET anyways, shoutouts to Rick "win10lover420" Brewster
+*.pdn
