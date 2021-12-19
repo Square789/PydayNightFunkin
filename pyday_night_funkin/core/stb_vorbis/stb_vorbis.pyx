@@ -1,4 +1,4 @@
-from stb_vorbis.stb_vorbis cimport *
+from core.stb_vorbis.stb_vorbis cimport *
 from libc.stdlib cimport malloc, free
 
 
