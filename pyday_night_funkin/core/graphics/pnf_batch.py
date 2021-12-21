@@ -144,22 +144,6 @@ class PNFBatch:
 				gl.glBindBuffer(self._index_buffer.target, self._index_buffer.id)
 				gl.glBindVertexArray(0)
 
-	def _group_vertex_list_check(self, group: "PNFGroup") -> bool:
-		"""
-		Checks whether a group's vertex list has been deleted.
-		If it was, sets the vertex list to `None` to clear the
-		reference.
-		"""
-		gd = self._group_data[group]
-		if gd.vertex_list is None:
-			return False
-
-		if gd.vertex_list.deleted:
-			gd.vertex_list = None
-			return False
-
-		return True
-
 	def visit(self, group: "PNFGroup") -> t.Tuple[t.List[t.List["PNFGroup"]], bool]:
 		"""
 		Visits groups recursively.
@@ -171,7 +155,7 @@ class PNFBatch:
 		been deleted from the group tree.
 		"""
 		chains = []
-		group_intact = self._group_vertex_list_check(group)
+		group_intact = self._group_data[group].vertex_list is not None
 		if group_intact: # and group.visible: # Don't draw invisible groups now # See issue 28
 			chains.append([group])
 
