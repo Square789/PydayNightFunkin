@@ -27,13 +27,12 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.enums import DIFFICULTY
 
 
-
 RE_SPLIT_ANIMATION_NAME = re.compile(r"^(.*)(\d{4})$")
 ADDRESS_PADDING = (sys.maxsize.bit_length() + 1) // 4
 
+
 class AssetNotFoundError(ValueError):
 	pass
-
 
 
 class ASSETS:

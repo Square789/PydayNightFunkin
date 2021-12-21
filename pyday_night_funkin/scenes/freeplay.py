@@ -6,13 +6,11 @@ from pyday_night_funkin.asset_system import load_asset, ASSETS
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.enums import DIFFICULTY
-from pyday_night_funkin.scenes.music_beat import BaseScene
-
-if t.TYPE_CHECKING:
-	from pyday_night_funkin.scenes import InGameScene
+from pyday_night_funkin.menu import Menu
+from pyday_night_funkin import scenes
 
 
-class FreeplayScene(BaseScene):
+class FreeplayScene(scenes.BaseScene):
 	def __init__(self, *args, **kwargs) -> None:
 		from pyday_night_funkin.levels import WEEKS
 
@@ -20,7 +18,7 @@ class FreeplayScene(BaseScene):
 
 		self.bg = self.create_sprite("bg", image=load_asset(ASSETS.IMG.MENU_BG_BLUE))
 
-		self.displayed_songs: t.List["InGameScene"] = []
+		self.displayed_songs: t.List["scenes.InGameScene"] = []
 		for week in WEEKS:
 			self.displayed_songs.extend(week.levels)
 		if not self.displayed_songs:
@@ -39,10 +37,13 @@ class FreeplayScene(BaseScene):
 				x = 0,
 				y = 70*i + 30,
 			)
+			m.opacity = 153
 			self._text_lines.append(m)
 			self.add(m, "fg")
 
-		self._change_selection(0)
+		self.menu = Menu(self.game.key_handler, len(self.displayed_songs))
+
+		self.on_menu_selection_change(None, 0)
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
@@ -51,29 +52,27 @@ class FreeplayScene(BaseScene):
 	def update(self, dt: float) -> None:
 		super().update(dt)
 
-		kh = self.game.key_handler
-		if kh.just_pressed(CONTROL.UP):
-			self._change_selection(-1)
-
-		if kh.just_pressed(CONTROL.DOWN):
-			self._change_selection(1)
-
-		if kh.just_pressed(CONTROL.BACK):
-			from pyday_night_funkin.scenes.mainmenu import MainMenuScene
-			self.game.set_scene(MainMenuScene)
+		if self.game.key_handler.just_pressed(CONTROL.BACK):
+			self.game.set_scene(scenes.MainMenuScene)
 			return # Don't want the ENTER block below to trigger when this one does
 
-		if kh.just_pressed(CONTROL.ENTER):
+		prev_index = self.menu.selection_index
+		if self.menu.update():
+			self.sfx_ring.play(self._scroll_sound)
+			self.on_menu_selection_change(prev_index, self.menu.selection_index)
+
+		if self.menu.choice_made:
 			self.game.set_scene(
-				self.displayed_songs[self._cur_selection],
+				self.displayed_songs[self.menu.selection_index],
 				DIFFICULTY.HARD,
 				FreeplayScene,
 			)
 
-	def _change_selection(self, by: int) -> None:
-		self.sfx_ring.play(self._scroll_sound)
-		self._cur_selection = (self._cur_selection + by) % len(self.displayed_songs)
+	def on_menu_selection_change(self, old: t.Optional[int], new: int) -> None:
+		if old is not None:
+			self._text_lines[old].opacity = 153
+
+		self._text_lines[new].opacity = 255
 
 		for i, line in enumerate(self._text_lines):
-			line.opacity = 255 if i == self._cur_selection else 153
-			line.target_y = i - self._cur_selection
+			line.target_y = i - new

@@ -6,33 +6,17 @@ from loguru import logger
 from pyday_night_funkin.asset_system import load_asset, ASSETS
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.scenes._base import BaseScene
+from pyday_night_funkin.menu import Menu
+from pyday_night_funkin import scenes
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, out_quad
 
-
-FreeplayScene = None
-TitleScene = None
-def _cyclic_import_break():
-	global FreeplayScene, TitleScene
-	from pyday_night_funkin.scenes.freeplay import FreeplayScene
-	from pyday_night_funkin.scenes.title import TitleScene
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 
-class MainMenuScene(BaseScene):
+class MainMenuScene(scenes.BaseScene):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
-
-		_cyclic_import_break()
-
-		self._menu_items = [
-			["story mode", self._sel_story_mode, None],
-			["freeplay", self._sel_freeplay, None],
-			["options", self._sel_options, None],
-		]
-
-		self.selected_idx = 0
-
-		self.selection_confirmed = False
 
 		self.scroll_sound = load_asset(ASSETS.SOUND.MENU_SCROLL)
 		self.confirm_sound = load_asset(ASSETS.SOUND.MENU_CONFIRM)
@@ -49,9 +33,13 @@ class MainMenuScene(BaseScene):
 		self.bg_magenta.color = (0xFD, 0x71, 0x9B)
 
 		menu_item_assets = load_asset(ASSETS.XML.MAIN_MENU_ASSETS)
-		for i, list_ in enumerate(self._menu_items):
-			name = list_[0]
-			sprite = self.create_sprite("fg", y = 60 + i*160)
+		self._menu_items: t.List[t.Tuple[str, t.Callable[[], t.Any], "PNFSprite"]] = []
+		for i, (name, callback) in enumerate((
+			("story mode", self._sel_story_mode),
+			("freeplay", self._sel_freeplay),
+			("options", self._sel_options),
+		)):
+			sprite = self.create_sprite("fg", y=60 + i*160)
 			sprite.animation.add_from_frames(
 				"idle", menu_item_assets[f"{name} basic"], 24, True
 			)
@@ -60,69 +48,65 @@ class MainMenuScene(BaseScene):
 			)
 			sprite.animation.play("idle", True)
 			sprite.screen_center(CNST.GAME_DIMENSIONS, y=False)
-			list_[2] = sprite
+			self._menu_items.append((name, callback, sprite))
 
-		self.change_item(0)
+		self.menu = Menu(self.game.key_handler, len(self._menu_items))
+		self.on_menu_selection_change(None, 0)
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		return ("bg", "bg_mag", "fg")
 
-	def change_item(self, by: int) -> None:
-		self.selected_idx += by
-		self.selected_idx %= len(self._menu_items)
+	def on_menu_selection_change(self, old: t.Optional[int], new: int) -> None:
+		if old is not None:
+			s = self._menu_items[old][2]
+			s.animation.play("idle", True)
+			s.check_animation_controller()
+			s.screen_center(CNST.GAME_DIMENSIONS, y=False)
 
-		for i, (_, _, sprite) in enumerate(self._menu_items):
-			if i == self.selected_idx:
-				sprite.animation.play("selected", True)
-				self._default_camera.set_follow_target(sprite.get_midpoint(), 0.06)
-			else:
-				sprite.animation.play("idle", True)
-			sprite.screen_center(CNST.GAME_DIMENSIONS, y=False)
+		s = self._menu_items[new][2]
+		self._default_camera.set_follow_target(s.get_midpoint(), 0.06)
+		s.animation.play("selected", True)
+		s.check_animation_controller()
+		s.screen_center(CNST.GAME_DIMENSIONS, y=False)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
+		if self.menu.choice_made:
+			return
 
-		if not self.selection_confirmed:
-			kh = self.game.key_handler
+		if self.game.key_handler.just_pressed(CONTROL.BACK):
+			self.game.set_scene(scenes.TitleScene)
+			return
 
-			if kh.just_pressed(CONTROL.UP):
-				self.sfx_ring.play(self.scroll_sound)
-				self.change_item(-1)
+		prv_selection_index = self.menu.selection_index
+		if self.menu.update():
+			self.sfx_ring.play(self.scroll_sound)
+			self.on_menu_selection_change(prv_selection_index, self.menu.selection_index)
 
-			if kh.just_pressed(CONTROL.DOWN):
-				self.sfx_ring.play(self.scroll_sound)
-				self.change_item(1)
-
-			if kh.just_pressed(CONTROL.BACK):
-				self.game.set_scene(TitleScene)
-
-			if kh.just_pressed(CONTROL.ENTER):
-				self.selection_confirmed = True
-				self.sfx_ring.play(self.confirm_sound)
-
-				self.bg_magenta.start_flicker(1.1, 0.15, False)
-
-				for i, (_, callback, sprite) in enumerate(self._menu_items):
-					if i != self.selected_idx:
-						sprite.start_tween(
-							out_quad,
-							{TWEEN_ATTR.OPACITY: 0},
-							0.4,
-							# I don't really have an equivalent to a FlxSpriteGroup's `kill`
-							# Doesn't matter for this precise case anyways
-							lambda sprite=sprite: setattr(sprite, "visible", False),
-						)
-					else:
-						sprite.start_flicker(1.0, 0.06, False, callback)
+		if self.menu.choice_made:
+			self.sfx_ring.play(self.confirm_sound)
+			for i, (_, callback, sprite) in enumerate(self._menu_items):
+				if i == self.menu.selection_index:
+					self.sfx_ring.play(self.confirm_sound)
+					self.bg_magenta.start_flicker(1.1, 0.15, False)
+					sprite.start_flicker(1.0, 0.06, False, callback)
+				else:
+					sprite.start_tween(
+						out_quad,
+						{TWEEN_ATTR.OPACITY: 0},
+						0.4,
+						# I don't really have an equivalent to a FlxSpriteGroup's `kill`
+						# Doesn't matter for this precise case anyways
+						lambda sprite=sprite: setattr(sprite, "visible", False),
+					)
 
 	def _sel_story_mode(self) -> None:
-		logger.info("No story menu, sorreh")
-		self.game.set_scene(TitleScene)
+		self.game.set_scene(scenes.StoryMenuScene)
 
 	def _sel_freeplay(self) -> None:
-		self.game.set_scene(FreeplayScene)
+		self.game.set_scene(scenes.FreeplayScene)
 
 	def _sel_options(self) -> None:
 		logger.info("No options yet")
-		self.game.set_scene(TitleScene)
+		self.game.set_scene(scenes.TitleScene)

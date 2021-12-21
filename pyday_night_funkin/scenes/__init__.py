@@ -1,12 +1,14 @@
-from pyday_night_funkin.scenes._base import BaseScene
-from pyday_night_funkin.scenes.in_game import InGameScene
-from pyday_night_funkin.scenes.mainmenu import MainMenuScene
-from pyday_night_funkin.scenes.music_beat import MusicBeatScene
-from pyday_night_funkin.scenes.test import TestScene
-from pyday_night_funkin.scenes.title import TitleScene
-from pyday_night_funkin.scenes.triangle import TriangleScene
+from ._base import BaseScene
+from .freeplay import FreeplayScene
+from .in_game import InGameScene
+from .mainmenu import MainMenuScene
+from .music_beat import MusicBeatScene
+from .story_menu import StoryMenuScene
+from .test import TestScene
+from .title import TitleScene
+from .triangle import TriangleScene
 
 __all__ = [
-	"BaseScene", "InGameScene", "MusicBeatScene", "TestScene", "TitleScene",
-	"TriangleScene", "MainMenuScene"
+	"BaseScene", "FreeplayScene", "InGameScene", "MusicBeatScene", "StoryMenuScene",
+	"TestScene", "TitleScene", "TriangleScene", "MainMenuScene"
 ]
