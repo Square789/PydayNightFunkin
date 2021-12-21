@@ -82,10 +82,12 @@ class AnimationController():
 		frame dimensions, frame info and base box.
 		Not final, still needs the sprite's scale.
 		"""
+
 		self._new_offset = None
 		"""
 		Per-animation offset.
 		"""
+
 		self._new_texture = None
 
 	def _set_base_box(
@@ -183,8 +185,6 @@ class AnimationController():
 		return tag in self.current.tags
 
 	def update(self, dt: float) -> None:
-		"""
-		"""
 		if not self.playing:
 			return
 
@@ -199,6 +199,7 @@ class AnimationController():
 				else:
 					self.playing = False
 					return
+
 			self._frame_idx += 1
 			frame_changed = True
 			_next_dt = self.current.frames[self._frame_idx].duration

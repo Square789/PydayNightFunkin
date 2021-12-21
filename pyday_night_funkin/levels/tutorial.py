@@ -46,7 +46,9 @@ class Tutorial(InGameScene):
 		return not_gf
 
 	def create_opponent(self) -> "Character":
-		return self.create_sprite("girlfriend", "main", sprite_class=Girlfriend, scene=self, x=400, y=130)
+		return self.create_sprite(
+			"girlfriend", "main", sprite_class=Girlfriend, scene=self, x=400, y=130
+		)
 
 	def setup(self) -> None:
 		super().setup()

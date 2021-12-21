@@ -10,7 +10,7 @@ if t.TYPE_CHECKING:
 class SceneObject:
 	"""
 	Standard object that can be registered to a scene hierarchy.
-	Similar to FlxBasic or FlxObject i guess.
+	Similar to FlxBasic.
 	"""
 
 	_context = None
