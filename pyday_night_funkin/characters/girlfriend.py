@@ -11,6 +11,12 @@ class Girlfriend(Character):
 		super().__init__(*args, **kwargs)
 
 		anims = load_asset(ASSETS.XML.GIRLFRIEND)
+		story_menu_char_anims = load_asset(ASSETS.XML.STORY_MENU_CHARACTERS)
+
+		self.animation.add_from_frames(
+			"story_menu", story_menu_char_anims["GF Dancing Beat WHITE"],
+			24, True, tags=(ANIMATION_TAG.STORY_MENU, )
+		)
 
 		self.animation.add_from_frames(
 			"idle_bop", anims["GF Dancing Beat"], 24, True, tags=(ANIMATION_TAG.IDLE, )

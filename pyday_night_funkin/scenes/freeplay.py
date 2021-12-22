@@ -41,9 +41,9 @@ class FreeplayScene(scenes.BaseScene):
 			self._text_lines.append(m)
 			self.add(m, "fg")
 
-		self.menu = Menu(self.game.key_handler, len(self.displayed_songs))
-
-		self.on_menu_selection_change(None, 0)
+		self.menu = Menu(
+			self.game.key_handler, len(self.displayed_songs), self._on_select, self._on_confirm
+		)
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
@@ -54,25 +54,19 @@ class FreeplayScene(scenes.BaseScene):
 
 		if self.game.key_handler.just_pressed(CONTROL.BACK):
 			self.game.set_scene(scenes.MainMenuScene)
-			return # Don't want the ENTER block below to trigger when this one does
+			return # Don't want any menu callbacks to trigger when this block runs
 
-		prev_index = self.menu.selection_index
-		if self.menu.update():
+		self.menu.update()
+
+	def _on_select(self, i: int, state: bool) -> None:
+		if state:
+			self._text_lines[i].opacity = 255
 			self.sfx_ring.play(self._scroll_sound)
-			self.on_menu_selection_change(prev_index, self.menu.selection_index)
+			for li, line in enumerate(self._text_lines):
+				line.target_y = li - i
+		else:
+			self._text_lines[i].opacity = 153
 
-		if self.menu.choice_made:
-			self.game.set_scene(
-				self.displayed_songs[self.menu.selection_index],
-				DIFFICULTY.HARD,
-				FreeplayScene,
-			)
-
-	def on_menu_selection_change(self, old: t.Optional[int], new: int) -> None:
-		if old is not None:
-			self._text_lines[old].opacity = 153
-
-		self._text_lines[new].opacity = 255
-
-		for i, line in enumerate(self._text_lines):
-			line.target_y = i - new
+	def _on_confirm(self, i: int, selected: bool) -> None:
+		if selected:
+			self.game.set_scene(self.displayed_songs[i], DIFFICULTY.HARD, FreeplayScene)

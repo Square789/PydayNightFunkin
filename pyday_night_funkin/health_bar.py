@@ -27,11 +27,9 @@ class HealthBar():
 		player_icon_name: str,
 		layers: t.Tuple[str, str, str],
 		ded_icon_threshold: float = 0.2,
-		opponent_color: t.Union[t.Tuple[int, int, int, int], int] = 0xFF0000FF,
-		player_color: t.Union[t.Tuple[int, int, int, int], int] = 0x66FF33FF,
+		opponent_color: int = 0xFF0000FF,
+		player_color: int = 0x66FF33FF,
 	) -> None:
-		"""
-		"""
 		self.ded_icon_threshold = ded_icon_threshold
 
 		bg_layer, bar_layer, icon_layer = layers

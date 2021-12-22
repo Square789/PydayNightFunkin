@@ -28,11 +28,12 @@ class GAME_STATE(IntEnum):
 
 
 class ANIMATION_TAG(IntEnum):
-	STATIC = 0
-	PRESSED = 1
-	CONFIRM = 2
-
 	IDLE = 0
 	SING = 1
 	MISS = 2
 	SPECIAL = 3
+	STORY_MENU = 4
+
+	STATIC = 5
+	PRESSED = 6
+	CONFIRM = 7

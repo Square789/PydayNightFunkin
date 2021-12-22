@@ -9,6 +9,7 @@ from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.scenes._base import BaseScene
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, in_out_quart
+from pyday_night_funkin.utils import create_pixel
 
 
 class PauseScene(BaseScene):
@@ -19,8 +20,7 @@ class PauseScene(BaseScene):
 	def __init__(self, game) -> None:
 		super().__init__(game)
 
-		pixel = ImageData(1, 1, "RGBA", b"\x00\x00\x00\xFF").get_texture()
-		self.background = self.create_sprite("bg", image=pixel)
+		self.background = self.create_sprite("bg", image=create_pixel(0x000000FF))
 		self.background.scale_x = CNST.GAME_WIDTH
 		self.background.scale_y = CNST.GAME_HEIGHT
 		self.background.opacity = 0

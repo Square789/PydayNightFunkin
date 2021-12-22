@@ -50,25 +50,38 @@ class MainMenuScene(scenes.BaseScene):
 			sprite.screen_center(CNST.GAME_DIMENSIONS, y=False)
 			self._menu_items.append((name, callback, sprite))
 
-		self.menu = Menu(self.game.key_handler, len(self._menu_items))
-		self.on_menu_selection_change(None, 0)
+		self.menu = Menu(
+			self.game.key_handler, len(self._menu_items), self._on_select, self._on_confirm
+		)
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		return ("bg", "bg_mag", "fg")
 
-	def on_menu_selection_change(self, old: t.Optional[int], new: int) -> None:
-		if old is not None:
-			s = self._menu_items[old][2]
-			s.animation.play("idle", True)
-			s.check_animation_controller()
-			s.screen_center(CNST.GAME_DIMENSIONS, y=False)
-
-		s = self._menu_items[new][2]
-		self._default_camera.set_follow_target(s.get_midpoint(), 0.06)
-		s.animation.play("selected", True)
+	def _on_select(self, i: int, state: bool) -> None:
+		s = self._menu_items[i][2]
+		s.animation.play("selected" if state else "idle", True)
 		s.check_animation_controller()
 		s.screen_center(CNST.GAME_DIMENSIONS, y=False)
+		if state:
+			self._default_camera.set_follow_target(s.get_midpoint(), 0.06)
+
+	def _on_confirm(self, i: int, selected: bool) -> None:
+		_, callback, sprite = self._menu_items[i]
+		if selected:
+			sprite.start_flicker(1.0, 0.06, False, callback)
+
+			self.sfx_ring.play(self.confirm_sound)
+			self.bg_magenta.start_flicker(1.1, 0.15, False)
+		else:
+			sprite.start_tween(
+				out_quad,
+				{TWEEN_ATTR.OPACITY: 0},
+				0.4,
+				# I don't really have an equivalent to a FlxSpriteGroup's `kill`
+				# Doesn't matter for this precise case anyways
+				lambda sprite=sprite: setattr(sprite, "visible", False),
+			)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
@@ -79,27 +92,7 @@ class MainMenuScene(scenes.BaseScene):
 			self.game.set_scene(scenes.TitleScene)
 			return
 
-		prv_selection_index = self.menu.selection_index
-		if self.menu.update():
-			self.sfx_ring.play(self.scroll_sound)
-			self.on_menu_selection_change(prv_selection_index, self.menu.selection_index)
-
-		if self.menu.choice_made:
-			self.sfx_ring.play(self.confirm_sound)
-			for i, (_, callback, sprite) in enumerate(self._menu_items):
-				if i == self.menu.selection_index:
-					self.sfx_ring.play(self.confirm_sound)
-					self.bg_magenta.start_flicker(1.1, 0.15, False)
-					sprite.start_flicker(1.0, 0.06, False, callback)
-				else:
-					sprite.start_tween(
-						out_quad,
-						{TWEEN_ATTR.OPACITY: 0},
-						0.4,
-						# I don't really have an equivalent to a FlxSpriteGroup's `kill`
-						# Doesn't matter for this precise case anyways
-						lambda sprite=sprite: setattr(sprite, "visible", False),
-					)
+		self.menu.update()
 
 	def _sel_story_mode(self) -> None:
 		self.game.set_scene(scenes.StoryMenuScene)

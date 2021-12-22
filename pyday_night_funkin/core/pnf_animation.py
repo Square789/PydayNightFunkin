@@ -175,6 +175,12 @@ class AnimationController():
 			return False
 		return self.current.loop
 
+	def exists(self, animation_name: str) -> bool:
+		"""
+		Returns whether an animation with the given name exists.
+		"""
+		return animation_name in self._animations
+
 	def has_tag(self, tag: t.Hashable) -> bool:
 		"""
 		Returns whether the current animation is tagged with the given

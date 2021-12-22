@@ -11,6 +11,16 @@ class Boyfriend(Character):
 		super().__init__(*args, **kwargs)
 
 		anims = load_asset(ASSETS.XML.BOYFRIEND)
+		story_menu_char_anims = load_asset(ASSETS.XML.STORY_MENU_CHARACTERS)
+
+		self.animation.add_from_frames(
+			"story_menu", story_menu_char_anims["BF idle dance white"],
+			24, True, tags=(ANIMATION_TAG.STORY_MENU, )
+		)
+		self.animation.add_from_frames(
+			"story_menu_confirm", story_menu_char_anims["BF HEY!!"],
+			24, False, tags=(ANIMATION_TAG.STORY_MENU, ANIMATION_TAG.SPECIAL)
+		)
 
 		self.animation.add_from_frames(
 			"idle_bop", anims["BF idle dance"], 24, True, (-5, 0),
@@ -48,4 +58,6 @@ class Boyfriend(Character):
 			"miss_note_right", anims["BF NOTE RIGHT MISS"], 24, False, (-30, 21),
 			(ANIMATION_TAG.MISS, )
 		)
-		self.animation.add_from_frames("hey", anims["BF HEY!!"], 24, False, (7, 4), (ANIMATION_TAG.SPECIAL, ))
+		self.animation.add_from_frames(
+			"hey", anims["BF HEY!!"], 24, False, (7, 4), (ANIMATION_TAG.SPECIAL, )
+		)

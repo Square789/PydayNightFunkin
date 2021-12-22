@@ -2,6 +2,8 @@
 from itertools import islice
 import typing as t
 
+from pyglet.image import ImageData
+
 if t.TYPE_CHECKING:
 	from pyglet.image import Texture
 
@@ -48,14 +50,21 @@ def clamp(value, min_, max_):
 def lerp(start, stop, ratio):
 	return start + (stop - start) * ratio
 
-def to_rgba_bytes(v: t.Union[t.Tuple[int, int, int, int], int]) -> bytes:
-	if isinstance(v, tuple):
-		if len(v) == 4:
-			return bytes(v)
-		else:
-			raise ValueError("Color tuple must be of size 4!")
-	elif isinstance(v, int):
-		return bytes(i & 0xFF for i in (v >> 24, v >> 16, v >> 8, v))
-	else:
-		raise TypeError(f"Invalid type for color: {type(v).__name__!r}.")
+def to_rgba_bytes(v: int) -> bytes:
+	"""
+	Converts an RGBA color int to raw bytes.
+	"""
+	return bytes(i & 0xFF for i in (v >> 24, v >> 16, v >> 8, v))
 
+def to_rgba_tuple(v: int) -> t.Tuple[int, int, int, int]:
+	"""
+	Converts an RGBA color int to a tuple as pyglet expects it.
+	"""
+	return tuple(i & 0xFF for i in (v >> 24, v >> 16, v >> 8, v))
+
+def create_pixel(color: int) -> "Texture":
+	"""
+	Creates a singular pixel texture from the given RGBA color int.
+	Note that it is not cached, so try to reuse or properly delete it.
+	"""
+	return ImageData(1, 1, "RGBA", to_rgba_bytes(color)).get_texture()
