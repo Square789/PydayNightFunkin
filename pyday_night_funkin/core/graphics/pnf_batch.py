@@ -36,7 +36,7 @@ class _AnnotatedGroup:
 # work, may also turn out completely useless.
 class GroupChain:
 	def __init__(self, groups: t.Sequence["_AnnotatedGroup"]) -> None:
-		self.groups = groups
+		self.groups = list(groups)
 		# self.used_vertex_domains = {g.vertex_list.domain for g in groups}
 		# self.used_draw_modes = {g.vertex_list.draw_mode for g in groups}
 
@@ -211,8 +211,11 @@ class PNFBatch:
 
 		# Below converts the group chains into GL calls.
 		# TODO: This can certainly be optimized further by reordering
-		# groups that share a GroupChain.
-		# Unfortunately, I am too stupid to figure out how.
+		# groups that share a GroupChain smartly.
+		# Unfortunately, I am too stupid to figure out how, so just have
+		# a sort by the most expensive thing to switch (shader programs)
+		for chain in chains:
+			chain.groups.sort(key=lambda g: g.group.program.id)
 
 		if not chains:
 			return [], []
