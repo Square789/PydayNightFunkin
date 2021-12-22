@@ -25,14 +25,43 @@ if ogg_decoder not in pyglet.media.get_decoders():
 __version__ = "0.0.1dev"
 
 
+class _FPSData:
+	def __init__(self) -> None:
+		self.last_second_timestamp = perf_counter() * 1000
+		self._reset_measurements()
+		self.fmt_fps = "?"
+		self.fmt_avg_frame_time = float("nan")
+		self.fmt_max_frame_time = float("nan")
+
+	def _reset_measurements(self) -> None:
+		self.last_seconds_frames = 0
+		self.last_seconds_frame_time = 0
+		self.max_frame_time = -1
+
+	def bump(self, frame_time: float) -> None:
+		self.last_seconds_frames += 1
+		self.last_seconds_frame_time += frame_time
+		self.max_frame_time = max(self.max_frame_time, frame_time)
+		t = perf_counter() * 1000
+		if t - self.last_second_timestamp >= 1000:
+			self.last_second_timestamp = t
+			self.fmt_fps = self.last_seconds_frames
+			self.fmt_avg_frame_time = (
+				self.last_seconds_frame_time / self.last_seconds_frames
+				if self.last_seconds_frames != 0 else float("nan")
+			)
+			self.fmt_max_frame_time = self.max_frame_time if self.max_frame_time >= 0 else "?"
+			self._reset_measurements()
+
+
 class Game():
 	def __init__(self) -> None:
 		self.debug = True
 		self.use_debug_pane = True
 		# These have to be setup later, see `run`
 		self._update_time = 0
-		self._fps = None
-		self.debug_pane = None
+		self._fps: t.Optional[_FPSData] = None
+		self.debug_pane: t.Optional[DebugPane] = None
 
 		self.config = Config(
 			scroll_speed = 1.0,
@@ -100,7 +129,7 @@ class Game():
 		# VAOs.
 		if self.debug and self.use_debug_pane:
 			def debug_setup(_):
-				self._fps = [perf_counter() * 1000, 0, "?", 0, float("nan")]
+				self._fps = _FPSData()
 				self.debug_pane = DebugPane(8)
 				logger.add(self.debug_pane.add_message)
 				logger.info(f"Game started (v{__version__}), pyglet version {pyglet.version}")
@@ -156,9 +185,15 @@ class Game():
 		if self.use_debug_pane:
 			self.debug_pane.draw()
 			draw_time = (perf_counter() - stime) * 1000
-			self._fps_bump(draw_time + self._update_time)
+			self._fps.bump(draw_time + self._update_time)
 			# Prints frame x-1's draw time in frame x, but who cares
-			self.debug_pane.update(self._fps[2], self._fps[4], draw_time, self._update_time)
+			self.debug_pane.update(
+				self._fps.fmt_fps,
+				self._fps.fmt_avg_frame_time,
+				self._fps.fmt_max_frame_time,
+				draw_time,
+				self._update_time,
+			)
 
 	def _modify_scene_stack(self) -> float:
 		"""
@@ -200,14 +235,3 @@ class Game():
 			scene.update(dt)
 
 		self._update_time = (perf_counter() - stime) * 1000
-
-	def _fps_bump(self, frame_time: float):
-		self._fps[1] += 1
-		self._fps[3] += frame_time
-		t = perf_counter() * 1000
-		if t - self._fps[0] >= 1000:
-			self._fps[0] = t
-			self._fps[2] = self._fps[1]
-			self._fps[1] = 0
-			self._fps[4] = self._fps[3] / self._fps[2] if self._fps[2] != 0 else float("nan")
-			self._fps[3] = 0

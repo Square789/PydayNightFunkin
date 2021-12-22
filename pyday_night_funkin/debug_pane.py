@@ -65,7 +65,9 @@ class DebugPane():
 		"""
 		self._queue.put(log_message)
 
-	def update(self, fps: int, fts: float, draw_time: float, update_time: float) -> None:
+	def update(
+		self, fps: int, fts: float, pfts: float, draw_time: float, update_time: float
+	) -> None:
 		"""
 		Updates the debug pane and writes all queued messages to
 		the labels, causing a possibly overflowing label's text to be
@@ -76,8 +78,9 @@ class DebugPane():
 		errors in the past.
 		"""
 		self.fps_label.text = (
-			f"FPS: {fps:>4}; AVG FT: {fts:>4.1f} ms; Frame time: {draw_time + update_time:>5.1f} ms "
-			f"(Draw {draw_time:>5.1f}, Update {update_time:>5.1f}) "
+			f"FPS: {fps:>4}; FT: AVG {fts:>4.1f}ms, MAX {pfts:>4.1f}ms; Frame time: "
+			f"{draw_time + update_time:>5.1f}ms (Draw {draw_time:>5.1f}, "
+			f"Update {update_time:>5.1f}) "
 		)
 
 		if self._queue.empty():
