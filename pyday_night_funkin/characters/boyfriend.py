@@ -1,6 +1,8 @@
 
 import typing as t
 
+from pyglet.math import Vec2
+
 from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.enums import ANIMATION_TAG
 from pyday_night_funkin.characters._base import Character
@@ -61,3 +63,7 @@ class Boyfriend(Character):
 		self.animation.add_from_frames(
 			"hey", anims["BF HEY!!"], 24, False, (7, 4), (ANIMATION_TAG.SPECIAL, )
 		)
+
+	@staticmethod
+	def get_story_menu_transform() -> t.Tuple[Vec2, float]:
+		return (Vec2(-80, 0), .9)

@@ -13,7 +13,7 @@ from pyday_night_funkin.enums import ANIMATION_TAG, DIFFICULTY, GAME_STATE
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.note import NOTE_TYPE, SUSTAIN_STAGE, Note
 from pyday_night_funkin.core.pnf_player import PNFPlayer
-from pyday_night_funkin.scenes.mainmenu import MainMenuScene
+from pyday_night_funkin.scenes.main_menu import MainMenuScene
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 from pyday_night_funkin.scenes.pause import PauseScene
 from pyday_night_funkin.scenes.title import TitleScene

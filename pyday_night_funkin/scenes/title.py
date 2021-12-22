@@ -6,14 +6,13 @@ from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin.asset_system import ASSETS, load_asset
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.scenes.mainmenu import MainMenuScene
-from pyday_night_funkin.scenes.music_beat import MusicBeatScene
+from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.alphabet import AlphabetCharacter
 
 
-class TitleScene(MusicBeatScene):
+class TitleScene(scenes.MusicBeatScene):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
@@ -126,7 +125,7 @@ class TitleScene(MusicBeatScene):
 		self.sfx_ring.play(self.confirm_sound)
 
 		def _cb(_):
-			self.game.set_scene(MainMenuScene)
+			self.game.set_scene(scenes.MainMenuScene)
 
 		delay = .5 if self.game.debug else 2.0
 		self.clock.schedule_once(_cb, delay)

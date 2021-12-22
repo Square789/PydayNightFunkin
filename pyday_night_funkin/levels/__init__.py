@@ -7,7 +7,7 @@ from pyday_night_funkin.levels.tutorial import Tutorial
 from pyday_night_funkin.levels.week1level import Bopeebo, Fresh, DadBattle
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.pnf_sprite import PNFSprite
+	from pyday_night_funkin.characters import Character
 	from pyday_night_funkin.scenes import InGameScene
 
 
@@ -16,13 +16,14 @@ class Week:
 	"""
 	Week dataclass containing a week's name, levels and other things.
 	"""
+
 	name: str
 	"""Name of the week."""
 
-	story_menu_chars: t.Tuple[t.Type["PNFSprite"], t.Type["PNFSprite"], t.Type["PNFSprite"]]
+	story_menu_chars: t.Tuple[t.Type["Character"], t.Type["Character"], t.Type["Character"]]
 	"""
 	Characters that should appear in this week's story menu slot.
-	Must be a three-element tuple of sprite classes.
+	Must be a three-element tuple of character subclasses.
 	All sprites are expected to have a `story_menu` animation on them
 	and the one at index 1 an additional `story_menu_confirm`
 	animation.

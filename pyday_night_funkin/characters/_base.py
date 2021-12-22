@@ -1,6 +1,8 @@
 
 import typing as t
 
+from pyglet.math import Vec2
+
 from pyday_night_funkin.enums import ANIMATION_TAG
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
@@ -10,6 +12,11 @@ if t.TYPE_CHECKING:
 
 
 class Character(PNFSprite):
+	"""
+	A beloved character that moves, sings and... well I guess that's
+	about it. Holds some more information than a generic sprite which
+	is related to the character via static `get_` methods.
+	"""
 
 	def __init__(self, scene: "MusicBeatScene", *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
@@ -38,3 +45,12 @@ class Character(PNFSprite):
 		sing animation for after singing a note. Default is 4.
 		"""
 		return 4
+
+	@staticmethod
+	def get_story_menu_transform() -> t.Tuple[Vec2, float]:
+		"""
+		Returns a two-element tuple of the translation and scale the
+		character should undergo when its `story_menu` animation is
+		displayed.
+		"""
+		return (Vec2(0, 0), 1)

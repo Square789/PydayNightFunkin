@@ -1,10 +1,10 @@
 
+from math import pi, sin
 import typing as t
 
 from pyglet import gl
-from pyglet import graphics
 from pyglet.graphics.shader import ShaderProgram
-from pyglet.image import AbstractImage, Texture, TextureArrayRegion
+from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
 
 import pyday_night_funkin.constants as CNST
@@ -18,7 +18,6 @@ from pyday_night_funkin.core.shaders import ShaderContainer
 from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
-	from pyglet.graphics.shader import UniformBufferObject
 	from pyday_night_funkin.core.camera import Camera
 	from pyday_night_funkin.types import Numeric
 
@@ -195,7 +194,7 @@ class Effect():
 		return self.cur_time >= self.duration
 
 
-class Tween(Effect):
+class _Tween(Effect):
 	def __init__(
 		self,
 		tween_func: t.Callable,
@@ -212,10 +211,18 @@ class Tween(Effect):
 		progress = self.tween_func(clamp(self.cur_time, 0, self.duration) / self.duration)
 
 		for attr_name, (v_ini, v_diff) in self.attr_map.items():
-			setattr(sprite, attr_name, v_ini + v_diff * progress)
+			setattr(sprite, attr_name, v_ini + v_diff*progress)
 
 
+# TODO left here since i would need to replace call sites with some
+# ugly lambda s: setattr(s, "visibility", True) stuff; not really
+# worth it, see into it if you have time.
 class Flicker(Effect):
+	"""
+	Effect rapidly turning a sprite's visibility off and on.
+	This is a special case of the more generic `Toggle` effect
+	affecting only a sprite's visibility.
+	"""
 	def __init__(
 		self,
 		interval: float,
@@ -244,6 +251,47 @@ class Flicker(Effect):
 				self._next_toggle += self.interval
 			self._visible = not self._visible
 			sprite.visible = self._visible
+
+
+class Toggle(Effect):
+	"""
+	Periodically calls on/off callbacks on a sprite for a given
+	duration.
+	"""
+	def __init__(
+		self,
+		interval: float,
+		start_active: bool,
+		end_active: bool,
+		duration: float,
+		on_toggle_on: t.Optional[t.Callable[["PNFSprite"], t.Any]] = None,
+		on_toggle_off: t.Optional[t.Callable[["PNFSprite"], t.Any]] = None,
+		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
+	) -> None:
+		super().__init__(duration, on_complete)
+		if interval <= 0.0:
+			raise ValueError("Interval may not be negative or zero!")
+
+		self._cur_state = start_active
+		self._invert = -1 if not start_active else 1
+		self.interval = pi/interval
+		self.end_active = end_active
+		self.on_toggle_on = on_toggle_on
+		self.on_toggle_off = on_toggle_off
+
+	def update(self, dt: float, sprite: "PNFSprite") -> None:
+		self.cur_time += dt
+		new_state = (sin(self.cur_time * self.interval) * self._invert) > 0
+		if self._cur_state == new_state:
+			return
+
+		self._cur_state = new_state
+		if new_state:
+			if self.on_toggle_on is not None:
+				self.on_toggle_on(sprite)
+		else:
+			if self.on_toggle_off is not None:
+				self.on_toggle_off(sprite)
 
 
 class PNFSprite(SceneObject):
@@ -423,7 +471,7 @@ class PNFSprite(SceneObject):
 		attributes: t.Dict[TWEEN_ATTR, t.Any],
 		duration: float,
 		on_complete: t.Callable[[], t.Any] = None,
-	) -> Tween:
+	) -> _Tween:
 		"""
 		# TODO write some very cool doc
 		"""
@@ -434,7 +482,7 @@ class PNFSprite(SceneObject):
 			initial_value = getattr(self, attribute_name)
 			attr_map[attribute_name] = (initial_value, target_value - initial_value)
 
-		t = Tween(
+		t = _Tween(
 			tween_func,
 			duration = duration,
 			attr_map = attr_map,
@@ -459,6 +507,29 @@ class PNFSprite(SceneObject):
 		)
 		self.effects.append(f)
 		return f
+
+	def start_toggle(
+		self,
+		duration: float,
+		interval: float,
+		start_status: bool = True,
+		end_status: bool = True,
+		on_toggle_on: t.Optional[t.Callable[["PNFSprite"], t.Any]] = None,
+		on_toggle_off: t.Optional[t.Callable[["PNFSprite"], t.Any]] = None,
+		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
+	) -> Toggle:
+		t = Toggle(
+			interval, start_status, end_status, duration, on_toggle_on, on_toggle_off, on_complete
+		)
+		self.effects.append(t)
+		return t
+
+	def remove_effect(self, e: Effect, fail_loudly: bool = False) -> None:
+		try:
+			self.effects.remove(e)
+		except ValueError:
+			if fail_loudly:
+				raise
 
 	def start_movement(
 		self,

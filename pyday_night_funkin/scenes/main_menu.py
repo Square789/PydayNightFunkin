@@ -70,17 +70,14 @@ class MainMenuScene(scenes.BaseScene):
 	def _on_confirm(self, i: int, selected: bool) -> None:
 		_, callback, sprite = self._menu_items[i]
 		if selected:
-			sprite.start_flicker(1.0, 0.06, False, callback)
-
 			self.sfx_ring.play(self.confirm_sound)
+			sprite.start_flicker(1.0, 0.06, False, callback)
 			self.bg_magenta.start_flicker(1.1, 0.15, False)
 		else:
 			sprite.start_tween(
 				out_quad,
 				{TWEEN_ATTR.OPACITY: 0},
 				0.4,
-				# I don't really have an equivalent to a FlxSpriteGroup's `kill`
-				# Doesn't matter for this precise case anyways
 				lambda sprite=sprite: setattr(sprite, "visible", False),
 			)
 

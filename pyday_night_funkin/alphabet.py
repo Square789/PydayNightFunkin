@@ -160,7 +160,7 @@ class MenuTextLine(TextLine):
 	x and y coordinate.
 	"""
 
-	def __init__(self, target_y, game_dims, *args, **kwargs) -> None:
+	def __init__(self, target_y: int, game_dims: t.Tuple[int, int], *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 		self.target_y = target_y
 		self.game_height = game_dims[1]

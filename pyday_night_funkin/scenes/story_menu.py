@@ -11,6 +11,21 @@ from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin import scenes
 from pyday_night_funkin.utils import create_pixel
 
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.characters import Character
+
+
+class WeekHeader(PNFSprite):
+	"""
+	Menu item that will force itself to a given y coordinate.
+	"""
+
+	def __init__(self, target_y: int, game_dims: t.Tuple[int, int], *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.target_y = target_y
+		self.game_height = game_dims[1]
+
 
 class StoryMenuScene(scenes.MusicBeatScene):
 	def __init__(self, *args, **kwargs) -> None:
@@ -29,7 +44,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 		self._current_week = 0
 
-		self.week_chars: t.List["PNFSprite"] = []
+		self.week_chars: t.List["Character"] = []
 		for i in range(3):
 			spr = self.create_sprite(
 				"fg",
@@ -39,7 +54,10 @@ class StoryMenuScene(scenes.MusicBeatScene):
 				y = 70,
 			)
 			spr.animation.play("story_menu")
-			spr.scale = .5
+			(ox, oy), s = spr.get_story_menu_transform()
+			spr.scale = s
+			spr.x += ox
+			spr.y += oy
 			self.week_chars.append(spr)
 
 	@staticmethod
@@ -52,5 +70,3 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		kh = self.game.key_handler
 		if kh.just_pressed(CONTROL.BACK):
 			self.game.set_scene(scenes.MainMenuScene)
-
-		
