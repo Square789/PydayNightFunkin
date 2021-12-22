@@ -64,6 +64,7 @@ class MainMenuScene(scenes.BaseScene):
 		s.check_animation_controller()
 		s.screen_center(CNST.GAME_DIMENSIONS, y=False)
 		if state:
+			self.sfx_ring.play(self.scroll_sound)
 			self._default_camera.set_follow_target(s.get_midpoint(), 0.06)
 
 	def _on_confirm(self, i: int, selected: bool) -> None:
