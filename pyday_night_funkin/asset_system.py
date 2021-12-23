@@ -53,6 +53,7 @@ class ASSETS:
 		TITLE_GIRLFRIEND = 7
 		MAIN_MENU_ASSETS = 8
 		STORY_MENU_CHARACTERS = 9
+		STORY_MENU_UI = 10
 
 	class IMG:
 		STAGE_BACK = 100000
@@ -354,6 +355,7 @@ _DEFAULT_ASSET_SYSTEM = AssetSystem({
 	ASSETS.XML.TITLE_GIRLFRIEND: XmlTextureAtlas("preload/images/gfDanceTitle.xml"),
 	ASSETS.XML.MAIN_MENU_ASSETS: XmlTextureAtlas("preload/images/FNF_main_menu_assets.xml"),
 	ASSETS.XML.STORY_MENU_CHARACTERS: XmlTextureAtlas("preload/images/campaign_menu_UI_characters.xml"),
+	ASSETS.XML.STORY_MENU_UI: XmlTextureAtlas("preload/images/campaign_menu_UI_assets.xml"),
 
 	ASSETS.IMG.STAGE_BACK: Image("shared/images/stageback.png"),
 	ASSETS.IMG.STAGE_FRONT: Image("shared/images/stagefront.png"),

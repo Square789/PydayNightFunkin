@@ -22,7 +22,7 @@ from pyday_night_funkin.sfx_ring import SFXRing
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.2dev"
+__version__ = "0.0.3dev"
 
 
 class _FPSData:

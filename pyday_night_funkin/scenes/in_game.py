@@ -13,10 +13,7 @@ from pyday_night_funkin.enums import ANIMATION_TAG, DIFFICULTY, GAME_STATE
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.note import NOTE_TYPE, SUSTAIN_STAGE, Note
 from pyday_night_funkin.core.pnf_player import PNFPlayer
-from pyday_night_funkin.scenes.main_menu import MainMenuScene
-from pyday_night_funkin.scenes.music_beat import MusicBeatScene
-from pyday_night_funkin.scenes.pause import PauseScene
-from pyday_night_funkin.scenes.title import TitleScene
+from pyday_night_funkin import scenes
 from pyday_night_funkin.utils import lerp
 
 if t.TYPE_CHECKING:
@@ -25,7 +22,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.note_handler import AbstractNoteHandler
 
 
-class InGameScene(MusicBeatScene):
+class InGameScene(scenes.MusicBeatScene):
 	"""
 	Main game driver scene.
 	Meant to be a jumble of sprites, players, handlers etc. running the
@@ -38,7 +35,7 @@ class InGameScene(MusicBeatScene):
 		self,
 		game: "Game",
 		difficulty: DIFFICULTY,
-		created_from: t.Union[t.Type[MainMenuScene], t.Type[TitleScene]],
+		created_from: t.Type[scenes.BaseScene],
 	) -> None:
 		super().__init__(game)
 
@@ -310,7 +307,7 @@ class InGameScene(MusicBeatScene):
 
 		if self.key_handler.just_pressed(CONTROL.ENTER):
 			self.song_players.pause()
-			self.game.push_scene(PauseScene)
+			self.game.push_scene(scenes.PauseScene)
 
 	def on_note_hit(self, note: Note) -> None:
 		"""

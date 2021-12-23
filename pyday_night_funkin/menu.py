@@ -18,6 +18,8 @@ class Menu:
 		on_select: t.Optional[t.Callable[[int, bool], t.Any]] = None,
 		on_confirm: t.Optional[t.Callable[[int, bool], t.Any]] = None,
 		ini_selection_index: int = 0,
+		fwd_control: CONTROL = CONTROL.DOWN,
+		bkwd_control: CONTROL = CONTROL.UP,
 	) -> None:
 		"""
 		Initializes a menu.
@@ -42,6 +44,11 @@ class Menu:
 			be passed `True` for the chosen index, the others `False`.
 		:param ini_selection_index: The initial selection index.
 			0 per default.
+		:param fwd_control: Control to scroll the menu down. This will
+			be checked via the key handler's `just_pressed` method each
+			`update` call.
+		:param bkwd_control: Same as `fwd_control`, just in the other
+			direction.
 		"""
 		if ini_selection_index < 0 or ini_selection_index >= item_count:
 			raise ValueError("Invalid selection index!")
@@ -53,6 +60,9 @@ class Menu:
 		self.item_count = item_count
 		self.on_select = on_select or (lambda *_: None)
 		self.on_confirm = on_confirm or (lambda *_: None)
+
+		self._fwd_control = fwd_control
+		self._bkwd_control = bkwd_control
 
 		for i in range(item_count):
 			self.on_select(i, i == ini_selection_index)
@@ -102,10 +112,10 @@ class Menu:
 
 		kh = self.key_handler
 
-		if kh.just_pressed(CONTROL.UP):
+		if kh.just_pressed(self._bkwd_control):
 			self._change_item(-1)
 
-		if kh.just_pressed(CONTROL.DOWN):
+		if kh.just_pressed(self._fwd_control):
 			self._change_item(1)
 
 		if kh.just_pressed(CONTROL.ENTER):

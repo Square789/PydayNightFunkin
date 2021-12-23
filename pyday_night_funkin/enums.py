@@ -19,6 +19,15 @@ class DIFFICULTY(IntEnum):
 			return "-hard"
 		return ""
 
+	def to_atlas_prefix(self) -> str:
+		if self is self.EASY:
+			return "EASY"
+		elif self is self.NORMAL:
+			return "NORMAL"
+		elif self is self.HARD:
+			return "HARD"
+		return ""
+
 
 class GAME_STATE(IntEnum):
 	LOADING = 0
