@@ -1,7 +1,7 @@
 
 import typing as t
 
-from pyday_night_funkin.asset_system import ASSETS, load_asset
+from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_animation import PNFAnimation, OffsetAnimationFrame
 from pyday_night_funkin.core.pnf_sprite import (
 	PNFSprite, PNFSpriteFragmentShader, PNFSpriteVertexShader
@@ -40,15 +40,23 @@ class AlphabetCharacter(PNFSprite):
 		"?": "question mark",
 	}
 
-	_ANIMATIONS = {
-		prefix: PNFAnimation(
-			[
-				OffsetAnimationFrame(frame.texture, 1 / 24, frame.frame_info)
-				for frame in frames
-			],
-			loop = True,
-		) for prefix, frames in load_asset(ASSETS.XML.ALPHABET).items()
-	}
+	_ANIMATIONS = None
+
+	@classmethod
+	def init_animation_dict(cls):
+		"""
+		Defer animation dict init to this function as `ASSET` is not
+		filled when this module is first imported.
+		"""
+		cls._ANIMATIONS = {
+			prefix: PNFAnimation(
+				[
+					OffsetAnimationFrame(frame.texture, 1 / 24, frame.frame_info)
+					for frame in frames
+				],
+				loop = True,
+			) for prefix, frames in load_asset(ASSET.XML_ALPHABET).items()
+		}
 
 	def _get_animation(self) -> t.Optional[PNFAnimation]:
 		name = self.char

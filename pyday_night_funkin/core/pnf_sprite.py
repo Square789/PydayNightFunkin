@@ -411,7 +411,7 @@ class PNFSprite(SceneObject):
 			("colors4Bn/" + usage, (*self._rgb, int(self._opacity)) * 4),
 			("translate2f/" + usage, (self._x, self._y) * 4),
 			("scale2f/" + usage, (self._scale * self._scale_x, self._scale * self._scale_y) * 4),
-			("rotation1f/" + usage, (self._rotation, ) * 4),
+			("rotation1f/" + usage, (self._rotation,) * 4),
 			("scroll_factor2f/" + usage, self._scroll_factor * 4),
 			("tex_coords3f/" + usage, self._texture.tex_coords),
 		)
@@ -689,7 +689,7 @@ class PNFSprite(SceneObject):
 	@rotation.setter
 	def rotation(self, rotation: "Numeric") -> None:
 		self._rotation = rotation
-		self._vertex_list.rotation[:] = (self._rotation, ) * 4
+		self._vertex_list.rotation[:] = (self._rotation,) * 4
 
 	@property
 	def opacity(self) -> "Numeric":

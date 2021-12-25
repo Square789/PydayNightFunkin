@@ -2,7 +2,7 @@
 import math
 import typing as t
 
-from pyday_night_funkin.asset_system import ASSETS, load_asset
+from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.note import Note, NOTE_TYPE, SUSTAIN_STAGE
@@ -58,7 +58,7 @@ class NoteHandler(AbstractNoteHandler):
 		(These may actually have been played or - for absurd scroll
 		speeds - be invisible.)"""
 
-		note_assets = load_asset(ASSETS.XML.NOTES)
+		note_assets = load_asset(ASSET.XML_NOTES)
 		self.note_sprites = {
 			SUSTAIN_STAGE.NONE: {
 				NOTE_TYPE.LEFT: note_assets["purple"][0],

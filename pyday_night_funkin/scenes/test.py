@@ -3,7 +3,7 @@ import typing as t
 
 from pyglet.window.key import E, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 
-from pyday_night_funkin.asset_system import ASSETS, load_asset
+from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.characters import Boyfriend
 from pyday_night_funkin.note import NOTE_TYPE
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
@@ -21,7 +21,7 @@ class TestScene(MusicBeatScene):
 
 		self.conductor.bpm = 123
 
-		note_sprites = load_asset(ASSETS.XML.NOTES)
+		note_sprites = load_asset(ASSET.XML_NOTES)
 		self.arrows = []
 		for i, note_type in enumerate(NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
@@ -39,11 +39,11 @@ class TestScene(MusicBeatScene):
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return ("ye_olde_layer", )
+		return ("ye_olde_layer",)
 
 	@staticmethod
 	def get_camera_names() -> t.Sequence[str]:
-		return ("main", )
+		return ("main",)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)

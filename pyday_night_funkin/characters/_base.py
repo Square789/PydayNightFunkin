@@ -51,6 +51,15 @@ class Character(PNFSprite):
 		"""
 		Returns a two-element tuple of the translation and scale the
 		character should undergo when its `story_menu` animation is
-		displayed.
+		displayed. Default is a null vector and 1.
 		"""
 		return (Vec2(0, 0), 1)
+
+	@staticmethod
+	def get_string() -> str:
+		"""
+		Each character has a string assigned to them used to gather
+		information for them, i. e. the health icon.
+		This method returns that string. Default is `''`.
+		"""
+		return ""

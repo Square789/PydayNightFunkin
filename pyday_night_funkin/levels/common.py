@@ -5,7 +5,7 @@ in multiple levels.
 
 import typing as t
 
-from pyday_night_funkin.asset_system import ASSETS, load_asset
+from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.note_handler import AbstractNoteHandler, NoteHandler
 from pyday_night_funkin.hud import HUD
 
@@ -35,17 +35,17 @@ def setup_default_stage(self: "InGameScene") -> t.Tuple["PNFSprite", "PNFSprite"
 	Returns a tuple of these three, in that order.
 	"""
 	stageback = self.create_sprite(
-		"background0", "main", x=-600, y=-200, image=load_asset(ASSETS.IMG.STAGE_BACK)
+		"background0", "main", x=-600, y=-200, image=load_asset(ASSET.IMG_STAGE_BACK)
 	)
 	stageback.scroll_factor = (.9, .9)
 	stagefront = self.create_sprite(
-		"background1", "main", x=-650, y=600, image=load_asset(ASSETS.IMG.STAGE_FRONT)
+		"background1", "main", x=-650, y=600, image=load_asset(ASSET.IMG_STAGE_FRONT)
 	)
 	stagefront.scroll_factor = (.9, .9)
 	stagefront.scale = 1.1
 
 	stagecurtains = self.create_sprite(
-		"curtains", "main", x=-500, y=-300, image=load_asset(ASSETS.IMG.STAGE_CURTAINS)
+		"curtains", "main", x=-500, y=-300, image=load_asset(ASSET.IMG_STAGE_CURTAINS)
 	)
 	stagecurtains.scroll_factor = (1.3, 1.3)
 	stagecurtains.scale = 0.9

@@ -1,6 +1,6 @@
 
 import typing as t
-from pyday_night_funkin.asset_system import ASSETS
+from pyday_night_funkin.asset_system import ASSET
 from pyday_night_funkin.characters import Boyfriend, Girlfriend
 from pyday_night_funkin.constants import ERROR_TEXTURE
 from pyday_night_funkin.hud import HUD
@@ -26,8 +26,8 @@ class Tutorial(InGameScene):
 		return "gf"
 
 	@staticmethod
-	def get_song() -> int:
-		return ASSETS.SONG.TUTORIAL
+	def get_song() -> str:
+		return "tutorial"
 
 	def create_note_handler(self) -> "AbstractNoteHandler":
 		return common.create_note_handler(self)
@@ -41,7 +41,7 @@ class Tutorial(InGameScene):
 	def create_girlfriend(self) -> "Girlfriend":
 		not_gf = self.create_sprite("girlfriend", "main", x=-100, y=-100)
 		# Epic fail if no dummy animation is added
-		not_gf.animation.add_from_frames("idle_bop", (FrameInfoTexture(ERROR_TEXTURE, False), ))
+		not_gf.animation.add_from_frames("idle_bop", (FrameInfoTexture(ERROR_TEXTURE, False),))
 		not_gf.visible = False
 		return not_gf
 

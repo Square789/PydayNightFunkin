@@ -7,7 +7,7 @@ from loguru import logger
 from pyglet.math import Vec2
 from pyglet.media import PlayerGroup
 
-from pyday_night_funkin.asset_system import load_asset
+from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin.enums import ANIMATION_TAG, DIFFICULTY, GAME_STATE
 from pyday_night_funkin.hud import HUD
@@ -68,9 +68,11 @@ class InGameScene(scenes.MusicBeatScene):
 		self.ready()
 
 	@staticmethod
-	def get_song() -> int:
+	def get_song() -> str:
 		"""
-		Returns the scene's song's identifier as present in the assets.
+		Returns this scene's song's identifying string.
+		A call to `load_asset(ASSET.SONG, x, ...)` will be made where
+		`x` is the value returned from this method.
 		"""
 		raise NotImplementedError("Subclass this!")
 
@@ -174,7 +176,7 @@ class InGameScene(scenes.MusicBeatScene):
 		# TODO doc
 		"""
 		inst, voices, song_data = load_asset(
-			self.get_song(), (False, False), self.difficulty
+			ASSET.SONGS, self.get_song(), False, self.difficulty
 		)
 
 		self.song_players.pause()

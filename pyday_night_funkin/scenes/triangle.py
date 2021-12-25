@@ -9,7 +9,7 @@ import typing as t
 from pyglet import gl
 from pyglet.window.key import LEFT, UP, DOWN, RIGHT, V, X, Z
 
-from pyday_night_funkin.asset_system import ASSETS, load_asset
+from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.states as st
@@ -146,12 +146,12 @@ class TriangleScene(BaseScene):
 		#self.tri2 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, 200, 100)
 
 		self.please_work = self.create_sprite(
-			"main", None, image=load_asset(ASSETS.IMG.NEWGROUNDS_LOGO), x=50, y=50
+			"main", None, image=load_asset(ASSET.IMG_NEWGROUNDS_LOGO), x=50, y=50
 		)
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return (("main", True), )
+		return (("main", True),)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)

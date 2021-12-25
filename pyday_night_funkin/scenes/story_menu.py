@@ -2,7 +2,7 @@
 import typing as t
 
 from pyday_night_funkin.alphabet import TextLine
-from pyday_night_funkin.asset_system import ASSETS, load_asset
+from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.config import CONTROL
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
@@ -66,7 +66,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			spr.y += oy
 			self.week_chars.append(spr)
 
-		ui_tex = load_asset(ASSETS.XML.STORY_MENU_UI)
+		ui_tex = load_asset(ASSET.XML_STORY_MENU_UI)
 
 		self.difficulty_indicator = self.create_sprite("bg")
 		for diff in DIFFICULTY:
@@ -109,7 +109,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			self.week_headers[index].opacity = 153
 		else:
 			self.week_headers[index].opacity = 255
-			self.sfx_ring.play(load_asset(ASSETS.SOUND.MENU_SCROLL))
+			self.sfx_ring.play(load_asset(ASSET.SOUND_MENU_SCROLL))
 			for i, header in enumerate(self.week_headers):
 				header.target_y = i - index
 
@@ -123,7 +123,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		if not state:
 			return
 
-		self.sfx_ring.play(load_asset(ASSETS.SOUND.MENU_CONFIRM))
+		self.sfx_ring.play(load_asset(ASSET.SOUND_MENU_CONFIRM))
 		self.week_chars[1].animation.play("story_menu_confirm")
 		self.week_headers[index].start_toggle(
 			1.0, 0.1, True, True,

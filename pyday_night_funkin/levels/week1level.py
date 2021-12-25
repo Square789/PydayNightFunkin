@@ -4,7 +4,7 @@ import typing as t
 
 from pyglet.math import Vec2
 
-from pyday_night_funkin.asset_system import ASSETS, load_asset
+from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.characters import Boyfriend, DaddyDearest, Girlfriend
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.levels import common
@@ -51,8 +51,8 @@ class Week1Level(InGameScene):
 
 class Bopeebo(Week1Level):
 	@staticmethod
-	def get_song() -> int:
-		return ASSETS.SONG.BOPEEBO
+	def get_song() -> str:
+		return "bopeebo"
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
@@ -61,10 +61,10 @@ class Bopeebo(Week1Level):
 
 class Fresh(Week1Level):
 	@staticmethod
-	def get_song() -> int:
-		return ASSETS.SONG.FRESH
+	def get_song() -> str:
+		return "fresh"
 
 class DadBattle(Week1Level):
 	@staticmethod
-	def get_song() -> int:
-		return ASSETS.SONG.DAD_BATTLE
+	def get_song() -> str:
+		return "dadbattle"

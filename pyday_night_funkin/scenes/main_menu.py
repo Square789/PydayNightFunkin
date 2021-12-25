@@ -3,7 +3,7 @@ import typing as t
 
 from loguru import logger
 
-from pyday_night_funkin.asset_system import load_asset, ASSETS
+from pyday_night_funkin.asset_system import load_asset, ASSET
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.menu import Menu
@@ -18,11 +18,11 @@ class MainMenuScene(scenes.BaseScene):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.scroll_sound = load_asset(ASSETS.SOUND.MENU_SCROLL)
-		self.confirm_sound = load_asset(ASSETS.SOUND.MENU_CONFIRM)
+		self.scroll_sound = load_asset(ASSET.SOUND_MENU_SCROLL)
+		self.confirm_sound = load_asset(ASSET.SOUND_MENU_CONFIRM)
 
-		self.bg = self.create_sprite("bg", image=load_asset(ASSETS.IMG.MENU_BG))
-		self.bg_magenta = self.create_sprite("bg_mag", image=load_asset(ASSETS.IMG.MENU_DESAT))
+		self.bg = self.create_sprite("bg", image=load_asset(ASSET.IMG_MENU_BG))
+		self.bg_magenta = self.create_sprite("bg_mag", image=load_asset(ASSET.IMG_MENU_DESAT))
 
 		for bg in (self.bg, self.bg_magenta):
 			bg.scroll_factor = (0.0, 0.18)
@@ -32,7 +32,7 @@ class MainMenuScene(scenes.BaseScene):
 		self.bg_magenta.visible = False
 		self.bg_magenta.color = (0xFD, 0x71, 0x9B)
 
-		menu_item_assets = load_asset(ASSETS.XML.MAIN_MENU_ASSETS)
+		menu_item_assets = load_asset(ASSET.XML_MAIN_MENU_ASSET)
 		self._menu_items: t.List[t.Tuple[str, t.Callable[[], t.Any], "PNFSprite"]] = []
 		for i, (name, callback) in enumerate((
 			("story mode", self._sel_story_mode),

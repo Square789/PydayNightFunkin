@@ -42,7 +42,7 @@ WEEKS: t.Sequence[Week] = (
 	Week(
 		"TUTORIAL",
 		(chars.DaddyDearest, chars.Boyfriend, chars.Girlfriend),
-		(Tutorial, ),
+		(Tutorial,),
 	),
 	Week(
 		"WEEK 1",

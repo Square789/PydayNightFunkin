@@ -2,7 +2,7 @@
 import typing as t
 
 from pyday_night_funkin.alphabet import MenuTextLine
-from pyday_night_funkin.asset_system import load_asset, ASSETS
+from pyday_night_funkin.asset_system import load_asset, ASSET
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.enums import DIFFICULTY
@@ -16,7 +16,7 @@ class FreeplayScene(scenes.BaseScene):
 
 		super().__init__(*args, **kwargs)
 
-		self.bg = self.create_sprite("bg", image=load_asset(ASSETS.IMG.MENU_BG_BLUE))
+		self.bg = self.create_sprite("bg", image=load_asset(ASSET.IMG_MENU_BG_BLUE))
 
 		self.displayed_songs: t.List["scenes.InGameScene"] = []
 		for week in WEEKS:
@@ -25,7 +25,7 @@ class FreeplayScene(scenes.BaseScene):
 			raise RuntimeError("Panic at the FreeplayScene!")
 
 		self._cur_selection = 0
-		self._scroll_sound = load_asset(ASSETS.SOUND.MENU_SCROLL)
+		self._scroll_sound = load_asset(ASSET.SOUND_MENU_SCROLL)
 		self._text_lines: t.List[MenuTextLine] = []
 
 		for i, lvl in enumerate(self.displayed_songs):

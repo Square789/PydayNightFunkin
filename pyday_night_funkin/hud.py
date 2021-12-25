@@ -3,7 +3,7 @@ from itertools import product
 from random import randint
 import typing as t
 
-from pyday_night_funkin.asset_system import load_asset, ASSETS
+from pyday_night_funkin.asset_system import load_asset, ASSET
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.enums import ANIMATION_TAG
 from pyday_night_funkin.health_bar import HealthBar
@@ -37,28 +37,28 @@ class HUD():
 
 		self.countdown_textures = (
 			None,
-			load_asset(ASSETS.IMG.READY),
-			load_asset(ASSETS.IMG.SET),
-			load_asset(ASSETS.IMG.GO),
+			load_asset(ASSET.IMG_READY),
+			load_asset(ASSET.IMG_SET),
+			load_asset(ASSET.IMG_GO),
 		)
 
 		self.countdown_sounds = (
-			load_asset(ASSETS.SOUND.INTRO_3),
-			load_asset(ASSETS.SOUND.INTRO_2),
-			load_asset(ASSETS.SOUND.INTRO_1),
-			load_asset(ASSETS.SOUND.INTRO_GO),
+			load_asset(ASSET.SOUND_INTRO_3),
+			load_asset(ASSET.SOUND_INTRO_2),
+			load_asset(ASSET.SOUND_INTRO_1),
+			load_asset(ASSET.SOUND_INTRO_GO),
 		)
 
 		self.note_rating_textures = {
-			RATING.SICK: load_asset(ASSETS.IMG.SICK),
-			RATING.GOOD: load_asset(ASSETS.IMG.GOOD),
-			RATING.BAD: load_asset(ASSETS.IMG.BAD),
-			RATING.SHIT: load_asset(ASSETS.IMG.SHIT),
+			RATING.SICK: load_asset(ASSET.IMG_SICK),
+			RATING.GOOD: load_asset(ASSET.IMG_GOOD),
+			RATING.BAD: load_asset(ASSET.IMG_BAD),
+			RATING.SHIT: load_asset(ASSET.IMG_SHIT),
 		}
 
-		self.number_textures = [load_asset(getattr(ASSETS.IMG, f"NUM{i}")) for i in range(10)]
+		self.number_textures = [load_asset(getattr(ASSET, f"IMG_NUM{i}")) for i in range(10)]
 
-		note_sprites = load_asset(ASSETS.XML.NOTES)
+		note_sprites = load_asset(ASSET.XML_NOTES)
 		self.static_arrows = [{}, {}]
 		for i, note_type in product((0, 1), NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
@@ -75,7 +75,7 @@ class HUD():
 				(ANIMATION_TAG.STATIC, ANIMATION_TAG.PRESSED, ANIMATION_TAG.CONFIRM),
 			):
 				arrow_sprite.animation.add_from_frames(
-					anim_name, note_sprites[atlas_name], 24, False, tags=(tag, )
+					anim_name, note_sprites[atlas_name], 24, False, tags=(tag,)
 				)
 			arrow_sprite.scale = .7
 			arrow_sprite.animation.play("static")

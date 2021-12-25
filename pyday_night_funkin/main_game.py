@@ -8,6 +8,7 @@ import pyglet
 from pyglet.window import key
 from pyglet.window.key import KeyStateHandler
 
+from pyday_night_funkin import base_game_pack
 from pyday_night_funkin.core import ogg_decoder
 from pyday_night_funkin.core.pnf_player import PNFPlayer
 from pyday_night_funkin.core.pnf_window import PNFWindow
@@ -22,7 +23,7 @@ from pyday_night_funkin.sfx_ring import SFXRing
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.3dev"
+__version__ = "0.0.4dev"
 
 
 class _FPSData:
@@ -100,6 +101,12 @@ class Game():
 		self._pending_scene_stack_removals = set()
 		self._pending_scene_stack_additions = []
 
+		# Asset system related setup
+		base_game_pack.load()
+		from pyday_night_funkin.alphabet import AlphabetCharacter
+		AlphabetCharacter.init_animation_dict()
+
+		# Push initial scene
 		self.push_scene(TitleScene)
 		#self.push_scene(TestScene)
 		#self.push_scene(TriangleScene)

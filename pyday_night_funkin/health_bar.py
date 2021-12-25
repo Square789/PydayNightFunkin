@@ -3,9 +3,8 @@ import typing as t
 
 from pyglet.image import ImageData, Texture
 
-from pyday_night_funkin.asset_system import ASSETS, load_asset
+from pyday_night_funkin.asset_system import ASSET, load_asset
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin import health_icons
 from pyday_night_funkin.utils import clamp, to_rgba_bytes
 
 if t.TYPE_CHECKING:
@@ -34,7 +33,7 @@ class HealthBar():
 
 		bg_layer, bar_layer, icon_layer = layers
 
-		bar_image = load_asset(ASSETS.IMG.HEALTH_BAR)
+		bar_image = load_asset(ASSET.IMG_HEALTH_BAR)
 		self.health_bar = scene.create_sprite(
 			bg_layer,
 			camera,
@@ -59,8 +58,8 @@ class HealthBar():
 			image = self._create_bar_part(bar_image.height - 8, player_color),
 		)
 
-		self.opponent_icons = health_icons.get(opponent_icon_name)
-		self.player_icons = health_icons.get(player_icon_name)
+		self.opponent_icons = load_asset(ASSET.IMG_ICON_GRID, opponent_icon_name)
+		self.player_icons = load_asset(ASSET.IMG_ICON_GRID, player_icon_name)
 		# This assumes all opponent and player icons are of same height (i mean, they are)
 		icon_y = self.health_bar.y + (bar_image.height - self.opponent_icons[0].height) // 2
 		self.opponent_sprite = scene.create_sprite(

@@ -3,7 +3,7 @@ import random
 import typing as t
 
 from pyday_night_funkin.alphabet import TextLine
-from pyday_night_funkin.asset_system import ASSETS, load_asset
+from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin import scenes
@@ -16,7 +16,7 @@ class TitleScene(scenes.MusicBeatScene):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		gf_frames = load_asset(ASSETS.XML.TITLE_GIRLFRIEND)["gfDance"]
+		gf_frames = load_asset(ASSET.XML_TITLE_GIRLFRIEND)["gfDance"]
 		self.gf = self.create_sprite("main", x=CNST.GAME_WIDTH * 0.4, y=CNST.GAME_HEIGHT * 0.07)
 		self.gf.animation.add_by_indices("dance_left", gf_frames, [*range(15)], 24, False)
 		self.gf.animation.add_by_indices("dance_right", gf_frames, [*range(15, 30)], 24, False)
@@ -24,12 +24,12 @@ class TitleScene(scenes.MusicBeatScene):
 
 		self.gf_dance_left = False
 
-		logo_frames = load_asset(ASSETS.XML.GAME_LOGO)["logo bumpin"]
+		logo_frames = load_asset(ASSET.XML_GAME_LOGO)["logo bumpin"]
 		self.logo = self.create_sprite("main", x=-150, y=-100)
 		self.logo.animation.add_from_frames("bump", logo_frames)
 		self.logo.visible = False
 
-		title_anims = load_asset(ASSETS.XML.TITLE_ENTER)
+		title_anims = load_asset(ASSET.XML_TITLE_ENTER)
 		self.title_text = self.create_sprite("title_text", x=100, y=CNST.GAME_HEIGHT * 0.8)
 		self.title_text.animation.add_from_frames(
 			"idle", title_anims["Press Enter to Begin"], 24, True
@@ -40,20 +40,20 @@ class TitleScene(scenes.MusicBeatScene):
 		self.title_text.animation.play("idle")
 		self.title_text.visible = False
 
-		ng_logo = load_asset(ASSETS.IMG.NEWGROUNDS_LOGO)
+		ng_logo = load_asset(ASSET.IMG_NEWGROUNDS_LOGO)
 		self.ng_logo = self.create_sprite("main", image=ng_logo, y=CNST.GAME_HEIGHT * 0.52)
 		self.ng_logo.scale = 0.8
 		self.ng_logo.screen_center(CNST.GAME_DIMENSIONS, y=False)
 		self.ng_logo.visible = False
 
-		intro_texts = [*filter(None, load_asset(ASSETS.TXT.INTRO_TEXT).split("\n"))]
+		intro_texts = [*filter(None, load_asset(ASSET.TXT_INTRO_TEXT).split("\n"))]
 		chosen = random.choice(intro_texts).split("--")
 		self.intro_text = [chosen[0], ""] if len(chosen) < 2 else chosen
 
-		self.confirm_sound = load_asset(ASSETS.SOUND.MENU_CONFIRM)
+		self.confirm_sound = load_asset(ASSET.SOUND_MENU_CONFIRM)
 
 		self.conductor.bpm = 102
-		self.game.player.set(load_asset(ASSETS.MUSIC.MENU))
+		self.game.player.set(load_asset(ASSET.MUSIC_MENU))
 
 		self._intro_ended = False
 		self._leaving_scene = False
@@ -92,7 +92,7 @@ class TitleScene(scenes.MusicBeatScene):
 			container = TextLine(
 				line,
 				bold = True,
-				color = (255, ) * 3,
+				color = (255,) * 3,
 				y = len(self.text_lines) * 60 + 200,
 			)
 

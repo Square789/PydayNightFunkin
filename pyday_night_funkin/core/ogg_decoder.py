@@ -53,7 +53,7 @@ class OggVorbisStreamingSource(StreamingSource):
 
 class OggVorbisDecoder(MediaDecoder):
 	def get_file_extensions(self) -> t.Tuple[str, ...]:
-		return (".ogg", )
+		return (".ogg",)
 
 	def decode(self, file: t.BinaryIO, filename: str, streaming: bool) -> Source:
 		if file is not None and not file.closed:
