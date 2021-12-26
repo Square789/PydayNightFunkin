@@ -524,9 +524,22 @@ class PNFSprite(SceneObject):
 		self.effects.append(t)
 		return t
 
-	def remove_effect(self, e: Effect, fail_loudly: bool = False) -> None:
+	def remove_effect(self, *effects: Effect, fail_loudly: bool = False) -> None:
+		"""
+		Removes effects from the sprite.
+		Supply nothing to clear all effects. This will abruptly stop
+		all effects without calling their on_complete callbacks.
+		Supply any amount of effects to have only these removed.
+		If `fail_loudly` is not set to `True`, any errors on removing
+		will be suppressed, otherwise `ValueError` is raised.
+		"""
+		if not effects:
+			self.effects.clear()
+			return
+
 		try:
-			self.effects.remove(e)
+			for e in effects:
+				self.effects.remove(e)
 		except ValueError:
 			if fail_loudly:
 				raise

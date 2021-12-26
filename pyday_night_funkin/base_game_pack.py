@@ -26,6 +26,48 @@ if t.TYPE_CHECKING:
 RE_SPLIT_ANIMATION_NAME = re.compile(r"^(.*)(\d{4})$")
 
 
+class IconGridRouter(AbstractAssetRouter):
+	"""
+	Routes an icon grid image and a character string into health icons.
+
+	Loads a two-element tuple of 150px x 150px textures, a character's
+	default and losing icon.
+	"""
+
+	_CHAR_MAP = dict((
+		("bf",                ((   0,   0), ( 150,   0))),
+		("spooky",            (( 300,   0), ( 450,   0))),
+		("pico",              (( 600,   0), ( 750,   0))),
+		("mom",               (( 900,   0), (1050,   0))),
+		("tankman",           ((1200,   0), (1350,   0))),
+		("face",              ((   0, 150), ( 150, 150))),
+		("dad",               (( 300, 150), ( 450, 150))),
+		("bf-old",            (( 600, 150), ( 750, 150))),
+		("gf",                (( 900, 150), ( 900, 150))),
+		("parents-christmas", ((1050, 150), (1200, 150))),
+		("monster",           ((1350, 150), (   0, 300))),
+		("bf-pixel",          (( 150, 300), ( 150, 300))),
+		("senpai",            (( 300, 300), ( 300, 300))),
+		("spirit",            (( 450, 300), ( 456, 300))),
+	))
+
+	def get_route_funcs(self):
+		return (self.route_image, self.route_icon)
+
+	def route_image(self, icon_res: ImageResource, char_name: str) -> ImageResource:
+		self.requested_icon: str = char_name
+		return (icon_res,)
+
+	def route_icon(self, icon_texture: "Texture") -> t.Tuple["Texture", "Texture"]:
+		if icon_texture.width < 1500 or icon_texture.height < 900:
+			raise ValueError("Icon grid has invalid shape!")
+
+		return tuple(
+			icon_texture.get_region(x, icon_texture.height - 150 - y, 150, 150).get_texture()
+			for x, y in self._CHAR_MAP[self.requested_icon]
+		)
+
+
 class SongRouter(AbstractAssetRouter):
 	"""
 	Routes a song string into song data.
@@ -71,6 +113,21 @@ class SongRouter(AbstractAssetRouter):
 		voic: t.Optional["Source"] = None,
 	) -> t.Tuple["Source", t.Optional["Source"], t.Dict]:
 		return (inst, voic, self.data)
+
+
+class WeekHeaderRouter(AbstractAssetRouter):
+	def get_route_funcs(self):
+		return (self.route_paths, self.route_header, self.route_unpack)
+
+	def route_paths(self, _, filename: str) -> t.Tuple[PathResource]:
+		self.filename = filename
+		return (self.asm.resolve_asset_raw(ASSET.PATH_WEEK_HEADERS).value,)
+
+	def route_header(self, path: "Path") -> "ImageResource":
+		return (ImageResource(path / self.filename),)
+
+	def route_unpack(self, res: "Texture") -> "Texture":
+		return res
 
 
 class XMLRouter(AbstractAssetRouter):
@@ -146,49 +203,6 @@ class XMLRouter(AbstractAssetRouter):
 
 		return dict(frame_sequences) # Don't return a defaultdict!
 
-
-class IconGridRouter(AbstractAssetRouter):
-	"""
-	Routes an icon grid image and a character string into health icons.
-
-	Loads a two-element tuple of 150px x 150px textures, a character's
-	default and losing icon.
-	"""
-
-	_CHAR_MAP = dict((
-		("bf",                ((   0,   0), ( 150,   0))),
-		("spooky",            (( 300,   0), ( 450,   0))),
-		("pico",              (( 600,   0), ( 750,   0))),
-		("mom",               (( 900,   0), (1050,   0))),
-		("tankman",           ((1200,   0), (1350,   0))),
-		("face",              ((   0, 150), ( 150, 150))),
-		("dad",               (( 300, 150), ( 450, 150))),
-		("bf-old",            (( 600, 150), ( 750, 150))),
-		("gf",                (( 900, 150), ( 900, 150))),
-		("parents-christmas", ((1050, 150), (1200, 150))),
-		("monster",           ((1350, 150), (   0, 300))),
-		("bf-pixel",          (( 150, 300), ( 150, 300))),
-		("senpai",            (( 300, 300), ( 300, 300))),
-		("spirit",            (( 450, 300), ( 456, 300))),
-	))
-
-	def get_route_funcs(self):
-		return (self.route_image, self.route_icon)
-
-	def route_image(self, icon_res: ImageResource, char_name: str) -> ImageResource:
-		self.requested_icon: str = char_name
-		return (icon_res,)
-
-	def route_icon(self, icon_texture: "Texture") -> t.Tuple["Texture", "Texture"]:
-		if icon_texture.width < 1500 or icon_texture.height < 900:
-			raise ValueError("Icon grid has invalid shape!")
-
-		return tuple(
-			icon_texture.get_region(x, icon_texture.height - 150 - y, 150, 150).get_texture()
-			for x, y in self._CHAR_MAP[self.requested_icon]
-		)
-
-
 def load() -> None:
 	"""
 	Registers and loads everything required to run the
@@ -242,12 +256,14 @@ def load() -> None:
 		"MUSIC_MENU",
 		"PATH_SONGS",
 		"PATH_DATA",
+		"PATH_WEEK_HEADERS",
 		"TXT_INTRO_TEXT",
 		"SONGS",
+		"WEEK_HEADERS"
 	)
 
 	register_assets(*ASSET_NAMES)
-	register_routers("XML", "SONG", "ICON_GRID")
+	register_routers("XML", "SONGS", "ICON_GRID", "WEEK_HEADERS")
 
 	# The "default" asset system, as seen in the Funkin github
 	# repo. (master, commit 8bd9126a, ~ May 16 2021).
@@ -302,14 +318,20 @@ def load() -> None:
 
 		ASSET.PATH_SONGS: PathResource("songs/"),
 		ASSET.PATH_DATA: PathResource("preload/data/"),
+		ASSET.PATH_WEEK_HEADERS: PathResource("preload/images/storymenu"),
 
-		ASSET.SONGS: ASE(None, ASSET_ROUTER.SONG),
+		# NOTE: These are weird. Some sort of "router asset" that is fully dependant on a
+		# router and whatever code calling `load_asset` passes in.
+		# Maybe come up with something better than `None` here.`
+		ASSET.WEEK_HEADERS: ASE(None, ASSET_ROUTER.WEEK_HEADERS),
+		ASSET.SONGS: ASE(None, ASSET_ROUTER.SONGS),
 
 		ASSET.TXT_INTRO_TEXT: TextResource("preload/data/introText.txt"),
 	},
 	{
 		ASSET_ROUTER.ICON_GRID: IconGridRouter,
-		ASSET_ROUTER.SONG: SongRouter,
+		ASSET_ROUTER.SONGS: SongRouter,
+		ASSET_ROUTER.WEEK_HEADERS: WeekHeaderRouter,
 		ASSET_ROUTER.XML: XMLRouter,
 	})
 

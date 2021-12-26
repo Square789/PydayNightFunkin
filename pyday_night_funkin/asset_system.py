@@ -10,7 +10,6 @@ import json
 from pathlib import Path
 import typing as t
 from xml.etree.ElementTree import ElementTree
-from loguru import logger
 
 from pyglet import image
 from pyglet.image.atlas import AllocatorException, TextureBin
@@ -210,6 +209,9 @@ class AbstractAssetRouter:
 	you need into `self` and then access it later.
 	The functions will be called in order they appear in in the
 	iterable returned from `get_route_funcs`.
+	It is unwise to load more assets in routing functions since you may
+	end up in recursive cycles. `self.asm.resolve_asset_raw` however
+	should be safe.
 	"""
 	def __init__(self, asm: "_AssetSystemManager") -> None:
 		"""
@@ -221,9 +223,6 @@ class AbstractAssetRouter:
 	def get_route_funcs(self) -> t.Iterable[t.Callable]:
 		"""
 		Returns this asset router's routing functions.
-		It is unwise to load more assets in these
-		since you may end up in recursive cycles.
-		`self.asm.resolve_asset_raw` however should be safe.
 		"""
 		raise NotImplementedError("Subclass this!")
 

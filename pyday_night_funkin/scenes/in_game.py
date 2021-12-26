@@ -35,7 +35,8 @@ class InGameScene(scenes.MusicBeatScene):
 		self,
 		game: "Game",
 		difficulty: DIFFICULTY,
-		created_from: t.Type[scenes.BaseScene],
+		follow_scene: t.Type[scenes.BaseScene],
+		remaining_week: t.Optional[t.Sequence[t.Type["InGameScene"]]] = (),
 	) -> None:
 		super().__init__(game)
 
@@ -45,7 +46,8 @@ class InGameScene(scenes.MusicBeatScene):
 		self.draw_passthrough = False
 
 		self.difficulty = difficulty
-		self.created_from = created_from
+		self.follow_scene = follow_scene
+		self.remaining_week = remaining_week
 
 		self.key_handler = game.key_handler
 
@@ -353,7 +355,11 @@ class InGameScene(scenes.MusicBeatScene):
 		to `ENDED` and returns to the previous scene.
 		"""
 		self.state = GAME_STATE.ENDED
-		self.game.set_scene(self.created_from)
+		if self.remaining_week:
+			next_scene, *rest = self.remaining_week
+			self.game.set_scene(next_scene, self.difficulty, self.follow_scene, rest)
+		else:
+			self.game.set_scene(self.follow_scene)
 
 	def countdown(self, dt: float) -> None:
 		if self._countdown_stage == 4:
@@ -367,7 +373,7 @@ class InGameScene(scenes.MusicBeatScene):
 	def remove_subscene(self, end_self, *a, **kw):
 		super().remove_subscene(*a, **kw)
 		if end_self:
-			self.game.set_scene(self.created_from)
+			self.game.set_scene(self.follow_scene)
 		else:
 			if self.state is GAME_STATE.PLAYING:
 				self.song_players.play()

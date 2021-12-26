@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 import typing as t
 
-from pyday_night_funkin import characters as chars
+from pyday_night_funkin import characters as chr
 from pyday_night_funkin.levels.tutorial import Tutorial
 from pyday_night_funkin.levels.week1level import Bopeebo, Fresh, DadBattle
 
@@ -34,6 +34,12 @@ class Week:
 	Levels in this week. Must be a sequence of `InGameScene` classes.
 	"""
 
+	header_filename: str
+	"""
+	File name of this week's header image, to be displayed in the story
+	menu.
+	"""
+
 	def __getitem__(self, idx: int) -> t.Type["InGameScene"]:
 		return self.levels[idx]
 
@@ -41,12 +47,14 @@ class Week:
 WEEKS: t.Sequence[Week] = (
 	Week(
 		"TUTORIAL",
-		(chars.DaddyDearest, chars.Boyfriend, chars.Girlfriend),
+		(chr.DaddyDearest, chr.Boyfriend, chr.Girlfriend),
 		(Tutorial,),
+		"week0.png",
 	),
 	Week(
 		"WEEK 1",
-		(chars.DaddyDearest, chars.Boyfriend, chars.Girlfriend),
+		(chr.DaddyDearest, chr.Boyfriend, chr.Girlfriend),
 		(Bopeebo, Fresh, DadBattle),
+		"week1.png",
 	),
 )

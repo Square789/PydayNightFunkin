@@ -18,10 +18,7 @@ class _TLGlyphBox(_GlyphBox):
 		try:
 			group = layout.group_cache[self.owner]
 		except KeyError:
-			if __import__("pyglet").version.endswith("12"):
-				group = layout.group_class(self.owner, get_default_layout_shader(), order=1, parent=layout.group)
-			else:
-				group = layout.default_group_class(self.owner, get_default_layout_shader(), order=1, parent=layout.group)
+			group = layout.group_class(self.owner, get_default_layout_shader(), order=1, parent=layout.group)
 			layout.group_cache[self.owner] = group
 
 		n_glyphs = self.length

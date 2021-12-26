@@ -2,8 +2,6 @@
 import typing as t
 from loguru import logger
 
-from pyglet.image import ImageData
-
 from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST

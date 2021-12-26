@@ -6,6 +6,7 @@ from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.config import CONTROL
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
+from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
 from pyday_night_funkin.enums import DIFFICULTY
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin import scenes
@@ -48,13 +49,12 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		yellow_stripe.scale_x = CNST.GAME_WIDTH
 		yellow_stripe.scale_y = 400
 
-		self._current_week = 0
-
+		# Week character setup (these get modified later)
 		self.week_chars: t.List["Character"] = []
 		for i in range(3):
 			spr = self.create_sprite(
 				"fg",
-				sprite_class = WEEKS[self._current_week].story_menu_chars[i],
+				sprite_class = WEEKS[0].story_menu_chars[i],
 				scene = self,
 				x = (CNST.GAME_WIDTH * 0.25 * (i + 1)) - 150,
 				y = 70,
@@ -68,17 +68,13 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 		ui_tex = load_asset(ASSET.XML_STORY_MENU_UI)
 
-		self.difficulty_indicator = self.create_sprite("bg")
-		for diff in DIFFICULTY:
-			self.difficulty_indicator.animation.add_from_frames(
-				str(diff.value), ui_tex[diff.to_atlas_prefix()], 24, True
-			)
-
-		self.week_headers: t.List["_WeekHeader"] = []
+		# Week headers
+		self.week_headers: t.List[_WeekHeader] = []
 		for i, week in enumerate(WEEKS):
 			header = self.create_sprite(
 				"bg",
 				sprite_class = _WeekHeader,
+				image = load_asset(ASSET.WEEK_HEADERS, week.header_filename),
 				y = yellow_stripe.y + yellow_stripe.height + 10,
 				target_y = i,
 				game_dims = CNST.GAME_DIMENSIONS,
@@ -89,6 +85,41 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			# TODO Images
 			# TODO Locks
 
+		# Difficulty selectors
+		larrx = self.week_headers[0].x + self.week_headers[0].width + 10
+		larry = self.week_headers[0].y + 10
+
+		self.diff_arrow_left = self.create_sprite("bg", x=larrx, y=larry)
+		self.diff_arrow_left.animation.add_from_frames("idle", ui_tex["arrow left"])
+		self.diff_arrow_left.animation.add_from_frames("press", ui_tex["arrow push left"])
+		self.diff_arrow_left.animation.play("idle")
+
+		_diff_offset_map = {
+			DIFFICULTY.EASY: (20, 0),
+			DIFFICULTY.NORMAL: (70, 0),
+			DIFFICULTY.HARD: (20, 0),
+		}
+		self.difficulty_indicator = self.create_sprite("bg", x=larrx + 130, y=larry)
+		# Shoutouts to tyler "ninjamuffin99" blevins for using specific
+		# animation frames for positioning of UI elements;
+		# The fact that `EASY` is the first animation added is relevant here.
+		for diff in DIFFICULTY:
+			self.difficulty_indicator.animation.add_from_frames(
+				str(diff.value), ui_tex[diff.to_atlas_prefix()], 24, True, _diff_offset_map[diff]
+			)
+		self.difficulty_indicator.animation.play("0")
+		self.difficulty_indicator.check_animation_controller()
+
+		self.diff_arrow_right = self.create_sprite(
+			"bg",
+			x=self.difficulty_indicator.x + self.difficulty_indicator.width + 50,
+			y=larry,
+		)
+		self.diff_arrow_right.animation.add_from_frames("idle", ui_tex["arrow right"])
+		self.diff_arrow_right.animation.add_from_frames("press", ui_tex["arrow push right"])
+		self.diff_arrow_right.animation.play("idle")
+
+		# Menus
 		self.week_menu = Menu(
 			self.game.key_handler, len(WEEKS), self._on_week_select, self._on_confirm
 		)
@@ -96,6 +127,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			self.game.key_handler,
 			len(DIFFICULTY),
 			self._on_diff_select,
+			ini_selection_index = 1,
 			fwd_control = CONTROL.RIGHT,
 			bkwd_control = CONTROL.LEFT,
 		)
@@ -118,6 +150,12 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			return
 
 		self.difficulty_indicator.animation.play(str(index))
+		self.difficulty_indicator.y = self.diff_arrow_left.y - 15
+		self.difficulty_indicator.opacity = 0
+		self.difficulty_indicator.remove_effect()
+		self.difficulty_indicator.start_tween(
+			linear, {TWEEN_ATTR.Y: self.diff_arrow_left.y + 15, TWEEN_ATTR.OPACITY: 255}, 0.07
+		)
 
 	def _on_confirm(self, index: int, state: bool) -> None:
 		if not state:
@@ -136,7 +174,8 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.game.set_scene(
 			week.levels[0],
 			difficulty = self._reverse_difficulty_map[self.diff_menu.selection_index],
-			created_from = StoryMenuScene,
+			follow_scene = StoryMenuScene,
+			remaining_week = week.levels[1:],
 		)
 
 	def update(self, dt: float) -> None:
@@ -147,8 +186,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			self.game.set_scene(scenes.MainMenuScene)
 
 		self.week_menu.update()
-		# NOTE: Only the week menu triggers on_confirm.
-		# diff_menu can't ever see CONTROL.CONFIRM as pressed
+		# NOTE: diff_menu can't ever see CONTROL.CONFIRM as pressed
 		# since week_menu eats it up. Add a tiny hack here for that.
 		if self.week_menu.choice_made:
 			self.diff_menu.choice_made = True
