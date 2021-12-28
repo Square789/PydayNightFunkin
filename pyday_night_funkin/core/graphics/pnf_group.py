@@ -14,6 +14,12 @@ class PNFGroup:
 		order: int = 0,
 		states: t.Sequence["AbstractStateMutator"] = (),
 	) -> None:
+		"""
+		Groups supply an OpenGL state via their state mutators and
+		Define an ordered tree which dictated element draw order.
+		! WARNING ! Groups are supposed to be immutable, it is best
+		to recreate them whenever they should be modified.
+		"""
 		self.parent = parent
 		self.order = order
 		self.states = {}

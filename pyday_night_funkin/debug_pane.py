@@ -4,8 +4,10 @@ import queue
 import typing as t
 
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
-from pyday_night_funkin.core.pyglet_tl_patch import TLLabel, TLRectangle
+from pyday_night_funkin.core.pyglet_tl_patch import TLRectangle
+from pyday_night_funkin.core.pnf_label import PNFLabel
 
 
 class DebugPane():
@@ -25,24 +27,22 @@ class DebugPane():
 		self.batch = PNFBatch()
 		self._queue = Queue()
 		self.labels = [
-			TLLabel(
+			PNFLabel(
 				"",
 				font_name = "Consolas",
 				font_size = self.FONT_SIZE,
 				x = 10,
 				y = (self.FONT_SIZE * i + self.LINE_DIST * i),
-				batch = self.batch,
-				group = self.foreground,
+				context = Context(self.batch, self.foreground, None),
 			) for i in range(line_amount)
 		]
-		self.fps_label = TLLabel(
+		self.fps_label = PNFLabel(
 			"",
 			font_name = "Consolas",
 			font_size = self.FONT_SIZE + 4,
 			x = 20,
 			y = ((self.FONT_SIZE * (line_amount + 1)) + 4 + self.LINE_DIST * line_amount),
-			batch = self.batch,
-			group = self.foreground,
+			context = Context(self.batch, self.foreground, None),
 		)
 		# Will be back shortly!
 		# (maybe)

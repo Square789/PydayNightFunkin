@@ -341,9 +341,10 @@ class PNFBatch:
 		by `new_batch` under the `new_group`.
 		Must be used when a drawable's batch, group or both change.
 		"""
-		# Steal vertex list from the group that owns it in this batch
-		self.on_vertex_list_removal(vertex_list)
-		new_batch._introduce_vtx_list_and_group(vertex_list, new_group)
+		if self != new_batch:
+			# Steal vertex list from the group that owns it in this batch
+			self.on_vertex_list_removal(vertex_list)
+			new_batch._introduce_vtx_list_and_group(vertex_list, new_group)
 		new_domain = new_batch._get_vertex_domain(vertex_list.domain.attribute_bundle)
 		new_domain.ensure_vao(new_group.program)
 		vertex_list.migrate(new_batch, new_domain)

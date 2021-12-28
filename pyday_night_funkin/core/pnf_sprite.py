@@ -430,15 +430,16 @@ class PNFSprite(SceneObject):
 		rebuild_group = new_cam != old_cam or new_group != old_group.parent
 
 		if change_batch:
-			if new_batch is not None and old_batch is not None:
-				self._context.batch = new_batch
-			else:
-				# TBH I forgot what these None checks were about.
-				# If anything is None in here, it will just crash horribly,
-				# but that doesn't happen when running soooo good enough!
-				self._vertex_list.delete()
-				self._context.batch = new_batch
-				self._create_vertex_list()
+			self._context.batch = new_batch
+			# if new_batch is not None and old_batch is not None:
+			# 	self._context.batch = new_batch
+			# else:
+			# 	# TBH I forgot what these None checks were about.
+			# 	# If anything is None in here, it will just crash horribly,
+			# 	# but that doesn't happen when running soooo good enough!
+			# 	self._vertex_list.delete()
+			# 	self._context.batch = new_batch
+			# 	self._create_vertex_list()
 
 		if rebuild_group:
 			self._context.camera = new_cam
