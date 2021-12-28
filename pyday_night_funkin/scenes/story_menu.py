@@ -45,9 +45,10 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		for diff in DIFFICULTY:
 			self._reverse_difficulty_map[diff.value] = diff
 
-		yellow_stripe = self.create_object("mid", x=0, y=56, image=create_pixel(0xF9CF51FF))
+		yellow_stripe = self.create_object("mid", x=0, y=56, image=CNST.PIXEL_TEXTURE)
 		yellow_stripe.scale_x = CNST.GAME_WIDTH
 		yellow_stripe.scale_y = 400
+		yellow_stripe.color = to_rgb_tuple(0xF9CF51FF)
 
 		# Week character setup (these get modified later)
 		self.week_chars: t.List["Character"] = []

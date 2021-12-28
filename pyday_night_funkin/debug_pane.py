@@ -8,7 +8,7 @@ from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.pnf_label import PNFLabel
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.utils import create_pixel
+from pyday_night_funkin.utils import to_rgb_tuple
 
 
 class DebugPane():
@@ -48,14 +48,14 @@ class DebugPane():
 			context = Context(self.batch, self.foreground, None),
 		)
 		self.rect = PNFSprite(
-			image = create_pixel(0x2020AAFF),
+			image = CNST.PIXEL_TEXTURE,
 			x = self.PADDING,
 			y = 0,
 			context = Context(self.batch, self.background, None),
 		)
 		self.rect.scale_x = CNST.GAME_WIDTH - 2 * self.PADDING
 		self.rect.scale_y = (self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1))
-
+		self.rect.color = to_rgb_tuple(0x2020AAFF)
 		self.rect.opacity = 100
 
 	def add_message(self, log_message: str) -> None:
