@@ -54,7 +54,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		for i in range(3):
 			spr = self.create_object(
 				"fg",
-				sprite_class = WEEKS[0].story_menu_chars[i],
+				object_class = WEEKS[0].story_menu_chars[i],
 				scene = self,
 				x = (CNST.GAME_WIDTH * 0.25 * (i + 1)) - 150,
 				y = 70,
@@ -68,14 +68,12 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 		ui_tex = load_asset(ASSET.XML_STORY_MENU_UI)
 
-		self._label = PNFLabel("yo", x=20, y=100)
-
 		# Week headers
 		self.week_headers: t.List[_WeekHeader] = []
 		for i, week in enumerate(WEEKS):
 			header = self.create_object(
 				"bg",
-				sprite_class = _WeekHeader,
+				object_class = _WeekHeader,
 				image = load_asset(ASSET.WEEK_HEADERS, week.header_filename),
 				y = yellow_stripe.y + yellow_stripe.height + 10,
 				target_y = i,

@@ -16,7 +16,7 @@ from pyday_night_funkin.sfx_ring import SFXRing
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
-	from pyday_night_funkin.types import PNFSpriteBound
+	SceneObjectBound = t.TypeVar("SceneObjectBound", bound=SceneObject)
 
 
 class Layer():
@@ -122,10 +122,10 @@ class BaseScene(Container):
 		self,
 		layer: t.Optional[str] = None,
 		camera: t.Optional[str] = None,
-		object_class: t.Type["SceneObject"] = PNFSprite,
+		object_class: t.Type["SceneObjectBound"] = PNFSprite,
 		*args,
 		**kwargs,
-	) -> "SceneObject":
+	) -> "SceneObjectBound":
 		"""
 		Creates a scene object on the given layer belonging to a
 		camera. If a camera name is specified (and the camera exists
