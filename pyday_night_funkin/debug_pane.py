@@ -3,10 +3,12 @@ from queue import Queue
 import queue
 import typing as t
 
-from pyglet.graphics import Batch, Group
-
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.core.pyglet_tl_patch import TLLabel, TLRectangle
+from pyday_night_funkin.core.context import Context
+from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
+from pyday_night_funkin.core.pnf_label import PNFLabel
+from pyday_night_funkin.core.pnf_sprite import PNFSprite
+from pyday_night_funkin.utils import to_rgb_tuple
 
 
 class DebugPane():
@@ -20,41 +22,40 @@ class DebugPane():
 	PADDING = 8
 
 	def __init__(self, line_amount: int) -> None:
+		# NOTE: This uses PNF graphics, but is not a scene,
+		# so update, tweens and all other good stuff won't work.
 		self.insert_index = 0
-		self.background = Group(order = 0)
-		self.foreground = Group(order = 1)
-		self.batch = Batch()
+		self.background = PNFGroup(order = 0)
+		self.foreground = PNFGroup(order = 1)
+		self.batch = PNFBatch()
 		self._queue = Queue()
 		self.labels = [
-			TLLabel(
+			PNFLabel(
 				"",
 				font_name = "Consolas",
 				font_size = self.FONT_SIZE,
 				x = 10,
 				y = (self.FONT_SIZE * i + self.LINE_DIST * i),
-				batch = self.batch,
-				group = self.foreground,
+				context = Context(self.batch, self.foreground, None),
 			) for i in range(line_amount)
 		]
-		self.fps_label = TLLabel(
+		self.fps_label = PNFLabel(
 			"",
 			font_name = "Consolas",
 			font_size = self.FONT_SIZE + 4,
 			x = 20,
 			y = ((self.FONT_SIZE * (line_amount + 1)) + 4 + self.LINE_DIST * line_amount),
-			batch = self.batch,
-			group = self.foreground,
+			context = Context(self.batch, self.foreground, None),
 		)
-		self.rect = TLRectangle(
-			self.PADDING,
-			0,
-			CNST.GAME_WIDTH - 2 * self.PADDING,
-			(self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1)),
-			color = (20, 20, 100),
-			batch = self.batch,
-			group = self.background,
+		self.rect = PNFSprite(
+			image = CNST.PIXEL_TEXTURE,
+			x = self.PADDING,
+			y = 0,
+			context = Context(self.batch, self.background, None),
 		)
-		
+		self.rect.scale_x = CNST.GAME_WIDTH - 2 * self.PADDING
+		self.rect.scale_y = (self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1))
+		self.rect.color = to_rgb_tuple(0x2020AAFF)
 		self.rect.opacity = 100
 
 	def add_message(self, log_message: str) -> None:

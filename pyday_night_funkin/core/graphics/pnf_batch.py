@@ -220,7 +220,7 @@ class PNFBatch:
 		if not chains:
 			return [], []
 
-		state_wall = states.PseudoStateWall()
+		walker = states.StateWalker()
 		draw_list = []
 		indices = []
 		# Vertex layout is dictated by vertex domain and a group's program.
@@ -232,7 +232,7 @@ class PNFBatch:
 		for chain in chains:
 			for agroup in chain.groups:
 				# Extend the draw list with necessary state switch calls
-				state_switches = state_wall.switch(agroup.group.states)
+				state_switches = walker.switch(agroup.group.states)
 
 				n_vertex_layout = (agroup.vertex_list.domain, agroup.group.program.id)
 				n_draw_mode = agroup.vertex_list.draw_mode
@@ -301,7 +301,7 @@ class PNFBatch:
 		# indexed vertex lists would mean even more frequent switches between
 		# draw calls.
 		# Plus, in this project, most drawables are indexed sprites anyways.
-		return self.add_indexed(self, size, draw_mode, group, [*range(size)], *data)
+		return self.add_indexed(size, draw_mode, group, [*range(size)], *data)
 
 	def add_indexed(self, size, draw_mode, group, indices, *data) -> PNFVertexList:
 		attr_names = [x[0] if isinstance(x, tuple) else x for x in data]
@@ -336,9 +336,15 @@ class PNFBatch:
 		new_group: "PNFGroup",
 		new_batch: "PNFBatch",
 	) -> None:
-		# Steal vertex list from the group that owns it in this batch
-		self.on_vertex_list_removal(vertex_list)
-		new_batch._introduce_vtx_list_and_group(vertex_list, new_group)
+		"""
+		Migrates the given vertex list so that it is afterwards owned
+		by `new_batch` under the `new_group`.
+		Must be used when a drawable's batch, group or both change.
+		"""
+		if self != new_batch:
+			# Steal vertex list from the group that owns it in this batch
+			self.on_vertex_list_removal(vertex_list)
+			new_batch._introduce_vtx_list_and_group(vertex_list, new_group)
 		new_domain = new_batch._get_vertex_domain(vertex_list.domain.attribute_bundle)
 		new_domain.ensure_vao(new_group.program)
 		vertex_list.migrate(new_batch, new_domain)

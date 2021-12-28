@@ -1,16 +1,16 @@
 
 import typing as t
 
-from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.config import CONTROL
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.core.pnf_label import PNFLabel
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
 from pyday_night_funkin.enums import DIFFICULTY
 from pyday_night_funkin.levels import WEEKS
-from pyday_night_funkin import scenes
 from pyday_night_funkin.menu import Menu
+from pyday_night_funkin import scenes
 from pyday_night_funkin.utils import create_pixel, lerp, to_rgb_tuple
 
 if t.TYPE_CHECKING:
@@ -45,16 +45,17 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		for diff in DIFFICULTY:
 			self._reverse_difficulty_map[diff.value] = diff
 
-		yellow_stripe = self.create_sprite("mid", x=0, y=56, image=create_pixel(0xF9CF51FF))
+		yellow_stripe = self.create_object("mid", x=0, y=56, image=CNST.PIXEL_TEXTURE)
 		yellow_stripe.scale_x = CNST.GAME_WIDTH
 		yellow_stripe.scale_y = 400
+		yellow_stripe.color = to_rgb_tuple(0xF9CF51FF)
 
 		# Week character setup (these get modified later)
 		self.week_chars: t.List["Character"] = []
 		for i in range(3):
-			spr = self.create_sprite(
+			spr = self.create_object(
 				"fg",
-				sprite_class = WEEKS[0].story_menu_chars[i],
+				object_class = WEEKS[0].story_menu_chars[i],
 				scene = self,
 				x = (CNST.GAME_WIDTH * 0.25 * (i + 1)) - 150,
 				y = 70,
@@ -71,9 +72,9 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		# Week headers
 		self.week_headers: t.List[_WeekHeader] = []
 		for i, week in enumerate(WEEKS):
-			header = self.create_sprite(
+			header = self.create_object(
 				"bg",
-				sprite_class = _WeekHeader,
+				object_class = _WeekHeader,
 				image = load_asset(ASSET.WEEK_HEADERS, week.header_filename),
 				y = yellow_stripe.y + yellow_stripe.height + 10,
 				target_y = i,
@@ -89,7 +90,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		larrx = self.week_headers[0].x + self.week_headers[0].width + 10
 		larry = self.week_headers[0].y + 10
 
-		self.diff_arrow_left = self.create_sprite("bg", x=larrx, y=larry)
+		self.diff_arrow_left = self.create_object("bg", x=larrx, y=larry)
 		self.diff_arrow_left.animation.add_from_frames("idle", ui_tex["arrow left"])
 		self.diff_arrow_left.animation.add_from_frames("press", ui_tex["arrow push left"])
 		self.diff_arrow_left.animation.play("idle")
@@ -99,7 +100,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			DIFFICULTY.NORMAL: (70, 0),
 			DIFFICULTY.HARD: (20, 0),
 		}
-		self.difficulty_indicator = self.create_sprite("bg", x=larrx + 130, y=larry)
+		self.difficulty_indicator = self.create_object("bg", x=larrx + 130, y=larry)
 		# Shoutouts to tyler "ninjamuffin99" blevins for using specific
 		# animation frames for positioning of UI elements;
 		# The fact that `EASY` is the first animation added is relevant here.
@@ -110,7 +111,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.difficulty_indicator.animation.play("0")
 		self.difficulty_indicator.check_animation_controller()
 
-		self.diff_arrow_right = self.create_sprite(
+		self.diff_arrow_right = self.create_object(
 			"bg",
 			x=self.difficulty_indicator.x + self.difficulty_indicator.width + 50,
 			y=larry,

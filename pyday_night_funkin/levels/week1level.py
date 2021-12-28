@@ -39,15 +39,15 @@ class Week1Level(InGameScene):
 		common.setup_default_stage(self)
 
 	def create_boyfriend(self) -> "Boyfriend":
-		return self.create_sprite("stage", "main", Boyfriend, scene=self, x=770, y=450)
+		return self.create_object("stage", "main", Boyfriend, scene=self, x=770, y=450)
 
 	def create_girlfriend(self) -> "Girlfriend":
-		gf = self.create_sprite("girlfriend", "main", Girlfriend, scene=self, x=400, y=130)
+		gf = self.create_object("girlfriend", "main", Girlfriend, scene=self, x=400, y=130)
 		gf.scroll_factor = (.95, .95)
 		return gf
 
 	def create_opponent(self) -> "Character":
-		return self.create_sprite("stage", "main", DaddyDearest, scene=self, x=100, y=100)
+		return self.create_object("stage", "main", DaddyDearest, scene=self, x=100, y=100)
 
 class Bopeebo(Week1Level):
 	@staticmethod

@@ -257,7 +257,7 @@ class PNFVertexDomain:
 		count = int(count)
 		type_ = TYPE_MAP[type_]
 		normalize = gl.GL_TRUE if norm else gl.GL_FALSE
-		usage = USAGE_MAP[usage]
+		usage = USAGE_MAP[usage or "dynamic"]
 
 		if count not in range(1, 5):
 			raise ValueError(f"Vertex attribute count must be 1, 2, 3 or 4; was {count}!")

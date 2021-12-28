@@ -36,18 +36,18 @@ class Tutorial(InGameScene):
 		return common.create_hud(self)
 
 	def create_boyfriend(self) -> "Boyfriend":
-		return self.create_sprite("stage", "main", Boyfriend, scene=self, x=770, y=450)
+		return self.create_object("stage", "main", Boyfriend, scene=self, x=770, y=450)
 
 	def create_girlfriend(self) -> "Girlfriend":
-		not_gf = self.create_sprite("girlfriend", "main", x=-100, y=-100)
+		not_gf = self.create_object("girlfriend", "main", x=-100, y=-100)
 		# Epic fail if no dummy animation is added
 		not_gf.animation.add_from_frames("idle_bop", (FrameInfoTexture(ERROR_TEXTURE, False),))
 		not_gf.visible = False
 		return not_gf
 
 	def create_opponent(self) -> "Character":
-		return self.create_sprite(
-			"girlfriend", "main", sprite_class=Girlfriend, scene=self, x=400, y=130
+		return self.create_object(
+			"girlfriend", "main", object_class=Girlfriend, scene=self, x=400, y=130
 		)
 
 	def setup(self) -> None:

@@ -145,7 +145,7 @@ class TriangleScene(BaseScene):
 		#self.tri1 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, -20, 60)
 		#self.tri2 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, 200, 100)
 
-		self.please_work = self.create_sprite(
+		self.please_work = self.create_object(
 			"main", None, image=load_asset(ASSET.IMG_NEWGROUNDS_LOGO), x=50, y=50
 		)
 

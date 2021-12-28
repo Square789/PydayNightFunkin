@@ -21,8 +21,8 @@ class MainMenuScene(scenes.BaseScene):
 		self.scroll_sound = load_asset(ASSET.SOUND_MENU_SCROLL)
 		self.confirm_sound = load_asset(ASSET.SOUND_MENU_CONFIRM)
 
-		self.bg = self.create_sprite("bg", image=load_asset(ASSET.IMG_MENU_BG))
-		self.bg_magenta = self.create_sprite("bg_mag", image=load_asset(ASSET.IMG_MENU_DESAT))
+		self.bg = self.create_object("bg", image=load_asset(ASSET.IMG_MENU_BG))
+		self.bg_magenta = self.create_object("bg_mag", image=load_asset(ASSET.IMG_MENU_DESAT))
 
 		for bg in (self.bg, self.bg_magenta):
 			bg.scroll_factor = (0.0, 0.18)
@@ -39,7 +39,7 @@ class MainMenuScene(scenes.BaseScene):
 			("freeplay", self._sel_freeplay),
 			("options", self._sel_options),
 		)):
-			sprite = self.create_sprite("fg", y=60 + i*160)
+			sprite = self.create_object("fg", y=60 + i*160)
 			sprite.animation.add_from_frames(
 				"idle", menu_item_assets[f"{name} basic"], 24, True
 			)

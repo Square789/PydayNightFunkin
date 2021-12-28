@@ -11,14 +11,14 @@ import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
-from pyday_night_funkin.core.graphics import get_default_batch, PNFGroup
+from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.states as s
 from pyday_night_funkin.core.scene_object import SceneObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.camera import Camera
+	from pyglet.graphics.shader import UniformBufferObject
 	from pyday_night_funkin.types import Numeric
 
 EffectBound = t.TypeVar("EffectBound", bound="Effect")
@@ -44,9 +44,6 @@ uniform WindowBlock {{
 	mat4 projection;
 	mat4 view;
 }} window;
-
-// Not really sure about having GAME_DIMENSIONS here
-// since it's by all means a constant
 
 layout (std140) uniform CameraAttrs {{
 	float zoom;
@@ -214,7 +211,7 @@ class _Tween(Effect):
 			setattr(sprite, attr_name, v_ini + v_diff*progress)
 
 
-# TODO left here since i would need to replace call sites with some
+# NOTE: Left here since i would need to replace call sites with some
 # ugly lambda s: setattr(s, "visibility", True) stuff; not really
 # worth it, see into it if you have time.
 class Flicker(Effect):
@@ -310,15 +307,14 @@ class PNFSprite(SceneObject):
 		TWEEN_ATTR.SCALE_X: "scale_x",
 		TWEEN_ATTR.SCALE_Y: "scale_y",
 	}
+
 	shader_container = ShaderContainer(
 		PNFSpriteVertexShader.generate(),
 		PNFSpriteFragmentShader.generate(),
 	)
-	_dummy_camera = None
 
 	def __init__(
 		self,
-		camera: t.Optional["Camera"] = None,
 		image: t.Optional[AbstractImage] = None,
 		x: "Numeric" = 0,
 		y: "Numeric" = 0,
@@ -332,7 +328,6 @@ class PNFSprite(SceneObject):
 		image = CNST.ERROR_TEXTURE if image is None else image
 
 		self.animation = AnimationController()
-		self.camera = self._get_dummy_camera() if camera is None else camera
 
 		# NOTE: Copypaste of this exists at PNFSpriteContainer.__init__,
 		# modify it when modifying this!
@@ -365,28 +360,29 @@ class PNFSprite(SceneObject):
 		self._blend_dest = blend_dest
 
 		self._context = Context(
-			get_default_batch() if context is None else context.batch,
-			PNFGroup(
-				parent = None if context is None else context.group,
-				states = self._build_mutators(program)
-			)
+			None if context is None else context.batch,
+			None,
+			None if context is None else context.camera,
 		)
+		self._context.group = PNFGroup(
+			parent = None if context is None else context.group,
+			states = self._build_mutators(program, self._context.camera.ubo)
+		)
+		# NOTE: Ugly, maybe come up with something better.
+		# Group needs to be set afterwards as dummy cam ubo is needed in build_mutators.
 
 		self._create_vertex_list()
 
 		self.image = image
 
-	@classmethod
-	def _get_dummy_camera(cls):
-		if cls._dummy_camera is None:
-			from pyday_night_funkin.core.camera import Camera
-			cls._dummy_camera = Camera()
-		return cls._dummy_camera
-
-	def _build_mutators(self, program: "ShaderProgram"):
+	def _build_mutators(
+		self,
+		program: "ShaderProgram",
+		cam_ubo: "UniformBufferObject",
+	):
 		return (
 			s.ProgramStateMutator(program),
-			s.UBOBindingStateMutator(self.camera.ubo),
+			s.UBOBindingStateMutator(cam_ubo),
 			s.TextureUnitStateMutator(gl.GL_TEXTURE0),
 			s.TextureStateMutator(self._texture),
 			s.EnableStateMutator(gl.GL_BLEND),
@@ -418,30 +414,42 @@ class PNFSprite(SceneObject):
 		self._update_position()
 
 	def set_context(self, parent_context: "Context") -> None:
+		"""
+		This function actually doesn't set a context, it just
+		modifies the existing one and takes all necessary steps for
+		the sprite to be displayed in the new context.
+		"""
 		new_batch = parent_context.batch
 		new_group = parent_context.group
+		new_cam = parent_context.camera
 		old_batch = self._context.batch
 		old_group = self._context.group
+		old_cam = self._context.camera
 
-		# NOTE: migrate may be called twice here which is inefficient but unlikely since
-		# why should batches ever be switched anyways
-		if new_batch != old_batch:
-			if new_batch is not None and old_batch is not None:
-				old_batch.migrate(self._vertex_list, self._context.group, new_batch)
-				self._context.batch = new_batch
-			else:
-				self._vertex_list.delete()
-				self._context.batch = new_batch
-				self._create_vertex_list()
+		change_batch = new_batch != old_batch
+		rebuild_group = new_cam != old_cam or new_group != old_group.parent
 
-		if new_group != old_group.parent:
+		if change_batch:
+			self._context.batch = new_batch
+			# if new_batch is not None and old_batch is not None:
+			# 	self._context.batch = new_batch
+			# else:
+			# 	# TBH I forgot what these None checks were about.
+			# 	# If anything is None in here, it will just crash horribly,
+			# 	# but that doesn't happen when running soooo good enough!
+			# 	self._vertex_list.delete()
+			# 	self._context.batch = new_batch
+			# 	self._create_vertex_list()
+
+		if rebuild_group:
+			self._context.camera = new_cam
 			self._context.group = PNFGroup(
 				parent = new_group,
-				states = self._build_mutators(old_group.program)
+				states = self._build_mutators(old_group.program, new_cam.ubo),
 			)
-			self._context.batch.migrate(
-				self._vertex_list, self._context.group, self._context.batch
-			)
+
+		if change_batch or rebuild_group:
+			old_batch.migrate(self._vertex_list, self._context.group, self._context.batch)
 
 	def screen_center(self, screen_dims: Vec2, x: bool = True, y: bool = True) -> None:
 		"""
@@ -798,9 +806,12 @@ class PNFSprite(SceneObject):
 		if texture.id is not self._texture.id:
 			self._texture = texture
 			old_group = self._context.group
+			# TODO: Rebuilding the states completely is kind of a waste,
+			# you could just change the TextureBindingState and
+			# be done, but yada yada -> issue #28.
 			self._context.group = PNFGroup(
 				parent = old_group.parent,
-				states = self._build_mutators(old_group.program)
+				states = self._build_mutators(old_group.program, self._context.camera.ubo),
 			)
 			self._vertex_list.delete()
 			self._create_vertex_list()

@@ -16,7 +16,7 @@ from pyday_night_funkin.sfx_ring import SFXRing
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
-	from pyday_night_funkin.types import PNFSpriteBound
+	SceneObjectBound = t.TypeVar("SceneObjectBound", bound=SceneObject)
 
 
 class Layer():
@@ -53,7 +53,7 @@ class Layer():
 
 class BaseScene(Container):
 	"""
-	A scene holds a number of sprites and cameras, functions to
+	A scene holds a number of scene objects and cameras, functions to
 	manipulate these in a way appropiate to the scene's nature and
 	event handlers to call these functions.
 	"""
@@ -103,11 +103,11 @@ class BaseScene(Container):
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		"""
 		Gets a list of layer names to be used for this scene.
-		The layers can later be referenced by name in `create_sprite`.
+		The layers can later be referenced by name in `create_object`.
 		The layers will be drawn first-to-last as they are given.
-		By default, the order in which sprites on the same layer
+		By default, the order in which drawables on the same layer
 		are drawn is undefined. It's possible to force each
-		sprite onto its own layer subgroup by specifying
+		drawable onto its own layer subgroup by specifying
 		`("my_layer", True)` instead of just the layer name
 		`"my_layer"`, which (probably) comes at a performance
 		cost and prevents optimizations. This should be used
@@ -118,37 +118,32 @@ class BaseScene(Container):
 	def _get_elapsed_time(self) -> float:
 		return self._passed_time
 
-	def create_sprite(
+	def create_object(
 		self,
 		layer: t.Optional[str] = None,
 		camera: t.Optional[str] = None,
-		sprite_class: t.Type["PNFSpriteBound"] = PNFSprite,
+		object_class: t.Type["SceneObjectBound"] = PNFSprite,
 		*args,
 		**kwargs,
-	) -> "PNFSpriteBound":
+	) -> "SceneObjectBound":
 		"""
-		Creates a sprite on the given layer belonging to a camera.
-		If a camera name is specified (and the camera exists in the
-		scene), the sprite will be registered with it and its
+		Creates a scene object on the given layer belonging to a
+		camera. If a camera name is specified (and the camera exists
+		in the scene), the object will be registered with it and its
 		transformations immediatedly applied. If no camera name is
-		specified, the sprite will be attached to a default camera
+		specified, the object will be attached to a default camera
 		that is never moved.
-		The sprite class will be created with all args and kwargs,
-		as well as a fitting `context` filled in by the scene
-		if not otherwise given. (And if you give it another one, you
-		better know what you're doing.)
+		The object will be created from the given `object_class` type
+		with all args and kwargs. Note that because they are so
+		fundamental, by default the object class is `PNFSprite`.
+		The object will be given a fitting `context` filled
+		in by the scene if not otherwise given. (And if you give it a
+		custom one, you better know what you're doing.)
 		"""
-		kwargs.setdefault("context", self.get_context(layer))
-		kwargs.setdefault(
-			"camera",
-			self._default_camera if camera is None else self.cameras[camera]
-		)
-
-		sprite = sprite_class(*args, **kwargs)
-
-		self._members.add(sprite)
-
-		return sprite
+		kwargs.setdefault("context", self.get_context(layer, camera))
+		member = object_class(*args, **kwargs)
+		self._members.add(member)
+		return member
 
 	def set_context(self, _: Context) -> None:
 		raise RuntimeError("Can't set a scene's context, it's the scene hierarchy root!")
@@ -202,14 +197,27 @@ class BaseScene(Container):
 		"""
 		self.batch.draw()
 
-	def get_context(self, layer: t.Optional[str] = None) -> Context:
+	def get_context(self, layer: t.Optional[str] = None, camera: t.Optional[str] = None) -> Context:
 		"""
-		Returns a context for the given layer. # TODO or none bla bla
+		Returns a context for the given layer and camera names.
+		Both may also be none, in which case the first layer or the
+		default dummy camera will be returned.
 		"""
-		return Context(self.batch, self.get_layer(layer).get_group())
+		return Context(self.batch, self.get_layer(layer).get_group(), self.get_camera(camera))
 
 	def get_layer(self, layer: t.Optional[str] = None) -> Layer:
+		"""
+		Returns the layer with the given name or the first layer if
+		`None` is given.
+		"""
 		return next(iter(self.layers.values())) if layer is None else self.layers[layer]
+
+	def get_camera(self, camera: t.Optional[str]) -> Camera:
+		"""
+		Returns the camera with the given name or the scene's default
+		camera if `None` is given.
+		"""
+		return self.cameras.get(camera, self._default_camera)
 
 	def remove_scene(self, *args, **kwargs) -> None:
 		"""
@@ -234,7 +242,7 @@ class BaseScene(Container):
 
 	def destroy(self) -> None:
 		"""
-		Destroy the scene by deleting its sprites and graphics batch.
+		Destroy the scene by deleting its members and graphics batch.
 		**!** This does not remove the scene from the game's scene
 		stack and will cause errors if used improperly.
 		Chances are you want to use `remove_scene` instead.

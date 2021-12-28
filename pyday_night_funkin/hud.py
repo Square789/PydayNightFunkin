@@ -63,7 +63,7 @@ class HUD():
 		for i, note_type in product((0, 1), NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
 			arrow_width = note_sprites[atlas_names[0]][0].texture.width
-			arrow_sprite = self._scene.create_sprite(
+			arrow_sprite = self._scene.create_object(
 				self.arrow_layer,
 				self.camera,
 				x = 50 + (CNST.GAME_WIDTH // 2) * i + (note_type.get_order() * arrow_width * .7),
@@ -100,7 +100,7 @@ class HUD():
 		x = int(CNST.GAME_WIDTH * .55)
 		scene = self._scene
 
-		combo_sprite = scene.create_sprite(
+		combo_sprite = scene.create_object(
 			self.combo_layer,
 			self.camera,
 			image = self.note_rating_textures[rating],
@@ -124,7 +124,7 @@ class HUD():
 		)
 
 		for i, digit in enumerate(f"{combo:>03}"):
-			sprite = scene.create_sprite(
+			sprite = scene.create_object(
 				self.combo_layer,
 				self.camera,
 				image = self.number_textures[int(digit)],
@@ -155,7 +155,7 @@ class HUD():
 		scene = self._scene
 		tex = self.countdown_textures[countdown_stage]
 		if tex is not None:
-			sprite = scene.create_sprite(self.combo_layer, self.camera, image=tex)
+			sprite = scene.create_object(self.combo_layer, self.camera, image=tex)
 			sprite.screen_center(CNST.GAME_DIMENSIONS)
 			sprite.start_tween(
 				in_out_cubic,

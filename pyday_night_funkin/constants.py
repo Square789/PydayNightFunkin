@@ -1,7 +1,7 @@
 
 import sys
 
-from pyglet.image import CheckerImagePattern, Texture
+from pyglet.image import CheckerImagePattern, Texture, ImageData
 
 from pyday_night_funkin.utils import to_rgba_tuple
 
@@ -19,5 +19,6 @@ STATIC_ARROW_Y = 50
 ERROR_TEXTURE = CheckerImagePattern(
 	to_rgba_tuple(PINK), to_rgba_tuple(BLACK)
 ).create_image(32, 32).create_texture(Texture)
+PIXEL_TEXTURE = ImageData(1, 1, "RGBA", b"\xFF\xFF\xFF\xFF").get_texture()
 
 SFX_RING_SIZE = 4

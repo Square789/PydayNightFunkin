@@ -1,5 +1,6 @@
 
 import typing as t
+from pyday_night_funkin.core.camera import Camera
 
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.core.context import Context
@@ -59,22 +60,18 @@ class PNFSpriteContainer(PNFSprite):
 		self._scroll_factor = (1.0, 1.0)
 		self._visible = True
 
-		self._context = Context(get_default_batch(), PNFGroup()) if context is None else context
+		self._context = context or Context()
 
 		self._sprites: t.Set[PNFSprite] = set()
 		for spr in sprites:
 			self.add(spr)
 
 	def set_context(self, parent_context: "Context") -> None:
-		self._context = Context(
-			parent_context.batch,
-			PNFGroup(parent=parent_context.group),
-		)
+		self._context.batch = parent_context.batch
+		self._context.group = PNFGroup(parent=parent_context.group)
+		self._context.camera = parent_context.camera
 		for x in self._sprites:
 			x.set_context(self._context)
-
-	def invalidate_context(self) -> None:
-		self.set_context(Context(get_default_batch(), None))
 
 	def add(self, sprite: PNFSprite) -> None:
 		"""
