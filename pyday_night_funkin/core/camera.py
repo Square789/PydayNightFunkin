@@ -4,7 +4,6 @@ import typing as t
 from pyglet.math import Vec2
 
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
-from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 
 CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
@@ -12,14 +11,19 @@ CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
 
 class Camera:
 	"""
-	Camera class tightly working with the PNFSprite vertex shader to
-	provide a UBO that transforms sprites as if they were viewed
-	translated/zoomed with a camera.
+	Camera class to provide a UBO (which needs to be reflected in the
+	shader code of shaders that want to use it) that transforms
+	drawables as if they were viewed translated/zoomed with a camera.
 	Concepts largely stolen from
 	https://github.com/HaxeFlixel/flixel/blob/dev/flixel/FlxCamera.hx
 	"""
 
+	_dummy: t.Optional["Camera"] = None
+
 	def __init__(self):
+		# NOTE: It's probably possible to get a UBO here without the
+		# sprite shader, but it's gonna be painful.
+		from pyday_night_funkin.core.pnf_sprite import PNFSprite
 		self.ubo = PNFSprite.shader_container.get_camera_ubo()
 
 		self._x = 0
@@ -42,6 +46,15 @@ class Camera:
 		self._follow_lerp = 1.0
 
 		self._update_ubo()
+
+	@classmethod
+	def get_dummy(cls):
+		"""
+		Returns the global dummy camera.
+		"""
+		if cls._dummy is None:
+			cls._dummy = cls()
+		return cls._dummy
 
 	def _update_ubo(self) -> None:
 		with self.ubo as ubo:

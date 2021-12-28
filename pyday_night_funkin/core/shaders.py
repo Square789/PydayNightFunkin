@@ -10,6 +10,7 @@ class ShaderContainer():
 	"""
 	Class to hold multiple shaders and compile them to a full
 	program only when requested for the first time.
+	Has some special support for cameras.
 	"""
 	def __init__(self, vertex_src: str, fragment_src: str) -> None:
 		self._prog = None

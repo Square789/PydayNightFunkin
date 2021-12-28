@@ -3,9 +3,8 @@ from queue import Queue
 import queue
 import typing as t
 
-from pyglet.graphics import Batch, Group
-
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.pyglet_tl_patch import TLLabel, TLRectangle
 
 
@@ -21,9 +20,9 @@ class DebugPane():
 
 	def __init__(self, line_amount: int) -> None:
 		self.insert_index = 0
-		self.background = Group(order = 0)
-		self.foreground = Group(order = 1)
-		self.batch = Batch()
+		self.background = PNFGroup(order = 0)
+		self.foreground = PNFGroup(order = 1)
+		self.batch = PNFBatch()
 		self._queue = Queue()
 		self.labels = [
 			TLLabel(
@@ -45,17 +44,19 @@ class DebugPane():
 			batch = self.batch,
 			group = self.foreground,
 		)
-		self.rect = TLRectangle(
-			self.PADDING,
-			0,
-			CNST.GAME_WIDTH - 2 * self.PADDING,
-			(self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1)),
-			color = (20, 20, 100),
-			batch = self.batch,
-			group = self.background,
-		)
+		# Will be back shortly!
+		# (maybe)
+		# self.rect = TLRectangle(
+		# 	self.PADDING,
+		# 	0,
+		# 	CNST.GAME_WIDTH - 2 * self.PADDING,
+		# 	(self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1)),
+		# 	color = (20, 20, 100),
+		# 	batch = self.batch,
+		# 	group = self.background,
+		# )
 		
-		self.rect.opacity = 100
+		# self.rect.opacity = 100
 
 	def add_message(self, log_message: str) -> None:
 		"""

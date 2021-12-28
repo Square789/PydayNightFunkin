@@ -138,11 +138,7 @@ class BaseScene(Container):
 		if not otherwise given. (And if you give it another one, you
 		better know what you're doing.)
 		"""
-		kwargs.setdefault("context", self.get_context(layer))
-		kwargs.setdefault(
-			"camera",
-			self._default_camera if camera is None else self.cameras[camera]
-		)
+		kwargs.setdefault("context", self.get_context(layer, camera))
 
 		sprite = sprite_class(*args, **kwargs)
 
@@ -202,14 +198,27 @@ class BaseScene(Container):
 		"""
 		self.batch.draw()
 
-	def get_context(self, layer: t.Optional[str] = None) -> Context:
+	def get_context(self, layer: t.Optional[str] = None, camera: t.Optional[str] = None) -> Context:
 		"""
-		Returns a context for the given layer. # TODO or none bla bla
+		Returns a context for the given layer and camera names.
+		Both may also be none, in which case the first layer or the
+		default dummy camera will be returned.
 		"""
-		return Context(self.batch, self.get_layer(layer).get_group())
+		return Context(self.batch, self.get_layer(layer).get_group(), self.get_camera(camera))
 
 	def get_layer(self, layer: t.Optional[str] = None) -> Layer:
+		"""
+		Returns the layer with the given name or the first layer if
+		`None` is given.
+		"""
 		return next(iter(self.layers.values())) if layer is None else self.layers[layer]
+
+	def get_camera(self, camera: t.Optional[str]) -> Camera:
+		"""
+		Returns the camera with the given name or the scene's default
+		camera if `None` is given.
+		"""
+		return self.cameras.get(camera, self._default_camera)
 
 	def remove_scene(self, *args, **kwargs) -> None:
 		"""

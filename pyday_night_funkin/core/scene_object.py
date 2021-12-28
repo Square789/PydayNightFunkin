@@ -27,7 +27,9 @@ class SceneObject:
 		"""
 		Called when object is removed from a scene.
 		Should clear all possible references to the context.
+		By default, will set the context to an empty context.
 		"""
+		self.set_context(Context())
 
 	def delete(self) -> None:
 		"""
@@ -74,9 +76,6 @@ class Container(SceneObject):
 		self._context = Context(parent_context.batch, PNFGroup(parent=parent_context.group))
 		for spr in self._members:
 			spr.set_context(self._context)
-
-	def invalidate_context(self) -> None:
-		self.set_context(Context(get_default_batch(), None))
 
 	def delete(self) -> None:
 		for spr in self._members:

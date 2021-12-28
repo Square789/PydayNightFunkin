@@ -1,15 +1,229 @@
 """
-Massive copypaste-job that is not guaranteed to survive patch versions
-with only purpose to get top-left based labels.
+Massive unstable copypaste-job that is not guaranteed to survive patch
+versions with only purpose to get top-left based labels.
 """
 
 import ast
 import inspect
+import typing as t
 
-from pyglet.gl import GL_LINES, GL_TRIANGLES
-from pyglet.text import Label
-from pyglet.text.layout import _GlyphBox, TextLayout, get_default_layout_shader
+from pyglet.gl import GL_LINES, GL_TRIANGLES, gl
+from pyglet.text import Label, decode_text
+from pyglet.text.layout import (
+	_GlyphBox, TextLayout, decoration_fragment_source, layout_fragment_source
+)
 
+from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
+from pyday_night_funkin.core.graphics import states
+from pyday_night_funkin.core.shaders import ShaderContainer
+
+if t.TYPE_CHECKING:
+	from pyglet.graphics.shader import ShaderProgram
+	from pyglet.image import Texture
+
+
+# https://medium.com/@chipiga86/
+# python-monkey-patching-like-a-boss-87d7ddb8098e
+def get_src(o):
+	src = inspect.getsource(o).split("\n")
+	indent = len(src[0]) - len(src[0].lstrip())
+	return "\n".join(l[indent:] for l in src)
+
+
+class _TextPatcher(ast.NodeTransformer):
+	def __init__(self, sub_what, sub_with) -> None:
+		super().__init__()
+		self.sub_what = sub_what
+		self.sub_with = sub_with
+
+	def visit_Name(self, node):
+		if node.id != self.sub_what:
+			return node
+		return ast.Name(id = self.sub_with, ctx = node.ctx)
+
+
+_tp = _TextPatcher("_GlyphBox", "_TLGlyphBox")
+
+def _patch(src_cls, method_name):
+	"""
+	Changes all occurrences of `_GlyphBox` in the method
+	`src_cls:method_name` to `_TLGlyphBox` and returns the recompiled
+	method, which is bound to the global scope of the module the
+	source class was defined in.
+	"""
+	src_mod = inspect.getmodule(src_cls)
+	meth_ast = ast.parse(get_src(getattr(src_cls, method_name)))
+
+	meth_ast = ast.fix_missing_locations(_tp.visit(meth_ast))
+
+	src_mod.__dict__["_TLGlyphBox"] = _TLGlyphBox
+	# Required so the recompiled function has access to the module's globals
+	d = src_mod.__dict__
+	exec(compile(meth_ast, f"<patch from {inspect.getfile(src_mod)}>", "exec"), d)
+	m = d.pop(method_name)
+	return m
+
+#############################
+### PATCHED SHADERS BELOW ###
+#############################
+
+layout_vertex_source = """
+#version 330 core
+
+in vec2 position;
+in vec4 colors;
+in vec3 tex_coords;
+in vec2 translation;
+
+out vec4 text_colors;
+out vec2 texture_coords;
+out vec4 vert_position;
+
+uniform WindowBlock
+{
+	mat4 projection;
+	mat4 view;
+} window;
+
+layout (std140) uniform CameraAttrs {
+	float zoom;
+	vec2  position;
+	vec2  GAME_DIMENSIONS;
+} camera;
+
+mat4 m_trans_scale = mat4(1.0);
+mat4 m_camera_trans_scale = mat4(1.0);
+mat4 m_camera_pre_trans = mat4(1.0);
+
+void main()
+{
+	m_trans_scale[3] = vec4(translation, 1.0, 1.0);
+	// Camera transform and zoom scale
+	m_camera_trans_scale[3][0] = (camera.zoom * -camera.position.x) + (camera.GAME_DIMENSIONS.x / 2);
+	m_camera_trans_scale[3][1] = (camera.zoom * -camera.position.y) + (camera.GAME_DIMENSIONS.y / 2);
+	m_camera_trans_scale[0][0] = camera.zoom;
+	m_camera_trans_scale[1][1] = camera.zoom;
+	// Camera pre-scale-transform
+	m_camera_pre_trans[3][0] = -camera.GAME_DIMENSIONS.x / 2;
+	m_camera_pre_trans[3][1] = -camera.GAME_DIMENSIONS.y / 2;
+
+	gl_Position =
+		window.projection *
+		window.view *
+		m_camera_trans_scale *
+		m_camera_pre_trans *
+		m_trans_scale *
+		vec4(position, 0, 1)
+	;
+
+	vert_position = vec4(position + translation, 0, 1);
+	text_colors = colors;
+	texture_coords = tex_coords.xy;
+}
+"""
+
+decoration_vertex_source = """
+#version 330 core
+
+in vec2 position;
+in vec4 colors;
+in vec2 translation;
+
+out vec4 vert_colors;
+out vec4 vert_position;
+
+
+uniform WindowBlock
+{
+	mat4 projection;
+	mat4 view;
+} window;
+
+layout (std140) uniform CameraAttrs {
+	float zoom;
+	vec2  position;
+	vec2  GAME_DIMENSIONS;
+} camera;
+
+mat4 m_trans_scale = mat4(1.0);
+mat4 m_camera_trans_scale = mat4(1.0);
+mat4 m_camera_pre_trans = mat4(1.0);
+
+void main()
+{
+	m_trans_scale[3] = vec4(translation, 1.0, 1.0);
+	// Camera transform and zoom scale
+	m_camera_trans_scale[3][0] = (camera.zoom * -camera.position.x) + (camera.GAME_DIMENSIONS.x / 2);
+	m_camera_trans_scale[3][1] = (camera.zoom * -camera.position.y) + (camera.GAME_DIMENSIONS.y / 2);
+	m_camera_trans_scale[0][0] = camera.zoom;
+	m_camera_trans_scale[1][1] = camera.zoom;
+	// Camera pre-scale-transform
+	m_camera_pre_trans[3][0] = -camera.GAME_DIMENSIONS.x / 2;
+	m_camera_pre_trans[3][1] = -camera.GAME_DIMENSIONS.y / 2;
+
+	gl_Position =
+		window.projection *
+		window.view *
+		m_camera_trans_scale *
+		m_camera_pre_trans *
+		m_trans_scale *
+		vec4(position, 0, 1)
+	;
+
+	vert_position = vec4(position + translation, 0, 1);
+	vert_colors = colors;
+}
+"""
+
+
+_LAYOUT_SHADER_CONTAINER = ShaderContainer(layout_vertex_source, layout_fragment_source)
+_DECORATION_SHADER_CONTAINER = ShaderContainer(decoration_vertex_source, decoration_fragment_source)
+
+############################
+### PATCHED GROUPS BELOW ###
+############################
+
+class PNFTextLayoutGroup(PNFGroup):
+	def __init__(
+		self,
+		texture: "Texture",
+		program: "ShaderProgram",
+		parent: t.Optional[PNFGroup] = None,
+		order: int = 0,
+	) -> None:
+		super().__init__(
+			parent,
+			order,
+			(
+				states.ProgramStateMutator(program),
+				states.UniformStateMutator(program, "scissor", False),
+				states.TextureUnitStateMutator(gl.GL_TEXTURE0),
+				states.TextureStateMutator(texture),
+				states.EnableStateMutator(gl.GL_BLEND),
+				states.BlendFuncStateMutator(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA),
+			),
+		)
+
+
+class PNFTextDecorationGroup(PNFGroup):
+	def __init__(
+		self, program: "ShaderProgram", parent: t.Optional[PNFGroup] = None, order: int = 0
+	) -> None:
+		super().__init__(
+			parent,
+			order,
+			(
+				states.ProgramStateMutator(program),
+				states.UniformStateMutator(program, "scissor", False),
+				states.EnableStateMutator(gl.GL_BLEND),
+				states.BlendFuncStateMutator(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA),
+			),
+		)
+
+
+###############################
+### PATCHED GLYPH BOX BELOW ###
+###############################
 
 class _TLGlyphBox(_GlyphBox):
 	def place(self, layout, i, x, y, context):
@@ -18,7 +232,12 @@ class _TLGlyphBox(_GlyphBox):
 		try:
 			group = layout.group_cache[self.owner]
 		except KeyError:
-			group = layout.group_class(self.owner, get_default_layout_shader(), order=1, parent=layout.group)
+			group = layout.group_class(
+				self.owner,
+				_LAYOUT_SHADER_CONTAINER.get_program(),
+				order=1,
+				parent=layout.group,
+			)
 			layout.group_cache[self.owner] = group
 
 		n_glyphs = self.length
@@ -125,45 +344,88 @@ class _TLGlyphBox(_GlyphBox):
 			context.add_list(underline_list)
 
 
-# https://medium.com/@chipiga86/
-# python-monkey-patching-like-a-boss-87d7ddb8098e
-def get_src(o):
-	src = inspect.getsource(o).split("\n")
-	indent = len(src[0]) - len(src[0].lstrip())
-	return "\n".join(l[indent:] for l in src)
-
-class _TextPatcher(ast.NodeTransformer):
-	def __init__(self, sub_what, sub_with) -> None:
-		super().__init__()
-		self.sub_what = sub_what
-		self.sub_with = sub_with
-
-	def visit_Name(self, node):
-		if node.id != self.sub_what:
-			return node
-		return ast.Name(id = self.sub_with, ctx = node.ctx)
-
-_tp = _TextPatcher("_GlyphBox", "_TLGlyphBox")
-
-def _patch(src_cls, method_name):
-	"""
-	Changes all occurrences of `_GlyphBox` in the method
-	`src_cls:method_name` to `_TLGlyphBox` and returns the recompiled
-	method, which is bound to the global scope of the module the
-	source class was defined in.
-	"""
-	src_mod = inspect.getmodule(src_cls)
-	meth_ast = ast.parse(get_src(getattr(src_cls, method_name)))
-
-	meth_ast = ast.fix_missing_locations(_tp.visit(meth_ast))
-
-	src_mod.__dict__["_TLGlyphBox"] = _TLGlyphBox
-	# Required so the recompiled function has access to the module's globals
-	d = src_mod.__dict__
-	exec(compile(meth_ast, f"<patch from {inspect.getfile(src_mod)}>", "exec"), d)
-	m = d.pop(method_name)
-	return m
+###########################
+### PATCHED LABEL BELOW ###
+###########################
 
 class TLLabel(Label):
+
+	group_class = PNFTextLayoutGroup
+	decoration_class = PNFTextDecorationGroup
+
 	_flow_glyphs_single_line = _patch(TextLayout, "_flow_glyphs_single_line")
 	_flow_glyphs_wrap = _patch(TextLayout, "_flow_glyphs_wrap")
+
+	# This is an amalgamation of the __init__ methods of `Label`'s inheritance path.
+	def __init__(
+		self,
+		text="",
+		font_name=None,
+		font_size=None,
+		bold=False,
+		italic=False,
+		stretch=False,
+		color=(255, 255, 255, 255),
+		x=0,
+		y=0,
+		width=None,
+		height=None,
+		anchor_x='left',
+		anchor_y='baseline',
+		align='left',
+		multiline=False,
+		dpi=None,
+		batch=None,
+		group=None,
+		wrap_lines=True,
+	) -> None:
+		# === NOTE: Copypaste of `pyglet.text.__init__.Label:__init__`
+		document = decode_text(text)
+
+		# === NOTE: Copypaste of `pyglet.text.layout.TextLayout:__init__`
+		self.content_width = 0
+		self.content_height = 0
+
+		self._user_group = group
+
+		decoration_shader = _DECORATION_SHADER_CONTAINER.get_program()
+		self.background_decoration_group = self.decoration_class(decoration_shader, order=0, parent=self._user_group)
+		self.foreground_decoration_group = self.decoration_class(decoration_shader, order=2, parent=self._user_group)
+
+		self.group_cache = {}
+
+		if batch is None:
+			batch = PNFBatch()
+			self._own_batch = True
+		self._batch = batch
+
+		self._width = width
+		self._height = height
+		self._multiline = multiline
+
+		# Alias the correct flow method:
+		self._flow_glyphs = self._flow_glyphs_wrap if multiline else self._flow_glyphs_single_line
+
+		self._wrap_lines_flag = wrap_lines
+		self._wrap_lines_invariant()
+
+		self._dpi = dpi or 96
+		self.document = document
+
+		# === NOTE: Copypaste of `pyglet.text.__init__.DocumentLabel:__init__`
+		self._x = x
+		self._y = y
+		self._anchor_x = anchor_x
+		self._anchor_y = anchor_y
+		self._update()
+
+		# === NOTE: Copypaste of `pyglet.text.__init__.Label:__init__`
+		self.document.set_style(0, len(self.document.text), {
+			'font_name': font_name,
+			'font_size': font_size,
+			'bold': bold,
+			'italic': italic,
+			'stretch': stretch,
+			'color': color,
+			'align': align,
+		})

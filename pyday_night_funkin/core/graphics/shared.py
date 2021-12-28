@@ -9,7 +9,7 @@ import re
 from pyglet.gl import gl
 
 
-RE_VERTEX_FORMAT = re.compile("(.*)(\d)(.)(n?)/(static|dynamic|stream)")
+RE_VERTEX_FORMAT = re.compile("(.*)(\d)(.)(n?)(?:/(static|dynamic|stream))?")
 
 C_TYPE_MAP = {
 	gl.GL_UNSIGNED_BYTE: ctypes.c_ubyte,

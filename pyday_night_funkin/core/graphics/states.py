@@ -1,10 +1,11 @@
 
 import typing as t
+import weakref
 
 from pyglet.gl import gl
 
 if t.TYPE_CHECKING:
-	from pyglet.graphics.shader import ShaderProgram
+	from pyglet.graphics.shader import ShaderProgram, UniformBufferObject
 
 
 
@@ -27,6 +28,27 @@ class ProgramStateMutator(AbstractStateMutator):
 
 	def get_state_descriptor(self) -> t.Any:
 		return self.program.id
+
+
+class UniformStateMutator(AbstractStateMutator):
+	"""
+	This mutator is weird and a reminder that the states need a
+	refresher.
+	Its program object must be a `ProgramStateMutator` that comes
+	before this one.
+	"""
+	cost = 5
+
+	def __init__(self, prog: "ShaderProgram", name: str, value: t.Any) -> None:
+		self.prog_ref = weakref.ref(prog)
+		self.name = name
+		self.value = value
+
+	def set(self) -> None:
+		self.prog_ref()[self.name] = self.value
+
+	def get_state_descriptor(self) -> t.Any:
+		return (self.prog_ref().id, self.name, self.value)
 
 
 class TextureUnitStateMutator(AbstractStateMutator):
@@ -58,7 +80,7 @@ class TextureStateMutator(AbstractStateMutator):
 class UBOBindingStateMutator(AbstractStateMutator):
 	cost = 20
 
-	def __init__(self, ubo) -> None:
+	def __init__(self, ubo: "UniformBufferObject") -> None:
 		self.ubo = ubo
 
 	def set(self) -> None:
@@ -95,7 +117,7 @@ class BlendFuncStateMutator(AbstractStateMutator):
 		return (self.src, self.dest)
 
 
-class PseudoStateWall:
+class StateWalker:
 	"""
 	I know, I'm great at naming things.
 	This class stores a pseudo GL state and provides methods
@@ -119,6 +141,6 @@ class PseudoStateWall:
 		return funcs
 
 states = [
-	ProgramStateMutator, TextureUnitStateMutator, TextureStateMutator, UBOBindingStateMutator,
-	EnableStateMutator, BlendFuncStateMutator
+	ProgramStateMutator, UniformStateMutator, TextureUnitStateMutator, TextureStateMutator,
+	UBOBindingStateMutator, EnableStateMutator, BlendFuncStateMutator
 ]

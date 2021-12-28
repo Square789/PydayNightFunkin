@@ -1,7 +1,6 @@
 
 import typing as t
 
-from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.config import CONTROL
 import pyday_night_funkin.constants as CNST
@@ -9,8 +8,8 @@ from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
 from pyday_night_funkin.enums import DIFFICULTY
 from pyday_night_funkin.levels import WEEKS
-from pyday_night_funkin import scenes
 from pyday_night_funkin.menu import Menu
+from pyday_night_funkin import scenes
 from pyday_night_funkin.utils import create_pixel, lerp, to_rgb_tuple
 
 if t.TYPE_CHECKING:
