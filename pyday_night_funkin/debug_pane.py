@@ -6,8 +6,9 @@ import typing as t
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
-from pyday_night_funkin.core.pyglet_tl_patch import TLRectangle
 from pyday_night_funkin.core.pnf_label import PNFLabel
+from pyday_night_funkin.core.pnf_sprite import PNFSprite
+from pyday_night_funkin.utils import create_pixel
 
 
 class DebugPane():
@@ -21,6 +22,8 @@ class DebugPane():
 	PADDING = 8
 
 	def __init__(self, line_amount: int) -> None:
+		# NOTE: This uses PNF graphics, but is not a scene,
+		# so update, tweens and all other good stuff won't work.
 		self.insert_index = 0
 		self.background = PNFGroup(order = 0)
 		self.foreground = PNFGroup(order = 1)
@@ -44,19 +47,16 @@ class DebugPane():
 			y = ((self.FONT_SIZE * (line_amount + 1)) + 4 + self.LINE_DIST * line_amount),
 			context = Context(self.batch, self.foreground, None),
 		)
-		# Will be back shortly!
-		# (maybe)
-		# self.rect = TLRectangle(
-		# 	self.PADDING,
-		# 	0,
-		# 	CNST.GAME_WIDTH - 2 * self.PADDING,
-		# 	(self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1)),
-		# 	color = (20, 20, 100),
-		# 	batch = self.batch,
-		# 	group = self.background,
-		# )
-		
-		# self.rect.opacity = 100
+		self.rect = PNFSprite(
+			image = create_pixel(0x2020AAFF),
+			x = self.PADDING,
+			y = 0,
+			context = Context(self.batch, self.background, None),
+		)
+		self.rect.scale_x = CNST.GAME_WIDTH - 2 * self.PADDING
+		self.rect.scale_y = (self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1))
+
+		self.rect.opacity = 100
 
 	def add_message(self, log_message: str) -> None:
 		"""
