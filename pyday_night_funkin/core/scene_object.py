@@ -15,6 +15,9 @@ class SceneObject:
 
 	_context = None
 
+	def __init__(self) -> None:
+		raise NotImplementedError("You shouldn't init a SceneObject directly!")
+
 	def set_context(self, parent_context: "Context") -> None:
 		"""
 		Called when object is added to a scene/the parent context

@@ -34,17 +34,17 @@ def setup_default_stage(self: "InGameScene") -> t.Tuple["PNFSprite", "PNFSprite"
 	  - Curtains in layer `curtains`
 	Returns a tuple of these three, in that order.
 	"""
-	stageback = self.create_sprite(
+	stageback = self.create_object(
 		"background0", "main", x=-600, y=-200, image=load_asset(ASSET.IMG_STAGE_BACK)
 	)
 	stageback.scroll_factor = (.9, .9)
-	stagefront = self.create_sprite(
+	stagefront = self.create_object(
 		"background1", "main", x=-650, y=600, image=load_asset(ASSET.IMG_STAGE_FRONT)
 	)
 	stagefront.scroll_factor = (.9, .9)
 	stagefront.scale = 1.1
 
-	stagecurtains = self.create_sprite(
+	stagecurtains = self.create_object(
 		"curtains", "main", x=-500, y=-300, image=load_asset(ASSET.IMG_STAGE_CURTAINS)
 	)
 	stagecurtains.scroll_factor = (1.3, 1.3)

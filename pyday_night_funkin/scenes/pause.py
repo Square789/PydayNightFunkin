@@ -18,7 +18,7 @@ class PauseScene(BaseScene):
 	def __init__(self, game) -> None:
 		super().__init__(game)
 
-		self.background = self.create_sprite("bg", image=create_pixel(0x000000FF))
+		self.background = self.create_object("bg", image=create_pixel(0x000000FF))
 		self.background.scale_x = CNST.GAME_WIDTH
 		self.background.scale_y = CNST.GAME_HEIGHT
 		self.background.opacity = 0

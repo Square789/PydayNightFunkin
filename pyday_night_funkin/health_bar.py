@@ -34,7 +34,7 @@ class HealthBar():
 		bg_layer, bar_layer, icon_layer = layers
 
 		bar_image = load_asset(ASSET.IMG_HEALTH_BAR)
-		self.health_bar = scene.create_sprite(
+		self.health_bar = scene.create_object(
 			bg_layer,
 			camera,
 			x = (CNST.GAME_WIDTH - bar_image.width) // 2,
@@ -43,14 +43,14 @@ class HealthBar():
 		)
 
 		bar_y = self.health_bar.y + 4
-		self.opponent_bar = scene.create_sprite(
+		self.opponent_bar = scene.create_object(
 			bar_layer,
 			camera,
 			x = 0,
 			y = bar_y,
 			image = self._create_bar_part(bar_image.height - 8, opponent_color),
 		)
-		self.player_bar = scene.create_sprite(
+		self.player_bar = scene.create_object(
 			bar_layer,
 			camera,
 			x = 0,
@@ -62,10 +62,10 @@ class HealthBar():
 		self.player_icons = load_asset(ASSET.IMG_ICON_GRID, player_icon_name)
 		# This assumes all opponent and player icons are of same height (i mean, they are)
 		icon_y = self.health_bar.y + (bar_image.height - self.opponent_icons[0].height) // 2
-		self.opponent_sprite = scene.create_sprite(
+		self.opponent_sprite = scene.create_object(
 			icon_layer, camera, x = 0, y = icon_y, image = self.opponent_icons[0]
 		)
-		self.player_sprite = scene.create_sprite(
+		self.player_sprite = scene.create_object(
 			icon_layer, camera, x = 0, y = icon_y, image = self.player_icons[0]
 		)
 		self.player_sprite.scale_x = -1.0

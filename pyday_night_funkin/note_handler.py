@@ -146,7 +146,7 @@ class NoteHandler(AbstractNoteHandler):
 			x = 50 + (CNST.GAME_WIDTH // 2) * cur_note.singer + \
 				cur_note.type.get_order() * arrow_width
 			texture = self.note_sprites[cur_note.sustain_stage][cur_note.type].texture
-			sprite = self.game_scene.create_sprite(
+			sprite = self.game_scene.create_object(
 				self.note_layer, self.note_camera, x = x, y = -2000, image = texture
 			)
 			sprite.scale = 0.7

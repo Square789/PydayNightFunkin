@@ -16,7 +16,7 @@ class TestScene(MusicBeatScene):
 	def __init__(self, game: "Game") -> None:
 		super().__init__(game)
 
-		self.test_sprite = self.create_sprite("ye_olde_layer", "main", x = 0, y = 0)
+		self.test_sprite = self.create_object("ye_olde_layer", "main", x = 0, y = 0)
 		self.test_sprite.scale = 4
 
 		self.conductor.bpm = 123
@@ -25,14 +25,14 @@ class TestScene(MusicBeatScene):
 		self.arrows = []
 		for i, note_type in enumerate(NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
-			s = self.create_sprite("ye_olde_layer", "main", x = 300, y = 50 + i*200)
+			s = self.create_object("ye_olde_layer", "main", x = 300, y = 50 + i*200)
 			for anim_name, atlas_name in zip(("static", "pressed", "confirm"), atlas_names):
 				s.animation.add_from_frames(anim_name, note_sprites[atlas_name], 24, False)
 			s.scale = 1.25 - i * .25
 			s.animation.play("static")
 			self.arrows.append(s)
 
-		self.boyfriend = self.create_sprite(
+		self.boyfriend = self.create_object(
 			"ye_olde_layer", "main", Boyfriend, scene = self, x = 770, y = 250
 		)
 		self.boyfriend.animation.play("idle_bop")

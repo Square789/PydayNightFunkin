@@ -20,6 +20,7 @@ from pyglet.text.layout import (
 
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup, states
+from pyday_night_funkin.core.scene_object import SceneObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 
 if t.TYPE_CHECKING:
@@ -365,7 +366,7 @@ class _TLGlyphBox(_GlyphBox):
 ### PATCHED LABEL BELOW ###
 ###########################
 
-class PNFLabel(Label):
+class PNFLabel(Label, SceneObject):
 
 	group_class = PNFTextLayoutGroup
 	decoration_class = PNFTextDecorationGroup

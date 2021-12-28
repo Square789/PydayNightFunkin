@@ -16,7 +16,7 @@ class FreeplayScene(scenes.BaseScene):
 
 		super().__init__(*args, **kwargs)
 
-		self.bg = self.create_sprite("bg", image=load_asset(ASSET.IMG_MENU_BG_BLUE))
+		self.bg = self.create_object("bg", image=load_asset(ASSET.IMG_MENU_BG_BLUE))
 
 		self.displayed_songs: t.List["scenes.InGameScene"] = []
 		for week in WEEKS:
