@@ -100,7 +100,7 @@ class InGameScene(scenes.MusicBeatScene):
 	@staticmethod
 	def get_opponent_icon() -> str:
 		"""
-		Returns the opponent's health bar icon.
+		Returns the opponent's health bar icon string.
 		"""
 		raise NotImplementedError("Subclass this!")
 
@@ -303,13 +303,17 @@ class InGameScene(scenes.MusicBeatScene):
 
 		self.boyfriend.dont_idle = bool(pressed)
 
+		prevent_pause = False
 		if self.game.debug:
 			if self.game.key_handler.just_pressed(CONTROL.DEBUG_DESYNC):
 				desync = random.randint(-200, 200)
 				logger.debug(f"Desyncing conductor by {desync}ms")
 				self.conductor.song_position += desync
+			if self.game.key_handler.just_pressed(CONTROL.DEBUG_WIN):
+				prevent_pause = True
+				self.on_song_end()
 
-		if self.key_handler.just_pressed(CONTROL.ENTER):
+		if self.key_handler.just_pressed(CONTROL.ENTER) and not prevent_pause:
 			self.song_players.pause()
 			self.game.push_scene(scenes.PauseScene)
 
@@ -352,7 +356,9 @@ class InGameScene(scenes.MusicBeatScene):
 	def on_song_end(self) -> None:
 		"""
 		Song has ended. Default implementation sets the game's state
-		to `ENDED` and returns to the previous scene.
+		to `ENDED` and returns to the previous scene, unless more
+		`InGameScene`s are in `self.remaining_week`, in which case they
+		are created with this scene's difficulty and follow scene.
 		"""
 		self.state = GAME_STATE.ENDED
 		if self.remaining_week:

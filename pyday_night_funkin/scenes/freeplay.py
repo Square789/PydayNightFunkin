@@ -5,9 +5,23 @@ from pyday_night_funkin.alphabet import MenuTextLine
 from pyday_night_funkin.asset_system import load_asset, ASSET
 from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.enums import DIFFICULTY
+from pyday_night_funkin.core.pnf_label import PNFLabel
+from pyday_night_funkin.core.pnf_sprite import PNFSprite
+from pyday_night_funkin.enums import DIFFICULTY, DIFFICULTY_REVERSE_MAP
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
+from pyday_night_funkin.utils import to_rgb_tuple, to_rgba_tuple
+
+
+class StickySprite(PNFSprite):
+	def __init__(self, stickee: PNFSprite, *args, **kwargs) -> None:
+		self.stickee = stickee
+		super().__init__(*args, **kwargs)
+
+	def update(self, dt: float) -> None:
+		super().update(dt)
+		self.x = self.stickee.x + self.stickee.signed_width + 10
+		self.y = self.stickee.y - 30
 
 
 class FreeplayScene(scenes.BaseScene):
@@ -17,6 +31,32 @@ class FreeplayScene(scenes.BaseScene):
 		super().__init__(*args, **kwargs)
 
 		self.bg = self.create_object("bg", image=load_asset(ASSET.IMG_MENU_BG_BLUE))
+
+		load_asset(ASSET.FONT_VCR)
+		self.score_text = self.create_object(
+			"textfg",
+			object_class = PNFLabel,
+			x = CNST.GAME_WIDTH * .7,
+			y = 5,
+			font_name = "VCR OSD Mono",
+			font_size = 32,
+			color = to_rgba_tuple(CNST.WHITE),
+			align = "right",
+		)
+		self.diff_text = self.create_object(
+			"textfg",
+			object_class = PNFLabel,
+			x = self.score_text.x,
+			y = self.score_text.y + 36,
+			font_name = "VCR OSD Mono",
+			font_size = 24,
+		)
+
+		score_bg = self.create_object("fg", x=self.score_text.x - 6, y=0, image=CNST.PIXEL_TEXTURE)
+		score_bg.scale_x = CNST.GAME_WIDTH * .35
+		score_bg.scale_y = 66
+		score_bg.color = to_rgb_tuple(CNST.BLACK)
+		score_bg.opacity = 153
 
 		self.displayed_songs: t.List["scenes.InGameScene"] = []
 		for week in WEEKS:
@@ -40,14 +80,31 @@ class FreeplayScene(scenes.BaseScene):
 			m.opacity = 153
 			self._text_lines.append(m)
 			self.add(m, "fg")
+			self.create_object(
+				"fg",
+				object_class = StickySprite,
+				stickee = m,
+				image = load_asset(ASSET.IMG_ICON_GRID, lvl.get_opponent_icon())[0],
+			)
+			# NOTE: should probably call `lvl.get_opponent().icon_name` or something,
+			# but creating opponent without an in game scene sorta sucks.
+			# This is a crappy leftover, try to get rid of it some time (TM)
 
 		self.menu = Menu(
 			self.game.key_handler, len(self.displayed_songs), self._on_select, self._on_confirm
 		)
+		self.diff_menu = Menu(
+			self.game.key_handler,
+			len(DIFFICULTY),
+			self._on_diff_select,
+			ini_selection_index = 1,
+			fwd_control = CONTROL.RIGHT,
+			bkwd_control = CONTROL.LEFT,
+		)
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return ("bg", "fg")
+		return ("bg", "fg", "textfg")
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
@@ -57,6 +114,9 @@ class FreeplayScene(scenes.BaseScene):
 			return # Don't want any menu callbacks to trigger when this block runs
 
 		self.menu.update()
+		if self.menu.choice_made:
+			self.diff_menu.choice_made = True
+		self.diff_menu.update()
 
 	def _on_select(self, i: int, state: bool) -> None:
 		if state:
@@ -69,4 +129,13 @@ class FreeplayScene(scenes.BaseScene):
 
 	def _on_confirm(self, i: int, selected: bool) -> None:
 		if selected:
-			self.game.set_scene(self.displayed_songs[i], DIFFICULTY.HARD, FreeplayScene)
+			self.game.set_scene(
+				self.displayed_songs[i],
+				DIFFICULTY_REVERSE_MAP[self.diff_menu.selection_index],
+				FreeplayScene,
+			)
+
+	def _on_diff_select(self, i: int, state: bool) -> None:
+		if state:
+			self.diff_text.text = DIFFICULTY_REVERSE_MAP[i].name
+

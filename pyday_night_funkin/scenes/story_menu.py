@@ -8,7 +8,7 @@ import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.pnf_label import PNFLabel
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
-from pyday_night_funkin.enums import DIFFICULTY
+from pyday_night_funkin.enums import DIFFICULTY, DIFFICULTY_REVERSE_MAP
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
@@ -41,10 +41,6 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		super().__init__(*args, **kwargs)
 
 		self.conductor.bpm = 102
-
-		self._reverse_difficulty_map: t.List[DIFFICULTY] = [None] * len(DIFFICULTY)
-		for diff in DIFFICULTY:
-			self._reverse_difficulty_map[diff.value] = diff
 
 		yellow_stripe = self.create_object("mid", x=0, y=56, image=CNST.PIXEL_TEXTURE)
 		yellow_stripe.scale_x = CNST.GAME_WIDTH
@@ -212,7 +208,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 	def _set_ingame_scene(self, week: "Week") -> None:
 		self.game.set_scene(
 			week.levels[0],
-			difficulty = self._reverse_difficulty_map[self.diff_menu.selection_index],
+			difficulty = DIFFICULTY_REVERSE_MAP[self.diff_menu.selection_index],
 			follow_scene = StoryMenuScene,
 			remaining_week = week.levels[1:],
 		)

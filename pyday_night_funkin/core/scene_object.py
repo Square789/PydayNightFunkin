@@ -58,13 +58,13 @@ class Container(SceneObject):
 	"""
 
 	def __init__(self) -> None:
-		self._members: t.Set[SceneObject] = set()
+		self._members: t.List[SceneObject] = list()
 
 	def add(self, object: SceneObject):
 		"""
 		Add something to this container.
 		"""
-		self._members.add(object)
+		self._members.append(object)
 		if self._context is not None:
 			object.set_context(self._context)
 

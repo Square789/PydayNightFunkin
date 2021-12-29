@@ -9,6 +9,7 @@ from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, out_quad
+from pyday_night_funkin.utils import to_rgb_tuple
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
@@ -30,7 +31,7 @@ class MainMenuScene(scenes.BaseScene):
 			bg.screen_center(CNST.GAME_DIMENSIONS)
 
 		self.bg_magenta.visible = False
-		self.bg_magenta.color = (0xFD, 0x71, 0x9B)
+		self.bg_magenta.color = to_rgb_tuple(0xFD719BFF)
 
 		menu_item_assets = load_asset(ASSET.XML_MAIN_MENU_ASSET)
 		self._menu_items: t.List[t.Tuple[str, t.Callable[[], t.Any], "PNFSprite"]] = []

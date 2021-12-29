@@ -142,7 +142,7 @@ class BaseScene(Container):
 		"""
 		kwargs.setdefault("context", self.get_context(layer, camera))
 		member = object_class(*args, **kwargs)
-		self._members.add(member)
+		self._members.append(member)
 		return member
 
 	def set_context(self, _: Context) -> None:
@@ -151,13 +151,20 @@ class BaseScene(Container):
 	def invalidate_context(self) -> None:
 		raise RuntimeError("Can't invalidate a scene's context; try `remove_scene` instead!")
 
-	def add(self, obj: SceneObject, layer: t.Optional[str] = None):
+	def add(
+		self,
+		obj: SceneObject,
+		layer: t.Optional[str] = None,
+		camera: t.Optional[str] = None,
+	) -> None:
 		"""
-		Add a SceneObject to the scene on the given layer.
+		Add a SceneObject to the scene on the given layer with the
+		given camera.
 		If no layer is supplied, will default to the first layer.
+		If no camera is supplied, will default to the default camera.
 		"""
-		self._members.add(obj)
-		obj.set_context(self.get_context(layer))
+		self._members.append(obj)
+		obj.set_context(self.get_context(layer, camera))
 
 	def remove(self, obj: SceneObject, keep: bool = False) -> None:
 		"""

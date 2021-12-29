@@ -28,6 +28,9 @@ class DIFFICULTY(IntEnum):
 			return "HARD"
 		return ""
 
+# NOTE: That sucks, but is needed for menu selections etc.
+DIFFICULTY_REVERSE_MAP = [DIFFICULTY.EASY, DIFFICULTY.NORMAL, DIFFICULTY.HARD]
+
 
 class GAME_STATE(IntEnum):
 	LOADING = 0

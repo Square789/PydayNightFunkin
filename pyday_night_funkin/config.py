@@ -12,6 +12,7 @@ class CONTROL(IntEnum):
 	ENTER = 4
 	BACK = 5
 	DEBUG_DESYNC = 100
+	DEBUG_WIN = 101
 
 
 @dataclass

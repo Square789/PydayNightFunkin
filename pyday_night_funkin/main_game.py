@@ -23,7 +23,7 @@ from pyday_night_funkin.sfx_ring import SFXRing
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.6-dev"
+__version__ = "0.0.7-dev"
 
 
 class _FPSData:
@@ -75,6 +75,7 @@ class Game():
 				CONTROL.ENTER: key.ENTER,
 				CONTROL.BACK: key.BACKSPACE,
 				CONTROL.DEBUG_DESYNC: key._1,
+				CONTROL.DEBUG_WIN: key._2,
 			},
 		)
 

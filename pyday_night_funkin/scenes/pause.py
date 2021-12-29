@@ -21,7 +21,7 @@ class PauseScene(BaseScene):
 		self.background = self.create_object("bg", image=CNST.PIXEL_TEXTURE)
 		self.background.scale_x = CNST.GAME_WIDTH
 		self.background.scale_y = CNST.GAME_HEIGHT
-		self.background.color = to_rgb_tuple(0x000000FF)
+		self.background.color = to_rgb_tuple(CNST.BLACK)
 		self.background.opacity = 0
 		self.background.start_tween(in_out_quart, {TWEEN_ATTR.OPACITY: 153}, 0.4)
 
