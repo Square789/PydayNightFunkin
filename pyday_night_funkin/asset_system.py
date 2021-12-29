@@ -11,6 +11,7 @@ from pathlib import Path
 import typing as t
 from xml.etree.ElementTree import ElementTree
 
+from pyglet import font
 from pyglet import image
 from pyglet.image.atlas import AllocatorException, TextureBin
 from pyglet import media
@@ -20,6 +21,7 @@ from pyday_night_funkin.core.almost_xml_parser import AlmostXMLParser
 from pyday_night_funkin.core import ogg_decoder
 
 if t.TYPE_CHECKING:
+	from pyglet.font.base import Font
 	from pyglet.image import AbstractImage, Texture
 
 
@@ -94,6 +96,11 @@ class XMLResource(Resource):
 		with open(self.get_full_path(asm), "r", encoding="utf-8") as fp:
 			et.parse(fp, AlmostXMLParser())
 		return et
+
+
+class FontResource(Resource):
+	def load(self, asm: "_AssetSystemManager") -> None:
+		font.add_file(str(self.get_full_path(asm)))
 
 
 class ImageResource(Resource):

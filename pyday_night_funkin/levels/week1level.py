@@ -2,13 +2,10 @@
 from loguru import logger
 import typing as t
 
-from pyglet.math import Vec2
-
-from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.characters import Boyfriend, DaddyDearest, Girlfriend
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.levels import common
-from pyday_night_funkin.note_handler import AbstractNoteHandler, NoteHandler
+from pyday_night_funkin.note_handler import AbstractNoteHandler
 from pyday_night_funkin.scenes.in_game import InGameScene
 
 if t.TYPE_CHECKING:

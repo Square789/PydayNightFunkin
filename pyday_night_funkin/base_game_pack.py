@@ -12,7 +12,7 @@ import typing as t
 from pyday_night_funkin.asset_system import (
 	ASSET, ASSET_ROUTER, AbstractAssetRouter, AssetSystem, AssetSystemEntry as ASE,
 	OggResource, ImageResource, JSONResource, PathResource, TextResource, XMLResource,
-	register_assets, register_routers, add_asset_system
+	FontResource, register_assets, register_routers, add_asset_system
 )
 from pyday_night_funkin.utils import FrameInfoTexture
 
@@ -247,6 +247,7 @@ def load() -> None:
 		"IMG_MENU_BG",
 		"IMG_MENU_DESAT",
 		"IMG_MENU_BG_BLUE",
+		"FONT_VCR",
 		"SOUND_INTRO_3",
 		"SOUND_INTRO_2",
 		"SOUND_INTRO_1",
@@ -259,7 +260,7 @@ def load() -> None:
 		"PATH_WEEK_HEADERS",
 		"TXT_INTRO_TEXT",
 		"SONGS",
-		"WEEK_HEADERS"
+		"WEEK_HEADERS",
 	)
 
 	register_assets(*ASSET_NAMES)
@@ -302,10 +303,12 @@ def load() -> None:
 		ASSET.IMG_NUM8: ImageResource("preload/images/num8.png", 0),
 		ASSET.IMG_NUM9: ImageResource("preload/images/num9.png", 0),
 		ASSET.IMG_NEWGROUNDS_LOGO: ImageResource("preload/images/newgrounds_logo.png"),
+		ASSET.IMG_ICON_GRID: ASE(ImageResource("preload/images/iconGrid.png"), ASSET_ROUTER.ICON_GRID),
 		ASSET.IMG_MENU_BG: ImageResource("preload/images/menuBG.png"),
 		ASSET.IMG_MENU_DESAT: ImageResource("preload/images/menuDesat.png"),
 		ASSET.IMG_MENU_BG_BLUE: ImageResource("preload/images/menuBGBlue.png"),
-		ASSET.IMG_ICON_GRID: ASE(ImageResource("preload/images/iconGrid.png"), ASSET_ROUTER.ICON_GRID),
+
+		ASSET.FONT_VCR: FontResource("fonts/vcr.ttf"),
 
 		ASSET.SOUND_INTRO_3: OggResource("shared/sounds/intro3.ogg"),
 		ASSET.SOUND_INTRO_2: OggResource("shared/sounds/intro2.ogg"),

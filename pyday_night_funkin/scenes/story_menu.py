@@ -1,4 +1,5 @@
 
+from ctypes import WinDLL
 import typing as t
 
 from pyday_night_funkin.asset_system import ASSET, load_asset
@@ -11,7 +12,7 @@ from pyday_night_funkin.enums import DIFFICULTY
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
-from pyday_night_funkin.utils import create_pixel, lerp, to_rgb_tuple
+from pyday_night_funkin.utils import lerp, to_rgb_tuple, to_rgba_tuple
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.characters import Character
@@ -120,6 +121,30 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.diff_arrow_right.animation.add_from_frames("press", ui_tex["arrow push right"])
 		self.diff_arrow_right.animation.play("idle")
 
+		load_asset(ASSET.FONT_VCR)
+		# self.tracklist_txt = self.create_object(
+		# 	"bg",
+		# 	object_class = PNFLabel,
+		# 	x = CNST.GAME_WIDTH * .05,
+		# 	y = yellow_stripe.height + 100,
+		# 	text = "TRACKS",
+		# 	font_name = "VCR OSD Mono",
+		# 	font_size = 32,
+		# 	color = to_rgba_tuple(0xE55777FF),
+		# 	multiline = True,
+		# 	width = 500,
+		# ) # Doesn't work, probably broke the labels too hard. Too bad!
+		self.week_title_txt = self.create_object(
+			"bg",
+			object_class = PNFLabel,
+			x = CNST.GAME_WIDTH * 0.7,
+			y = 10,
+			text = "",
+			font_name = "VCR OSD Mono",
+			font_size = 32,
+			color = to_rgba_tuple(0xFFFFFFB3),
+		)
+
 		# Menus
 		self.week_menu = Menu(
 			self.game.key_handler, len(WEEKS), self._on_week_select, self._on_confirm
@@ -145,6 +170,19 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			self.sfx_ring.play(load_asset(ASSET.SOUND_MENU_SCROLL))
 			for i, header in enumerate(self.week_headers):
 				header.target_y = i - index
+
+			self.week_title_txt.text = WEEKS[index].name
+			self.week_title_txt.x = CNST.GAME_WIDTH - (self.week_title_txt.content_width + 10)
+
+			# self.tracklist_txt.text = "TRACKS:\n" + "\n".join(
+			# 	scene.get_display_name().upper() for scene in WEEKS[index].levels
+			# )
+
+			# # TODO: Come up with some screen centering code for labels.
+			# # Possibly a common superclass of PNFSprite, since that's what flixel does with
+			# # FlxObject anyways. Unfortunately, requires more hacks or custom labels.
+			# self.tracklist_txt.x = \
+			# 	(CNST.GAME_WIDTH - self.tracklist_txt.content_width) *.5 - CNST.GAME_WIDTH * .35
 
 	def _on_diff_select(self, index: int, state: bool) -> None:
 		if not state:
@@ -192,3 +230,6 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		if self.week_menu.choice_made:
 			self.diff_menu.choice_made = True
 		self.diff_menu.update()
+
+		self.diff_arrow_left.animation.play("press" if kh[CONTROL.LEFT] else "idle")
+		self.diff_arrow_right.animation.play("press" if kh[CONTROL.RIGHT] else "idle")

@@ -68,10 +68,3 @@ def to_rgb_tuple(v: int) -> t.Tuple[int, int, int, int]:
 	some other places.
 	"""
 	return tuple(i & 0xFF for i in (v >> 24, v >> 16, v >> 8))
-
-def create_pixel(color: int) -> "Texture":
-	"""
-	Creates a singular pixel texture from the given RGBA color int.
-	Note that it is not cached, so try to reuse or properly delete it.
-	"""
-	return ImageData(1, 1, "RGBA", to_rgba_bytes(color)).get_texture()
