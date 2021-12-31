@@ -67,7 +67,7 @@ class BaseScene(Container):
 		super().__init__()
 
 		self.game = game
-		self.creation_args = None
+		self.creation_args = ((), {})
 		self.batch = PNFBatch()
 
 		self.draw_passthrough = True
@@ -231,20 +231,22 @@ class BaseScene(Container):
 		Removes this scene by telling the below scene, or the game if
 		this scene is the parent scene, to remove it.
 		All args and kwargs will be passed through to a parent scene's
-		`remove_subscene` method, but ignored if the game receives the
-		removal request.
+		`on_subscene_removal` method, (with this scene passed before
+		as the first arg) but ignored if the game receives the removal
+		request.
 		"""
 		remover = self.game.get_previous_scene(self)
 		if remover is None:
 			self.game.remove_scene(self)
 		else:
-			remover.remove_subscene(*args, **kwargs)
+			remover.on_subscene_removal(self, *args, **kwargs)
 
-	def remove_subscene(self, *args, **kwargs):
+	def on_subscene_removal(self, subscene, *args, **kwargs):
 		"""
-		Called by the scene above's `remove_scene` method.
+		Called whenever a direct subscene of this scene has
+		`remove_scene` called on it.
+		Offers a possibility for scenes to react to subscene removal.
 		"""
-		subscene = self.game.get_next_scene(self)
 		self.game.remove_scene(subscene)
 
 	def destroy(self) -> None:

@@ -303,19 +303,20 @@ class InGameScene(scenes.MusicBeatScene):
 
 		self.boyfriend.dont_idle = bool(pressed)
 
-		prevent_pause = False
+		prevent_scene_mod = False
 		if self.game.debug:
 			if self.game.key_handler.just_pressed(CONTROL.DEBUG_DESYNC):
 				desync = random.randint(-200, 200)
 				logger.debug(f"Desyncing conductor by {desync}ms")
 				self.conductor.song_position += desync
 			if self.game.key_handler.just_pressed(CONTROL.DEBUG_WIN):
-				prevent_pause = True
+				prevent_scene_mod = True
 				self.on_song_end()
+			if self.game.key_handler.just_pressed(CONTROL.DEBUG_LOSE) and not prevent_scene_mod:
+				self.on_game_over()
 
-		if self.key_handler.just_pressed(CONTROL.ENTER) and not prevent_pause:
-			self.song_players.pause()
-			self.game.push_scene(scenes.PauseScene)
+		if self.key_handler.just_pressed(CONTROL.ENTER) and not prevent_scene_mod:
+			self.on_pause()
 
 	def on_note_hit(self, note: Note) -> None:
 		"""
@@ -353,6 +354,14 @@ class InGameScene(scenes.MusicBeatScene):
 		if not self.boyfriend.animation.has_tag(ANIMATION_TAG.SING):
 			self.boyfriend.animation.play("idle_bop")
 
+	def on_pause(self) -> None:
+		"""
+		Called when user requested to open the pause menu.
+		Stops the song players and opens the pause menu.
+		"""
+		self.song_players.pause()
+		self.game.push_scene(scenes.PauseScene)
+
 	def on_song_end(self) -> None:
 		"""
 		Song has ended. Default implementation sets the game's state
@@ -360,12 +369,29 @@ class InGameScene(scenes.MusicBeatScene):
 		`InGameScene`s are in `self.remaining_week`, in which case they
 		are created with this scene's difficulty and follow scene.
 		"""
+		self.song_players.pause()
 		self.state = GAME_STATE.ENDED
 		if self.remaining_week:
 			next_scene, *rest = self.remaining_week
 			self.game.set_scene(next_scene, self.difficulty, self.follow_scene, rest)
 		else:
 			self.game.set_scene(self.follow_scene)
+
+	def on_game_over(self) -> None:
+		"""
+		Called when the game ends, for whatever reason.
+		Sets the game state to `ENDED` and pushes a `GameOverScene`.
+		"""
+		self.song_players.pause()
+		self.state = GAME_STATE.ENDED
+		bf = self.create_boyfriend()
+		scx, scy = self.boyfriend.get_screen_position()
+		bf.x = scx
+		bf.y = scy
+		# In case bf is created with `create_object`, which will add him to 2
+		# scenes at the same time, which you definitely do not want
+		self.remove(bf, keep=True)
+		self.game.push_scene(scenes.GameOverScene, bf)
 
 	def countdown(self, dt: float) -> None:
 		if self._countdown_stage == 4:
@@ -376,14 +402,18 @@ class InGameScene(scenes.MusicBeatScene):
 			self.hud.countdown_popup(self._countdown_stage)
 			self._countdown_stage += 1
 
-	def remove_subscene(self, end_self, *a, **kw):
-		super().remove_subscene(*a, **kw)
+	def on_subscene_removal(self, subscene, end_self, reset=False):
+		super().on_subscene_removal(subscene)
 		if end_self:
 			self.game.set_scene(self.follow_scene)
 		else:
-			if self.state is GAME_STATE.PLAYING:
-				self.song_players.play()
-				self.resync()
+			if not reset:
+				if self.state is GAME_STATE.PLAYING:
+					self.song_players.play()
+					self.resync()
+			else:
+				a, kw = self.creation_args
+				self.game.set_scene(type(self), *a, **kw)
 
 	def destroy(self) -> None:
 		super().destroy()

@@ -41,6 +41,8 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		super().__init__(*args, **kwargs)
 
 		self.conductor.bpm = 102
+		if not self.game.player.playing:
+			self.game.player.set(load_asset(ASSET.MUSIC_MENU))
 
 		yellow_stripe = self.create_object("mid", x=0, y=56, image=CNST.PIXEL_TEXTURE)
 		yellow_stripe.scale_x = CNST.GAME_WIDTH
@@ -167,7 +169,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			for i, header in enumerate(self.week_headers):
 				header.target_y = i - index
 
-			self.week_title_txt.text = WEEKS[index].name
+			self.week_title_txt.text = WEEKS[index].display_name
 			self.week_title_txt.x = CNST.GAME_WIDTH - (self.week_title_txt.content_width + 10)
 
 			# self.tracklist_txt.text = "TRACKS:\n" + "\n".join(

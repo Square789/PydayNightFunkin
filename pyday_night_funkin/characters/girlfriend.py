@@ -16,11 +16,6 @@ class Girlfriend(Character):
 		story_menu_char_anims = load_asset(ASSET.XML_STORY_MENU_CHARACTERS)
 
 		self.animation.add_from_frames(
-			"story_menu", story_menu_char_anims["GF Dancing Beat WHITE"],
-			24, True, tags=(ANIMATION_TAG.STORY_MENU,)
-		)
-
-		self.animation.add_from_frames(
 			"idle_bop", anims["GF Dancing Beat"], 24, True, tags=(ANIMATION_TAG.IDLE,)
 		)
 		self.animation.add_from_frames(
@@ -30,10 +25,14 @@ class Girlfriend(Character):
 			"sing_note_down", anims["GF Down Note"], 24, False, tags=(ANIMATION_TAG.SING,)
 		)
 		self.animation.add_from_frames(
-			"sing_note_up", anims["GF Right Note"], 24, False, tags=(ANIMATION_TAG.SING,)
+			"sing_note_up", anims["GF Up Note"], 24, False, tags=(ANIMATION_TAG.SING,)
 		)
 		self.animation.add_from_frames(
 			"sing_note_right", anims["GF Right Note"], 24, False, tags=(ANIMATION_TAG.SING,)
+		)
+		self.animation.add_from_frames(
+			"story_menu", story_menu_char_anims["GF Dancing Beat WHITE"],
+			24, True, tags=(ANIMATION_TAG.STORY_MENU,)
 		)
 
 	@staticmethod

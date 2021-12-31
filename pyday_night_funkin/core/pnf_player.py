@@ -9,8 +9,8 @@ class PNFPlayer(Player):
 		immediatedly causes the player to start playing the newly
 		supplied source.
 		"""
-		self._set_playing(False)
-		self._playlists.clear()
-		self.next_source()
+		# NOTE: Legit no clue how bad of an idea this is, but works :TM:
+		while self._playlists:
+			self.next_source()
 		self.queue(source)
 		self._set_playing(True)

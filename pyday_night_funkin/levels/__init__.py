@@ -17,8 +17,8 @@ class Week:
 	Week dataclass containing a week's name, levels and other things.
 	"""
 
-	name: str
-	"""Name of the week."""
+	display_name: str
+	"""Name of the week as shown in the story menu and elsewhere."""
 
 	story_menu_chars: t.Tuple[t.Type["Character"], t.Type["Character"], t.Type["Character"]]
 	"""
@@ -46,13 +46,13 @@ class Week:
 
 WEEKS: t.Sequence[Week] = (
 	Week(
-		"TUTORIAL",
+		"",
 		(chr.DaddyDearest, chr.Boyfriend, chr.Girlfriend),
 		(Tutorial,),
 		"week0.png",
 	),
 	Week(
-		"WEEK 1",
+		"DADDY DEAREST",
 		(chr.DaddyDearest, chr.Boyfriend, chr.Girlfriend),
 		(Bopeebo, Fresh, DadBattle),
 		"week1.png",

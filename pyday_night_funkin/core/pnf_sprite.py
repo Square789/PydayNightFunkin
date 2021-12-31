@@ -473,6 +473,16 @@ class PNFSprite(SceneObject):
 			self._y + self.signed_height * 0.5,
 		)
 
+	def get_screen_position(self) -> Vec2:
+		"""
+		Returns the screen position the sprite's origin is displayed
+		at. Note that this may still be inaccurate for
+		shaders and rotation.
+		"""
+		cam = self._context.camera
+		r = Vec2(self._x, self._y)
+		return r - Vec2(cam.x * cam.zoom, cam.y * cam.zoom)
+
 	def start_tween(
 		self,
 		tween_func: t.Callable[[float], float],

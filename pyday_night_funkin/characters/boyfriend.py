@@ -16,15 +16,6 @@ class Boyfriend(Character):
 		story_menu_char_anims = load_asset(ASSET.XML_STORY_MENU_CHARACTERS)
 
 		self.animation.add_from_frames(
-			"story_menu", story_menu_char_anims["BF idle dance white"],
-			24, True, tags=(ANIMATION_TAG.STORY_MENU,)
-		)
-		self.animation.add_from_frames(
-			"story_menu_confirm", story_menu_char_anims["BF HEY!!"],
-			24, False, tags=(ANIMATION_TAG.STORY_MENU, ANIMATION_TAG.SPECIAL)
-		)
-
-		self.animation.add_from_frames(
 			"idle_bop", anims["BF idle dance"], 24, True, (-5, 0),
 			(ANIMATION_TAG.IDLE,)
 		)
@@ -62,6 +53,24 @@ class Boyfriend(Character):
 		)
 		self.animation.add_from_frames(
 			"hey", anims["BF HEY!!"], 24, False, (7, 4), (ANIMATION_TAG.SPECIAL,)
+		)
+		self.animation.add_from_frames(
+			"story_menu", story_menu_char_anims["BF idle dance white"],
+			24, True, tags=(ANIMATION_TAG.STORY_MENU,)
+		)
+		self.animation.add_from_frames(
+			"story_menu_confirm", story_menu_char_anims["BF HEY!!"],
+			24, False, tags=(ANIMATION_TAG.STORY_MENU, ANIMATION_TAG.SPECIAL)
+		)
+		self.animation.add_from_frames(
+			"game_over_ini", anims["BF dies"], 24, False, (37, 11), (ANIMATION_TAG.GAME_OVER,)
+		)
+		self.animation.add_from_frames(
+			"game_over_loop", anims["BF Dead Loop"], 24, True, (37, 5), (ANIMATION_TAG.GAME_OVER,)
+		)
+		self.animation.add_from_frames(
+			"game_over_confirm", anims["BF Dead confirm"], 24, False, (37, 69),
+			(ANIMATION_TAG.GAME_OVER,)
 		)
 
 	@staticmethod

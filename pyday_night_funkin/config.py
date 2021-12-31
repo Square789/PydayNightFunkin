@@ -13,6 +13,7 @@ class CONTROL(IntEnum):
 	BACK = 5
 	DEBUG_DESYNC = 100
 	DEBUG_WIN = 101
+	DEBUG_LOSE = 102
 
 
 @dataclass

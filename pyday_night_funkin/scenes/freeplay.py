@@ -30,6 +30,9 @@ class FreeplayScene(scenes.BaseScene):
 
 		super().__init__(*args, **kwargs)
 
+		if not self.game.player.playing:
+			self.game.player.set(load_asset(ASSET.MUSIC_MENU))
+
 		self.bg = self.create_object("bg", image=load_asset(ASSET.IMG_MENU_BG_BLUE))
 
 		load_asset(ASSET.FONT_VCR)
