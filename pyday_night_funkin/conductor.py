@@ -3,10 +3,10 @@ import typing as t
 
 
 class BPMChangeEvent():
-	__slots__ = ("step_time", "song_time", "bpm")
+	__slots__ = ("step", "song_time", "bpm")
 
-	def __init__(self, step_time: float, song_time: float, bpm: float) -> None:
-		self.step_time = step_time
+	def __init__(self, step: int, song_time: float, bpm: float) -> None:
+		self.step = step
 		self.song_time = song_time
 		self.bpm = bpm
 
@@ -14,7 +14,7 @@ class BPMChangeEvent():
 # The tiniest conductor
 class Conductor():
 	# https://ninjamuffin99.newgrounds.com/news/post/1124589
-	# -> https://www.reddit.com/r/gamedev/comments/2fxvk4/
+	# -> https://old.reddit.com/r/gamedev/comments/2fxvk4/
 	#    heres_a_quick_and_dirty_guide_i_just_wrote_how_to/
 	# Very awesome tutorial, many thanks
 
@@ -40,14 +40,16 @@ class Conductor():
 		self.beat_duration = 60000.0 / new_bpm
 		# step is just a quarter beat duration
 		# idk about music this probably has a reason
+		# ha, now i know 5% more about music, FNF hardcodes
+		# everything to a 4/4 time sig. Too bad!
 		self.step_duration = self.beat_duration / 4.0
 
-	@property
-	def last_bpm_change(self) -> BPMChangeEvent:
-		r = BPMChangeEvent(0.0, 0.0, 0.0)
-		# TODO: pretty intensive loop, could be kept track of way easier by
-		# adding a song_position property
-		# Loop is assuming bpm change events are ordered
+	def get_last_bpm_change(self) -> BPMChangeEvent:
+		"""
+		Retrieves the last BPM change event.
+		May be filled with zero values if no BPM data was loaded.
+		"""
+		r = BPMChangeEvent(0, 0.0, 0.0)
 		for change in self._bpm_changes:
 			if self.song_position >= change.song_time:
 				r = change
@@ -55,7 +57,11 @@ class Conductor():
 				break
 		return r
 
-	def load_bpm_changes(self, song_data) -> None:
+	def load_bpm_changes(self, song_data: t.Dict) -> None:
+		"""
+		Loads all bpm change events into the conductor from a song data
+		dict.
+		"""
 		bpm_changes = []
 		cur_bpm = song_data["bpm"]
 		total_steps = 0
@@ -65,6 +71,8 @@ class Conductor():
 				cur_bpm = section["bpm"]
 				bpm_changes.append(BPMChangeEvent(total_steps, total_pos, cur_bpm))
 
+			if isinstance(section["lengthInSteps"], float):
+				raise TypeError("Step length must be an int!")
 			step_delta = section["lengthInSteps"]
 			total_steps += step_delta
 			total_pos += (15000.0 / cur_bpm) * step_delta

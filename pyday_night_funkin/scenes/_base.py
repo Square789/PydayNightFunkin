@@ -67,7 +67,6 @@ class BaseScene(Container):
 		super().__init__()
 
 		self.game = game
-		self.creation_args = ((), {})
 		self.batch = PNFBatch()
 
 		self.draw_passthrough = True

@@ -9,6 +9,8 @@ from loguru import logger
 import re
 import typing as t
 
+import schema
+
 from pyday_night_funkin.asset_system import (
 	ASSET, ASSET_ROUTER, AbstractAssetRouter, AssetSystem, AssetSystemEntry as ASE,
 	OggResource, ImageResource, JSONResource, PathResource, TextResource, XMLResource,
@@ -23,7 +25,42 @@ if t.TYPE_CHECKING:
 	from pyglet.media import Source
 	from pyday_night_funkin.enums import DIFFICULTY
 
+
 RE_SPLIT_ANIMATION_NAME = re.compile(r"^(.*)(\d{4})$")
+
+SONG_SCHEMA = schema.Schema(
+	{
+		"song": {
+			"song": str,
+			"notes": [schema.And(
+				{
+					"lengthInSteps": int,
+					schema.Optional("bpm"): schema.Or(int, float),
+					schema.Optional("changeBPM"): bool,
+					"mustHitSection": bool,
+					"sectionNotes": [[float, int, float]],
+					"typeOfSection": int,
+					# Keys I've seen that are ignored:
+					# altAnim.
+					schema.Optional(str): object,
+				},
+				lambda d: ("bpm" in d) or not ("changeBPM" in d),
+			)],
+			"bpm": schema.Or(int, float),
+			"needsVoices": bool,
+			"player1": str,
+			"player2": str,
+			"speed": schema.Or(int, float),
+			# Keys I've seen that are ignored:
+			# sections, sectionLengths, validScore.
+			schema.Optional(str): object,
+		},
+	},
+	# Sometimes a very scuffed version of ["song"] also exists at the
+	# root level. how you end up with that spaghetti bs and sleep calmly
+	# knowing it's out in the world is beyond me
+	ignore_extra_keys = True,
+)
 
 
 class IconGridRouter(AbstractAssetRouter):
@@ -97,8 +134,7 @@ class SongRouter(AbstractAssetRouter):
 		return (JSONResource(data_path / self.song_name / file),)
 
 	def route_song(self, json_data: t.Dict) -> t.Tuple[OggResource, ...]:
-		# TODO verify integrity of song dict
-		self.data = json_data["song"]
+		self.data = SONG_SCHEMA.validate(json_data)["song"]
 
 		song_dir = self.song_path / self.song_name
 

@@ -23,7 +23,7 @@ from pyday_night_funkin.sfx_ring import SFXRing
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.8-dev"
+__version__ = "0.0.9-dev"
 
 
 class _FPSData:
@@ -225,7 +225,6 @@ class Game():
 			while self._pending_scene_stack_additions:
 				scene_type, args, kwargs = self._pending_scene_stack_additions.pop()
 				new_scene = scene_type(self, *args, **kwargs)
-				new_scene.creation_args = (args, kwargs)
 				self._scene_stack.append(new_scene)
 			self._on_scene_stack_change()
 

@@ -168,7 +168,8 @@ class InGameScene(scenes.MusicBeatScene):
 	def resync(self) -> None:
 		logger.info("Resyncing...")
 		self.voice_player.pause()
-		# TODO: Conductor may be rewound here which has potential to screw things up
+		# NOTE: Conductor may be rewound here which has potential to screw things up
+		# real bad. Logger set up to catch that.
 		self.conductor.song_position = self.inst_player.time * 1000
 		self.voice_player.seek(self.conductor.song_position * 0.001)
 		self.voice_player.play()
@@ -306,7 +307,7 @@ class InGameScene(scenes.MusicBeatScene):
 		prevent_scene_mod = False
 		if self.game.debug:
 			if self.game.key_handler.just_pressed(CONTROL.DEBUG_DESYNC):
-				desync = random.randint(-200, 200)
+				desync = random.randint(-400, 400)
 				logger.debug(f"Desyncing conductor by {desync}ms")
 				self.conductor.song_position += desync
 			if self.game.key_handler.just_pressed(CONTROL.DEBUG_WIN):
@@ -384,14 +385,14 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		self.song_players.pause()
 		self.state = GAME_STATE.ENDED
-		bf = self.create_boyfriend()
+		game_over_bf = self.create_boyfriend()
 		scx, scy = self.boyfriend.get_screen_position()
-		bf.x = scx
-		bf.y = scy
+		game_over_bf.x = scx
+		game_over_bf.y = scy
 		# In case bf is created with `create_object`, which will add him to 2
 		# scenes at the same time, which you definitely do not want
-		self.remove(bf, keep=True)
-		self.game.push_scene(scenes.GameOverScene, bf)
+		self.remove(game_over_bf, keep=True)
+		self.game.push_scene(scenes.GameOverScene, game_over_bf)
 
 	def countdown(self, dt: float) -> None:
 		if self._countdown_stage == 4:
@@ -412,8 +413,9 @@ class InGameScene(scenes.MusicBeatScene):
 					self.song_players.play()
 					self.resync()
 			else:
-				a, kw = self.creation_args
-				self.game.set_scene(type(self), *a, **kw)
+				self.game.set_scene(
+					type(self), self.difficulty, self.follow_scene, self.remaining_week
+				)
 
 	def destroy(self) -> None:
 		super().destroy()

@@ -114,7 +114,7 @@ cdef class STBVorbis:
 
 		cdef bytes ret_bytes
 		try:
-			# Cython needs to believe buf is a string for this trucating
+			# Cython needs to believe buf is a string for this truncating
 			# syntax to work, should be good like this
 			ret_bytes = (<char *>buf)[:read_bytes]
 		finally:

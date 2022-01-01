@@ -3,9 +3,7 @@ import typing as t
 
 from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.config import CONTROL
-from pyday_night_funkin import constants as CNST
 from pyday_night_funkin import scenes
-from pyday_night_funkin.utils import to_rgb_tuple
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
@@ -13,11 +11,12 @@ if t.TYPE_CHECKING:
 
 
 class GameOverScene(scenes.MusicBeatScene):
-	update_passthrough = False
-	draw_passthrough = False
 
 	def __init__(self, game: "Game", bf: "PNFSprite") -> None:
 		super().__init__(game)
+		self.update_passthrough = False
+		self.draw_passthrough = False
+
 		self.conductor.bpm = 100
 
 		self.game_over_music = load_asset(ASSET.MUSIC_GAME_OVER)
@@ -26,11 +25,6 @@ class GameOverScene(scenes.MusicBeatScene):
 		self.is_ending = False
 
 		self.bf = bf
-
-		bg = self.create_object("bg", image=CNST.PIXEL_TEXTURE)
-		bg.color = to_rgb_tuple(CNST.BLACK)
-		bg.scale_x = CNST.GAME_WIDTH
-		bg.scale_y = CNST.GAME_HEIGHT
 
 		self.add(self.bf, "main", "main")
 		self.bf.animation.play("game_over_ini")
@@ -77,6 +71,8 @@ class GameOverScene(scenes.MusicBeatScene):
 		self.game.player.set(self.game_over_end)
 
 		def f(_):
+			# Assumes the above scene is an InGame scene, so its
+			# remove_subscene method will take `end_self`, `reset` as args.
 			self.remove_scene(False, True)
 
 		self.clock.schedule_once(f, 2.7)
