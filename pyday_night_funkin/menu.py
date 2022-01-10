@@ -2,7 +2,7 @@
 import typing as t
 
 from pyday_night_funkin.core.key_handler import KeyHandler
-from pyday_night_funkin.config import CONTROL
+from pyday_night_funkin.enums import CONTROL
 
 
 class Menu:

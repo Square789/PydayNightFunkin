@@ -1,23 +1,13 @@
 
 from dataclasses import dataclass
-from enum import IntEnum
 import typing as t
 
-
-class CONTROL(IntEnum):
-	LEFT = 0
-	DOWN = 1
-	UP = 2
-	RIGHT = 3
-	ENTER = 4
-	BACK = 5
-	DEBUG_DESYNC = 100
-	DEBUG_WIN = 101
-	DEBUG_LOSE = 102
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.enums import CONTROL
 
 
 @dataclass
-class Config():
+class SaveData():
 	"""
 	Stores game configuration. Some of these options make gameplay
 	easier or harder.
@@ -32,8 +22,8 @@ class Config():
 	"""
 	scroll_speed: float
 	safe_window: float
-	key_bindings: t.Dict
+	key_bindings: t.Dict["CONTROL", t.Union[t.Sequence[int], int]]
 
 	@staticmethod
-	def validate(cfg: t.Dict) -> bool:
+	def validate(save_data: t.Dict) -> bool:
 		return True # TODO: ye

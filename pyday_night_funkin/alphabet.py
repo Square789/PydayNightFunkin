@@ -1,7 +1,7 @@
 
 import typing as t
 
-from pyday_night_funkin.asset_system import ASSET, load_asset
+from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_animation import PNFAnimation, OffsetAnimationFrame
 from pyday_night_funkin.core.pnf_sprite import (
 	PNFSprite, PNFSpriteFragmentShader, PNFSpriteVertexShader

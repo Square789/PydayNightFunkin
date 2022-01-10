@@ -3,12 +3,12 @@ from itertools import product
 from random import randint
 import typing as t
 
-from pyday_night_funkin.asset_system import load_asset, ASSET
 from pyday_night_funkin import constants as CNST
+from pyday_night_funkin.core.asset_system import load_asset, ASSET
+from pyday_night_funkin.core.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
 from pyday_night_funkin.enums import ANIMATION_TAG
 from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.note import NOTE_TYPE, RATING
-from pyday_night_funkin.core.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGameScene

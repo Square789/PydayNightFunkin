@@ -2,7 +2,7 @@
 from collections import defaultdict
 import typing as t
 
-from pyday_night_funkin.config import CONTROL
+from pyday_night_funkin.enums import CONTROL
 
 
 class KeyHandler():

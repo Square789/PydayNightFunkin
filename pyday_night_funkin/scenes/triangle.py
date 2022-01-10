@@ -3,13 +3,12 @@ Extremely rudimentary test scene used for custom
 batch debugging.
 """
 
-import struct
 import typing as t
 
 from pyglet import gl
-from pyglet.window.key import LEFT, UP, DOWN, RIGHT, V, X, Z
+from pyglet.window.key import LEFT, UP, DOWN, RIGHT, X, Z
 
-from pyday_night_funkin.asset_system import ASSET, load_asset
+from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.states as st

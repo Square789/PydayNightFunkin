@@ -1,8 +1,8 @@
 
 import typing as t
 
-from pyday_night_funkin.asset_system import ASSET, load_asset
-from pyday_night_funkin.config import CONTROL
+from pyday_night_funkin.core.asset_system import ASSET, load_asset
+from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
@@ -28,6 +28,7 @@ class GameOverScene(scenes.MusicBeatScene):
 
 		self.add(self.bf, "main", "main")
 		self.bf.animation.play("game_over_ini")
+		self._camera_locked_on = False
 
 		self.sfx_ring.play(load_asset(ASSET.SOUND_LOSS))
 
@@ -49,9 +50,11 @@ class GameOverScene(scenes.MusicBeatScene):
 			self.remove_scene(True)
 
 		if (
+			not self._camera_locked_on and
 			self.bf.animation.current_name == "game_over_ini" and
 			self.bf.animation._frame_idx >= 12
 		):
+			self._camera_locked_on = True
 			self.cameras["main"].set_follow_target(self.bf.get_midpoint(), 0.01)
 
 		if self.bf.animation.current_name == "game_over_ini" and not self.bf.animation.playing:

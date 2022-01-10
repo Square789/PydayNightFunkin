@@ -11,7 +11,7 @@ import typing as t
 
 import schema
 
-from pyday_night_funkin.asset_system import (
+from pyday_night_funkin.core.asset_system import (
 	ASSET, ASSET_ROUTER, AbstractAssetRouter, AssetSystem, AssetSystemEntry as ASE,
 	OggResource, ImageResource, JSONResource, PathResource, TextResource, XMLResource,
 	FontResource, register_assets, register_routers, add_asset_system

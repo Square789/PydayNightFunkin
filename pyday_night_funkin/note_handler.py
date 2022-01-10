@@ -2,9 +2,9 @@
 import math
 import typing as t
 
-from pyday_night_funkin.asset_system import ASSET, load_asset
-from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
+from pyday_night_funkin.core.asset_system import ASSET, load_asset
+from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin.note import Note, NOTE_TYPE, SUSTAIN_STAGE
 from pyday_night_funkin.utils import ListWindow
 

@@ -3,8 +3,8 @@ import typing as t
 
 from pyglet.math import Vec2
 
-from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.characters._base import Character
+from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.enums import ANIMATION_TAG
 
 

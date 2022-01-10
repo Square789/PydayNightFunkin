@@ -21,7 +21,6 @@ from pyday_night_funkin.core.almost_xml_parser import AlmostXMLParser
 from pyday_night_funkin.core import ogg_decoder
 
 if t.TYPE_CHECKING:
-	from pyglet.font.base import Font
 	from pyglet.image import AbstractImage, Texture
 
 

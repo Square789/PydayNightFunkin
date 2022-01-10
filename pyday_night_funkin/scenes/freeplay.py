@@ -2,12 +2,11 @@
 import typing as t
 
 from pyday_night_funkin.alphabet import MenuTextLine
-from pyday_night_funkin.asset_system import load_asset, ASSET
-from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
+from pyday_night_funkin.core.asset_system import load_asset, ASSET
 from pyday_night_funkin.core.pnf_label import PNFLabel
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.enums import DIFFICULTY, DIFFICULTY_REVERSE_MAP
+from pyday_night_funkin.enums import CONTROL, DIFFICULTY, DIFFICULTY_REVERSE_MAP
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
 from pyday_night_funkin.utils import to_rgb_tuple, to_rgba_tuple

@@ -1,6 +1,5 @@
 
 import typing as t
-from pyday_night_funkin.asset_system import ASSET
 from pyday_night_funkin.characters import Boyfriend, Girlfriend
 from pyday_night_funkin.constants import ERROR_TEXTURE
 from pyday_night_funkin.hud import HUD

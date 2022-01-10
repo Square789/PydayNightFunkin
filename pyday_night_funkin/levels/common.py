@@ -5,7 +5,7 @@ in multiple levels.
 
 import typing as t
 
-from pyday_night_funkin.asset_system import ASSET, load_asset
+from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.note_handler import AbstractNoteHandler, NoteHandler
 from pyday_night_funkin.hud import HUD
 

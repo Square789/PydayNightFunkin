@@ -7,11 +7,10 @@ from loguru import logger
 from pyglet.math import Vec2
 from pyglet.media import PlayerGroup
 
-from pyday_night_funkin.asset_system import ASSET, load_asset
-from pyday_night_funkin.config import CONTROL
-from pyday_night_funkin.enums import ANIMATION_TAG, DIFFICULTY, GAME_STATE
+from pyday_night_funkin.enums import ANIMATION_TAG, CONTROL, DIFFICULTY, GAME_STATE
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.note import NOTE_TYPE, SUSTAIN_STAGE, Note
+from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_player import PNFPlayer
 from pyday_night_funkin import scenes
 from pyday_night_funkin.utils import lerp
@@ -380,7 +379,8 @@ class InGameScene(scenes.MusicBeatScene):
 
 	def on_game_over(self) -> None:
 		"""
-		Called when the game ends, for whatever reason.
+		Called when the player failed and causes the game to end,
+		probably by running out of health.
 		Sets the game state to `ENDED` and pushes a `GameOverScene`.
 		"""
 		self.song_players.pause()

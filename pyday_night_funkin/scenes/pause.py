@@ -3,10 +3,10 @@ import typing as t
 from loguru import logger
 
 from pyday_night_funkin.alphabet import TextLine
-from pyday_night_funkin.config import CONTROL
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.scenes._base import BaseScene
+from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, in_out_quart
+from pyday_night_funkin.scenes._base import BaseScene
 from pyday_night_funkin.utils import to_rgb_tuple
 
 

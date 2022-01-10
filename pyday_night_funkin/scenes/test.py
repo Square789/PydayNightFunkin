@@ -1,10 +1,10 @@
 
 import typing as t
 
-from pyglet.window.key import E, O, P, Q, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
+from pyglet.window.key import E, O, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 
-from pyday_night_funkin.asset_system import ASSET, load_asset
 from pyday_night_funkin.characters import Boyfriend
+from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_label import PNFLabel
 from pyday_night_funkin.note import NOTE_TYPE
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene

@@ -3,8 +3,8 @@ import typing as t
 
 from pyglet.image import ImageData, Texture
 
-from pyday_night_funkin.asset_system import ASSET, load_asset
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.utils import clamp, to_rgba_bytes
 
 if t.TYPE_CHECKING:

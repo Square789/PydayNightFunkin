@@ -8,13 +8,13 @@ from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.core.context import Context
-from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.states as s
+from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
 from pyday_night_funkin.core.scene_object import SceneObject
 from pyday_night_funkin.core.shaders import ShaderContainer
+from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:

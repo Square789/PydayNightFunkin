@@ -10,20 +10,20 @@ from pyglet.window.key import KeyStateHandler
 
 from pyday_night_funkin import base_game_pack
 from pyday_night_funkin.core import ogg_decoder
-from pyday_night_funkin.core.pnf_player import PNFPlayer
+from pyday_night_funkin.core.pnf_player import PNFPlayer, SFXRing
 from pyday_night_funkin.core.pnf_window import PNFWindow
-from pyday_night_funkin.config import Config, CONTROL
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT, SFX_RING_SIZE
 from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.core.key_handler import KeyHandler
+from pyday_night_funkin.enums import CONTROL
+from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import BaseScene, TestScene, TitleScene, TriangleScene
-from pyday_night_funkin.sfx_ring import SFXRing
 
 
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.9-dev"
+__version__ = "0.0.10-dev"
 
 
 class _FPSData:
@@ -64,7 +64,7 @@ class Game():
 		self._fps: t.Optional[_FPSData] = None
 		self.debug_pane: t.Optional[DebugPane] = None
 
-		self.config = Config(
+		self.config = SaveData(
 			scroll_speed = 1.0,
 			safe_window = 167.0,
 			key_bindings = {
