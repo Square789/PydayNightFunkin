@@ -26,17 +26,14 @@ class TitleScene(scenes.MusicBeatScene):
 
 		logo_frames = load_asset(ASSET.XML_GAME_LOGO)["logo bumpin"]
 		self.logo = self.create_object("main", x=-150, y=-100)
-		self.logo.animation.add_from_frames("bump", logo_frames)
+		self.logo.animation.add_from_frames("bump", logo_frames, 24)
+		self.logo.animation.play("bump")
 		self.logo.visible = False
 
 		title_anims = load_asset(ASSET.XML_TITLE_ENTER)
 		self.title_text = self.create_object("title_text", x=100, y=CNST.GAME_HEIGHT * 0.8)
-		self.title_text.animation.add_from_frames(
-			"idle", title_anims["Press Enter to Begin"], 24, True
-		)
-		self.title_text.animation.add_from_frames(
-			"enter", title_anims["ENTER PRESSED"], 24, True
-		)
+		self.title_text.animation.add_from_frames("idle", title_anims["Press Enter to Begin"], 24)
+		self.title_text.animation.add_from_frames("enter", title_anims["ENTER PRESSED"], 24)
 		self.title_text.animation.play("idle")
 		self.title_text.visible = False
 

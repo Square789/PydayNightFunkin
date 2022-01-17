@@ -322,7 +322,7 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		Called whenever a note is hit.
 		"""
-		note.on_hit(self.conductor.song_position, self.game.config.safe_window)
+		note.on_hit(self.conductor.song_position, self.game.save_data.config.safe_window)
 		# self.boyfriend.on_hit(type_)
 		self.boyfriend.hold_timer = 0.0
 		self.boyfriend.animation.play(f"sing_note_{note.type.name.lower()}", True)
@@ -351,7 +351,10 @@ class InGameScene(scenes.MusicBeatScene):
 			self.main_cam.zoom += 0.015
 			self.hud_cam.zoom += 0.03
 
-		if not self.boyfriend.animation.has_tag(ANIMATION_TAG.SING):
+		# This code's purpose should be to get bf out of special animations such as
+		# the bopeebo v-signs
+		t = self.boyfriend.animation.current.tags
+		if not (ANIMATION_TAG.MISS in t or ANIMATION_TAG.SING in t):
 			self.boyfriend.animation.play("idle_bop")
 
 	def on_pause(self) -> None:

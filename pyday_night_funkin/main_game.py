@@ -5,7 +5,6 @@ import typing as t
 from loguru import logger
 import pyglet
 
-from pyglet.window import key
 from pyglet.window.key import KeyStateHandler
 
 from pyday_night_funkin import base_game_pack
@@ -15,7 +14,6 @@ from pyday_night_funkin.core.pnf_window import PNFWindow
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT, SFX_RING_SIZE
 from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.core.key_handler import KeyHandler
-from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import BaseScene, TestScene, TitleScene, TriangleScene
 
@@ -23,7 +21,7 @@ from pyday_night_funkin.scenes import BaseScene, TestScene, TitleScene, Triangle
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.10-dev"
+__version__ = "0.0.11-dev"
 
 
 class _FPSData:
@@ -64,21 +62,7 @@ class Game():
 		self._fps: t.Optional[_FPSData] = None
 		self.debug_pane: t.Optional[DebugPane] = None
 
-		self.config = SaveData(
-			scroll_speed = 1.0,
-			safe_window = 167.0,
-			key_bindings = {
-				CONTROL.LEFT: [key.LEFT, key.A],
-				CONTROL.DOWN: [key.DOWN, key.S],
-				CONTROL.UP: [key.UP, key.W],
-				CONTROL.RIGHT: [key.RIGHT, key.D],
-				CONTROL.ENTER: key.ENTER,
-				CONTROL.BACK: key.BACKSPACE,
-				CONTROL.DEBUG_DESYNC: key._1,
-				CONTROL.DEBUG_WIN: key._2,
-				CONTROL.DEBUG_LOSE: key._3,
-			},
-		)
+		self.save_data = SaveData.load()
 
 		self.window = PNFWindow(
 			width = GAME_WIDTH,
@@ -88,7 +72,7 @@ class Game():
 		)
 
 		self.pyglet_ksh = KeyStateHandler()
-		self.key_handler = KeyHandler(self.config.key_bindings)
+		self.key_handler = KeyHandler(self.save_data.config.key_bindings)
 
 		self.player = PNFPlayer()
 		self.sfx_ring = SFXRing(SFX_RING_SIZE)

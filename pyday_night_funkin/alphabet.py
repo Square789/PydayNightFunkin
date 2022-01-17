@@ -40,40 +40,38 @@ class AlphabetCharacter(PNFSprite):
 		"?": "question mark",
 	}
 
-	_ANIMATIONS = None
+	_FRAMES = None
 
 	@classmethod
-	def init_animation_dict(cls):
+	def init_animation_dict(cls) -> None:
 		"""
 		Defer animation dict init to this function as `ASSET` is not
 		filled when this module is first imported.
 		"""
-		cls._ANIMATIONS = {
-			prefix: PNFAnimation(
-				[
-					OffsetAnimationFrame(frame.texture, 1 / 24, frame.frame_info)
-					for frame in frames
-				],
-				loop = True,
-			) for prefix, frames in load_asset(ASSET.XML_ALPHABET).items()
+		cls._FRAMES = {
+			prefix: [
+				OffsetAnimationFrame(frame.texture, 1 / 24, frame.frame_info)
+				for frame in frames
+			] for prefix, frames in load_asset(ASSET.XML_ALPHABET).items()
 		}
 
 	def _get_animation(self) -> t.Optional[PNFAnimation]:
 		name = self.char
 		bold = self.bold
-		_ANIMATIONS = self._ANIMATIONS
+		_FRAMES = self._FRAMES
 		_ALTS = self._ALTS
+		r = None
 
-		if name in _ANIMATIONS:
-			return _ANIMATIONS[name]
+		if name in _FRAMES:
+			r = _FRAMES[name]
 		if name in _ALTS:
-			return _ANIMATIONS[_ALTS[name]]
+			r = _FRAMES[_ALTS[name]]
 		if name.isalpha():
 			if bold:
-				return _ANIMATIONS[f"{name.upper()} bold"]
+				r = _FRAMES[f"{name.upper()} bold"]
 			else:
-				return _ANIMATIONS[f"{name} {'lowercase' if name.islower() else 'capital'}"]
-		return None
+				r = _FRAMES[f"{name} {'lowercase' if name.islower() else 'capital'}"]
+		return None if r is None else PNFAnimation(r, True)
 
 	def __init__(
 		self,

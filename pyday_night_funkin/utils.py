@@ -2,8 +2,6 @@
 from itertools import islice
 import typing as t
 
-from pyglet.image import ImageData
-
 if t.TYPE_CHECKING:
 	from pyglet.image import Texture
 

@@ -73,6 +73,30 @@ class Boyfriend(Character):
 			(ANIMATION_TAG.GAME_OVER,)
 		)
 
+	def update(self, dt: float) -> None:
+		singing = self.animation.has_tag(ANIMATION_TAG.SING)
+		missing = self.animation.has_tag(ANIMATION_TAG.MISS)
+		if singing or missing:
+			self.hold_timer += dt
+		else:
+			self.hold_timer = 0
+
+		# If no keys are being held (dont_idle managed by the InGameScene) and the sing animation
+		# has been running for a while now, move back to idling.
+		if (
+			self.hold_timer > self.scene.conductor.beat_duration * 0.001 and
+			not self.dont_idle and singing
+		):
+			self.animation.play("idle_bop")
+
+		# If le epic fail animation ended, return to idling at a specific frame for some reason
+		if missing and not self.animation.current.playing:
+			self.animation.play("idle_bop", True, 10)
+
+		# Skip `Character.update` because it ruins everything
+		# Admittedly this also ruins everything but uuuh shut up
+		super(Character, self).update(dt)
+
 	@staticmethod
 	def get_story_menu_transform() -> t.Tuple[Vec2, float]:
 		return (Vec2(-80, 0), .9)

@@ -46,7 +46,8 @@ class NoteHandler(AbstractNoteHandler):
 
 		self.game_scene = game_scene
 
-		self.scroll_speed = game_scene.game.config.scroll_speed
+		self.scroll_speed = game_scene.game.save_data.config.scroll_speed
+		self.safe_window = game_scene.game.save_data.config.safe_window
 
 		self.notes: t.List[Note] = []
 		self.notes_visible = ListWindow(self.notes, 0, 0)
@@ -177,10 +178,7 @@ class NoteHandler(AbstractNoteHandler):
 		# Finds new playable notes
 		while (
 			self.notes_playable.end < len(self.notes) and
-			self.notes[self.notes_playable.end].is_playable(
-				song_pos,
-				self.game_scene.game.config.safe_window,
-			)
+			self.notes[self.notes_playable.end].is_playable(song_pos, self.safe_window)
 		):
 			self.notes_playable.end += 1
 
@@ -190,10 +188,10 @@ class NoteHandler(AbstractNoteHandler):
 		deletion_bound = 0
 		for i, note in enumerate(self.notes_playable):
 			prev_hitstate = note.rating
-			note.check_playability(song_pos, self.game_scene.game.config.safe_window)
+			note.check_playability(song_pos, self.safe_window)
 			if prev_hitstate != note.rating and note.singer == 0:
 				opponent_hit_notes.append(note)
-			if not note.is_playable(song_pos, self.game_scene.game.config.safe_window):
+			if not note.is_playable(song_pos, self.safe_window):
 				deletion_bound = max(deletion_bound, i + 1)
 		for idx in range(self.notes_playable.start, self.notes_playable.start + deletion_bound):
 			note = self.notes[idx]

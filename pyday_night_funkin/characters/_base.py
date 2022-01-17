@@ -28,7 +28,10 @@ class Character(PNFSprite):
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
-		if self.animation.has_tag(ANIMATION_TAG.SING):
+		if (
+			self.animation.has_tag(ANIMATION_TAG.SING) or
+			self.animation.has_tag(ANIMATION_TAG.MISS)
+		):
 			self.hold_timer += dt
 
 		if (

@@ -1,6 +1,5 @@
 
 import typing as t
-from pyglet.image import Animation
 from pyglet.math import Vec2
 
 
@@ -10,11 +9,11 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.types import Numeric
 
 
-class OffsetAnimationFrame():
+class OffsetAnimationFrame:
 	"""
 	Similar to pyglet's AnimationFrame, except it also receives
-	per-frame offset information a total offset is calculated from
-	that should be applied to its receiving sprite's x and y
+	per-frame offset information. A total offset is calculated from
+	that and should be applied to its receiving sprite's x and y
 	coordinates.
 	"""
 
@@ -37,9 +36,12 @@ class OffsetAnimationFrame():
 		)
 
 
-class PNFAnimation(Animation):
+class PNFAnimation:
 	"""
-	Pyglet animation subclass to expand its functionality.
+	Animation class that steals all its concepts from the FlxAnimation.
+	Each PNFAnimation contains a bunch of OffsetAnimationFrames,
+	information about whether it should be looped and also runtime
+	information i.e. defining its playtime/whether it's playing.
 	"""
 
 	def __init__(
@@ -52,29 +54,66 @@ class PNFAnimation(Animation):
 		"""
 		Creates a PNFAnimation.
 		"""
-		super().__init__(frames)
+		if not frames:
+			raise ValueError("Animation must have at least one frame!")
+		self.frames = frames
 
 		if offset is not None and not isinstance(offset, Vec2):
 			offset = Vec2(*offset)
-
 		self.offset = offset
+
 		self.loop = loop
 		self.tags = set(tags)
 
+		self.playing = False
+		self.playtime = 0.0
+		self.cur_frame_idx = 0
 
-class AnimationController():
+	def stop(self) -> None:
+		self.playing = False
+
+	def play(self, force: bool, frame: int) -> None:
+		if not force and self.playing:
+			return
+
+		self.playing = True
+		self.playtime = 0.0
+
+		if frame < 0 or frame >= len(self.frames):
+			raise ValueError("Frame index out of bounds.")
+		self.cur_frame_idx = frame
+
+	def update(self, dt: float) -> bool:
+		if not self.playing:
+			return
+
+		self.playtime += dt
+		frame_changed = False
+		while self.playtime > self.frames[self.cur_frame_idx].duration and self.playing:
+			self.playtime -= self.frames[self.cur_frame_idx].duration
+			if self.cur_frame_idx >= len(self.frames) - 1:
+				if self.loop:
+					self.cur_frame_idx = 0
+					frame_changed = len(self.frames) > 1
+				else:
+					self.playing = False
+			else:
+				self.cur_frame_idx += 1
+				frame_changed = True
+
+		return frame_changed
+
+class AnimationController:
 	"""
 	Animation controller class that works with sprites and delivers a
 	series of texture and position changes that make up an animation.
+	You guessed it - copies FlxAnimationController behavior.
 	"""
 	def __init__(self) -> None:
 		self._animations: t.Dict[str, PNFAnimation] = {}
-		self.playing: bool = False
 		self.current: t.Optional[PNFAnimation] = None
 		self.current_name = None
 		self._base_box = None
-		self._frame_idx = 0
-		self._next_dt = 0.0
 
 		self._frame_offset = (0, 0)
 		"""
@@ -135,13 +174,14 @@ class AnimationController():
 	def _detach_animation(self) -> None:
 		self._set_frame_offset((0, 0))
 		self._set_offset((0, 0))
-		self.playing = False
+		self.current.stop()
 		self.current = self.current_name = None
 
 	def _on_new_frame(self) -> None:
-		self._set_frame(self.current_frame.image.get_texture())
+		cf = self.current_frame
+		self._set_frame(cf.image.get_texture())
 
-		fix, fiy, fiw, fih = self.current_frame.frame_info
+		fix, fiy, fiw, fih = cf.frame_info
 		self._set_frame_offset((
 			-round(fix - (self._base_box[0] - fiw) // 2),
 			-round(fiy - (self._base_box[1] - fih) // 2),
@@ -155,7 +195,7 @@ class AnimationController():
 		"""
 		if self.current is None:
 			return None
-		return self.current.frames[self._frame_idx]
+		return self.current.frames[self.current.cur_frame_idx]
 
 	@property
 	def is_set(self) -> bool:
@@ -191,30 +231,9 @@ class AnimationController():
 		return tag in self.current.tags
 
 	def update(self, dt: float) -> None:
-		if not self.playing:
-			return
-
-		_next_dt = self._next_dt
-		frame_changed = False
-		while dt > _next_dt:
-			dt -= _next_dt
-			if self._frame_idx >= len(self.current.frames) - 1:
-				# Animation has ended
-				if self.current.loop:
-					self._frame_idx = -1
-				else:
-					self.playing = False
-					return
-
-			self._frame_idx += 1
-			frame_changed = True
-			_next_dt = self.current.frames[self._frame_idx].duration
-
-		_next_dt -= dt
-		if frame_changed:
-			self._on_new_frame()
-
-		self._next_dt = _next_dt
+		if self.current is not None:
+			if self.current.update(dt):
+				self._on_new_frame()
 
 	def add_from_frames(
 		self,
@@ -278,22 +297,15 @@ class AnimationController():
 		if self._base_box is None:
 			self._set_base_box(animation)
 
-	def play(self, name: str, force: bool = False) -> None:
-		if (
-			self.current is not None and
-			self.current_name == name and self.playing and not force
-		):
-			return
-
+	def play(self, name: str, force: bool = False, frame: int = 0) -> None:
 		# Remove old animation
-		if self.current is not None:
+		if self.current is not None and self.current_name != name:
 			self._detach_animation()
 
 		# Set some variables for new animation
 		self.current = self._animations[name]
 		self.current_name = name
-		self._frame_idx = 0
-		self.playing = True
+		self.current.play(force, frame)
 
 		c_off = Vec2(0, 0)
 		if self.current.offset is not None:
@@ -301,13 +313,8 @@ class AnimationController():
 			self._set_base_box(self.current)
 
 		# Set first frame
-		frame = self.current.frames[0]
-		self._next_dt = frame.duration
 		self._set_offset(tuple(c_off))
 		self._on_new_frame()
-
-	def pause(self) -> None:
-		self.playing = False
 
 	def stop(self) -> None:
 		if self.current is not None:

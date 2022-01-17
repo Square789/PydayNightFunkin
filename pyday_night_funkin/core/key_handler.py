@@ -17,13 +17,11 @@ class KeyHandler():
 		# 0: All held keys
 		# 1: Whether key just got pressed (reset once just_pressed) is queried
 		self.control_states = {k: [set(), False] for k in key_bindings.keys()}
+
 		_key_to_control_map = defaultdict(list)
-		for k, v in key_bindings.items():
-			if isinstance(v, (tuple, list)):
-				for vv in v:
-					_key_to_control_map[vv].append(k)
-			else:
-				_key_to_control_map[v].append(k)
+		for ctrl, keys in key_bindings.items():
+			for key in keys:
+				_key_to_control_map[key].append(ctrl)
 		self._key_to_control_map = dict(_key_to_control_map)
 
 	def on_key_press(self, key_sym: int, modifiers: int) -> None:

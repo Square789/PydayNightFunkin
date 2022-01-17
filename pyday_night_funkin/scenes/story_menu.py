@@ -103,7 +103,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		# The fact that `EASY` is the first animation added is relevant here.
 		for diff in DIFFICULTY:
 			self.difficulty_indicator.animation.add_from_frames(
-				str(diff.value), ui_tex[diff.to_atlas_prefix()], 24, True, _diff_offset_map[diff]
+				str(diff.value), ui_tex[diff.to_atlas_prefix()], offset=_diff_offset_map[diff]
 			)
 		self.difficulty_indicator.animation.play("0")
 		self.difficulty_indicator.check_animation_controller()

@@ -1,0 +1,14 @@
+Things a mod should be able to add:
+  - Weeks
+   - Songs, duh
+  - Characters
+  - Stages
+  - Gameplay options -> (different savefile, probably)
+
+^ All of this should be somehow baked into a modding system in `core`.
+
+Pull a Teardown and differentiate between content and global mods?
+ Global mods would be able to only add more assets or whatever to be used by other mods.
+  - Would put heavy stress on asset system since basically everything needs to be turned
+    into an asset. Unsure whether that is a good idea.
+ Content mods would be able to completely override the base game/introduce custom main menus etc.
