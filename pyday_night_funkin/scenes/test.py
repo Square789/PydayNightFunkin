@@ -36,7 +36,7 @@ class TestScene(MusicBeatScene):
 		self.boyfriend = self.create_object(
 			"ye_olde_layer", "main", Boyfriend, scene = self, x = 770, y = 250
 		)
-		self.boyfriend.animation.play("idle_bop")
+		self.boyfriend.animation.play("idle")
 
 		self.label = self.create_object(camera="main", object_class=PNFLabel, text="test")
 
@@ -69,7 +69,7 @@ class TestScene(MusicBeatScene):
 		if ksh[M]:
 			self.boyfriend.animation.play("miss_note_down")
 		if ksh[I]:
-			self.boyfriend.animation.play("idle_bop")
+			self.boyfriend.animation.play("idle")
 
 		confirm = ksh[E]
 		for k, i in ((LEFT, 0), (DOWN, 1), (UP, 2), (RIGHT, 3)):

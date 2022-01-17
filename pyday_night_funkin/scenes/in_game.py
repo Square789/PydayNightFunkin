@@ -5,7 +5,6 @@ import typing as t
 
 from loguru import logger
 from pyglet.math import Vec2
-from pyglet.media import PlayerGroup
 
 from pyday_night_funkin.enums import ANIMATION_TAG, CONTROL, DIFFICULTY, GAME_STATE
 from pyday_night_funkin.hud import HUD
@@ -54,7 +53,11 @@ class InGameScene(scenes.MusicBeatScene):
 
 		self.inst_player = PNFPlayer()
 		self.voice_player = PNFPlayer()
-		self.song_players = PlayerGroup((self.inst_player, self.voice_player))
+		# Player group kept throwing exceptions on tutorial which doesn't have vocals
+		# Although internally it does more than just play and pause sequentially,
+		# doing just that instead seems to sound the same and doesn't cause any
+		# crashes.
+		# self.song_players = PlayerGroup((self.inst_player, self.voice_player))
 
 		self.song_data = None
 
@@ -63,6 +66,11 @@ class InGameScene(scenes.MusicBeatScene):
 
 		self._last_followed_singer = 0
 		self.zoom_cams = False
+
+		self.gf_speed = 1
+		"""
+		Causes `self.girlfriend.dance` to be called on each xth beat.
+		"""
 
 		self.setup()
 		self.load_song()
@@ -123,16 +131,14 @@ class InGameScene(scenes.MusicBeatScene):
 		Creates bf, or any sort of player sprite for that matter.
 		By default, the sprite is expected to have the following
 		animations:
-		`idle_bop`, `[x]_note_[y]` for x in (`sing`, `miss`)
+		`[x]_note_[y]` for x in (`sing`, `miss`)
 		and y in (`left`, `down`, `right`, `up`).
 		"""
 		raise NotImplementedError("Subclass this!")
 
 	def create_girlfriend(self) -> "Girlfriend":
 		"""
-		Creates gf. This sprite is expected to have the following
-		animations:
-		`idle_bop`
+		Creates gf.
 		"""
 		raise NotImplementedError("Subclass this!")
 
@@ -140,7 +146,6 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		Creates the opponent sprite.
 		It's expected to have the following animations:
-		`idle_bop` and
 		`sing_note_[x]` for x in (`left`, `down`, `right`, `up`).
 		"""
 		raise NotImplementedError("Subclass this!")
@@ -181,7 +186,7 @@ class InGameScene(scenes.MusicBeatScene):
 			ASSET.SONGS, self.get_song(), False, self.difficulty
 		)
 
-		self.song_players.pause()
+		self.pause_players()
 		self.inst_player.next_source()
 		self.inst_player.queue(inst)
 		# self.inst_player.volume = 0
@@ -196,6 +201,20 @@ class InGameScene(scenes.MusicBeatScene):
 
 		self.song_data = song_data
 
+	def pause_players(self) -> None:
+		"""
+		Pauses the vocal and instrumental players.
+		"""
+		self.voice_player.pause()
+		self.inst_player.pause()
+
+	def play_players(self) -> None:
+		"""
+		Plays vocal and instrumental players.
+		"""
+		self.voice_player.play()
+		self.inst_player.play()
+
 	def start_song(self) -> None:
 		"""
 		Starts the song by making the players play, zeroing
@@ -204,7 +223,7 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		self.conductor.song_position = 0
 		self.inst_player.on_eos = self.on_song_end
-		self.song_players.play()
+		self.play_players()
 		self.state = GAME_STATE.PLAYING
 
 	def ready(self) -> None:
@@ -212,10 +231,15 @@ class InGameScene(scenes.MusicBeatScene):
 		Called after `setup` and `load_song` have been called.
 		Should be used to start the level.
 		"""
-		self.girlfriend.animation.play("idle_bop")
-		self.boyfriend.animation.play("idle_bop")
-		self.opponent.animation.play("idle_bop")
-		self.opponent.check_animation_controller() # for the `main_cam.look_at` below
+		# NOTE: This is somewhat of a hack. In the original game, characters play
+		# an animation when you create them, I don't feel like copying that so
+		# they switch to their idle animation's first frame here.
+		# Yes, for FlipIdleCharacters, this means differrent behavior from the default
+		# game. If you have complaints about that go send them to your nearest recycling bin.
+		for c in (self.boyfriend, self.girlfriend, self.opponent):
+			c.dance()
+			c.check_animation_controller()
+		# self.opponent.check_animation_controller() # for the `main_cam.look_at` below
 
 		self.main_cam.zoom = self.get_default_cam_zoom()
 		self.main_cam.look_at(self.opponent.get_midpoint() + Vec2(400, 0))
@@ -226,6 +250,21 @@ class InGameScene(scenes.MusicBeatScene):
 		self.clock.schedule_interval(
 			self.countdown, self.conductor.beat_duration * 0.001
 		)
+
+	def get_current_section(self) -> t.Optional[t.Dict]:
+		"""
+		Returns the currently playing section of song data if song
+		data exists and the conductor's song_position isn't out of
+		bound, else `None`.
+		"""
+		if self.song_data is None:
+			return None
+
+		sec = floor(self.cur_step / 16)
+		if sec < 0 or sec >= len(self.song_data["notes"]):
+			return None
+
+		return self.song_data["notes"][sec]
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
@@ -243,19 +282,16 @@ class InGameScene(scenes.MusicBeatScene):
 
 		self.process_input(dt)
 
-		# Camera follow code with crap indentation
-		if self.song_data is not None:
-			sec = floor(self.cur_step / 16)
-			if sec >= 0 and sec < len(self.song_data["notes"]):
-				cur_section = self.song_data["notes"][sec]
-				to_follow = int(cur_section["mustHitSection"])
-				if to_follow != self._last_followed_singer:
-					self._last_followed_singer = to_follow
-					if to_follow == 0:
-						_cam_follow = self.opponent.get_midpoint() + Vec2(150, -100)
-					else:
-						_cam_follow = self.boyfriend.get_midpoint() + Vec2(-100, -100)
-					self.main_cam.set_follow_target(_cam_follow, 0.04)
+		# Camera following
+		if (cur_section := self.get_current_section()) is not None:
+			to_follow = int(cur_section["mustHitSection"])
+			if to_follow != self._last_followed_singer:
+				self._last_followed_singer = to_follow
+				if to_follow == 0:
+					_cam_follow = self.opponent.get_midpoint() + Vec2(150, -100)
+				else:
+					_cam_follow = self.boyfriend.get_midpoint() + Vec2(-100, -100)
+				self.main_cam.set_follow_target(_cam_follow, 0.04)
 
 		if self.zoom_cams:
 			self.main_cam.zoom = lerp(self.get_default_cam_zoom(), self.main_cam.zoom, 0.95)
@@ -275,7 +311,6 @@ class InGameScene(scenes.MusicBeatScene):
 
 		if opponent_hit:
 			op_note = opponent_hit[-1]
-			# self.opponent.on_hit(op_note)
 			self.opponent.hold_timer = 0.0
 			self.opponent.animation.play(f"sing_note_{op_note.type.name.lower()}", True)
 			self.zoom_cams = True
@@ -284,7 +319,6 @@ class InGameScene(scenes.MusicBeatScene):
 			for note in player_missed:
 				self.on_note_miss(note)
 			fail_note = player_missed[-1]
-			# self.boyfriend.on_miss(fail_note)
 			self.boyfriend.animation.play(f"miss_note_{fail_note.type.name.lower()}", True)
 
 		for type_ in NOTE_TYPE:
@@ -323,7 +357,6 @@ class InGameScene(scenes.MusicBeatScene):
 		Called whenever a note is hit.
 		"""
 		note.on_hit(self.conductor.song_position, self.game.save_data.config.safe_window)
-		# self.boyfriend.on_hit(type_)
 		self.boyfriend.hold_timer = 0.0
 		self.boyfriend.animation.play(f"sing_note_{note.type.name.lower()}", True)
 
@@ -347,22 +380,29 @@ class InGameScene(scenes.MusicBeatScene):
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
+
+		if (sec := self.get_current_section()) is not None and sec["mustHitSection"]:
+			self.opponent.dance()
+
 		if self.zoom_cams and self.main_cam.zoom < 1.35 and self.cur_beat % 4 == 0:
 			self.main_cam.zoom += 0.015
 			self.hud_cam.zoom += 0.03
+
+		if self.cur_beat % self.gf_speed == 0:
+			self.girlfriend.dance()
 
 		# This code's purpose should be to get bf out of special animations such as
 		# the bopeebo v-signs
 		t = self.boyfriend.animation.current.tags
 		if not (ANIMATION_TAG.MISS in t or ANIMATION_TAG.SING in t):
-			self.boyfriend.animation.play("idle_bop")
+			self.boyfriend.dance()
 
 	def on_pause(self) -> None:
 		"""
 		Called when user requested to open the pause menu.
 		Stops the song players and opens the pause menu.
 		"""
-		self.song_players.pause()
+		self.pause_players()
 		self.game.push_scene(scenes.PauseScene)
 
 	def on_song_end(self) -> None:
@@ -372,7 +412,7 @@ class InGameScene(scenes.MusicBeatScene):
 		`InGameScene`s are in `self.remaining_week`, in which case they
 		are created with this scene's difficulty and follow scene.
 		"""
-		self.song_players.pause()
+		self.pause_players()
 		self.state = GAME_STATE.ENDED
 		if self.remaining_week:
 			next_scene, *rest = self.remaining_week
@@ -386,7 +426,7 @@ class InGameScene(scenes.MusicBeatScene):
 		probably by running out of health.
 		Sets the game state to `ENDED` and pushes a `GameOverScene`.
 		"""
-		self.song_players.pause()
+		self.pause_players()
 		self.state = GAME_STATE.ENDED
 		game_over_bf = self.create_boyfriend()
 		scx, scy = self.boyfriend.get_screen_position()
@@ -398,6 +438,10 @@ class InGameScene(scenes.MusicBeatScene):
 		self.game.push_scene(scenes.GameOverScene, game_over_bf)
 
 	def countdown(self, dt: float) -> None:
+		self.opponent.dance()
+		self.girlfriend.dance()
+		self.boyfriend.dance()
+
 		if self._countdown_stage == 4:
 			self.start_song()
 			self.clock.unschedule(self.countdown)
@@ -413,7 +457,7 @@ class InGameScene(scenes.MusicBeatScene):
 		else:
 			if not reset:
 				if self.state is GAME_STATE.PLAYING:
-					self.song_players.play()
+					self.play_players()
 					self.resync()
 			else:
 				self.game.set_scene(

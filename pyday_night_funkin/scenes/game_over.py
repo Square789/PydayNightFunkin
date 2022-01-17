@@ -44,20 +44,24 @@ class GameOverScene(scenes.MusicBeatScene):
 		super().update(dt)
 
 		if self.game.key_handler.just_pressed(CONTROL.ENTER):
-			self.end()
+			self.retry()
 
 		if self.game.key_handler.just_pressed(CONTROL.BACK) and not self.is_ending:
+			self.game.player.stop()
 			self.remove_scene(True)
 
 		if (
 			not self._camera_locked_on and
 			self.bf.animation.current_name == "game_over_ini" and
-			self.bf.animation._frame_idx >= 12
+			self.bf.animation.get_current_frame_index() >= 12
 		):
 			self._camera_locked_on = True
 			self.cameras["main"].set_follow_target(self.bf.get_midpoint(), 0.01)
 
-		if self.bf.animation.current_name == "game_over_ini" and not self.bf.animation.playing:
+		if (
+			self.bf.animation.current_name == "game_over_ini" and
+			not self.bf.animation.current.playing
+		):
 			self.game.player.set(self.game_over_music)
 			self.bf.animation.play("game_over_loop")
 
@@ -65,7 +69,7 @@ class GameOverScene(scenes.MusicBeatScene):
 			# TODO 5 IQ song tracking once again
 			self.conductor.song_position = self.game.player.time
 
-	def end(self) -> None:
+	def retry(self) -> None:
 		if self.is_ending:
 			return
 
@@ -76,6 +80,7 @@ class GameOverScene(scenes.MusicBeatScene):
 		def f(_):
 			# Assumes the above scene is an InGame scene, so its
 			# remove_subscene method will take `end_self`, `reset` as args.
+			self.game.player.stop()
 			self.remove_scene(False, True)
 
 		self.clock.schedule_once(f, 2.7)

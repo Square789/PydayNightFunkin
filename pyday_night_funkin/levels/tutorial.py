@@ -1,6 +1,6 @@
 
 import typing as t
-from pyday_night_funkin.characters import Boyfriend, Girlfriend
+from pyday_night_funkin.characters import Boyfriend, Girlfriend, FlipIdleCharacter
 from pyday_night_funkin.constants import ERROR_TEXTURE
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.levels import common
@@ -38,9 +38,12 @@ class Tutorial(InGameScene):
 		return self.create_object("stage", "main", Boyfriend, scene=self, x=770, y=450)
 
 	def create_girlfriend(self) -> "Girlfriend":
-		not_gf = self.create_object("girlfriend", "main", x=-100, y=-100)
-		# Epic fail if no dummy animation is added
-		not_gf.animation.add_from_frames("idle_bop", (FrameInfoTexture(ERROR_TEXTURE, False),))
+		not_gf = self.create_object(
+			"girlfriend", "main", object_class=FlipIdleCharacter, scene=self, x=-100, y=-100
+		)
+		# Epic fail if no dummy animations are added
+		not_gf.animation.add_from_frames("idle_left", (FrameInfoTexture(ERROR_TEXTURE, False),))
+		not_gf.animation.add_from_frames("idle_right", (FrameInfoTexture(ERROR_TEXTURE, False),))
 		not_gf.visible = False
 		return not_gf
 

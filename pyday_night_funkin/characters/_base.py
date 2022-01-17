@@ -39,7 +39,15 @@ class Character(PNFSprite):
 			not self.dont_idle
 		):
 			self.hold_timer = 0.0
-			self.animation.play("idle_bop")
+			self.dance()
+
+	def dance(self) -> None:
+		"""
+		Make the character play their idle animation.
+		Subclassable for characters that alternate between dancing
+		poses, by default just plays an animation called `idle`.
+		"""
+		self.animation.play("idle")
 
 	@staticmethod
 	def get_hold_timeout() -> "Numeric":
@@ -66,3 +74,17 @@ class Character(PNFSprite):
 		This method returns that string. Default is `''`.
 		"""
 		return ""
+
+
+class FlipIdleCharacter(Character):
+	"""
+	Character that does not play the `idle` animation in their
+	`dance` function but instead alternates between `idle_left`
+	and `idle_right` each invocation.
+	"""
+
+	_dance_right = False
+
+	def dance(self) -> None:
+		self._dance_right = not self._dance_right
+		self.animation.play("idle_right" if self._dance_right else "idle_left")

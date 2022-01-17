@@ -7,10 +7,9 @@ import typing as t
 
 from loguru import logger
 from pyglet.window import key
-from schema import Or, Schema
+from schema import Schema
 
 from pyday_night_funkin.enums import CONTROL
-from pyday_night_funkin.utils import list_or_tuple_map
 
 
 class UnsupportedPlatformError(Exception):
@@ -49,7 +48,7 @@ class Config:
 		self,
 		scroll_speed: float,
 		safe_window: float,
-		key_bindings: t.Dict[CONTROL, t.Union[t.Sequence[int], int]],
+		key_bindings: t.Dict[CONTROL, t.Sequence[int]],
 	) -> None:
 		self.scroll_speed = scroll_speed
 		self.safe_window = safe_window

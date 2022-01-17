@@ -5,6 +5,7 @@ import typing as t
 from pyday_night_funkin import characters as chr
 from pyday_night_funkin.levels.tutorial import Tutorial
 from pyday_night_funkin.levels.week1level import Bopeebo, Fresh, DadBattle
+from pyday_night_funkin.levels.week2level import Spookeez, South
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.characters import Character
@@ -57,4 +58,10 @@ WEEKS: t.Sequence[Week] = (
 		(Bopeebo, Fresh, DadBattle),
 		"week1.png",
 	),
+	Week(
+		"SPOOKY MONTH",
+		(chr.SkidNPump, chr.Boyfriend, chr.Girlfriend),
+		(Spookeez, South),
+		"week2.png",
+	)
 )

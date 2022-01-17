@@ -178,7 +178,7 @@ class AnimationController:
 		self.current = self.current_name = None
 
 	def _on_new_frame(self) -> None:
-		cf = self.current_frame
+		cf = self.get_current_frame()
 		self._set_frame(cf.image.get_texture())
 
 		fix, fiy, fiw, fih = cf.frame_info
@@ -187,8 +187,7 @@ class AnimationController:
 			-round(fiy - (self._base_box[1] - fih) // 2),
 		))
 
-	@property
-	def current_frame(self) -> t.Optional[OffsetAnimationFrame]:
+	def get_current_frame(self) -> t.Optional[OffsetAnimationFrame]:
 		"""
 		Returns the current animation's frame or `None` if no animation
 		is set.
@@ -196,6 +195,15 @@ class AnimationController:
 		if self.current is None:
 			return None
 		return self.current.frames[self.current.cur_frame_idx]
+
+	def get_current_frame_index(self) -> t.Optional[int]:
+		"""
+		Returns the current animation's frame index or `None` if no
+		animation is set.
+		"""
+		if self.current is None:
+			return None
+		return self.current.cur_frame_idx
 
 	@property
 	def is_set(self) -> bool:
@@ -239,8 +247,8 @@ class AnimationController:
 		self,
 		name: str,
 		anim_data: t.Sequence["FrameInfoTexture"],
-		fps: float = 24.0,
-		loop: bool = False,
+		fps: float = 30.0,
+		loop: bool = True,
 		offset: t.Optional[t.Union[t.Tuple[int, int], Vec2]] = None,
 		tags: t.Sequence[t.Hashable] = (),
 	) -> None:
@@ -264,7 +272,7 @@ class AnimationController:
 		self,
 		name: str,
 		anim_data: t.Sequence["FrameInfoTexture"],
-		indices: t.Sequence[int],
+		indices: t.Iterable[int],
 		fps: float = 24.0,
 		loop: bool = False,
 		offset: t.Optional[t.Union[t.Tuple[int, int], Vec2]] = None,

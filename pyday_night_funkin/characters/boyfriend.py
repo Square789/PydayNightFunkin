@@ -16,7 +16,7 @@ class Boyfriend(Character):
 		story_menu_char_anims = load_asset(ASSET.XML_STORY_MENU_CHARACTERS)
 
 		self.animation.add_from_frames(
-			"idle_bop", anims["BF idle dance"], 24, True, (-5, 0),
+			"idle", anims["BF idle dance"], 24, True, (-5, 0),
 			(ANIMATION_TAG.IDLE,)
 		)
 		self.animation.add_from_frames(
@@ -51,6 +51,7 @@ class Boyfriend(Character):
 			"miss_note_right", anims["BF NOTE RIGHT MISS"], 24, False, (-30, 21),
 			(ANIMATION_TAG.MISS,)
 		)
+		self.animation.add_from_frames("scared", anims["BF idle shaking"], 24, True, (-4, 0))
 		self.animation.add_from_frames(
 			"hey", anims["BF HEY!!"], 24, False, (7, 4), (ANIMATION_TAG.SPECIAL,)
 		)
@@ -87,14 +88,14 @@ class Boyfriend(Character):
 			self.hold_timer > self.scene.conductor.beat_duration * 0.001 and
 			not self.dont_idle and singing
 		):
-			self.animation.play("idle_bop")
+			self.animation.play("idle")
 
 		# If le epic fail animation ended, return to idling at a specific frame for some reason
 		if missing and not self.animation.current.playing:
-			self.animation.play("idle_bop", True, 10)
+			self.animation.play("idle", True, 10)
 
 		# Skip `Character.update` because it ruins everything
-		# Admittedly this also ruins everything but uuuh shut up
+		# Admittedly this also ruins everything but you can blame the original code for that.
 		super(Character, self).update(dt)
 
 	@staticmethod
