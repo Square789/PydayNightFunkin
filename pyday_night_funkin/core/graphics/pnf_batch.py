@@ -232,7 +232,7 @@ class PNFBatch:
 		for chain in chains:
 			for agroup in chain.groups:
 				# Extend the draw list with necessary state switch calls
-				state_switches = walker.switch(agroup.group.states)
+				state_switches = walker.switch(agroup.group.state)
 
 				n_vertex_layout = (agroup.vertex_list.domain, agroup.group.program.id)
 				n_draw_mode = agroup.vertex_list.draw_mode

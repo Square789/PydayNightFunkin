@@ -205,14 +205,14 @@ class PNFTextLayoutGroup(PNFGroup):
 		super().__init__(
 			parent,
 			order,
-			(
-				states.ProgramStateMutator(program),
-				states.UBOBindingStateMutator(cam_ubo),
-				states.UniformStateMutator(program, "scissor", False),
-				states.TextureUnitStateMutator(gl.GL_TEXTURE0),
-				states.TextureStateMutator(texture),
-				states.EnableStateMutator(gl.GL_BLEND),
-				states.BlendFuncStateMutator(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA),
+			states.GLState(
+				states.ProgramStatePart(program),
+				states.UBOBindingStatePart(cam_ubo),
+				states.UniformStatePart("scissor", False),
+				states.TextureUnitStatePart(gl.GL_TEXTURE0),
+				states.TextureStatePart(texture),
+				states.EnableStatePart(gl.GL_BLEND),
+				states.BlendFuncStatePart(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA),
 			),
 		)
 
@@ -228,12 +228,12 @@ class PNFTextDecorationGroup(PNFGroup):
 		super().__init__(
 			parent,
 			order,
-			(
-				states.ProgramStateMutator(program),
-				states.UBOBindingStateMutator(cam_ubo),
-				states.UniformStateMutator(program, "scissor", False),
-				states.EnableStateMutator(gl.GL_BLEND),
-				states.BlendFuncStateMutator(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA),
+			states.GLState(
+				states.ProgramStatePart(program),
+				states.UBOBindingStatePart(cam_ubo),
+				states.UniformStatePart("scissor", False),
+				states.EnableStatePart(gl.GL_BLEND),
+				states.BlendFuncStatePart(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA),
 			),
 		)
 

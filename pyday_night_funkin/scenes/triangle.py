@@ -88,7 +88,7 @@ class Triangle(SceneObject):
 
 		self._context = Context(
 			batch,
-			PNFGroup(group, 0, self.build_mutators()),
+			PNFGroup(group, 0, self._build_gl_state()),
 		)
 
 		self._create_vertex_list()
@@ -96,14 +96,14 @@ class Triangle(SceneObject):
 	def set_context(self, parent_context: "Context") -> None:
 		self._context = Context(
 			parent_context.batch,
-			PNFGroup(parent_context.group, 0, self.build_mutators()),
+			PNFGroup(parent_context.group, 0, self._build_gl_state()),
 		)
 
-	def build_mutators(self):
-		return [
-			st.ProgramStateMutator(self.shader_container.get_program()),
-			st.UBOBindingStateMutator(self.cam_ubo),
-		]
+	def _build_gl_state(self):
+		return st.GLState(
+			st.ProgramStatePart(self.shader_container.get_program()),
+			st.UBOBindingStatePart(self.cam_ubo),
+		)
 
 	def _create_vertex_list(self) -> None:
 		self._vl = self._context.batch.add_indexed(

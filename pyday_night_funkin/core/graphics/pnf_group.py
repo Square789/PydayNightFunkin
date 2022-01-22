@@ -1,10 +1,10 @@
 
 import typing as t
 
-from pyday_night_funkin.core.graphics.states import ProgramStateMutator
+from pyday_night_funkin.core.graphics.states import ProgramStatePart
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.graphics.states import AbstractStateMutator
+	from pyday_night_funkin.core.graphics.states import GLState
 
 
 class PNFGroup:
@@ -12,7 +12,7 @@ class PNFGroup:
 		self,
 		parent: t.Optional["PNFGroup"] = None,
 		order: int = 0,
-		states: t.Sequence["AbstractStateMutator"] = (),
+		state: t.Optional["GLState"] = None,
 	) -> None:
 		"""
 		Groups supply an OpenGL state via their state mutators and
@@ -22,21 +22,14 @@ class PNFGroup:
 		"""
 		self.parent = parent
 		self.order = order
-		self.states = {}
-		for state in states:
-			if (type_ := type(state)) in self.states:
-				raise ValueError(
-					"Can't have duplicate states! "
-					"I may get around to creating something for that or I may not."
-				)
-			self.states[type_] = state
+		self.state = state
 
-		if not ProgramStateMutator in self.states:
-			# raise ValueError("Each group requires a `ProgramStateMutator`!")
+		if state is None or self.state.program is None:
 			# Errors way later when a draw list is built with this group
+			# raise ValueError("Each group requires a `ProgramStatePart`!")
 			self.program = None
 		else:
-			self.program = self.states[ProgramStateMutator].program
+			self.program = self.state.program
 
 	def __gt__(self, other) -> bool:
 		if not isinstance(other, PNFGroup):

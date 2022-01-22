@@ -170,7 +170,7 @@ class XMLRouter(AbstractAssetRouter):
 	"""
 	Routes an XMLResource into animation frames.
 
-	Will load a dict mappig animation prefixes to frame sequences.
+	Will load a dict mapping animation prefixes to frame sequences.
 	"""
 	def get_route_funcs(self):
 		return (self.route_xml, self.route_image, self.route_frames)

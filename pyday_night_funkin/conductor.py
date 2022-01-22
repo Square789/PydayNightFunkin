@@ -33,7 +33,7 @@ class Conductor():
 	def bpm(self, new_bpm: float) -> None:
 		if new_bpm <= 0:
 			raise ValueError("Bpm can't be lower than or equal to zero!")
-		if new_bpm >= 500:
+		if new_bpm >= 300:
 			# Scared of flooding with calls to `beat_hit`
 			raise ValueError("Bpm too extreme!")
 		self._bpm = new_bpm

@@ -1,146 +1,201 @@
 
+import ctypes
+from functools import partial
 import typing as t
-import weakref
 
 from pyglet.gl import gl
+from pyglet.graphics import shader
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram, UniformBufferObject
 
 
+class StatePart:
+	cost: int = -1
+	gl_func: t.Optional[t.Callable] = None
+	required: t.Sequence[t.Union["StatePart", t.Tuple["StatePart", t.Tuple]]] = ()
+	# conflicts: t.Sequence["StatePart"] = () # NOTE: Something to consider for glEnable / glDisable.
+	# Never using glDisable, so meh.
+	only_one: bool = True
 
-class AbstractStateMutator:
-	def set(self) -> None:
-		pass
+	def __init__(self) -> None:
+		self.args = ()
 
-	def get_state_descriptor(self) -> t.Any:
-		pass
+	def concretize(self, *_) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
+		"""
+		This method is used to turn the StatePart into a definitive
+		/* TODO */ which has to be called to set its
+		corresponding part of the state.
+		A StatePart may rely on other StateParts as given by the
+		`required` class attribute. If that is the case, all these
+		StateParts will be fed into this method as arguments in the
+		same order as `required` names.
+
+		The default implementation returns TODO
+		"""
+		return self.args, partial(self.gl_func, *self.args)
 
 
-class ProgramStateMutator(AbstractStateMutator):
+class ProgramStatePart(StatePart):
 	cost = 333
+	gl_func = gl.glUseProgram
 
 	def __init__(self, program: "ShaderProgram") -> None:
+		# NOTE: Not using program.use will cause program's internal `_active` variable to not be
+		# set which makes all other functions on it unusable/insecure.
 		self.program = program
-
-	def set(self) -> None:
-		self.program.use()
-
-	def get_state_descriptor(self) -> t.Any:
-		return self.program.id
+		self.args = (program.id,)
 
 
-class UniformStateMutator(AbstractStateMutator):
-	"""
-	This mutator is weird and a reminder that the states need a
-	refresher.
-	Its program object must be a `ProgramStateMutator` that comes
-	before this one.
-	"""
+class UniformStatePart(StatePart):
 	cost = 5
+	required = (ProgramStatePart,)
+	only_one = False
 
-	def __init__(self, prog: "ShaderProgram", name: str, value: t.Any) -> None:
-		self.prog_ref = weakref.ref(prog)
-		self.name = name
+	def __init__(self, name: str, value: t.Any) -> None:
+		self._name = name
 		self.value = value
+		self._c_array = None
 
-	def set(self) -> None:
-		self.prog_ref()[self.name] = self.value
+	def concretize(self, program_sp: ProgramStatePart) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
+		# NOTE: Ye olde private pyglet background access
+		# TODO: in pyglet>=2.0dev14, this doesn't just return the dict keys anymore, change it then
+		uniform = program_sp.program._uniforms[self._name]
+		gl_type, gl_func, _, count = shader._uniform_setters[uniform.type]
+		loc = uniform.location
+		self._c_array = (gl_type * uniform.length)()
+		if uniform.length == 1:
+			self._c_array[0] = self.value
+		else:
+			self._c_array[:] = self.value
 
-	def get_state_descriptor(self) -> t.Any:
-		return (self.prog_ref().id, self.name, self.value)
+		return (
+			(loc, count, ctypes.addressof(self._c_array)),
+			partial(gl_func, loc, count, self._c_array),
+		)
 
 
-class TextureUnitStateMutator(AbstractStateMutator):
+class TextureUnitStatePart(StatePart):
 	cost = 5
+	gl_func = gl.glActiveTexture
 
-	def __init__(self, unit) -> None:
-		self.unit = unit
-
-	def set(self) -> None:
-		gl.glActiveTexture(self.unit)
-
-	def get_state_descriptor(self) -> t.Any:
-		return self.unit
+	def __init__(self, unit: int) -> None:
+		self.args = (unit,)
 
 
-class TextureStateMutator(AbstractStateMutator):
+class TextureStatePart(StatePart):
 	cost = 66
+	gl_func = gl.glBindTexture
 
 	def __init__(self, texture) -> None:
-		self.texture = texture
-
-	def set(self) -> None:
-		gl.glBindTexture(self.texture.target, self.texture.id)
-
-	def get_state_descriptor(self) -> t.Any:
-		return self.texture
+		self.args = (texture.target, texture.id)
 
 
-class UBOBindingStateMutator(AbstractStateMutator):
+class UBOBindingStatePart(StatePart):
 	cost = 20
+	gl_func = gl.glUniformBlockBinding
+	required = (ProgramStatePart,)
+	only_one = False
 
 	def __init__(self, ubo: "UniformBufferObject") -> None:
 		self.ubo = ubo
 
-	def set(self) -> None:
-		self.ubo.bind()
+	def concretize(self, *_) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
+		prog_id = self.ubo.block.program.id
+		block_idx = self.ubo.block.index
+		binding_point = self.ubo.index
+		buf_id = self.ubo.buffer.id
 
-	def get_state_descriptor(self) -> t.Any:
-		return self.ubo
+		def f():
+			gl.glUniformBlockBinding(prog_id, block_idx, binding_point)
+			gl.glBindBufferBase(gl.GL_UNIFORM_BUFFER, binding_point, buf_id)
+
+		return ((prog_id, block_idx, binding_point, buf_id), f)
 
 
-class EnableStateMutator(AbstractStateMutator):
+class EnableStatePart(StatePart):
 	cost = 1
+	gl_func = gl.glEnable
+	only_one = False
 
-	def __init__(self, capability) -> None:
-		self.capability = capability
-
-	def set(self) -> None:
-		gl.glEnable(self.capability)
-
-	def get_state_descriptor(self) -> t.Any:
-		return self.capability
+	def __init__(self, capability: int) -> None:
+		self.args = (capability,)
 
 
-class BlendFuncStateMutator(AbstractStateMutator):
+class BlendFuncStatePart(StatePart):
 	cost = 1
+	gl_func = gl.glBlendFunc
+	required = ((EnableStatePart, (gl.GL_BLEND,)),)
 
 	def __init__(self, src, dest) -> None:
-		self.src = src
-		self.dest = dest
+		self.args = (src, dest)
 
-	def set(self) -> None:
-		gl.glBlendFunc(self.src, self.dest)
 
-	def get_state_descriptor(self) -> t.Any:
-		return (self.src, self.dest)
+
+# TODO For mooaaaar performance, reduce the below classes into just dicts and functions
+class GLState:
+	"""
+	Represents a specific OpenGL state.
+	Used so drawables can tell the graphics backend the state they
+	must be drawn in (e.g. set shader program, blend funcs etc.)
+	"""
+
+	def __init__(self, *args: StatePart) -> None:
+		self.program = None
+
+		tmp_parts: t.Dict[
+			t.Union[t.Type[StatePart], t.Tuple[t.Type[StatePart], t.Tuple]],
+			StatePart
+		] = {}
+		self.parts: t.Dict[
+			t.Union[t.Type[StatePart], t.Tuple[t.Type[StatePart], t.Tuple]],
+			int
+		] = {}
+
+		for part in args:
+			part_t = type(part)
+			conc_args = []
+
+			for reqp in part.required:
+				if reqp not in tmp_parts:
+					raise ValueError(
+						f"StatePart {part} required StatePart {reqp} which was not found. "
+						f"Add it to the GLState or check your StateParts' order."
+					)
+				conc_args.append(tmp_parts[reqp])
+
+			if part.only_one:
+				if part_t in self.parts:
+					raise ValueError(f"Duplicate StatePart for {part_t}; may only exist once!")
+				ident, func = part.concretize(*conc_args)
+				tmpkey = part_t
+			else:
+				ident, func = part.concretize(*conc_args)
+				tmpkey = (part_t, ident)
+
+			self.parts[(part_t, ident)] = func
+			tmp_parts[tmpkey] = part
+
+			if isinstance(part, ProgramStatePart):
+				self.program = part.program
+
+		del tmp_parts
 
 
 class StateWalker:
 	"""
 	I know, I'm great at naming things.
-	This class stores a pseudo GL state and provides methods
-	to run state mutators through it.
+	This class stores a pseudo GL state and provides a method to
+	morph it into other GLStates, while emitting all functions
+	necessary to do so.
 	"""
 	def __init__(self) -> None:
-		self._states = {state: None for state in states}
+		self._cur_state = GLState()
 
-	def switch(
-		self,
-		muts: t.Dict[t.Type[AbstractStateMutator], AbstractStateMutator],
-	) -> t.List[t.Callable[[], None]]:
-		funcs = []
-		for t, m in muts.items():
-			cur = m.get_state_descriptor()
-			if self._states[t] == cur:
-				continue
-			funcs.append(m.set)
-			self._states[t] = cur
-
-		return funcs
-
-states = [
-	ProgramStateMutator, UniformStateMutator, TextureUnitStateMutator, TextureStateMutator,
-	UBOBindingStateMutator, EnableStateMutator, BlendFuncStateMutator
-]
+	def switch(self, new_state: "GLState") -> t.List[t.Callable[[], None]]:
+		r = []
+		for ident, func in new_state.parts.items():
+			if ident not in self._cur_state.parts:
+				r.append(func)
+		self._cur_state = new_state
+		return r

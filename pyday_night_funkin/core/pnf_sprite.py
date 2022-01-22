@@ -366,27 +366,27 @@ class PNFSprite(SceneObject):
 		)
 		self._context.group = PNFGroup(
 			parent = None if context is None else context.group,
-			states = self._build_mutators(program, self._context.camera.ubo)
+			state = self._build_gl_state(program, self._context.camera.ubo)
 		)
 		# NOTE: Ugly, maybe come up with something better.
-		# Group needs to be set afterwards as dummy cam ubo is needed in build_mutators.
+		# Group needs to be set afterwards as dummy cam ubo is needed in _build_gl_state.
 
 		self._create_vertex_list()
 
 		self.image = image
 
-	def _build_mutators(
+	def _build_gl_state(
 		self,
 		program: "ShaderProgram",
 		cam_ubo: "UniformBufferObject",
 	):
-		return (
-			s.ProgramStateMutator(program),
-			s.UBOBindingStateMutator(cam_ubo),
-			s.TextureUnitStateMutator(gl.GL_TEXTURE0),
-			s.TextureStateMutator(self._texture),
-			s.EnableStateMutator(gl.GL_BLEND),
-			s.BlendFuncStateMutator(self._blend_src, self._blend_dest),
+		return s.GLState(
+			s.ProgramStatePart(program),
+			s.UBOBindingStatePart(cam_ubo),
+			s.TextureUnitStatePart(gl.GL_TEXTURE0),
+			s.TextureStatePart(self._texture),
+			s.EnableStatePart(gl.GL_BLEND),
+			s.BlendFuncStatePart(self._blend_src, self._blend_dest),
 		)
 
 	def _create_vertex_list(self):
@@ -445,7 +445,7 @@ class PNFSprite(SceneObject):
 			self._context.camera = new_cam
 			self._context.group = PNFGroup(
 				parent = new_group,
-				states = self._build_mutators(old_group.program, new_cam.ubo),
+				state = self._build_gl_state(old_group.program, new_cam.ubo),
 			)
 
 		if change_batch or rebuild_group:
@@ -821,7 +821,7 @@ class PNFSprite(SceneObject):
 			# be done, but yada yada -> issue #28.
 			self._context.group = PNFGroup(
 				parent = old_group.parent,
-				states = self._build_mutators(old_group.program, self._context.camera.ubo),
+				state = self._build_gl_state(old_group.program, self._context.camera.ubo),
 			)
 			self._vertex_list.delete()
 			self._create_vertex_list()

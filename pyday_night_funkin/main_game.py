@@ -21,7 +21,7 @@ from pyday_night_funkin.scenes import BaseScene, TestScene, TitleScene, Triangle
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.12-dev"
+__version__ = "0.0.12-dev-A"
 
 
 class _FPSData:
