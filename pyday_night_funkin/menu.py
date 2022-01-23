@@ -101,7 +101,8 @@ class Menu:
 	def update(self) -> None:
 		"""
 		Updates the menu. Should be called each frame.
-		Will run registered callbacks and 
+		Will run selection callbacks if the corresponding controls
+		are pressed.
 		When `CONTROL.ENTER` is pressed, `choice_made` is set to
 		`True`.
 		While `choice_made` is truthy, the menu will immediatedly

@@ -19,7 +19,7 @@ from pyglet.text.layout import (
 )
 
 from pyday_night_funkin.core.context import Context
-from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup, states
+from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup, state
 from pyday_night_funkin.core.scene_object import SceneObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 
@@ -205,14 +205,14 @@ class PNFTextLayoutGroup(PNFGroup):
 		super().__init__(
 			parent,
 			order,
-			states.GLState(
-				states.ProgramStatePart(program),
-				states.UBOBindingStatePart(cam_ubo),
-				states.UniformStatePart("scissor", False),
-				states.TextureUnitStatePart(gl.GL_TEXTURE0),
-				states.TextureStatePart(texture),
-				states.EnableStatePart(gl.GL_BLEND),
-				states.BlendFuncStatePart(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA),
+			state.GLState(
+				state.ProgramStatePart(program),
+				state.UBOBindingStatePart(cam_ubo),
+				state.UniformStatePart("scissor", False),
+				state.TextureUnitStatePart(gl.GL_TEXTURE0),
+				state.TextureStatePart(texture),
+				state.EnableStatePart(gl.GL_BLEND),
+				state.BlendFuncStatePart(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA),
 			),
 		)
 
@@ -228,12 +228,12 @@ class PNFTextDecorationGroup(PNFGroup):
 		super().__init__(
 			parent,
 			order,
-			states.GLState(
-				states.ProgramStatePart(program),
-				states.UBOBindingStatePart(cam_ubo),
-				states.UniformStatePart("scissor", False),
-				states.EnableStatePart(gl.GL_BLEND),
-				states.BlendFuncStatePart(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA),
+			state.GLState(
+				state.ProgramStatePart(program),
+				state.UBOBindingStatePart(cam_ubo),
+				state.UniformStatePart("scissor", False),
+				state.EnableStatePart(gl.GL_BLEND),
+				state.BlendFuncStatePart(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA),
 			),
 		)
 

@@ -7,7 +7,7 @@ from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
-	from pyday_night_funkin.main_game import Game 
+	from pyday_night_funkin.main_game import Game
 
 
 class GameOverScene(scenes.MusicBeatScene):

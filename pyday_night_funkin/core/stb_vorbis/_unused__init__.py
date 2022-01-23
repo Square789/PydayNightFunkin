@@ -116,13 +116,13 @@ class Codebook(Structure):
 
 class Floor0(Structure):
 	_fields = [
-		("order", c_uint8), 
-		("rate", c_uint16), 
-		("bark_map_size", c_uint16), 
-		("amplitude_bits", c_uint8), 
-		("amplitude_offset", c_uint8), 
-		("number_of_books", c_uint8), 
-		("book_list", c_uint8 * 16), 
+		("order", c_uint8),
+		("rate", c_uint16),
+		("bark_map_size", c_uint16),
+		("amplitude_bits", c_uint8),
+		("amplitude_offset", c_uint8),
+		("number_of_books", c_uint8),
+		("book_list", c_uint8 * 16),
 	]
 
 

@@ -1,0 +1,54 @@
+A group has a state.
+ Groups should not appear twice in a batch.
+ Make groups mutable by making their state mutable. (How to notify batch of change?)
+  Would probably mean the visibility attribute becomes real
+
+Cameras are drawn in a fixed order (As they are created on the scene).
+
+Each camera owns its own framebuffer.
+
+The graphics module should expose:
+ - Camera
+ - Batch
+ - BatchInterfacer
+ - States
+
+Each drawable will need to supply its own window view matrix (for each camera) (looks like [person i won't name since that is kinda weird but in the off chance they are reading this will likely know who they are] was right all along).
+ Would need to be modified pretty often, unfortunately; really shouldn't be doing that in python.
+
+! Massive Issue: Should each camera get a batch or should batches be hacked
+  together with states to include framebuffer changes in their draw list?
+  The latter would be nicer since I really do not want to create many batches,
+  but will then lead to frequent framebuffer switches for sprites that need to be drawn on more than one camera.
+
+Usage examples:
+
+self.group = PNFGroup(
+	_parent,
+	order=0,
+	GLState(
+		ProgramStatePart(self.program),
+		TextureUnitStatePart(gl.GL_TEXTURE_UNIT0),
+		TextureStatePart(self.texture),
+	),
+)
+
+self.interfacer = self.batch.register(
+	4,
+	gl.GL_TRIANGLES,
+	self.group,
+	(0, 1, 2, 0, 2, 3),
+	# Keep the string -> data declarations, mapping precise data
+	# by indices will be cumbersome. If something fails, the method
+	# should probably just throw an error; shader can be retrieved from
+	# the group's state's ProgramStatePart.
+)
+
+....
+
+def change_texture():
+	self.interfacer.change_state((TextureStatePart, (new_texture,)))
+
+....
+
+	self.interfacer.set_data(position=(100, 100))

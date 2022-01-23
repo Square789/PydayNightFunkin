@@ -85,8 +85,12 @@ class BaseScene(Container):
 		self._passed_time = 0.0
 		self.clock = Clock(self._get_elapsed_time)
 
-		self._default_camera = Camera()
-		self.cameras = {name: Camera() for name in self.get_camera_names()}
+		self._default_camera = Camera(0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
+		# TODO allow creation of different size cameras
+		self.cameras = {
+			name: Camera(0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
+			for name in self.get_camera_names()
+		}
 
 		self.sfx_ring = SFXRing(CNST.SFX_RING_SIZE)
 
@@ -258,6 +262,10 @@ class BaseScene(Container):
 		for x in self._members.copy():
 			x.delete()
 		self._members.clear()
+
+		for cam in self.cameras.values():
+			cam.delete()
+		self._default_camera.delete()
 
 		del self.batch
 		del self.game # reference breaking or something

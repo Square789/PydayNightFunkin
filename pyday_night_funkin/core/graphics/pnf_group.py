@@ -1,10 +1,10 @@
 
 import typing as t
 
-from pyday_night_funkin.core.graphics.states import ProgramStatePart
+from pyday_night_funkin.core.graphics.state import ProgramStatePart
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.graphics.states import GLState
+	from pyday_night_funkin.core.graphics.state import GLState
 
 
 class PNFGroup:

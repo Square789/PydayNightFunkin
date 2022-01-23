@@ -1,8 +1,7 @@
 
 import typing as t
 
-from pyglet.image.buffer import Framebuffer
-from pyglet.image import Texture
+from pyglet.image import Framebuffer, Texture
 from pyglet.math import Vec2
 
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
@@ -13,7 +12,9 @@ CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
 
 class Camera:
 	"""
-	# TODO write an explanation once this stuff works
+	Camera class to provide a UBO (which needs to be reflected in the
+	shader code of shaders that want to use it) that transforms
+	drawables as if they were viewed translated/zoomed with a camera.
 	Concepts largely stolen from
 	https://github.com/HaxeFlixel/flixel/blob/dev/flixel/FlxCamera.hx
 	"""
@@ -21,17 +22,28 @@ class Camera:
 	_dummy: t.Optional["Camera"] = None
 
 	def __init__(self, x: int, y: int, w: int, h: int):
-		self._framebuffer = Framebuffer()
-		self._tex = Texture.create(w, h)
-		self._framebuffer.attach_texture(self._tex)
+		# NOTE: It's probably possible to get a UBO here without the
+		# sprite shader, but it's gonna be painful.
+		from pyday_night_funkin.core.pnf_sprite import PNFSprite
+		self.ubo = PNFSprite.shader_container.get_camera_ubo()
 
 		self._x = 0
 		self._y = 0
 
-		self._width = GAME_WIDTH
-		"""The camera's true output width, in pixels."""
-		self._height = GAME_HEIGHT
-		"""The camera's true output height, in pixels."""
+		self._framebuffer = Framebuffer()
+		self._tex = Texture.create(w, h)
+		self._framebuffer.attach_texture(self._tex)
+
+		# True display width.
+		# Unchangeable, would require framebuffers and changes to
+		# rendering in general for that
+		self._width = w
+		self._height = h
+
+		# Width of the area displayed by the camera.
+		# Affected by zoom.
+		self._view_width = self._width
+		self._view_width = self._height
 
 		self._zoom = 1.0
 
@@ -46,7 +58,7 @@ class Camera:
 		Returns the global dummy camera.
 		"""
 		if cls._dummy is None:
-			cls._dummy = cls()
+			cls._dummy = cls(0, 0, GAME_WIDTH, GAME_HEIGHT)
 		return cls._dummy
 
 	def _update_ubo(self) -> None:
@@ -114,3 +126,8 @@ class Camera:
 	def zoom(self, new_zoom: float) -> None:
 		self._zoom = new_zoom
 		self._update_ubo()
+
+	def delete(self) -> None:
+		self._tex = None
+		self._framebuffer.delete()
+		self._framebuffer = None

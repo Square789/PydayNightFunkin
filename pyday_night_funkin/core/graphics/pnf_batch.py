@@ -10,7 +10,7 @@ from pyglet.graphics import vertexbuffer
 
 from pyday_night_funkin.core.graphics.pnf_vertex_domain import PNFVertexDomain, PNFVertexList
 from pyday_night_funkin.core.graphics.shared import C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT
-from pyday_night_funkin.core.graphics import states
+from pyday_night_funkin.core.graphics import state
 
 if t.TYPE_CHECKING:
 	from .pnf_group import PNFGroup
@@ -79,6 +79,7 @@ class PNFBatch:
 
 		self._vertex_domains: t.Dict["frozenset[str]", "PNFVertexDomain"] = {}
 		self._vertex_lists: "WeakKeyDictionary[PNFVertexList, PNFGroup]" = WeakKeyDictionary()
+		"""Associates each vertex list this batch owns with its group."""
 		self._index_buffer = None
 
 	def _add_group(self, group: "PNFGroup") -> None:
@@ -220,7 +221,7 @@ class PNFBatch:
 		if not chains:
 			return [], []
 
-		walker = states.StateWalker()
+		walker = state.StateWalker()
 		draw_list = []
 		indices = []
 		# Vertex layout is dictated by vertex domain and a group's program.

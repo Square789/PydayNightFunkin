@@ -10,7 +10,7 @@ from pyglet.math import Vec2
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.graphics import PNFGroup
-import pyday_night_funkin.core.graphics.states as s
+import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
 from pyday_night_funkin.core.scene_object import SceneObject
 from pyday_night_funkin.core.shaders import ShaderContainer
@@ -55,7 +55,6 @@ layout (std140) uniform CameraAttrs {{
 mat4 m_trans_scale = mat4(1.0);
 mat4 m_rotation = mat4(1.0);
 mat4 m_camera_trans_scale = mat4(1.0);
-mat4 m_camera_pre_trans = mat4(1.0);
 
 
 void main() {{
@@ -68,21 +67,23 @@ void main() {{
 	m_rotation[1][0] = -sin(-radians(rotation));
 	m_rotation[1][1] =  cos(-radians(rotation));
 	// Camera transform and zoom scale
-	m_camera_trans_scale[3][0] = (camera.zoom * scroll_factor.x * -camera.position.x) + \\
-		(camera.GAME_DIMENSIONS.x / 2);
-	m_camera_trans_scale[3][1] = (camera.zoom * scroll_factor.y * -camera.position.y) + \\
-		(camera.GAME_DIMENSIONS.y / 2);
+	m_camera_trans_scale[3][0] = (
+		(camera.zoom * -camera.GAME_DIMENSIONS.x / 2) +
+		(camera.zoom * scroll_factor.x * -camera.position.x) +
+		(camera.GAME_DIMENSIONS.x / 2)
+	);
+	m_camera_trans_scale[3][1] = (
+		(camera.zoom * -camera.GAME_DIMENSIONS.y / 2) +
+		(camera.zoom * scroll_factor.y * -camera.position.y) +
+		(camera.GAME_DIMENSIONS.y / 2)
+	);
 	m_camera_trans_scale[0][0] = camera.zoom;
 	m_camera_trans_scale[1][1] = camera.zoom;
-	// Camera pre-scale-transform
-	m_camera_pre_trans[3][0] = -camera.GAME_DIMENSIONS.x / 2;
-	m_camera_pre_trans[3][1] = -camera.GAME_DIMENSIONS.y / 2;
 
 	gl_Position =
 		window.projection *
 		window.view *
 		m_camera_trans_scale *
-		m_camera_pre_trans *
 		m_trans_scale *
 		m_rotation *
 		vec4(position, 0, 1)
@@ -122,7 +123,7 @@ class PNFSpriteVertexShader():
 
 
 class PNFSpriteFragmentShader():
-	src = _PNF_SPRITE_FRAGMENT_SHADER_SOURCE 
+	src = _PNF_SPRITE_FRAGMENT_SHADER_SOURCE
 
 	class COLOR:
 		BLEND = "texture(sprite_texture, texture_coords.xy) * vertex_colors"
@@ -194,7 +195,7 @@ class Effect():
 class _Tween(Effect):
 	def __init__(
 		self,
-		tween_func: t.Callable,
+		tween_func: t.Callable[[float], float],
 		attr_map: t.Dict[str, t.Tuple[t.Any, t.Any]],
 		duration: float,
 		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
@@ -400,7 +401,7 @@ class PNFSprite(SceneObject):
 			4,
 			gl.GL_TRIANGLES,
 			self._context.group,
-			[0, 1, 2, 0, 2, 3],
+			(0, 1, 2, 0, 2, 3),
 			"position2f/" + usage,
 			("anim_offset2f/" + usage, (0, 0) * 4),
 			("frame_offset2f/" + usage, (0, 0) * 4),
@@ -453,7 +454,7 @@ class PNFSprite(SceneObject):
 
 	def screen_center(self, screen_dims: Vec2, x: bool = True, y: bool = True) -> None:
 		"""
-		Sets the sprite's world position so that it is centered 
+		Sets the sprite's world position so that it is centered
 		on screen. (Ignoring camera and scroll factors)
 		`x` and `y` can be set to false to only center the sprite
 		along one of the axes.

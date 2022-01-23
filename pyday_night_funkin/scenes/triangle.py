@@ -11,7 +11,7 @@ from pyglet.window.key import LEFT, UP, DOWN, RIGHT, X, Z
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.graphics import PNFGroup
-import pyday_night_funkin.core.graphics.states as st
+import pyday_night_funkin.core.graphics.state as st
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene_object import SceneObject
 from pyday_night_funkin.core.shaders import ShaderContainer
