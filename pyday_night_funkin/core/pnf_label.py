@@ -294,7 +294,7 @@ class _TLGlyphBox(_GlyphBox):
 		for i in range(n_glyphs):
 			indices.extend([element + (i * 4) for element in [0, 1, 2, 0, 2, 3]])
 
-		vertex_list = layout.batch.add_indexed(
+		context.add_list(layout.batch.add_indexed(
 			n_glyphs * 4,
 			gl.GL_TRIANGLES,
 			group,
@@ -303,9 +303,7 @@ class _TLGlyphBox(_GlyphBox):
 			('colors4Bn/dynamic', colors),
 			('tex_coords3f/dynamic', tex_coords),
 			'translation2f/dynamic',
-		)
-
-		context.add_list(vertex_list)
+		))
 
 		# NOTE: The stuff below isn't flipped around because I don't use it
 

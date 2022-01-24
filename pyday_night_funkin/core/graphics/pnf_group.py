@@ -8,28 +8,27 @@ if t.TYPE_CHECKING:
 
 
 class PNFGroup:
+	"""
+	Groups supply an OpenGL state and define an ordered tree which
+	dictates element draw order.
+	"""
+
 	def __init__(
 		self,
 		parent: t.Optional["PNFGroup"] = None,
 		order: int = 0,
 		state: t.Optional["GLState"] = None,
 	) -> None:
-		"""
-		Groups supply an OpenGL state via their state mutators and
-		Define an ordered tree which dictated element draw order.
-		! WARNING ! Groups are supposed to be immutable, it is best
-		to recreate them whenever they should be modified.
-		"""
 		self.parent = parent
 		self.order = order
 		self.state = state
 
-		if state is None or self.state.program is None:
-			# Errors way later when a draw list is built with this group
-			# raise ValueError("Each group requires a `ProgramStatePart`!")
-			self.program = None
-		else:
-			self.program = self.state.program
+		# if state is None or self.state.program is None:
+		# 	# Errors way later when a draw list is built with this group
+		# 	# raise ValueError("Each group requires a `ProgramStatePart`!")
+		# 	self.program = None
+		# else:
+		# 	self.program = self.state.program
 
 	def __gt__(self, other) -> bool:
 		if not isinstance(other, PNFGroup):

@@ -8,7 +8,8 @@ from loguru import logger
 from pyglet.gl import gl
 from pyglet.graphics import vertexbuffer
 
-from pyday_night_funkin.core.graphics.pnf_vertex_domain import PNFVertexDomain, PNFVertexList
+from pyday_night_funkin.core.graphics.interfacer import PNFBatchInterfacer
+from pyday_night_funkin.core.graphics.pnf_vertex_domain import PNFVertexDomain
 from pyday_night_funkin.core.graphics.shared import C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT
 from pyday_night_funkin.core.graphics import state
 
@@ -22,14 +23,14 @@ _INDEX_TYPE_SIZE = GL_TYPE_SIZES[_INDEX_TYPE]
 
 class _AnnotatedGroup:
 	"""
-	Tiny dataclass to store a group along with its vertex list.
+	Tiny dataclass to store a group along with its interfacer.
 	To be used only during draw list creation.
 	"""
-	__slots__ = ("group", "vertex_list")
+	__slots__ = ("group", "interfacer")
 
 	def __init__(self, group: "PNFGroup", data: "GroupData") -> None:
 		self.group = group
-		self.vertex_list = data.vertex_list
+		self.interfacer = data.interfacer
 
 
 # NOTE: This is just a class with a list. May be useful for further
@@ -37,8 +38,8 @@ class _AnnotatedGroup:
 class GroupChain:
 	def __init__(self, groups: t.Sequence["_AnnotatedGroup"]) -> None:
 		self.groups = list(groups)
-		# self.used_vertex_domains = {g.vertex_list.domain for g in groups}
-		# self.used_draw_modes = {g.vertex_list.draw_mode for g in groups}
+		# self.used_vertex_domains = {g.interfacer.domain for g in groups}
+		# self.used_draw_modes = {g.interfacer.draw_mode for g in groups}
 
 	def _dump(self) -> str:
 		r = f"<{self.__class__.__name__}\n"
@@ -49,14 +50,14 @@ class GroupChain:
 
 
 class GroupData:
-	__slots__ = ("vertex_list", "children")
+	__slots__ = ("interfacer", "children")
 
 	def __init__(
 		self,
-		vertex_list: t.Optional["PNFVertexList"] = None,
+		interfacer: t.Optional["PNFBatchInterfacer"] = None,
 		children: t.Iterable["PNFGroup"] = (),
 	) -> None:
-		self.vertex_list = vertex_list
+		self.interfacer = interfacer
 		self.children = set(children)
 
 
@@ -78,8 +79,8 @@ class PNFBatch:
 		needs to be drawn."""
 
 		self._vertex_domains: t.Dict["frozenset[str]", "PNFVertexDomain"] = {}
-		self._vertex_lists: "WeakKeyDictionary[PNFVertexList, PNFGroup]" = WeakKeyDictionary()
-		"""Associates each vertex list this batch owns with its group."""
+		self._interfacers: "WeakKeyDictionary[PNFBatchInterfacer, PNFGroup]" = WeakKeyDictionary()
+		"""Associates each interfacer this batch owns with its group."""
 		self._index_buffer = None
 
 	def _add_group(self, group: "PNFGroup") -> None:
@@ -156,7 +157,7 @@ class PNFBatch:
 		been deleted from the group tree.
 		"""
 		chains = []
-		group_intact = self._group_data[group].vertex_list is not None
+		group_intact = self._group_data[group].interfacer is not None
 		if group_intact: # and group.visible: # Don't draw invisible groups now # See issue 28
 			chains.append([group])
 
@@ -216,7 +217,7 @@ class PNFBatch:
 		# Unfortunately, I am too stupid to figure out how, so just have
 		# a sort by the most expensive thing to switch (shader programs)
 		for chain in chains:
-			chain.groups.sort(key=lambda g: g.group.program.id)
+			chain.groups.sort(key=lambda g: g.group.state.program.id)
 
 		if not chains:
 			return [], []
@@ -235,8 +236,8 @@ class PNFBatch:
 				# Extend the draw list with necessary state switch calls
 				state_switches = walker.switch(agroup.group.state)
 
-				n_vertex_layout = (agroup.vertex_list.domain, agroup.group.program.id)
-				n_draw_mode = agroup.vertex_list.draw_mode
+				n_vertex_layout = (agroup.interfacer.domain, agroup.group.state.program.id)
+				n_draw_mode = agroup.interfacer.draw_mode
 
 				# Any of these unfortunately force a new draw call
 				if (
@@ -257,7 +258,7 @@ class PNFBatch:
 						cur_index_run = 0
 
 					if cur_vertex_layout != n_vertex_layout:
-						def bind_vao(d=agroup.vertex_list.domain, p=agroup.group.program):
+						def bind_vao(d=agroup.interfacer.domain, p=agroup.group.state.program):
 							# TODO: Buffers store their data locally and need to be bound
 							# to upload it.
 							# This binding would always occurr in pyglet's default renderer
@@ -276,8 +277,8 @@ class PNFBatch:
 					draw_list.extend(state_switches)
 
 				# Extend vertex indices
-				indices.extend(agroup.vertex_list.indices)
-				cur_index_run += len(agroup.vertex_list.indices)
+				indices.extend(agroup.interfacer.indices)
+				cur_index_run += len(agroup.interfacer.indices)
 
 		# Final draw call
 		def final_draw_elements(
@@ -297,31 +298,45 @@ class PNFBatch:
 		self._draw_list = dl
 		self._draw_list_dirty = False
 
-	def add(self, size, draw_mode, group, *data) -> PNFVertexList:
+	def add(
+		self,
+		size: int,
+		draw_mode: int,
+		group: "PNFGroup",
+		*data: t.Union[str, t.Tuple[str, t.Any]],
+	) -> PNFBatchInterfacer:
 		# NOTE: This is somewhat iffy, but on the other hand allowing non-
-		# indexed vertex lists would mean even more frequent switches between
+		# indexed stuff would mean even more frequent switches between
 		# draw calls.
-		# Plus, in this project, most drawables are indexed sprites anyways.
+		# In this project, most drawables are indexed sprites anyways.
 		return self.add_indexed(size, draw_mode, group, [*range(size)], *data)
 
-	def add_indexed(self, size, draw_mode, group, indices, *data) -> PNFVertexList:
+	def add_indexed(
+		self,
+		size: int,
+		draw_mode: int,
+		group: "PNFGroup",
+		indices: t.Sequence[int],
+		*data: t.Union[str, t.Tuple[str, t.Any]],
+	) -> PNFBatchInterfacer:
 		attr_names = [x[0] if isinstance(x, tuple) else x for x in data]
 
-		vtx_list = self._get_vertex_domain(attr_names).create_vertex_list(
-			size, self, group, draw_mode, indices
-		)
-		self._introduce_vtx_list_and_group(vtx_list, group)
+		domain = self._get_vertex_domain(attr_names)
+		domain.ensure_vao(group.state.program)
+		start = domain.allocate(size)
+		interfacer = PNFBatchInterfacer(domain, start, size, draw_mode, indices, self)
+		self._introduce_interfacer_and_group(interfacer, group)
 
 		# Set initial data
 		for x in data:
 			if not isinstance(x, tuple):
 				continue
 			name = RE_VERTEX_FORMAT.match(x[0])[1]
-			getattr(vtx_list, name)[:] = x[1]
+			interfacer.set_data(name, x[1])
 
 		self._draw_list_dirty = True
 
-		return vtx_list
+		return interfacer
 
 	def draw(self):
 		if self._draw_list_dirty:
@@ -333,46 +348,48 @@ class PNFBatch:
 
 	def migrate(
 		self,
-		vertex_list: "PNFVertexList",
+		interfacer: "PNFBatchInterfacer",
 		new_group: "PNFGroup",
 		new_batch: "PNFBatch",
 	) -> None:
 		"""
-		Migrates the given vertex list so that it is afterwards owned
-		by `new_batch` under the `new_group`.
+		Migrates the given interfacer so that it is afterwards owned
+		by `new_batch` under `new_group`.
 		Must be used when a drawable's batch, group or both change.
 		"""
 		if self != new_batch:
-			# Steal vertex list from the group that owns it in this batch
-			self.on_vertex_list_removal(vertex_list)
-			new_batch._introduce_vtx_list_and_group(vertex_list, new_group)
-		new_domain = new_batch._get_vertex_domain(vertex_list.domain.attribute_bundle)
-		new_domain.ensure_vao(new_group.program)
-		vertex_list.migrate(new_batch, new_domain)
+			# Steal interfacer from the group that owns it in this batch
+			self._remove_interfacer(interfacer)
+			new_batch._introduce_interfacer_and_group(interfacer, new_group)
+		new_domain = new_batch._get_vertex_domain(interfacer.domain.attribute_bundle)
+		new_domain.ensure_vao(new_group.state.program)
+		interfacer.migrate(new_batch, new_domain)
 
-	def _introduce_vtx_list_and_group(self, vtx_list: "PNFVertexList", group: "PNFGroup") -> None:
+	def _introduce_interfacer_and_group(
+		self, if_: "PNFBatchInterfacer", group: "PNFGroup"
+	) -> None:
 		"""
-		Introduces a vertex list and a group it was created under to
+		Introduces an interfacer and the group it was created under to
 		the batch.
 		"""
 		self._add_group(group)
-		self._vertex_lists[vtx_list] = group
-		self._group_data[group].vertex_list = vtx_list
+		self._interfacers[if_] = group
+		self._group_data[group].interfacer = if_
 
-	def on_vertex_list_removal(self, vertex_list: "PNFVertexList") -> None:
+	def _remove_interfacer(self, interfacer: "PNFBatchInterfacer") -> None:
 		"""
-		To be called when a vertex list leaves this batch.
-		Removes the vertex list from its group's data and marks the
+		To be called when an interfacer leaves this batch.
+		Removes the interfacer from its group's data and marks the
 		draw list as dirty.
 		"""
-		if vertex_list not in self._vertex_lists:
+		if interfacer not in self._interfacers:
 			return
 
-		gd = self._group_data[self._vertex_lists[vertex_list]]
-		if gd.vertex_list is not None:
-			gd.vertex_list = None
+		gd = self._group_data[self._interfacers[interfacer]]
+		if gd.interfacer is not None:
+			gd.interfacer = None
 			self._draw_list_dirty = True
-		self._vertex_lists.pop(vertex_list)
+		self._interfacers.pop(interfacer)
 
 	def _dump_draw_list(self) -> None:
 		print(self._dump())
@@ -400,7 +417,7 @@ class PNFBatch:
 			for x in range(min(100, self._index_buffer.size // ctypes.sizeof(idx_type)))
 		)
 
-		r += f"\n\nVertex lists created and alive: {len(self._vertex_lists)}"
+		r += f"\n\Interfacers created and alive: {len(self._interfacers)}"
 		r += f"\nGroups in group registry: {len(self._group_data)}"
 		r += f"\nCalls in draw list: {len(self._draw_list)}"
 

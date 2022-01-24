@@ -141,6 +141,11 @@ class GLState:
 	"""
 
 	def __init__(self, *args: StatePart) -> None:
+		"""
+		Initializes a GLState from the given StateParts.
+		Note that a GLState must have a ProgramStatePart to be
+		renderable.
+		"""
 		self.program = None
 
 		tmp_parts: t.Dict[

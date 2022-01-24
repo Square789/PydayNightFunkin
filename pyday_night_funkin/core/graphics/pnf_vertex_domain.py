@@ -4,6 +4,7 @@ import typing as t
 
 from pyglet.graphics import allocation, vertexarray, vertexbuffer
 from pyglet.gl import gl
+from pyday_night_funkin.core.graphics.interfacer import PNFBatchInterfacer
 
 from pyday_night_funkin.core.graphics.shared import (
 	C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT, TYPE_MAP, USAGE_MAP
@@ -25,113 +26,6 @@ def nearest_pow2(v):
 	v |= v >> 8
 	v |= v >> 16
 	return v + 1
-
-
-class PNFVertexList:
-	"""
-	Yet more intellectual property theft from pyglet, this bootleg
-	vertex list tracks a position in a vertex buffer its vertices
-	belong to and is passed to higher drawables for management of
-	those.
-	! WARNING ! Forgetting to call `delete` on vertex lists will leak
-	memory in the list's domain.
-	"""
-
-	def __init__(
-		self,
-		vertex_domain: "PNFVertexDomain",
-		domain_position: int,
-		size: int,
-		draw_mode: int,
-		indices: t.Sequence[int],
-		batch: "PNFBatch",
-	) -> None:
-		self.domain = vertex_domain
-
-		self.domain_position = domain_position
-		"""
-		Position inside the vertex domain. Consider:
-		```
-		pos2f   . . . .-. . . .|X X X X.X X X X|X X X X.X X ...
-		color3B .-.-.|X.X.X|X.X.X|.-.-.|.-.-.|.-.-.|.-.-.|. ...
-		```
-		A vertex list of `domain_position` 1 and `size` 2 would
-		span the region whose bytes are denoted with `X`.
-		"""
-
-		self.size = size
-		"""
-		Amount of vertices in the vertex list.
-		"""
-
-		self.draw_mode = draw_mode
-		self.indices = tuple(domain_position + i for i in indices)
-		"""
-		Indices the vertex list's vertices should be drawn with.
-		These are absolute to the vertex domain's buffers, so taking
-		the example from `domain_position`'s docstring, [1, 2, 1] would
-		be valid and [0, 1, 3] would not.
-		"""
-
-		self.deleted = False
-		"""
-		Whether this vertex list has been deleted and is effectively
-		junk. Modify this and suffer the consequences; Use `delete()`
-		to delete the vertex list!
-		"""
-
-		self.batch = batch
-
-	def delete(self):
-		"""
-		Deletes this vertex domain.
-		Tells the vertex domain this vertex list belongs to to
-		free the space occupied by this list's vertices and notifies
-		its batch of its removal.
-		After deletion, the vertex list should not be used anymore.
-		"""
-		if self.deleted:
-			return
-
-		self.domain.deallocate(self.domain_position, self.size)
-		self.batch.on_vertex_list_removal(self)
-		self.batch = None # Friendship ended
-		self.deleted = True
-
-	def migrate(self, new_batch: "PNFBatch", new_domain: "PNFVertexDomain") -> None:
-		"""
-		Migrates the vertex list into a new batch and a new domain,
-		deallocating its used space in the old one and occupying new
-		space in the, well, new one.
-		"""
-		if self.domain.attributes.keys() != new_domain.attributes.keys():
-			raise ValueError("Vertex domain attribute bundle mismatch!")
-
-		new_start = new_domain.allocate(self.size)
-		index_shift = -self.domain_position + new_start
-		for k, cur_attr in self.domain.attributes.items():
-			new_attr = new_domain.attributes[k]
-			new_attr.get_region(new_start, self.size).array[:] = \
-				cur_attr.get_region(self.domain_position, self.size).array[:]
-
-		self.domain.deallocate(self.domain_position, self.size)
-		self.domain = new_domain
-		self.domain_position = new_start
-		self.indices = tuple(i + index_shift for i in self.indices)
-		self.batch = new_batch
-
-	def __getattr__(self, name: str) -> t.Any:
-		att = self.domain.attributes[name]
-
-		region = att.get_region(self.domain_position, self.size)
-		region.invalidate()
-		return region.array
-
-	def __setattr__(self, name: str, value: t.Any) -> None:
-		if "domain" in self.__dict__ and name in self.__dict__["domain"].attributes:
-			self.__getattr__(name)[:] = value
-		else:
-			super().__setattr__(name, value)
 
 
 class PNFVertexDomainAttribute:
@@ -279,7 +173,7 @@ class PNFVertexDomain:
 
 		for shader_attr in shader.attributes.values():
 			# Attributes are linked with shaders by their name as passed
-			# in the vertex list
+			# in the add call
 			if shader_attr.name not in self.attributes:
 				raise ValueError(
 					f"Shader program {shader.id!r} contained vertex attribute {shader_attr},"
@@ -328,13 +222,15 @@ class PNFVertexDomain:
 		"""
 		Tries to safely allocate `size` vertices, resizing as
 		necessary.
+		May raise `pyglet.graphics.allocation.AllocatorMemoryException`.
 		"""
 		try:
 			return self._allocator.alloc(size)
 		except allocation.AllocatorMemoryException:
-			new_size = max(nearest_pow2(self._allocator.capacity + 1), nearest_pow2(size))
-			self._resize(new_size)
-			return self._allocator.alloc(size)
+			pass
+		new_size = max(nearest_pow2(self._allocator.capacity + 1), nearest_pow2(size))
+		self._resize(new_size)
+		return self._allocator.alloc(size)
 
 	def deallocate(self, start: int, size: int) -> None:
 		"""
@@ -349,18 +245,18 @@ class PNFVertexDomain:
 		for attr in self.attributes.values():
 			attr.resize(new_size)
 
-	def create_vertex_list(
+	def create_interfacer(
 		self,
 		vertex_amount: int,
 		batch: "PNFBatch",
 		group: "PNFGroup",
 		draw_mode: int,
 		indices: t.Sequence[int],
-	) -> PNFVertexList:
+	) -> PNFBatchInterfacer:
 		"""
-		Creates and returns a vertex list in the domain for the
+		Creates and returns an interfacer in the domain for the
 		given group.
 		"""
-		self.ensure_vao(group.program)
+		self.ensure_vao(group.state.program)
 		start = self.allocate(vertex_amount)
-		return PNFVertexList(self, start, vertex_amount, draw_mode, indices, batch)
+		return PNFBatchInterfacer(self, start, vertex_amount, draw_mode, indices, batch)

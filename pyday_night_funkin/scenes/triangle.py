@@ -91,7 +91,7 @@ class Triangle(SceneObject):
 			PNFGroup(group, 0, self._build_gl_state()),
 		)
 
-		self._create_vertex_list()
+		self._create_interfacer()
 
 	def set_context(self, parent_context: "Context") -> None:
 		self._context = Context(
@@ -105,8 +105,8 @@ class Triangle(SceneObject):
 			st.UBOBindingStatePart(self.cam_ubo),
 		)
 
-	def _create_vertex_list(self) -> None:
-		self._vl = self._context.batch.add_indexed(
+	def _create_interfacer(self) -> None:
+		self._interfacer = self._context.batch.add_indexed(
 			3, gl.GL_TRIANGLES, self._context.group, [0, 1, 2],
 			("position2f/dynamic", (
 				self._x,         self._y,
@@ -123,7 +123,9 @@ class Triangle(SceneObject):
 	@x.setter
 	def x(self, new_x: "Numeric") -> None:
 		self._x = new_x
-		self._vl.position[:] = (new_x, self._y, new_x + 100.0, self._y, new_x, self._y + 100.0)
+		self._interfacer.set_data(
+			"position", (new_x, self._y, new_x + 100.0, self._y, new_x, self._y + 100.0)
+		)
 
 	@property
 	def y(self) -> "Numeric":
@@ -132,7 +134,9 @@ class Triangle(SceneObject):
 	@y.setter
 	def y(self, new_y: "Numeric") -> None:
 		self._y = new_y
-		self._vl.position[:] = (self._x, new_y, self._x + 100.0, new_y, self._x, new_y + 100.0)
+		self._interfacer.set_data(
+			"position", (self._x, new_y, self._x + 100.0, new_y, self._x, new_y + 100.0)
+		)
 
 
 class TriangleScene(BaseScene):

@@ -338,7 +338,7 @@ class PNFSprite(SceneObject):
 		self._x = x
 		self._y = y
 		self._batch = None
-		self._vertex_list = None
+		self._interfacer = None
 		self._rotation = 0
 		self._opacity = 255
 		self._rgb = (255, 255, 255)
@@ -372,7 +372,7 @@ class PNFSprite(SceneObject):
 		# NOTE: Ugly, maybe come up with something better.
 		# Group needs to be set afterwards as dummy cam ubo is needed in _build_gl_state.
 
-		self._create_vertex_list()
+		self._create_interfacer()
 
 		self.image = image
 
@@ -390,14 +390,14 @@ class PNFSprite(SceneObject):
 			s.BlendFuncStatePart(self._blend_src, self._blend_dest),
 		)
 
-	def _create_vertex_list(self):
+	def _create_interfacer(self):
 		#  0- - - - -3
 		#  |\D>      ^
 		#  A    \    E
 		#  v      <C\|
 		#  1----B>---2
 		usage = self._usage
-		self._vertex_list = self._context.batch.add_indexed(
+		self._interfacer = self._context.batch.add_indexed(
 			4,
 			gl.GL_TRIANGLES,
 			self._context.group,
@@ -438,19 +438,19 @@ class PNFSprite(SceneObject):
 			# 	# TBH I forgot what these None checks were about.
 			# 	# If anything is None in here, it will just crash horribly,
 			# 	# but that doesn't happen when running soooo good enough!
-			# 	self._vertex_list.delete()
+			# 	self._interfacer.delete()
 			# 	self._context.batch = new_batch
-			# 	self._create_vertex_list()
+			# 	self._create_interfacer()
 
 		if rebuild_group:
 			self._context.camera = new_cam
 			self._context.group = PNFGroup(
 				parent = new_group,
-				state = self._build_gl_state(old_group.program, new_cam.ubo),
+				state = self._build_gl_state(old_group.state.program, new_cam.ubo),
 			)
 
 		if change_batch or rebuild_group:
-			old_batch.migrate(self._vertex_list, self._context.group, self._context.batch)
+			old_batch.migrate(self._interfacer, self._context.group, self._context.batch)
 
 	def screen_center(self, screen_dims: Vec2, x: bool = True, y: bool = True) -> None:
 		"""
@@ -590,10 +590,10 @@ class PNFSprite(SceneObject):
 			self._set_texture(new_frame)
 
 		if (new_offset := self.animation.query_new_offset()) is not None:
-			self._vertex_list.anim_offset[:] = new_offset * 4
+			self._interfacer.set_data("anim_offset", new_offset * 4)
 
 		if (new_frame_offset := self.animation.query_new_frame_offset()) is not None:
-			self._vertex_list.frame_offset[:] = new_frame_offset * 4
+			self._interfacer.set_data("frame_offset", new_frame_offset * 4)
 
 	def update(self, dt: float) -> None:
 		if self.animation.is_set:
@@ -641,28 +641,16 @@ class PNFSprite(SceneObject):
 			self._texture.height
 		)
 
-	# === Copypasted methods from the standard pyglet sprite === #
-
 	def delete(self):
 		"""
-		Deletes this sprite's vertex list immediatedly and removes
-		its texture and group.
+		Deletes this sprite's graphical resources.
 		"""
-		self._vertex_list.delete()
-		self._vertex_list = None
+		self._interfacer.delete()
+		self._interfacer = None
 		self._texture = None
 		self._context = None # GC speedup, probably
 
-	def draw(self):
-		"""
-		Draws this sprite inefficiently.
-		Batches should be used instead.
-		"""
-		self._context.group.set_state_recursive()
-		self._vertex_list.draw(gl.GL_TRIANGLES)
-		self._context.group.unset_state_recursive()
-
-	# === Simple/Copypasted properties and private methods below === #
+	# === Simple properties and private methods below === #
 
 	@property
 	def image(self) -> t.Union[PNFAnimation, AbstractImage]:
@@ -697,7 +685,7 @@ class PNFSprite(SceneObject):
 	@x.setter
 	def x(self, x: "Numeric") -> None:
 		self._x = x
-		self._vertex_list.translate[:] = (x, self._y) * 4
+		self._interfacer.set_data("translate", (x, self._y) * 4)
 
 	@property
 	def y(self) -> "Numeric":
@@ -709,7 +697,7 @@ class PNFSprite(SceneObject):
 	@y.setter
 	def y(self, y: "Numeric") -> None:
 		self._y = y
-		self._vertex_list.translate[:] = (self._x, y) * 4
+		self._interfacer.set_data("translate", (self._x, y) * 4)
 
 	@property
 	def rotation(self) -> "Numeric":
@@ -721,7 +709,7 @@ class PNFSprite(SceneObject):
 	@rotation.setter
 	def rotation(self, rotation: "Numeric") -> None:
 		self._rotation = rotation
-		self._vertex_list.rotation[:] = (self._rotation,) * 4
+		self._interfacer.set_data("rotation", (self._rotation,) * 4)
 
 	@property
 	def opacity(self) -> "Numeric":
@@ -734,7 +722,7 @@ class PNFSprite(SceneObject):
 	@opacity.setter
 	def opacity(self, opacity: "Numeric") -> None:
 		self._opacity = opacity
-		self._vertex_list.colors[:] = (*self._rgb, int(self._opacity)) * 4
+		self._interfacer.set_data("colors", (*self._rgb, int(self._opacity)) * 4)
 
 	@property
 	def scale(self) -> "Numeric":
@@ -746,7 +734,7 @@ class PNFSprite(SceneObject):
 	@scale.setter
 	def scale(self, scale: "Numeric") -> None:
 		self._scale = scale
-		self._vertex_list.scale[:] = (scale * self._scale_x, scale * self._scale_y) * 4
+		self._interfacer.set_data("scale", (scale * self._scale_x, scale * self._scale_y) * 4)
 
 	@property
 	def scale_x(self) -> "Numeric":
@@ -758,7 +746,9 @@ class PNFSprite(SceneObject):
 	@scale_x.setter
 	def scale_x(self, scale_x: "Numeric") -> None:
 		self._scale_x = scale_x
-		self._vertex_list.scale[:] = (self._scale * scale_x, self._scale * self._scale_y) * 4
+		self._interfacer.set_data(
+			"scale", (self._scale * scale_x, self._scale * self._scale_y) * 4
+		)
 
 	@property
 	def scale_y(self) -> "Numeric":
@@ -770,7 +760,9 @@ class PNFSprite(SceneObject):
 	@scale_y.setter
 	def scale_y(self, scale_y: "Numeric") -> None:
 		self._scale_y = scale_y
-		self._vertex_list.scale[:] = (self._scale * self._scale_x, self._scale * scale_y) * 4
+		self._interfacer.set_data(
+			"scale", (self._scale * self._scale_x, self._scale * scale_y) * 4
+		)
 
 	@property
 	def scroll_factor(self) -> t.Tuple[float, float]:
@@ -784,7 +776,7 @@ class PNFSprite(SceneObject):
 	@scroll_factor.setter
 	def scroll_factor(self, new_sf: t.Tuple[float, float]) -> None:
 		self._scroll_factor = new_sf
-		self._vertex_list.scroll_factor[:] = new_sf * 4
+		self._interfacer.set_data("scroll_factor", new_sf * 4)
 
 	@property
 	def color(self) -> t.List[int]:
@@ -798,7 +790,7 @@ class PNFSprite(SceneObject):
 	@color.setter
 	def color(self, color: t.Iterable[int]) -> None:
 		self._rgb = list(map(int, color))
-		self._vertex_list.colors[:] = (*self._rgb, int(self._opacity)) * 4
+		self._interfacer.set_data("colors", (*self._rgb, int(self._opacity)) * 4)
 
 	@property
 	def visible(self) -> bool:
@@ -822,12 +814,12 @@ class PNFSprite(SceneObject):
 			# be done, but yada yada -> issue #28.
 			self._context.group = PNFGroup(
 				parent = old_group.parent,
-				state = self._build_gl_state(old_group.program, self._context.camera.ubo),
+				state = self._build_gl_state(old_group.state.program, self._context.camera.ubo),
 			)
-			self._vertex_list.delete()
-			self._create_vertex_list()
+			self._interfacer.delete()
+			self._create_interfacer()
 		else:
-			self._vertex_list.tex_coords[:] = texture.tex_coords
+			self._interfacer.set_data("tex_coords", texture.tex_coords)
 			self._texture = texture
 		# If this is not done, screws over vertices if the texture changes
 		# dimension thanks to top left coords
@@ -839,7 +831,7 @@ class PNFSprite(SceneObject):
 		# vertices since otherwise the sprite would be displayed
 		# upside down
 		if not self._visible:
-			self._vertex_list.position[:] = (0, 0, 0, 0, 0, 0, 0, 0)
+			self._interfacer.set_data("position", (0, 0, 0, 0, 0, 0, 0, 0))
 		else:
 			img = self._texture
 			x1 = -img.anchor_x
@@ -848,6 +840,8 @@ class PNFSprite(SceneObject):
 			y2 = -img.anchor_y
 
 			if self._subpixel:
-				self._vertex_list.position[:] = (x1, y1, x2, y1, x2, y2, x1, y2)
+				self._interfacer.set_data("position", (x1, y1, x2, y1, x2, y2, x1, y2))
 			else:
-				self._vertex_list.position[:] = tuple(map(int, (x1, y1, x2, y1, x2, y2, x1, y2)))
+				self._interfacer.set_data(
+					"position", tuple(map(int, (x1, y1, x2, y1, x2, y2, x1, y2)))
+				)
