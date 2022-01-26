@@ -12,6 +12,7 @@ from pyday_night_funkin.core.graphics.interfacer import PNFBatchInterfacer
 from pyday_night_funkin.core.graphics.pnf_vertex_domain import PNFVertexDomain
 from pyday_night_funkin.core.graphics.shared import C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT
 from pyday_night_funkin.core.graphics import state
+from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
 
 if t.TYPE_CHECKING:
 	from .pnf_group import PNFGroup
@@ -134,12 +135,12 @@ class PNFBatch:
 		if self._index_buffer is not None:
 			self._index_buffer.delete()
 
-		self._index_buffer = vertexbuffer.create_buffer(
-			GL_TYPE_SIZES[_INDEX_TYPE] * len(indices),
+		self._index_buffer = BufferObject(
 			gl.GL_ELEMENT_ARRAY_BUFFER,
+			GL_TYPE_SIZES[_INDEX_TYPE] * len(indices),
 			gl.GL_STATIC_DRAW,
 		)
-		self._index_buffer.set_data(indices)
+		self._index_buffer.set_data(0, GL_TYPE_SIZES[_INDEX_TYPE] * len(indices), indices)
 		for dom in self._vertex_domains.values():
 			for vao in dom._vaos.values():
 				gl.glBindVertexArray(vao)
@@ -267,7 +268,8 @@ class PNFBatch:
 							# Maybe there's something that would be able to
 							# get rid of these bind calls. (glMapNamedBufferRange?)
 							for att in d.attributes.values():
-								att.gl_buffer.bind()
+								att.gl_buffer.ensure()
+								# att.gl_buffer.bind()
 							d.bind_vao(p)
 
 						draw_list.append(bind_vao)

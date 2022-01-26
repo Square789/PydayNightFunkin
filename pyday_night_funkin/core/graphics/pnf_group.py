@@ -1,8 +1,6 @@
 
 import typing as t
 
-from pyday_night_funkin.core.graphics.state import ProgramStatePart
-
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.graphics.state import GLState
 
@@ -11,6 +9,9 @@ class PNFGroup:
 	"""
 	Groups supply an OpenGL state and define an ordered tree which
 	dictates element draw order.
+	! WARNING ! Groups are mutable, but any changes to them must
+	immediatedly be reported to an associated interfacer if they
+	have been added to a batch. TODO this sucks, find workarounds.
 	"""
 
 	def __init__(
@@ -22,6 +23,7 @@ class PNFGroup:
 		self.parent = parent
 		self.order = order
 		self.state = state
+		self.visible = True
 
 		# if state is None or self.state.program is None:
 		# 	# Errors way later when a draw list is built with this group

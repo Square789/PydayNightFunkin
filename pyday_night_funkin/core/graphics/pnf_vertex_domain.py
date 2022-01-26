@@ -9,6 +9,7 @@ from pyday_night_funkin.core.graphics.interfacer import PNFBatchInterfacer
 from pyday_night_funkin.core.graphics.shared import (
 	C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT, TYPE_MAP, USAGE_MAP
 )
+from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject, MappedBufferObject
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
@@ -64,21 +65,17 @@ class PNFVertexDomainAttribute:
 		self.normalize = normalize
 		self.usage = usage
 
-		self.gl_buffer = vertexbuffer.create_buffer(self.buffer_size, usage=usage)
+		self.gl_buffer = MappedBufferObject(gl.GL_ARRAY_BUFFER, self.buffer_size, usage)
 
-	def get_region(self, start: int, size: int) -> vertexbuffer.BufferObjectRegion:
-		"""
-		Returns a buffer object region over the area of `size` vertices
-		occupying this vertex domain attribute's buffer starting at
-		vertex `start`.
-		"""
-		region = self.gl_buffer.get_region(
-			self.element_size * start,
-			self.element_size * size,
-			ctypes.POINTER(self.c_type * (size * self.count)),
-		)
-		region.invalidate()
-		return region
+	def set_data(self, start: int, size: int, data) -> None:
+		cdata = (self.c_type * (size * self.count))(*data)
+		self.set_raw_data(start, size, cdata)
+
+	def set_raw_data(self, start: int, size: int, data) -> None:
+		self.gl_buffer.set_data(self.element_size * start, self.element_size * size, data)
+
+	def get_data(self, start, size) -> ctypes.Array:
+		return self.gl_buffer.get_data(self.element_size * start, self.element_size * size)
 
 	def resize(self, new_capacity: int) -> None:
 		"""

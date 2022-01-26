@@ -21,7 +21,7 @@ class StatePart:
 	def __init__(self) -> None:
 		self.args = ()
 
-	def concretize(self, *_) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
+	def concretize(self, *_) -> t.Tuple[t.Tuple, t.Callable[[], t.Any]]:
 		"""
 		This method is used to turn the StatePart into a definitive
 		/* TODO */ which has to be called to set its
@@ -132,7 +132,6 @@ class BlendFuncStatePart(StatePart):
 
 
 
-# TODO For mooaaaar performance, reduce the below classes into just dicts and functions
 class GLState:
 	"""
 	Represents a specific OpenGL state.
@@ -152,10 +151,8 @@ class GLState:
 			t.Union[t.Type[StatePart], t.Tuple[t.Type[StatePart], t.Tuple]],
 			StatePart
 		] = {}
-		self.parts: t.Dict[
-			t.Union[t.Type[StatePart], t.Tuple[t.Type[StatePart], t.Tuple]],
-			int
-		] = {}
+		self.parts: t.List[t.Tuple[t.Tuple[t.Type[StatePart], t.Tuple], t.Callable[[], t.Any]]] = []
+		self.part_set: t.Set[t.Tuple[t.Type[StatePart], t.Tuple]] = set()
 
 		for part in args:
 			part_t = type(part)
@@ -178,7 +175,8 @@ class GLState:
 				ident, func = part.concretize(*conc_args)
 				tmpkey = (part_t, ident)
 
-			self.parts[(part_t, ident)] = func
+			self.parts.append(((part_t, ident), func))
+			self.part_set.add((part_t, ident))
 			tmp_parts[tmpkey] = part
 
 			if isinstance(part, ProgramStatePart):
@@ -197,10 +195,7 @@ class StateWalker:
 	def __init__(self) -> None:
 		self._cur_state = GLState()
 
-	def switch(self, new_state: "GLState") -> t.List[t.Callable[[], None]]:
-		r = []
-		for ident, func in new_state.parts.items():
-			if ident not in self._cur_state.parts:
-				r.append(func)
+	def switch(self, new_state: "GLState") -> t.List[t.Callable[[], t.Any]]:
+		r = [func for ident, func in new_state.parts if ident not in self._cur_state.part_set]
 		self._cur_state = new_state
 		return r

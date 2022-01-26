@@ -92,8 +92,11 @@ class PNFBatchInterfacer:
 		index_shift = -self.domain_position + new_start
 		for k, cur_attr in self.domain.attributes.items():
 			new_attr = new_domain.attributes[k]
-			new_attr.get_region(new_start, self.size).array[:] = \
-				cur_attr.get_region(self.domain_position, self.size).array[:]
+			new_attr.set_raw_data(
+				new_start,
+				self.size,
+				cur_attr.get_data(self.domain_position, self.size),
+			)
 
 		self.domain.deallocate(self.domain_position, self.size)
 		self.domain = new_domain
@@ -101,20 +104,11 @@ class PNFBatchInterfacer:
 		self.indices = tuple(i + index_shift for i in self.indices)
 		self.batch = new_batch
 
-	# TODO get rid of the BufferRegion abstractions.
-	# Yes, they are nice, but I am not using interleaved buffers, so all they
-	# are is an additional heap allocation that interferes with my optimization trip.
+	def group_updated(self):
+		pass
+
 	def set_data(self, name: str, value: t.Any) -> None:
 		"""
 		Sets data of this interfacer for the given attribute.
 		"""
-		self.get_data(name)[:] = value
-
-	def get_data(self, name: str) -> "ctypes.Array":
-		"""
-		Returns a modifiable view of the given attribute's buffer
-		region this interfacer owns.
-		"""
-		reg = self.domain.attributes[name].get_region(self.domain_position, self.size)
-		reg.invalidate()
-		return reg.array
+		self.domain.attributes[name].set_data(self.domain_position, self.size, value)

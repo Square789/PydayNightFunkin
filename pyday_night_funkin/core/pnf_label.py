@@ -292,7 +292,7 @@ class _TLGlyphBox(_GlyphBox):
 		indices = []
 		# Create indices for each glyph quad:
 		for i in range(n_glyphs):
-			indices.extend([element + (i * 4) for element in [0, 1, 2, 0, 2, 3]])
+			indices.extend(element + (i * 4) for element in [0, 1, 2, 0, 2, 3])
 
 		context.add_list(layout.batch.add_indexed(
 			n_glyphs * 4,
