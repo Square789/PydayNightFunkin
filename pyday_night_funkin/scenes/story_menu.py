@@ -6,7 +6,7 @@ from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_label import PNFLabel
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
-from pyday_night_funkin.enums import CONTROL, DIFFICULTY, DIFFICULTY_REVERSE_MAP
+from pyday_night_funkin.enums import CONTROL, DIFFICULTY
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
@@ -208,7 +208,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 	def _set_ingame_scene(self, week: "Week") -> None:
 		self.game.set_scene(
 			week.levels[0],
-			difficulty = DIFFICULTY_REVERSE_MAP[self.diff_menu.selection_index],
+			difficulty = DIFFICULTY(self.diff_menu.selection_index),
 			follow_scene = StoryMenuScene,
 			remaining_week = week.levels[1:],
 		)

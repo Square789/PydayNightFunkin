@@ -428,7 +428,7 @@ class _AssetSystemManager():
 	def register_routers(self, *names: str) -> None:
 		"""
 		Registers the given names as router names, making them appear
-		in `ASSET_ROUTERS`. ValueErrors are raised on duplicate names
+		in `ASSET_ROUTER`. ValueErrors are raised on duplicate names
 		and they may not begin with underscores. *SCREAM_CASE* is
 		encouraged.
 		"""

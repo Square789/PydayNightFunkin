@@ -12,15 +12,14 @@ from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as st
-from pyday_night_funkin.core.pnf_sprite import PNFSprite
+from pyday_night_funkin.core.scene import BaseScene
 from pyday_night_funkin.core.scene_object import SceneObject
 from pyday_night_funkin.core.shaders import ShaderContainer
-
-from pyday_night_funkin.scenes import BaseScene
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
 	from pyday_night_funkin.types import Numeric
+
 
 vertex_shader = """
 #version 450

@@ -4,7 +4,7 @@ from math import floor
 from loguru import logger
 
 from pyday_night_funkin.conductor import Conductor
-from pyday_night_funkin.scenes._base import BaseScene
+from pyday_night_funkin.core.scene import BaseScene
 
 
 class MusicBeatScene(BaseScene):

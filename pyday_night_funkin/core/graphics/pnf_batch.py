@@ -223,7 +223,7 @@ class PNFBatch:
 		if not chains:
 			return [], []
 
-		walker = state.StateWalker()
+		cur_state = state.GLState()
 		draw_list = []
 		indices = []
 		# Vertex layout is dictated by vertex domain and a group's program.
@@ -234,17 +234,18 @@ class PNFBatch:
 
 		for chain in chains:
 			for agroup in chain.groups:
-				# Extend the draw list with necessary state switch calls
-				state_switches = walker.switch(agroup.group.state)
+				# Get necessary state switch calls
+				state_switches = cur_state.switch(agroup.group.state)
+				cur_state = agroup.group.state
 
-				n_vertex_layout = (agroup.interfacer.domain, agroup.group.state.program.id)
-				n_draw_mode = agroup.interfacer.draw_mode
+				new_vertex_layout = (agroup.interfacer.domain, agroup.group.state.program.id)
+				new_draw_mode = agroup.interfacer.draw_mode
 
 				# Any of these unfortunately force a new draw call
 				if (
 					state_switches or
-					n_draw_mode != cur_draw_mode or
-					cur_vertex_layout != n_vertex_layout
+					new_draw_mode != cur_draw_mode or
+					cur_vertex_layout != new_vertex_layout
 				):
 					# Accumulate all indices so far into a draw call (if there were any)
 					if cur_index_run > 0:
@@ -258,24 +259,21 @@ class PNFBatch:
 						cur_index_start += cur_index_run
 						cur_index_run = 0
 
-					if cur_vertex_layout != n_vertex_layout:
+					if cur_vertex_layout != new_vertex_layout:
 						def bind_vao(d=agroup.interfacer.domain, p=agroup.group.state.program):
-							# TODO: Buffers store their data locally and need to be bound
-							# to upload it.
-							# This binding would always occurr in pyglet's default renderer
-							# since it does not utilize VAOs, but needs to be
-							# done explicitly here.
-							# Maybe there's something that would be able to
-							# get rid of these bind calls. (glMapNamedBufferRange?)
+							# Buffers store their data locally and need to be told to upload it.
+							# Using a buffer that does direct glNamedBufferSubData calls noticeably
+							# slows down the freeplay scene, where a lot of vertex updates are
+							# made each frame.
 							for att in d.attributes.values():
 								att.gl_buffer.ensure()
-								# att.gl_buffer.bind()
 							d.bind_vao(p)
 
 						draw_list.append(bind_vao)
-						cur_vertex_layout = n_vertex_layout
+						cur_vertex_layout = new_vertex_layout
 
-					cur_draw_mode = n_draw_mode
+					# Extend the draw list with the required state switch calls
+					cur_draw_mode = new_draw_mode
 					draw_list.extend(state_switches)
 
 				# Extend vertex indices

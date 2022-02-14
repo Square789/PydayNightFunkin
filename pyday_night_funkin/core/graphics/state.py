@@ -184,18 +184,14 @@ class GLState:
 
 		del tmp_parts
 
-
-class StateWalker:
-	"""
-	I know, I'm great at naming things.
-	This class stores a pseudo GL state and provides a method to
-	morph it into other GLStates, while emitting all functions
-	necessary to do so.
-	"""
-	def __init__(self) -> None:
-		self._cur_state = GLState()
-
 	def switch(self, new_state: "GLState") -> t.List[t.Callable[[], t.Any]]:
-		r = [func for ident, func in new_state.parts if ident not in self._cur_state.part_set]
-		self._cur_state = new_state
-		return r
+		"""
+		Emits all functions that need to be called for morphing the
+		OpenGL state from this state into the new one.
+		"""
+		return [func for ident, func in new_state.parts if ident not in self.part_set]
+
+	def __eq__(self, o: object) -> bool:
+		if isinstance(o, GLState):
+			return self.part_set == o.part_set
+		return super().__eq__(o)

@@ -18,7 +18,6 @@ class Week2Level(InGameScene):
 		super().__init__(*args, **kwargs)
 
 		self._next_lightning_thresh = 0
-		self._last_lightning_beat = 0
 		self._lightning_sounds = (
 			load_asset(ASSET.SOUND_THUNDER0),
 			load_asset(ASSET.SOUND_THUNDER1),

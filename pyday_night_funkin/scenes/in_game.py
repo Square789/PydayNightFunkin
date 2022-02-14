@@ -16,6 +16,7 @@ from pyday_night_funkin.utils import lerp
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.characters import Character, Boyfriend, Girlfriend
+	from pyday_night_funkin.core.scene import BaseScene
 	from pyday_night_funkin.main_game import Game
 	from pyday_night_funkin.note_handler import AbstractNoteHandler
 
@@ -33,7 +34,7 @@ class InGameScene(scenes.MusicBeatScene):
 		self,
 		game: "Game",
 		difficulty: DIFFICULTY,
-		follow_scene: t.Type[scenes.BaseScene],
+		follow_scene: t.Type["BaseScene"],
 		remaining_week: t.Optional[t.Sequence[t.Type["InGameScene"]]] = (),
 	) -> None:
 		super().__init__(game)

@@ -6,7 +6,8 @@ from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.asset_system import load_asset, ASSET
 from pyday_night_funkin.core.pnf_label import PNFLabel
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.enums import CONTROL, DIFFICULTY, DIFFICULTY_REVERSE_MAP
+from pyday_night_funkin.core.scene import BaseScene
+from pyday_night_funkin.enums import CONTROL, DIFFICULTY
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
 from pyday_night_funkin.utils import to_rgb_tuple, to_rgba_tuple
@@ -23,7 +24,7 @@ class StickySprite(PNFSprite):
 		self.y = self.stickee.y - 30
 
 
-class FreeplayScene(scenes.BaseScene):
+class FreeplayScene(BaseScene):
 	def __init__(self, *args, **kwargs) -> None:
 		from pyday_night_funkin.levels import WEEKS
 
@@ -133,11 +134,11 @@ class FreeplayScene(scenes.BaseScene):
 		if selected:
 			self.game.set_scene(
 				self.displayed_songs[i],
-				DIFFICULTY_REVERSE_MAP[self.diff_menu.selection_index],
+				DIFFICULTY(self.diff_menu.selection_index),
 				FreeplayScene,
 			)
 
 	def _on_diff_select(self, i: int, state: bool) -> None:
 		if state:
-			self.diff_text.text = DIFFICULTY_REVERSE_MAP[i].name
+			self.diff_text.text = DIFFICULTY(i).name
 

@@ -127,3 +127,6 @@ dmypy.json
 
 # Who uses paint.NET anyways, shoutouts to Rick "win10lover420" Brewster
 *.pdn
+
+# Pyenv hint
+.python-version

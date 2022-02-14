@@ -205,6 +205,12 @@ class BaseScene(Container):
 		Draw the scene.
 		There should be no reason to override this.
 		"""
+		# for camera in self.cameras.values():
+		# 	camera._framebuffer.bind()
+		# 	camera.batch.draw() # Draw everything in the camera's batch to the camera's fbo
+		# 	camera._framebuffer.unbind() # Binds default fbo again
+			
+			
 		self.batch.draw()
 
 	def get_context(self, layer: t.Optional[str] = None, camera: t.Optional[str] = None) -> Context:

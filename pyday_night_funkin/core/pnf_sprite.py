@@ -12,7 +12,7 @@ from pyday_night_funkin.core.context import Context
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
-from pyday_night_funkin.core.scene_object import SceneObject
+from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.utils import clamp
@@ -292,7 +292,7 @@ class Toggle(Effect):
 				self.on_toggle_off(sprite)
 
 
-class PNFSprite(SceneObject):
+class PNFSprite(WorldObject):
 	"""
 	Pretty much *the* core scene object, the sprite!
 	It can show images or animations, do all sort of transforms, have
@@ -337,7 +337,6 @@ class PNFSprite(SceneObject):
 
 		self._x = x
 		self._y = y
-		self._batch = None
 		self._interfacer = None
 		self._rotation = 0
 		self._opacity = 255

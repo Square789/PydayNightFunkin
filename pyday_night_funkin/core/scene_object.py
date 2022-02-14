@@ -46,9 +46,15 @@ class SceneObject:
 		"""
 
 
+class WorldObject(SceneObject):
+	"""
+	A scene object occupying space, intended to be drawn.
+	"""
+
+
 class Container(SceneObject):
 	"""
-	A glorified set wrapper that contains multiple SceneObjects
+	A glorified list wrapper that contains multiple SceneObjects
 	and can apply operations to them.
 	A container should never have any sort of graphical
 	representation, it only serves as a building block of the scene
