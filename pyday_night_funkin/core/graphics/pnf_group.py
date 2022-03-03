@@ -7,6 +7,7 @@ if t.TYPE_CHECKING:
 
 class PNFGroup:
 	"""
+	# TODO if state shenanigans are done, fix this docstring
 	Groups supply an OpenGL state and define an ordered tree which
 	dictates element draw order.
 	! WARNING ! Groups are mutable, but any changes to them must
@@ -18,12 +19,18 @@ class PNFGroup:
 		self,
 		parent: t.Optional["PNFGroup"] = None,
 		order: int = 0,
-		state: t.Optional["GLState"] = None,
+		# state: t.Optional["GLState"] = None,
 	) -> None:
 		self.parent = parent
 		self.order = order
-		self.state = state
-		self.visible = True
+		# self.state = state
+		# """OpenGL state the group must be drawn with."""
+
+		# self.visible = True
+		# """
+		# Whether the group is visible. Note that this does not
+		# affect any child groups.
+		# """
 
 		# if state is None or self.state.program is None:
 		# 	# Errors way later when a draw list is built with this group

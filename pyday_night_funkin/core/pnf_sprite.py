@@ -19,6 +19,7 @@ from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import UniformBufferObject
+	from pyday_night_funkin.core.camera import Camera
 	from pyday_night_funkin.types import Numeric
 
 EffectBound = t.TypeVar("EffectBound", bound="Effect")
@@ -351,37 +352,24 @@ class PNFSprite(WorldObject):
 		if isinstance(image, TextureArrayRegion):
 			raise NotImplementedError("Hey VSauce, Michael here. What is a TextureArrayRegion?")
 			# program = sprite.get_default_array_shader()
-		else:
-			program = self.shader_container.get_program()
 
 		self._usage = usage
 		self._subpixel = subpixel
 		self._blend_src = blend_src
 		self._blend_dest = blend_dest
 
-		self._context = Context(
-			None if context is None else context.batch,
-			None,
-			None if context is None else context.camera,
-		)
-		self._context.group = PNFGroup(
-			parent = None if context is None else context.group,
-			state = self._build_gl_state(program, self._context.camera.ubo)
-		)
-		# NOTE: Ugly, maybe come up with something better.
-		# Group needs to be set afterwards as dummy cam ubo is needed in _build_gl_state.
+		if context is None:
+			self._context = Context()
+		else:
+			self._context = Context(context.batch, PNFGroup(parent=context.group), context.cameras)
 
 		self._create_interfacer()
 
 		self.image = image
 
-	def _build_gl_state(
-		self,
-		program: "ShaderProgram",
-		cam_ubo: "UniformBufferObject",
-	):
-		return s.GLState(
-			s.ProgramStatePart(program),
+	def _build_gl_state(self, cam_ubo: "UniformBufferObject") -> s.GLState:
+		return s.GLState.from_state_parts(
+			s.ProgramStatePart(self.shader_container.get_program()),
 			s.UBOBindingStatePart(cam_ubo),
 			s.TextureUnitStatePart(gl.GL_TEXTURE0),
 			s.TextureStatePart(self._texture),
@@ -401,6 +389,7 @@ class PNFSprite(WorldObject):
 			gl.GL_TRIANGLES,
 			self._context.group,
 			(0, 1, 2, 0, 2, 3),
+			{camera: self._build_gl_state(camera.ubo) for camera in self._context.cameras},
 			"position2f/" + usage,
 			("anim_offset2f/" + usage, (0, 0) * 4),
 			("frame_offset2f/" + usage, (0, 0) * 4),
@@ -421,13 +410,14 @@ class PNFSprite(WorldObject):
 		"""
 		new_batch = parent_context.batch
 		new_group = parent_context.group
-		new_cam = parent_context.camera
+		new_cams = parent_context.cameras
 		old_batch = self._context.batch
 		old_group = self._context.group
-		old_cam = self._context.camera
+		old_cams = self._context.cameras
 
+		# TODO check this for new batches
 		change_batch = new_batch != old_batch
-		rebuild_group = new_cam != old_cam or new_group != old_group.parent
+		rebuild_group = new_cams != old_cams or new_group != old_group.parent
 
 		if change_batch:
 			self._context.batch = new_batch
@@ -442,11 +432,8 @@ class PNFSprite(WorldObject):
 			# 	self._create_interfacer()
 
 		if rebuild_group:
-			self._context.camera = new_cam
-			self._context.group = PNFGroup(
-				parent = new_group,
-				state = self._build_gl_state(old_group.state.program, new_cam.ubo),
-			)
+			self._context.cameras = new_cams
+			self._context.group = PNFGroup(parent = new_group)
 
 		if change_batch or rebuild_group:
 			old_batch.migrate(self._interfacer, self._context.group, self._context.batch)
@@ -473,15 +460,16 @@ class PNFSprite(WorldObject):
 			self._y + self.signed_height * 0.5,
 		)
 
-	def get_screen_position(self) -> Vec2:
+	def get_screen_position(self, cam: "Camera") -> Vec2:
 		"""
 		Returns the screen position the sprite's origin is displayed
 		at. Note that this may still be inaccurate for
 		shaders and rotation.
 		"""
-		cam = self._context.camera
-		r = Vec2(self._x, self._y)
-		return r - Vec2(cam.x * cam.zoom, cam.y * cam.zoom)
+		return Vec2(
+			self._x - (cam.x * cam.zoom),
+			self._y - (cam.y * cam.zoom),
+		)
 
 	def start_tween(
 		self,
@@ -796,27 +784,22 @@ class PNFSprite(WorldObject):
 		"""
 		Whether the sprite should be drawn.
 		"""
-		return self._visible
+		return self._interfacer._visible
 
 	@visible.setter
 	def visible(self, visible: bool) -> None:
-		self._visible = visible
-		self._update_position()
+		self._interfacer.set_visibility(visible)
 
 	def _set_texture(self, texture):
 		prev_h, prev_w = self._texture.height, self._texture.width
 		if texture.id is not self._texture.id:
 			self._texture = texture
-			old_group = self._context.group
 			# TODO: Rebuilding the states completely is kind of a waste,
 			# you could just change the TextureBindingState and
 			# be done, but yada yada -> issue #28.
-			self._context.group = PNFGroup(
-				parent = old_group.parent,
-				state = self._build_gl_state(old_group.state.program, self._context.camera.ubo),
+			self._interfacer.set_states(
+				{camera: self._build_gl_state(camera.ubo) for camera in self._context.cameras}
 			)
-			self._interfacer.delete()
-			self._create_interfacer()
 		else:
 			self._interfacer.set_data("tex_coords", texture.tex_coords)
 			self._texture = texture
@@ -829,18 +812,15 @@ class PNFSprite(WorldObject):
 		# Contains some manipulations to the creation of position
 		# vertices since otherwise the sprite would be displayed
 		# upside down
-		if not self._visible:
-			self._interfacer.set_data("position", (0, 0, 0, 0, 0, 0, 0, 0))
-		else:
-			img = self._texture
-			x1 = -img.anchor_x
-			y1 = -img.anchor_y + img.height
-			x2 = -img.anchor_x + img.width
-			y2 = -img.anchor_y
+		img = self._texture
+		x1 = -img.anchor_x
+		y1 = -img.anchor_y + img.height
+		x2 = -img.anchor_x + img.width
+		y2 = -img.anchor_y
 
-			if self._subpixel:
-				self._interfacer.set_data("position", (x1, y1, x2, y1, x2, y2, x1, y2))
-			else:
-				self._interfacer.set_data(
-					"position", tuple(map(int, (x1, y1, x2, y1, x2, y2, x1, y2)))
-				)
+		if self._subpixel:
+			self._interfacer.set_data("position", (x1, y1, x2, y1, x2, y2, x1, y2))
+		else:
+			self._interfacer.set_data(
+				"position", tuple(map(int, (x1, y1, x2, y1, x2, y2, x1, y2)))
+			)

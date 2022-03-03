@@ -38,7 +38,7 @@ class TestScene(MusicBeatScene):
 		)
 		self.boyfriend.animation.play("idle")
 
-		self.label = self.create_object(camera="main", object_class=PNFLabel, text="test")
+		# self.label = self.create_object(camera="main", object_class=PNFLabel, text="test")
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:

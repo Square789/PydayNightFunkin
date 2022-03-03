@@ -2,14 +2,14 @@
 import ctypes
 import typing as t
 
-from pyglet.graphics import allocation, vertexarray, vertexbuffer
+from pyglet.graphics import allocation, vertexarray
 from pyglet.gl import gl
 from pyday_night_funkin.core.graphics.interfacer import PNFBatchInterfacer
 
 from pyday_night_funkin.core.graphics.shared import (
 	C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT, TYPE_MAP, USAGE_MAP
 )
-from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject, MappedBufferObject
+from pyday_night_funkin.core.graphics.vertexbuffer import MappedBufferObject
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
@@ -114,14 +114,17 @@ class PNFVertexDomain:
 		`attribute_bundle` should be an iterable of valid vertex attribute
 		format strings.
 		"""
-		# NOTE: This allocator does not track bytes, but only vertices.
 		self.attributes: t.Dict[str, PNFVertexDomainAttribute] = {}
 		self.attribute_bundle = attribute_bundle
 		"""Attribute bundle the domain was created with."""
 
+		# NOTE: This allocator does not track bytes, but vertices.
 		self._allocator = allocation.Allocator(self.INITIAL_VERTEX_CAPACITY)
 		self._vaos: t.Dict[int, gl.GLuint] = {}
-		self._active_vao: t.Optional[vertexarray.VertexArray] = None
+		"""
+		Maps each shader id to a VAO that links the vertex domain's
+		attributes to the shader's inputs when bound.
+		"""
 
 		for i, attr in enumerate(attribute_bundle):
 			name, *ctnu = self._parse_attribute(attr)
@@ -178,12 +181,12 @@ class PNFVertexDomain:
 				)
 			attr = self.attributes[shader_attr.name]
 
-			gl.glBindVertexArray(vao_id)
-			attr.gl_buffer.bind()
-			gl.glEnableVertexArrayAttrib(vao_id, shader_attr.location)
+			gl.glBindVertexArray(vao_id) # Bind vao so the below affects it
+			attr.gl_buffer.bind() # Bind the attribute's vertex buffer
+			gl.glEnableVertexArrayAttrib(vao_id, shader_attr.location) # Legit no idea what this does
 			gl.glVertexAttribPointer(
 				shader_attr.location, attr.count, attr.type, attr.normalize, 0, 0
-			)
+			) # Source the attribute from the buffer bound at ARRAY_BUFFER.
 			gl.glBindVertexArray(0)
 
 			#bp = attr.binding_point
@@ -206,14 +209,12 @@ class PNFVertexDomain:
 		"""
 		vao = self._vaos[program.id]
 		gl.glBindVertexArray(vao)
-		self._active_vao = vao
 
 	def unbind_vao(self) -> None:
 		"""
 		Unbinds the active VAO.
 		"""
 		gl.glBindVertexArray(0)
-		self._active_vao = None
 
 	def allocate(self, size: int) -> int:
 		"""

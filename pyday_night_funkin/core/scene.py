@@ -92,6 +92,11 @@ class BaseScene(Container):
 			for name in self.get_camera_names()
 		}
 
+		# TODO hack, remove
+		self.batch._get_draw_list(self._default_camera)
+		for c in self.cameras.values():
+			self.batch._get_draw_list(c)
+
 		self.sfx_ring = SFXRing(CNST.SFX_RING_SIZE)
 
 	@staticmethod
@@ -209,9 +214,10 @@ class BaseScene(Container):
 		# 	camera._framebuffer.bind()
 		# 	camera.batch.draw() # Draw everything in the camera's batch to the camera's fbo
 		# 	camera._framebuffer.unbind() # Binds default fbo again
-			
-			
-		self.batch.draw()
+
+		self.batch.draw(self._default_camera)
+		for camera in self.cameras.values():
+			self.batch.draw(camera)
 
 	def get_context(self, layer: t.Optional[str] = None, camera: t.Optional[str] = None) -> Context:
 		"""

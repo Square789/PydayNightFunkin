@@ -26,6 +26,10 @@ class BufferObject:
 		gl.glCreateBuffers(1, self.id)
 		gl.glNamedBufferData(self.id, size, None, usage)
 
+	def set_size_and_data(self, size: int, data: int) -> None:
+		gl.glNamedBufferData(self.id, size, data, self.usage)
+		self.size = size
+
 	def set_data(self, start: int, size: int, data: ctypes.Array) -> None:
 		gl.glNamedBufferSubData(self.id, start, size, data)
 
@@ -68,31 +72,60 @@ class MappedBufferObject(BufferObject):
 		self._dirty_min = 0
 		self._dirty_max = 0
 
+	def set_size_and_data(self, size: int, data: ctypes.Array) -> None:
+		"""
+		Resizes the buffer to accomodate the new data of the given
+		`size`. Does not copy `data`, so be sure to not modify it
+		after passing it to this function.
+		"""
+		self._ram_buffer = data
+		gl.glNamedBufferData(self.id, size, data, self.usage)
+		self._dirty = False
+		self.size = size
+
 	def set_data(self, start: int, size: int, data: ctypes.Array) -> None:
+		"""
+		Sets the next `size` bytes starting from `start` to `data`.
+		`data` must be of the same length as `size` and the size may
+		not exceed the buffer's size.
+		"""
+		# bytes required to handle any type that isn't c_[u]byte
 		self._ram_buffer[start : start+size] = bytes(data)
 		if not self._dirty:
+			self._dirty = True
 			self._dirty_min = start
 			self._dirty_max = start + size
-			self._dirty = True
 		else:
 			self._dirty_min = min(self._dirty_min, start)
 			self._dirty_max = max(self._dirty_max, start + size)
 
 	def get_data(self, start: int, size: int) -> ctypes.Array:
+		"""
+		Retrieves the next `size` bytes from `start`.
+		May be truncated if `size` exceeds the buffer's size.
+		"""
 		return self._ram_buffer[start : start+size]
 
 	def bind(self, target: t.Optional[int] = None) -> None:
+		"""
+		Binds the MappableBufferObject by uploading possibly pending
+		data and then binding it to the specified target or its
+		standard `__init__`-given target.
+		"""
 		self.ensure()
 		super().bind(target)
 
 	def resize(self, new_size: int) -> None:
+		"""
+		Resizes the MappableBufferObject to take `new_size` bytes.
+		Will truncate or zero-fill existing data, depending on whether
+		the buffer grew or shrunk.
+		"""
 		new = (ctypes.c_ubyte * new_size)()
 		ctypes.memmove(new, self._ram_buffer, min(new_size, self.size))
 		self._ram_buffer = new
-		self._dirty = True
-		self._dirty_min = 0
-		self._dirty_max = new_size
 		gl.glNamedBufferData(self.id, new_size, None, self.usage)
+		self._dirty = False
 		self.size = new_size
 
 	def ensure(self) -> None:

@@ -100,8 +100,8 @@ class UBOBindingStatePart(StatePart):
 	def __init__(self, ubo: "UniformBufferObject") -> None:
 		self.ubo = ubo
 
-	def concretize(self, *_) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
-		prog_id = self.ubo.block.program.id
+	def concretize(self, prog_sp) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
+		prog_id = prog_sp.program.id
 		block_idx = self.ubo.block.index
 		binding_point = self.ubo.index
 		buf_id = self.ubo.buffer.id
@@ -131,6 +131,8 @@ class BlendFuncStatePart(StatePart):
 		self.args = (src, dest)
 
 
+StateIdentifier = t.Tuple[t.Type[StatePart], t.Tuple]
+
 
 class GLState:
 	"""
@@ -139,22 +141,27 @@ class GLState:
 	must be drawn in (e.g. set shader program, blend funcs etc.)
 	"""
 
-	def __init__(self, *args: StatePart) -> None:
+	def __init__(
+		self,
+		parts: t.List[t.Tuple[StateIdentifier, t.Callable[[], t.Any]]],
+		program: t.Optional["ShaderProgram"] = None,
+	) -> None:
+		self.parts = parts
+		self.part_set: t.Set[StateIdentifier] = {ident for ident, _ in parts}
+		self.program = program
+
+	@classmethod
+	def from_state_parts(cls, *state_parts: StatePart) -> None:
 		"""
 		Initializes a GLState from the given StateParts.
 		Note that a GLState must have a ProgramStatePart to be
 		renderable.
 		"""
-		self.program = None
+		program: "ShaderProgram" = None
+		parts: t.List[t.Tuple[StateIdentifier, t.Callable[[], t.Any]]] = []
+		tmp_parts: t.Dict[t.Union[t.Type[StatePart], StateIdentifier], StatePart] = {}
 
-		tmp_parts: t.Dict[
-			t.Union[t.Type[StatePart], t.Tuple[t.Type[StatePart], t.Tuple]],
-			StatePart
-		] = {}
-		self.parts: t.List[t.Tuple[t.Tuple[t.Type[StatePart], t.Tuple], t.Callable[[], t.Any]]] = []
-		self.part_set: t.Set[t.Tuple[t.Type[StatePart], t.Tuple]] = set()
-
-		for part in args:
+		for part in state_parts:
 			part_t = type(part)
 			conc_args = []
 
@@ -167,7 +174,7 @@ class GLState:
 				conc_args.append(tmp_parts[reqp])
 
 			if part.only_one:
-				if part_t in self.parts:
+				if part_t in tmp_parts:
 					raise ValueError(f"Duplicate StatePart for {part_t}; may only exist once!")
 				ident, func = part.concretize(*conc_args)
 				tmpkey = part_t
@@ -175,14 +182,13 @@ class GLState:
 				ident, func = part.concretize(*conc_args)
 				tmpkey = (part_t, ident)
 
-			self.parts.append(((part_t, ident), func))
-			self.part_set.add((part_t, ident))
+			parts.append(((part_t, ident), func))
 			tmp_parts[tmpkey] = part
 
 			if isinstance(part, ProgramStatePart):
-				self.program = part.program
+				program = part.program
 
-		del tmp_parts
+		return cls(parts, program)
 
 	def switch(self, new_state: "GLState") -> t.List[t.Callable[[], t.Any]]:
 		"""

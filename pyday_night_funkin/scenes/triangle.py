@@ -99,7 +99,7 @@ class Triangle(SceneObject):
 		)
 
 	def _build_gl_state(self):
-		return st.GLState(
+		return st.GLState.from_state_parts(
 			st.ProgramStatePart(self.shader_container.get_program()),
 			st.UBOBindingStatePart(self.cam_ubo),
 		)

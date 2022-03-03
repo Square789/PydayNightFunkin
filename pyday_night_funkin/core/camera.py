@@ -6,6 +6,10 @@ from pyglet.math import Vec2
 
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
 
+if t.TYPE_CHECKING:
+	from pyglet.graphics.shader import ShaderProgram
+
+
 
 CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
 
@@ -27,28 +31,44 @@ class Camera:
 		from pyday_night_funkin.core.pnf_sprite import PNFSprite
 		self.ubo = PNFSprite.shader_container.get_camera_ubo()
 
-		self._x = 0
-		self._y = 0
+		self._x = x
+		"""Absolute x position of the camera's display quad."""
+		self._y = y
+		"""Absolute y position of the camera's display quad."""
+
+		self._width = w
+		"""True pixel width of the camera's display quad."""
+		self._height = h
+		"""True pixel height of the camera's display quad."""
+
+		self._rotation = 0
+		"""Rotation of the camera's display quad."""
 
 		self._framebuffer = Framebuffer()
 		self._tex = Texture.create(w, h)
 		self._framebuffer.attach_texture(self._tex)
 
-		# True display width.
-		# Unchangeable, would require framebuffers and changes to
-		# rendering in general for that
-		self._width = w
-		self._height = h
-
-		# Width of the area displayed by the camera.
-		# Affected by zoom.
 		self._view_width = self._width
+		"""
+		Width of the world area displayed by the camera.
+		Affected by zoom.
+		"""
 		self._view_width = self._height
+		"""
+		Height of the world area displayed by the camera.
+		Affected by zoom.
+		"""
 
 		self._zoom = 1.0
 
 		self._follow_target = None
 		self._follow_lerp = 1.0
+
+		self._effect_shaders: t.List["ShaderProgram"] = []
+		"""
+		A list of shaders that will be sequentially applied to this
+		camera's display quad.
+		"""
 
 		self._update_ubo()
 

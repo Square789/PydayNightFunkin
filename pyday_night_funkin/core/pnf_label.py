@@ -205,7 +205,7 @@ class PNFTextLayoutGroup(PNFGroup):
 		super().__init__(
 			parent,
 			order,
-			state.GLState(
+			state.GLState.from_state_parts(
 				state.ProgramStatePart(program),
 				state.UBOBindingStatePart(cam_ubo),
 				state.UniformStatePart("scissor", False),
@@ -228,7 +228,7 @@ class PNFTextDecorationGroup(PNFGroup):
 		super().__init__(
 			parent,
 			order,
-			state.GLState(
+			state.GLState.from_state_parts(
 				state.ProgramStatePart(program),
 				state.UBOBindingStatePart(cam_ubo),
 				state.UniformStatePart("scissor", False),

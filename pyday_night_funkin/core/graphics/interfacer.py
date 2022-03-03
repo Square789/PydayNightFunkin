@@ -1,11 +1,14 @@
 
 import typing as t
 
+
 if t.TYPE_CHECKING:
-	import ctypes
+	from pyday_night_funkin.core.graphics.state import GLState
 	from pyday_night_funkin.core.graphics.pnf_vertex_domain import PNFVertexDomain
 	from pyday_night_funkin.core.graphics.pnf_batch import PNFBatch
 
+
+# Because it enters your face! GET IT? IT ENTERS YOUR FACE!
 
 class PNFBatchInterfacer:
 	"""
@@ -13,8 +16,7 @@ class PNFBatchInterfacer:
 	incorporates a pyglet vertex list, which tracks a position in a
 	vertex buffer its vertices belong to and is passed to higher
 	drawables for management of those.
-	However, it is also used to notify the batch of partial state
-	updates.
+	It is also used to notify the batch of partial state updates.
 	! WARNING ! Forgetting to call `delete` on this will leak
 	memory in the list's domain.
 	"""
@@ -62,6 +64,11 @@ class PNFBatchInterfacer:
 		to delete it properly!
 		"""
 
+		self._visible: bool = True
+		# TODO move the `visible` setter from the group in here and
+		# make groups static again
+		# MGSA 2022
+
 		self.batch = batch
 
 	def delete(self):
@@ -104,11 +111,25 @@ class PNFBatchInterfacer:
 		self.indices = tuple(i + index_shift for i in self.indices)
 		self.batch = new_batch
 
-	def group_updated(self):
-		pass
+	def set_states(self, new_states: t.Dict[t.Hashable, "GLState"]) -> None:
+		# HACK aaaaaa make functions for this
+		for dl_id, state in new_states.items():
+			dl = self.batch._draw_lists[dl_id]
+			dl._group_data[dl._interfacers[self]].state = state
+			dl._dirty = True
+
+	def set_visibility(self, new_visibility: bool) -> None:
+		if self._visible == new_visibility:
+			return
+
+		for dl_id in self.batch._interfacers[self]:
+			# _visible is read from the interfacer, this should do it
+			self.batch._draw_lists[dl_id]._dirty = True
+
+		self._visible = new_visibility
 
 	def set_data(self, name: str, value: t.Any) -> None:
 		"""
-		Sets data of this interfacer for the given attribute.
+		Sets vertex data of this interfacer for the given attribute.
 		"""
 		self.domain.attributes[name].set_data(self.domain_position, self.size, value)
