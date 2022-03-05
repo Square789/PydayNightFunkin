@@ -20,7 +20,6 @@ class PNFWindow(Window):
 		self.projection = Mat4.orthogonal_projection(
 			0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT, 0, -1, 1
 		)
-		gl.glClearColor(0, 0, 0, 1)
 
 	def on_resize(self, width, height):
 		cur_wh_ratio = width / height if height > 0 else 999
@@ -41,3 +40,7 @@ class PNFWindow(Window):
 			max(1, viewport_width),
 			max(1, viewport_height),
 		)
+
+	def clear(self) -> None:
+		gl.glClearColor(0, 0, 0, 1)
+		super().clear()

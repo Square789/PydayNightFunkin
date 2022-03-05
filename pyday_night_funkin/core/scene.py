@@ -212,16 +212,21 @@ class BaseScene(Container):
 		There should be no reason to override this.
 		"""
 
-		cams = (self._default_camera, *self.cameras.values())
-		for camera in cams:
-			camera._framebuffer.bind()
+		# Framebuffer shenanigans stolen from
+		# https://learnopengl.com/Advanced-OpenGL/Framebuffers
+
+		for camera in (self._default_camera, *self.cameras.values()):
+			camera.framebuffer.bind()
+
+			gl.glClearColor(.7, 0, 0, .2)
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 			self.batch.draw(camera) # Draw everything in the camera's batch to the camera's fbo
-			camera._framebuffer.unbind() # Binds default fbo again
+
+			camera.framebuffer.unbind() # Binds default fbo again
 
 			camera.program.use()
-			gl.glBindVertexArray(Camera.VAO)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, camera._tex.id)
+			gl.glBindVertexArray(camera.vao)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, camera.texture.id)
 			gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 			gl.glBindVertexArray(0)
 

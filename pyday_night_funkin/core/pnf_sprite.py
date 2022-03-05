@@ -101,7 +101,7 @@ _PNF_SPRITE_FRAGMENT_SHADER_SOURCE = """
 in vec4 vertex_colors;
 in vec3 texture_coords;
 
-out vec4 final_colors;
+out vec4 final_color;
 
 uniform sampler2D sprite_texture;
 
@@ -111,7 +111,7 @@ void main() {{
 		discard;
 	}}
 
-	final_colors = {color_behavior};
+	final_color = {color_behavior};
 }}
 """
 

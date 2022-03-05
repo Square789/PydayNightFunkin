@@ -31,6 +31,7 @@ class BufferObject:
 		self.size = size
 
 	def set_data(self, start: int, size: int, data: ctypes.Array) -> None:
+		# print(id(self), start, size, "<", ", ".join(map(str, data)), ">")
 		gl.glNamedBufferSubData(self.id, start, size, data)
 
 	def get_data(self, start: int, size: int) -> ctypes.Array:

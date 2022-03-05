@@ -4,7 +4,7 @@ import typing as t
 
 from pyglet.gl import gl
 from pyglet.image import Framebuffer, Texture
-from pyglet.math import Vec2
+from pyglet.math import Mat4, Vec2
 
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
 from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
@@ -18,6 +18,11 @@ if t.TYPE_CHECKING:
 
 CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
 
+_QUAD_VBO_POSITION_SEGMENT_SIZE = GL_TYPE_SIZES[gl.GL_FLOAT] * 12
+_QUAD_VBO_POSITION_SEGMENT_START = GL_TYPE_SIZES[gl.GL_FLOAT] * 0
+_QUAD_VBO_TEX_COORD_SEGMENT_SIZE = GL_TYPE_SIZES[gl.GL_FLOAT] * 12
+_QUAD_VBO_TEX_COORD_SEGMENT_START = GL_TYPE_SIZES[gl.GL_FLOAT] * 12
+_QUAD_VBO_SIZE = _QUAD_VBO_POSITION_SEGMENT_SIZE + _QUAD_VBO_TEX_COORD_SEGMENT_SIZE
 
 CAMERA_QUAD_VERTEX_SHADER = """
 #version 330 core
@@ -35,32 +40,30 @@ layout (std140) uniform CameraAttrs {
 	vec2  GAME_DIMENSIONS;
 } camera;
 
-out vec2 OUT_tex_coords;
+out vec2 texture_coords;
 
 void main() {
 	gl_Position = 
-		//window.projection *
-		//window.view *
+		window.projection *
+		window.view *
 		vec4(position, 0.0, 1.0);
 
-	OUT_tex_coords = tex_coords;
+	texture_coords = tex_coords;
 }
 """
 
 CAMERA_QUAD_FRAGMENT_SHADER = """
 #version 330 core
-in vec2 tex_coords;
+in vec2 texture_coords;
 
-out vec4 frag_color;
+out vec4 final_color;
 
-uniform sampler2D sampler;
+uniform sampler2D camera_texture;
 
 void main() {
-	frag_color = texture(sampler, tex_coords);
+	final_color = texture(camera_texture, texture_coords);
 }
 """
-
-
 
 
 class Camera:
@@ -73,15 +76,11 @@ class Camera:
 	"""
 
 	_dummy: t.Optional["Camera"] = None
-	VAO: t.Optional[gl.GLuint] = None
-	_VBO: t.Optional[gl.GLuint] = None
 	_shader_container = ShaderContainer(
 		CAMERA_QUAD_VERTEX_SHADER, CAMERA_QUAD_FRAGMENT_SHADER
 	)
 
 	def __init__(self, x: int, y: int, w: int, h: int):
-		self.ensure_vao()
-
 		self._x = x
 		"""Absolute x position of the camera's display quad."""
 		self._y = y
@@ -94,10 +93,6 @@ class Camera:
 
 		self._rotation = 0
 		"""Rotation of the camera's display quad."""
-
-		self._framebuffer = Framebuffer()
-		self._tex = Texture.create(w, h)
-		self._framebuffer.attach_texture(self._tex)
 
 		self._view_width = self._width
 		"""
@@ -121,10 +116,75 @@ class Camera:
 		camera's display quad.
 		"""
 
+		self.framebuffer = Framebuffer()
+		self.texture = Texture.create(w, h)
+		self.framebuffer.attach_texture(self.texture)
+
 		self.program = self._shader_container.get_program()
 		self.ubo = self._shader_container.get_camera_ubo()
 
+		self.vao = gl.GLuint()
+		"""
+		VAO that needs to be bound to properly render the camera's
+		display quad.
+		"""
+
+		self.vbo = BufferObject(gl.GL_ARRAY_BUFFER, _QUAD_VBO_SIZE, gl.GL_DYNAMIC_DRAW)
+		"""
+		VBO containing the vertices to properly render the camera's
+		display quad.
+		"""
+
+		# self.projection_matrix = None
+		# """
+		# Projection matrix that should be bound to window.projection
+		# before rendering with this camera.
+		# """
+
+		# Below is largely stolen from
+		# https://learnopengl.com/Advanced-OpenGL/Framebuffers
+
+		# These should be totally wrong, but it works. Don't ask.
+		tex_coords = (ctypes.c_float * 12)(
+			 0.,  0.,
+			 1.,  1.,
+			 1.,  0.,
+			 0.,  0.,
+			 1.,  1.,
+			 0.,  1.,
+		)
+		self.vbo.set_data(
+			_QUAD_VBO_TEX_COORD_SEGMENT_START,
+			_QUAD_VBO_TEX_COORD_SEGMENT_SIZE,
+			tex_coords,
+		)
+
+		gl.glCreateVertexArrays(1, ctypes.byref(self.vao))
+		gl.glBindVertexArray(self.vao)
+		self.vbo.bind()
+		gl.glEnableVertexAttribArray(0)
+		gl.glVertexAttribPointer(
+			0,
+			2,
+			gl.GL_FLOAT,
+			gl.GL_FALSE,
+			2 * GL_TYPE_SIZES[gl.GL_FLOAT],
+			_QUAD_VBO_POSITION_SEGMENT_START,
+		)
+		gl.glEnableVertexAttribArray(1)
+		gl.glVertexAttribPointer(
+			1,
+			2,
+			gl.GL_FLOAT,
+			gl.GL_FALSE,
+			2 * GL_TYPE_SIZES[gl.GL_FLOAT],
+			_QUAD_VBO_TEX_COORD_SEGMENT_START,
+		)
+		gl.glBindVertexArray(0)
+
 		self._update_ubo()
+		self._update_vbo()
+		# self._update_proj_mat()
 
 	@classmethod
 	def get_dummy(cls) -> "Camera":
@@ -135,59 +195,31 @@ class Camera:
 			cls._dummy = cls(0, 0, GAME_WIDTH, GAME_HEIGHT)
 		return cls._dummy
 
-	@classmethod
-	def ensure_vao(cls) -> None:
-		if cls.VAO is not None:
-			return
-
-		# Largely stolen from
-		# https://learnopengl.com/Advanced-OpenGL/Framebuffers
-
-		vbo_data = (ctypes.c_float * 24)(
-			-1.,  1.,    0., 1.,
-			-1., -1.,    0., 0.,
-			 1., -1.,    1., 0.,
-
-			-1.,  1.,    0., 1.,
-			 1., -1.,    1., 0.,
-			 1.,  1.,    1., 1.,
-		)
-		vbo_size = 24 * GL_TYPE_SIZES[gl.GL_FLOAT]
-		vbo = BufferObject(
-			gl.GL_ARRAY_BUFFER, vbo_size, gl.GL_STATIC_DRAW
-		)
-		vbo.set_data(0, vbo_size, vbo_data)
-
-		vao_id = gl.GLuint()
-		gl.glGenVertexArrays(1, ctypes.byref(vao_id))
-		cls.VAO = vao_id
-		gl.glBindVertexArray(vao_id)
-		vbo.bind()
-		gl.glEnableVertexArrayAttrib(vao_id, 0)
-		gl.glVertexAttribPointer(
-			0,
-			2,
-			gl.GL_FLOAT,
-			gl.GL_FALSE,
-			4 * GL_TYPE_SIZES[gl.GL_FLOAT],
-			0,
-		)
-		gl.glEnableVertexArrayAttrib(vao_id, 1)
-		gl.glVertexAttribPointer(
-			1,
-			2,
-			gl.GL_FLOAT,
-			gl.GL_FALSE,
-			4 * GL_TYPE_SIZES[gl.GL_FLOAT],
-			2 * GL_TYPE_SIZES[gl.GL_FLOAT],
-		)
-		gl.glBindVertexArray(0)
-
 	def _update_ubo(self) -> None:
 		with self.ubo as ubo:
 			ubo.zoom = self._zoom
 			ubo.position[:] = (self._x, self._y)
 			ubo.GAME_DIMENSIONS[:] = (GAME_WIDTH, GAME_HEIGHT)
+
+	def _update_vbo(self) -> None:
+		x1 = self._x
+		y1 = self._y + self._height
+		x2 = self._x + self._width
+		y2 = self._y
+		v = [
+			(x1, y1), #0
+			(x2, y1), #1
+			(x2, y2), #2
+			(x1, y2), #3
+		]
+		# Not going through the trouble of indexing (yet)
+		data = (ctypes.c_float * 12)(*v[0], *v[2], *v[1], *v[0], *v[2], *v[3])
+		self.vbo.set_data(0, _QUAD_VBO_POSITION_SEGMENT_SIZE, data)
+
+	# def _update_proj_mat(self) -> None:
+	# 	self.projection_matrix = Mat4.orthogonal_projection(
+	# 		0, self._width, self._height, 0, -1, 1
+	# 	)
 
 	def update(self, dt: float) -> None:
 		if self._follow_target is not None:
@@ -250,6 +282,8 @@ class Camera:
 		self._update_ubo()
 
 	def delete(self) -> None:
-		self._tex = None
 		self._framebuffer.delete()
 		self._framebuffer = None
+		self.texture = None
+		self.vbo.delete()
+		gl.glDeleteVertexArrays(1, ctypes.byref(self.vao))
