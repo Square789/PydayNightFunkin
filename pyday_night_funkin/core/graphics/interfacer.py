@@ -29,6 +29,7 @@ class PNFBatchInterfacer:
 		draw_mode: int,
 		indices: t.Sequence[int],
 		batch: "PNFBatch",
+		draw_lists: t.Iterable[t.Hashable],
 	) -> None:
 		self.domain = vertex_domain
 
@@ -64,6 +65,8 @@ class PNFBatchInterfacer:
 		to delete it properly!
 		"""
 
+		self._draw_lists = list(draw_lists)
+
 		self._visible: bool = True
 		# TODO move the `visible` setter from the group in here and
 		# make groups static again
@@ -90,7 +93,9 @@ class PNFBatchInterfacer:
 		"""
 		Migrates the interfacer into a new batch and a new domain,
 		deallocating its used space in the old one and occupying new
-		space in the, well, new one.
+		space in the new one.
+		Also changes some internal values of the interfacer to suit
+		its new owners.
 		"""
 		if self.domain.attributes.keys() != new_domain.attributes.keys():
 			raise ValueError("Vertex domain attribute bundle mismatch!")

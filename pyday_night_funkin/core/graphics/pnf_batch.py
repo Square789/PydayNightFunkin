@@ -2,7 +2,7 @@
 from collections import defaultdict
 import ctypes
 import typing as t
-from weakref import WeakKeyDictionary
+from weakref import WeakKeyDictionary, WeakSet
 
 from loguru import logger
 from pyglet.gl import gl
@@ -62,10 +62,13 @@ class DrawList:
 	create optimized sprite drawing lists using index buffers.
 	"""
 
-	def __init__(self) -> None:
+	def __init__(self, name: t.Hashable) -> None:
 		"""
-		Initializes a DrawList.
+		Initializes a DrawList. `name` is the name the owning batch
+		registered the DrawList under.
 		"""
+
+		self.name = name
 
 		self._dirty = True
 		self.funcs: t.List[t.Callable[[], t.Any]] = []
@@ -82,7 +85,7 @@ class DrawList:
 
 		self._top_groups: t.Set["PNFGroup"] = set()
 		self._group_data: t.Dict["PNFGroup", "GroupData"] = defaultdict(GroupData)
-		self._index_buffer = None
+		self.index_buffer = BufferObject(gl.GL_ELEMENT_ARRAY_BUFFER, 0, gl.GL_DYNAMIC_DRAW)
 
 	# TODO: Useless """optimization""", do it later when the rest works
 	# def _add_group_parents(self, group: "PNFGroup") -> None:
@@ -141,7 +144,8 @@ class DrawList:
 
 	def remove_interfacer(self, interfacer: PNFBatchInterfacer) -> None:
 		"""
-		Removes an interfacer from this draw list's group tree.
+		Removes an interfacer and its group from this draw
+		list's group tree.
 		"""
 		if interfacer not in self._interfacers:
 			print("! weird")
@@ -281,7 +285,7 @@ class DrawList:
 							# made each frame.
 							for att in d.attributes.values():
 								att.gl_buffer.ensure()
-							d.bind_vao(p)
+							d.bind_vao(p, self.name)
 
 						draw_list.append(bind_vao)
 						cur_vertex_layout = new_vertex_layout
@@ -314,29 +318,23 @@ class DrawList:
 		# refreshes all VAOs of all vertex domains to use it.
 		#"""
 		indices = (C_TYPE_MAP[_INDEX_TYPE] * len(data))(*data)
-		buf_size = GL_TYPE_SIZES[_INDEX_TYPE] * len(indices)
-		if self._index_buffer is None:
-			self._index_buffer = BufferObject(
-				gl.GL_ELEMENT_ARRAY_BUFFER, buf_size, gl.GL_STATIC_DRAW,
-			)
-			self._index_buffer.set_data(0, buf_size, indices)
-		else:
-			self._index_buffer.set_size_and_data(buf_size, indices)
+		self.index_buffer.set_size_and_data(GL_TYPE_SIZES[_INDEX_TYPE] * len(indices), indices)
 
-		# for dom in self._vertex_domains.values():
-		# 	for vao in dom._vaos.values():
-		# 		gl.glBindVertexArray(vao)
-		# 		gl.glBindBuffer(self._index_buffer.target, self._index_buffer.id)
-		# 		gl.glBindVertexArray(0)
+	def check_dirty(self) -> bool:
+		"""
+		Checks whether this draw list is dirty. If it is, regenerates
+		it and returns `True`. Otherwise, returns `False`.
+		"""
+		if not self._dirty:
+			return False
+
+		funcs, indices = self.regenerate()
+		self._set_index_buffer(indices)
+		self.funcs = funcs
+		self._dirty = False
+		return True
 
 	def draw(self) -> None:
-		if self._dirty:
-			funcs, indices = self.regenerate()
-			self._set_index_buffer(indices)
-			self.funcs = funcs
-			self._dirty = False
-
-		self._index_buffer.bind()
 		for f in self.funcs:
 			f()
 
@@ -344,8 +342,7 @@ class DrawList:
 		"""
 		Properly deletes the DrawList and frees up any OpenGL objects.
 		"""
-		if self._index_buffer is not None:
-			self._index_buffer.delete()
+		self.index_buffer.delete()
 
 		self._group_data = None
 		self._top_groups = None
@@ -365,19 +362,15 @@ class PNFBatch:
 	def __init__(self) -> None:
 		self._draw_lists: t.Dict[t.Hashable, DrawList] = {}
 		self._vertex_domains: t.Dict["frozenset[str]", "PNFVertexDomain"] = {}
-		self._interfacers: "WeakKeyDictionary[PNFBatchInterfacer, t.Sequence[t.Hashable]]" = \
-			WeakKeyDictionary()
-		"""
-		Associates each interfacer this batch owns with the draw lists
-		it exists in.
-		"""
+		self._interfacers: "WeakSet[PNFBatchInterfacer]" = WeakSet()
+		"""Stores the interfacers this batch owns."""
 
 	def _get_draw_list(self, name: t.Hashable) -> DrawList:
 		"""
 		Gets an existing or new draw list.
 		"""
 		if name not in self._draw_lists:
-			self._draw_lists[name] = DrawList()
+			self._draw_lists[name] = DrawList(name)
 		return self._draw_lists[name]
 
 	def _get_vertex_domain(self, attr_bundle: t.Iterable[str]) -> PNFVertexDomain:
@@ -416,12 +409,14 @@ class PNFBatch:
 		attr_names = [x[0] if isinstance(x, tuple) else x for x in data]
 
 		domain = self._get_vertex_domain(attr_names)
-		for state in states.values():
-			domain.ensure_vao(state.program)
-
 		start = domain.allocate(size)
-		interfacer = PNFBatchInterfacer(domain, start, size, draw_mode, indices, self)
+		interfacer = PNFBatchInterfacer(
+			domain, start, size, draw_mode, indices, self, states.keys()
+		)
 		self._introduce_interfacer(interfacer, group, states)
+
+		for draw_list_id, state in states.items():
+			domain.ensure_vao(state.program, self._draw_lists[draw_list_id])
 
 		# Set initial data
 		for x in data:
@@ -432,8 +427,20 @@ class PNFBatch:
 
 		return interfacer
 
-	def draw(self, draw_list: t.Hashable):
-		self._draw_lists[draw_list].draw()
+	def draw(self, draw_list_name: t.Hashable):
+		draw_list = self._draw_lists[draw_list_name]
+		if draw_list.check_dirty():
+			# If the draw list was dirty, its index buffer now changed.
+			# Update its VAOs to use the new index buffer.
+			for dom in self._vertex_domains.values():
+				if draw_list_name not in dom._vaos:
+					continue
+				for vao in dom._vaos[draw_list_name].values():
+					gl.glBindVertexArray(vao)
+					gl.glBindBuffer(draw_list.index_buffer.target, draw_list.index_buffer.id)
+					gl.glBindVertexArray(0)
+
+		draw_list.draw()
 
 	def migrate(
 		self,
@@ -446,27 +453,31 @@ class PNFBatch:
 		by `new_batch` under `new_group`.
 		Must be used when a drawable's batch, group or both change.
 		"""
+		if interfacer not in self._interfacers:
+			raise ValueError("Interfacer is not owned by this batch!")
+
 		if self != new_batch:
 			# Steal interfacer from the group that owns it in this batch
 			dl_ids = self._interfacers[interfacer]
 			self._remove_interfacer(interfacer)
 			new_batch._introduce_interfacer(interfacer, new_group, dl_ids)
 		new_domain = new_batch._get_vertex_domain(interfacer.domain.attribute_bundle)
-		new_domain.ensure_vao(new_group.state.program)
 		interfacer.migrate(new_batch, new_domain)
 
 	def _introduce_interfacer(
-		self, if_: "PNFBatchInterfacer", group: "PNFGroup", draw_lists: t.Dict[t.Hashable, GLState]
+		self,
+		interfacer: "PNFBatchInterfacer",
+		group: "PNFGroup",
+		draw_lists: t.Dict[t.Hashable, GLState],
 	) -> None:
 		"""
 		Introduces an interfacer, the group it was created under and
-		the draw lists its vertices should occupy to the batch.
+		the draw lists its vertices should occupy to the batch's
+		draw lists.
 		"""
 		for dl_id, state in draw_lists.items():
-			dl = self._get_draw_list(dl_id)
-			dl.add_group(group, if_, state)
-
-		self._interfacers[if_] = tuple(draw_lists)
+			self._get_draw_list(dl_id).add_group(group, interfacer, state)
+		self._interfacers.add(interfacer)
 
 	def _remove_interfacer(self, interfacer: "PNFBatchInterfacer") -> None:
 		"""
@@ -476,9 +487,9 @@ class PNFBatch:
 		if interfacer not in self._interfacers:
 			return
 
-		for dl_id in self._interfacers[interfacer]:
+		for dl_id in interfacer._draw_lists:
 			self._draw_lists[dl_id].remove_interfacer(interfacer)
-		self._interfacers.pop(interfacer)
+		self._interfacers.remove(interfacer)
 
 	def _dump_draw_list(self) -> None:
 		pass
@@ -500,11 +511,11 @@ class PNFBatch:
 	# 		r += "\n"
 
 	# 	idx_type = C_TYPE_MAP[_INDEX_TYPE]
-	# 	idx_ptr = ctypes.cast(self._index_buffer.data, ctypes.POINTER(idx_type))
+	# 	idx_ptr = ctypes.cast(self.index_buffer.data, ctypes.POINTER(idx_type))
 	# 	r += "\nIndex buffer: "
 	# 	r += ' '.join(
 	# 		str(idx_ptr[x])
-	# 		for x in range(min(100, self._index_buffer.size // ctypes.sizeof(idx_type)))
+	# 		for x in range(min(100, self.index_buffer.size // ctypes.sizeof(idx_type)))
 	# 	)
 
 	# 	r += f"\n\Interfacers created and alive: {len(self._interfacers)}"

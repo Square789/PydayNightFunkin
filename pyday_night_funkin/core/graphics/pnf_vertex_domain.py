@@ -14,6 +14,7 @@ from pyday_night_funkin.core.graphics.vertexbuffer import MappedBufferObject
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
 	from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
+	from pyday_night_funkin.core.graphics.pnf_batch import DrawList
 
 
 # Copypasted from pyglet/graphics/vertexdomain since it's underscore-prefixed
@@ -59,13 +60,14 @@ class PNFVertexDomainAttribute:
 		Size of a single attribute in bytes, i. e. `2f` -> 8; `3B` -> 3
 		"""
 
-		self.buffer_size = self.element_size * PNFVertexDomain.INITIAL_VERTEX_CAPACITY
-		"""Size of this attribute's OpenGL buffer, in bytes."""
-
 		self.normalize = normalize
 		self.usage = usage
 
-		self.gl_buffer = MappedBufferObject(gl.GL_ARRAY_BUFFER, self.buffer_size, usage)
+		self.gl_buffer = MappedBufferObject(
+			gl.GL_ARRAY_BUFFER,
+			self.element_size * PNFVertexDomain.INITIAL_VERTEX_CAPACITY,
+			usage
+		)
 
 	def set_data(self, start: int, size: int, data) -> None:
 		cdata = (self.c_type * (size * self.count))(*data)
@@ -85,7 +87,6 @@ class PNFVertexDomainAttribute:
 		acceptable `new_capacity`!
 		"""
 		self.gl_buffer.resize(new_capacity * self.element_size)
-		self.buffer_size = self.gl_buffer.size
 
 	def __repr__(self) -> str:
 		return (
@@ -102,7 +103,8 @@ class PNFVertexDomain:
 	Practically, there should only be a few vertex domains in existence,
 	the most prevalent one managing all sprites.
 
-	Vertex domains have a VAO to quickly (?) set up vertex context.
+	Vertex domains have VAOs for different combinations of programs
+	and draw lists to quickly set up vertex bindings.
 	The vertex attribute bundle is unchangable.
 	"""
 
@@ -120,10 +122,10 @@ class PNFVertexDomain:
 
 		# NOTE: This allocator does not track bytes, but vertices.
 		self._allocator = allocation.Allocator(self.INITIAL_VERTEX_CAPACITY)
-		self._vaos: t.Dict[int, gl.GLuint] = {}
+		self._vaos: t.Dict[t.Hashable, t.Dict[int, gl.GLuint]] = {}
 		"""
-		Maps each shader id to a VAO that links the vertex domain's
-		attributes to the shader's inputs when bound.
+		Maps each shader id and draw list to a VAO that links the
+		vertex domain's attributes to the shader's inputs when bound.
 		"""
 
 		for i, attr in enumerate(attribute_bundle):
@@ -158,14 +160,18 @@ class PNFVertexDomain:
 
 		return (name, count, type_, normalize, usage)
 
-	def ensure_vao(self, shader: "ShaderProgram") -> None:
+	def ensure_vao(self, shader: "ShaderProgram", draw_list: "DrawList") -> None:
 		"""
 		If no VAO for this shader has been created yet,
 		sets up all attribute bindings for this vertex domain's managed
 		attribute bundle in context of the given shader program
 		and stores them in an internal VAO for future use.
 		"""
-		if shader.id in self._vaos:
+		if draw_list.name not in self._vaos:
+			self._vaos[draw_list.name] = {}
+
+		vao_dict = self._vaos[draw_list.name]
+		if shader.id in vao_dict:
 			return
 
 		vao_id = gl.GLuint()
@@ -183,6 +189,7 @@ class PNFVertexDomain:
 
 			gl.glBindVertexArray(vao_id) # Bind vao so the below affects it
 			attr.gl_buffer.bind() # Bind the attribute's vertex buffer
+			draw_list.index_buffer.bind() # Bind the draw list's index buffer
 			gl.glEnableVertexArrayAttrib(vao_id, shader_attr.location) # Legit no idea what this does
 			gl.glVertexAttribPointer(
 				shader_attr.location, attr.count, attr.type, attr.normalize, 0, 0
@@ -196,19 +203,18 @@ class PNFVertexDomain:
 
 		# WARNING: Should shaders be deleted and their ids reassigned,
 		# this may fail in disgusting ways
-		self._vaos[shader.id] = vao_id
+		vao_dict[shader.id] = vao_id
 
-	def bind_vao(self, program: "ShaderProgram") -> None:
+	def bind_vao(self, program: "ShaderProgram", draw_list_name: t.Hashable) -> None:
 		"""
-		Binds the VAO for the shader program with the given ID.
+		Binds the VAO for # TODO
 		Remember to call `unbind_vao` before calling **any** vertex
 		gl functions afterwards, otherwise it will be erroneously
 		affected.
 		Raises `KeyError` if `ensure_vao` was never called for the
 		given program.
 		"""
-		vao = self._vaos[program.id]
-		gl.glBindVertexArray(vao)
+		gl.glBindVertexArray(self._vaos[draw_list_name][program.id])
 
 	def unbind_vao(self) -> None:
 		"""
@@ -242,19 +248,3 @@ class PNFVertexDomain:
 		self._allocator.set_capacity(new_size)
 		for attr in self.attributes.values():
 			attr.resize(new_size)
-
-	def create_interfacer(
-		self,
-		vertex_amount: int,
-		batch: "PNFBatch",
-		group: "PNFGroup",
-		draw_mode: int,
-		indices: t.Sequence[int],
-	) -> PNFBatchInterfacer:
-		"""
-		Creates and returns an interfacer in the domain for the
-		given group.
-		"""
-		self.ensure_vao(group.state.program)
-		start = self.allocate(vertex_amount)
-		return PNFBatchInterfacer(self, start, vertex_amount, draw_mode, indices, batch)

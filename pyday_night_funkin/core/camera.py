@@ -1,10 +1,15 @@
 
+import ctypes
 import typing as t
 
+from pyglet.gl import gl
 from pyglet.image import Framebuffer, Texture
 from pyglet.math import Vec2
 
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
+from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
+from pyday_night_funkin.core.graphics.shared import GL_TYPE_SIZES
+from pyday_night_funkin.core.shaders import ShaderContainer
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
@@ -12,6 +17,50 @@ if t.TYPE_CHECKING:
 
 
 CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
+
+
+CAMERA_QUAD_VERTEX_SHADER = """
+#version 330 core
+layout (location = 0) in vec2 position;
+layout (location = 1) in vec2 tex_coords;
+
+uniform WindowBlock {
+	mat4 projection;
+	mat4 view;
+} window;
+
+layout (std140) uniform CameraAttrs {
+	float zoom;
+	vec2  position;
+	vec2  GAME_DIMENSIONS;
+} camera;
+
+out vec2 OUT_tex_coords;
+
+void main() {
+	gl_Position = 
+		//window.projection *
+		//window.view *
+		vec4(position, 0.0, 1.0);
+
+	OUT_tex_coords = tex_coords;
+}
+"""
+
+CAMERA_QUAD_FRAGMENT_SHADER = """
+#version 330 core
+in vec2 tex_coords;
+
+out vec4 frag_color;
+
+uniform sampler2D sampler;
+
+void main() {
+	frag_color = texture(sampler, tex_coords);
+}
+"""
+
+
 
 
 class Camera:
@@ -24,12 +73,14 @@ class Camera:
 	"""
 
 	_dummy: t.Optional["Camera"] = None
+	VAO: t.Optional[gl.GLuint] = None
+	_VBO: t.Optional[gl.GLuint] = None
+	_shader_container = ShaderContainer(
+		CAMERA_QUAD_VERTEX_SHADER, CAMERA_QUAD_FRAGMENT_SHADER
+	)
 
 	def __init__(self, x: int, y: int, w: int, h: int):
-		# NOTE: It's probably possible to get a UBO here without the
-		# sprite shader, but it's gonna be painful.
-		from pyday_night_funkin.core.pnf_sprite import PNFSprite
-		self.ubo = PNFSprite.shader_container.get_camera_ubo()
+		self.ensure_vao()
 
 		self._x = x
 		"""Absolute x position of the camera's display quad."""
@@ -70,6 +121,9 @@ class Camera:
 		camera's display quad.
 		"""
 
+		self.program = self._shader_container.get_program()
+		self.ubo = self._shader_container.get_camera_ubo()
+
 		self._update_ubo()
 
 	@classmethod
@@ -80,6 +134,54 @@ class Camera:
 		if cls._dummy is None:
 			cls._dummy = cls(0, 0, GAME_WIDTH, GAME_HEIGHT)
 		return cls._dummy
+
+	@classmethod
+	def ensure_vao(cls) -> None:
+		if cls.VAO is not None:
+			return
+
+		# Largely stolen from
+		# https://learnopengl.com/Advanced-OpenGL/Framebuffers
+
+		vbo_data = (ctypes.c_float * 24)(
+			-1.,  1.,    0., 1.,
+			-1., -1.,    0., 0.,
+			 1., -1.,    1., 0.,
+
+			-1.,  1.,    0., 1.,
+			 1., -1.,    1., 0.,
+			 1.,  1.,    1., 1.,
+		)
+		vbo_size = 24 * GL_TYPE_SIZES[gl.GL_FLOAT]
+		vbo = BufferObject(
+			gl.GL_ARRAY_BUFFER, vbo_size, gl.GL_STATIC_DRAW
+		)
+		vbo.set_data(0, vbo_size, vbo_data)
+
+		vao_id = gl.GLuint()
+		gl.glGenVertexArrays(1, ctypes.byref(vao_id))
+		cls.VAO = vao_id
+		gl.glBindVertexArray(vao_id)
+		vbo.bind()
+		gl.glEnableVertexArrayAttrib(vao_id, 0)
+		gl.glVertexAttribPointer(
+			0,
+			2,
+			gl.GL_FLOAT,
+			gl.GL_FALSE,
+			4 * GL_TYPE_SIZES[gl.GL_FLOAT],
+			0,
+		)
+		gl.glEnableVertexArrayAttrib(vao_id, 1)
+		gl.glVertexAttribPointer(
+			1,
+			2,
+			gl.GL_FLOAT,
+			gl.GL_FALSE,
+			4 * GL_TYPE_SIZES[gl.GL_FLOAT],
+			2 * GL_TYPE_SIZES[gl.GL_FLOAT],
+		)
+		gl.glBindVertexArray(0)
 
 	def _update_ubo(self) -> None:
 		with self.ubo as ubo:

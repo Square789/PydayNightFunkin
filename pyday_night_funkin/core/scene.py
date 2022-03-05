@@ -4,6 +4,7 @@ import typing as t
 
 from loguru import logger
 from pyglet.clock import Clock
+from pyglet.gl import gl
 from pyglet.window.key import B, R
 
 import pyday_night_funkin.constants as CNST
@@ -210,14 +211,19 @@ class BaseScene(Container):
 		Draw the scene.
 		There should be no reason to override this.
 		"""
-		# for camera in self.cameras.values():
-		# 	camera._framebuffer.bind()
-		# 	camera.batch.draw() # Draw everything in the camera's batch to the camera's fbo
-		# 	camera._framebuffer.unbind() # Binds default fbo again
 
-		self.batch.draw(self._default_camera)
-		for camera in self.cameras.values():
-			self.batch.draw(camera)
+		cams = (self._default_camera, *self.cameras.values())
+		for camera in cams:
+			camera._framebuffer.bind()
+			gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+			self.batch.draw(camera) # Draw everything in the camera's batch to the camera's fbo
+			camera._framebuffer.unbind() # Binds default fbo again
+
+			camera.program.use()
+			gl.glBindVertexArray(Camera.VAO)
+			gl.glBindTexture(gl.GL_TEXTURE_2D, camera._tex.id)
+			gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+			gl.glBindVertexArray(0)
 
 	def get_context(self, layer: t.Optional[str] = None, camera: t.Optional[str] = None) -> Context:
 		"""

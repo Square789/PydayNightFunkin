@@ -19,7 +19,7 @@ class ShaderContainer():
 
 	def get_program(self) -> ShaderProgram:
 		"""
-		Returns the program associated with PNFSprites.
+		If needed, compiles and returns the program.
 		"""
 		if self._prog is None:
 			self._compile()

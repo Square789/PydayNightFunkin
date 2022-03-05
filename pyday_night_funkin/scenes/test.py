@@ -1,11 +1,14 @@
 
+from random import randint
 import typing as t
 
+from pyglet.math import Vec2
 from pyglet.window.key import E, O, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 
 from pyday_night_funkin.characters import Boyfriend
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_label import PNFLabel
+from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.note import NOTE_TYPE
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 
@@ -34,7 +37,7 @@ class TestScene(MusicBeatScene):
 			self.arrows.append(s)
 
 		self.boyfriend = self.create_object(
-			"ye_olde_layer", "main", Boyfriend, scene = self, x = 770, y = 250
+			"ye_olde_layer", "main", Boyfriend, scene=self, x=770, y=250
 		)
 		self.boyfriend.animation.play("idle")
 
@@ -42,7 +45,7 @@ class TestScene(MusicBeatScene):
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return ("ye_olde_layer",)
+		return ("ye_olde_layer", "fore")
 
 	@staticmethod
 	def get_camera_names() -> t.Sequence[str]:
@@ -75,6 +78,16 @@ class TestScene(MusicBeatScene):
 		for k, i in ((LEFT, 0), (DOWN, 1), (UP, 2), (RIGHT, 3)):
 			a = ("confirm" if confirm else "pressed") if ksh[k] else "static"
 			self.arrows[i].animation.play(a)
+
+		if ksh[PLUS]:
+			sprite = self.create_object("fore", x=randint(0, 100), y=randint(0, 100))
+			sprite.start_movement(Vec2(10, 5))
+			sprite.start_tween(
+				lambda x: x,
+				{TWEEN_ATTR.OPACITY: 0},
+				2.0,
+				on_complete = (lambda s=sprite: self.remove(s)),
+			)
 
 		if ksh[LEFT]:
 			self.cameras["main"].x -= 10

@@ -558,7 +558,9 @@ class PNFSprite(WorldObject):
 		if not isinstance(velocity, Vec2):
 			velocity = Vec2(*velocity)
 
-		if acceleration is not None and not isinstance(acceleration, Vec2):
+		if acceleration is None:
+			acceleration = Vec2(0, 0)
+		elif not isinstance(acceleration, Vec2):
 			acceleration = Vec2(*acceleration)
 
 		self.movement = Movement(velocity, acceleration)
