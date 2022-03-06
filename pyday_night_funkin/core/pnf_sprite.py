@@ -415,28 +415,20 @@ class PNFSprite(WorldObject):
 		old_group = self._context.group
 		old_cams = self._context.cameras
 
-		# TODO check this for new batches
 		change_batch = new_batch != old_batch
 		rebuild_group = new_cams != old_cams or new_group != old_group.parent
 
+		new_states = None
 		if change_batch:
 			self._context.batch = new_batch
-			# if new_batch is not None and old_batch is not None:
-			# 	self._context.batch = new_batch
-			# else:
-			# 	# TBH I forgot what these None checks were about.
-			# 	# If anything is None in here, it will just crash horribly,
-			# 	# but that doesn't happen when running soooo good enough!
-			# 	self._interfacer.delete()
-			# 	self._context.batch = new_batch
-			# 	self._create_interfacer()
+			new_states = {cam: self._build_gl_state(cam.ubo) for cam in new_cams}
 
 		if rebuild_group:
 			self._context.cameras = new_cams
-			self._context.group = PNFGroup(parent = new_group)
+			self._context.group = PNFGroup(parent=new_group)
 
 		if change_batch or rebuild_group:
-			old_batch.migrate(self._interfacer, self._context.group, self._context.batch)
+			self._interfacer.migrate(self._context.batch, self._context.group, new_states)
 
 	def screen_center(self, screen_dims: Vec2, x: bool = True, y: bool = True) -> None:
 		"""
@@ -803,8 +795,8 @@ class PNFSprite(WorldObject):
 				{camera: self._build_gl_state(camera.ubo) for camera in self._context.cameras}
 			)
 		else:
-			self._interfacer.set_data("tex_coords", texture.tex_coords)
 			self._texture = texture
+		self._interfacer.set_data("tex_coords", texture.tex_coords)
 		# If this is not done, screws over vertices if the texture changes
 		# dimension thanks to top left coords
 		if prev_h != texture.height or prev_w != texture.width:

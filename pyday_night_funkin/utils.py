@@ -1,12 +1,16 @@
 
 from itertools import islice
+import sys
 import typing as t
 
 if t.TYPE_CHECKING:
 	from pyglet.image import Texture
 
-
 T = t.TypeVar("T")
+
+
+
+ADDRESS_PADDING = (sys.maxsize.bit_length() + 1) // 4
 
 
 class ListWindow(t.Generic[T]):
@@ -66,3 +70,6 @@ def to_rgb_tuple(v: int) -> t.Tuple[int, int, int, int]:
 	some other places.
 	"""
 	return tuple(i & 0xFF for i in (v >> 24, v >> 16, v >> 8))
+
+def dump_id(x: object) -> str:
+	return f"0x{id(x):0>{ADDRESS_PADDING}}"

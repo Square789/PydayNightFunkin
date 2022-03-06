@@ -1,12 +1,10 @@
 
 from collections import defaultdict
-import ctypes
 import typing as t
-from weakref import WeakKeyDictionary, WeakSet
+from weakref import WeakSet
 
 from loguru import logger
 from pyglet.gl import gl
-from pyglet.graphics import vertexbuffer
 
 from pyday_night_funkin.core.graphics.interfacer import PNFBatchInterfacer
 from pyday_night_funkin.core.graphics.pnf_vertex_domain import PNFVertexDomain
@@ -77,12 +75,6 @@ class DrawList:
 		needs to be drawn.
 		"""
 
-		self._interfacers: "WeakKeyDictionary[PNFBatchInterfacer, PNFGroup]" = WeakKeyDictionary()
-		"""
-		Associates each interfacer registered in this draw list owns
-		with its group, which is used to get its group data.
-		"""
-
 		self._top_groups: t.Set["PNFGroup"] = set()
 		self._group_data: t.Dict["PNFGroup", "GroupData"] = defaultdict(GroupData)
 		self.index_buffer = BufferObject(gl.GL_ELEMENT_ARRAY_BUFFER, 0, gl.GL_DYNAMIC_DRAW)
@@ -113,7 +105,7 @@ class DrawList:
 		If the group is already known, has no effect.
 		"""
 		if group in self._group_data:
-			return
+			raise ValueError(f"Group {group!r} is already known in DrawList {self.name!r}.")
 
 		if group.parent is None:
 			self._top_groups.add(group)
@@ -122,14 +114,22 @@ class DrawList:
 				self.add_group(group.parent)
 			self._group_data[group.parent].children.add(group)
 
-		if interfacer is not None:
-			self._interfacers[interfacer] = group
-
 		self._group_data[group].interfacer = interfacer
 		self._group_data[group].state = state
 		self._dirty = True
 
-	def delete_group(self, group: "PNFGroup") -> None:
+	def remove_group(self, group: "PNFGroup") -> None:
+		"""
+		Removes an interfacer and its group from this draw
+		list's group tree.
+		"""
+		gd = self._group_data[group]
+		if gd.children:
+			raise ValueError(f"Drawable group {group!r} has children, can not remove.")
+
+		self._delete_group(group)
+
+	def _delete_group(self, group: "PNFGroup") -> None:
 		"""
 		Deletes a group from the group registry and marks the draw
 		list as dirty. If a non-leaf node is deleted, it will leave
@@ -141,25 +141,6 @@ class DrawList:
 		self._group_data.pop(group)
 
 		self._dirty = True
-
-	def remove_interfacer(self, interfacer: PNFBatchInterfacer) -> None:
-		"""
-		Removes an interfacer and its group from this draw
-		list's group tree.
-		"""
-		if interfacer not in self._interfacers:
-			print("! weird")
-			return
-
-		if self._interfacers[interfacer] not in self._group_data:
-			print("! mega weird")
-			return
-
-		gd = self._group_data[self._interfacers[interfacer]]
-		if gd.interfacer is not None:
-			gd.interfacer = None
-			self._dirty = True
-		self._interfacers.pop(interfacer)
 
 	def _visit(self, group: "PNFGroup") -> t.Tuple[t.List[t.List["PNFGroup"]], bool]:
 		"""
@@ -211,7 +192,7 @@ class DrawList:
 					"This should not have happened: Group was considered dangling "
 					"but delivered chains!"
 				)
-			self.delete_group(group)
+			self._delete_group(group)
 
 		return chains, group_intact
 
@@ -411,72 +392,46 @@ class PNFBatch:
 		domain = self._get_vertex_domain(attr_names)
 		start = domain.allocate(size)
 		interfacer = PNFBatchInterfacer(
-			domain, start, size, draw_mode, indices, self, states.keys()
+			domain, start, size, draw_mode, indices, self, group
 		)
-		self._introduce_interfacer(interfacer, group, states)
-
-		for draw_list_id, state in states.items():
-			domain.ensure_vao(state.program, self._draw_lists[draw_list_id])
+		self._introduce_interfacer(interfacer, states)
 
 		# Set initial data
 		for x in data:
 			if not isinstance(x, tuple):
 				continue
-			name = RE_VERTEX_FORMAT.match(x[0])[1]
-			interfacer.set_data(name, x[1])
+			interfacer.set_data(RE_VERTEX_FORMAT.match(x[0])[1], x[1])
 
 		return interfacer
 
 	def draw(self, draw_list_name: t.Hashable):
 		draw_list = self._draw_lists[draw_list_name]
 		if draw_list.check_dirty():
+			pass
 			# If the draw list was dirty, its index buffer now changed.
 			# Update its VAOs to use the new index buffer.
-			for dom in self._vertex_domains.values():
-				if draw_list_name not in dom._vaos:
-					continue
-				for vao in dom._vaos[draw_list_name].values():
-					gl.glBindVertexArray(vao)
-					gl.glBindBuffer(draw_list.index_buffer.target, draw_list.index_buffer.id)
-					gl.glBindVertexArray(0)
+			# for dom in self._vertex_domains.values():
+			# 	if draw_list_name not in dom._vaos:
+			# 		continue
+			# 	for vao in dom._vaos[draw_list_name].values():
+			# 		gl.glBindVertexArray(vao)
+			# 		gl.glBindBuffer(draw_list.index_buffer.target, draw_list.index_buffer.id)
+			# 		gl.glBindVertexArray(0)
+			# NOTE: Above can probably deleted since index buffers keep their id
+			# throughout their lifetime
 
 		draw_list.draw()
-
-	def migrate(
-		self,
-		interfacer: "PNFBatchInterfacer",
-		new_group: "PNFGroup",
-		new_batch: "PNFBatch",
-	) -> None:
-		"""
-		Migrates the given interfacer so that it is afterwards owned
-		by `new_batch` under `new_group`.
-		Must be used when a drawable's batch, group or both change.
-		"""
-		if interfacer not in self._interfacers:
-			raise ValueError("Interfacer is not owned by this batch!")
-
-		if self != new_batch:
-			# Steal interfacer from the group that owns it in this batch
-			dl_ids = self._interfacers[interfacer]
-			self._remove_interfacer(interfacer)
-			new_batch._introduce_interfacer(interfacer, new_group, dl_ids)
-		new_domain = new_batch._get_vertex_domain(interfacer.domain.attribute_bundle)
-		interfacer.migrate(new_batch, new_domain)
 
 	def _introduce_interfacer(
 		self,
 		interfacer: "PNFBatchInterfacer",
-		group: "PNFGroup",
-		draw_lists: t.Dict[t.Hashable, GLState],
+		states: t.Dict[t.Hashable, GLState],
 	) -> None:
 		"""
-		Introduces an interfacer, the group it was created under and
-		the draw lists its vertices should occupy to the batch's
-		draw lists.
+		Introduces an interfacer and the draw lists its vertices
+		should occupy to the batch's draw lists.
 		"""
-		for dl_id, state in draw_lists.items():
-			self._get_draw_list(dl_id).add_group(group, interfacer, state)
+		interfacer.set_states(states)
 		self._interfacers.add(interfacer)
 
 	def _remove_interfacer(self, interfacer: "PNFBatchInterfacer") -> None:
@@ -488,10 +443,22 @@ class PNFBatch:
 			return
 
 		for dl_id in interfacer._draw_lists:
-			self._draw_lists[dl_id].remove_interfacer(interfacer)
+			self.remove_group(dl_id, interfacer._group)
 		self._interfacers.remove(interfacer)
 
-	def _dump_draw_list(self) -> None:
+	def add_group(
+		self,
+		draw_list: t.Hashable,
+		interfacer: "PNFBatchInterfacer",
+		group: "PNFGroup",
+		state: GLState,
+	) -> None:
+		self._get_draw_list(draw_list).add_group(group, interfacer, state)
+
+	def remove_group(self, draw_list, group) -> None:
+		self._draw_lists[draw_list].remove_group(group)
+
+	def _dump_debug_info(self) -> None:
 		pass
 	# 	print(self._dump())
 

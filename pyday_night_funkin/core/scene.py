@@ -194,7 +194,7 @@ class BaseScene(Container):
 				logger.debug("hello")
 
 			if self.game.pyglet_ksh[B]:
-				self.batch._dump_draw_list()
+				self.batch._dump_debug_info()
 
 		self._passed_time += dt
 		self.clock.tick()
@@ -218,9 +218,10 @@ class BaseScene(Container):
 		for camera in (self._default_camera, *self.cameras.values()):
 			camera.framebuffer.bind()
 
-			gl.glClearColor(.7, 0, 0, .2)
+			# gl.glClearColor(.7, 0, 0, .2)
+			gl.glClearColor(0, 0, 0, 0)
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-			self.batch.draw(camera) # Draw everything in the camera's batch to the camera's fbo
+			self.batch.draw(camera) # Draw everything in the camera's draw list to the camera's FBO
 
 			camera.framebuffer.unbind() # Binds default fbo again
 

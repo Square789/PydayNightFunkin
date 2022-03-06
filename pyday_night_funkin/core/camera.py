@@ -71,7 +71,8 @@ class Camera:
 	Camera class to provide a UBO (which needs to be reflected in the
 	shader code of shaders that want to use it) that transforms
 	drawables as if they were viewed translated/zoomed with a camera.
-	Concepts largely stolen from
+	Also posesses a framebuffer that can be drawn to in an attempt at
+	cloning the HaxeFlixel camera system:
 	https://github.com/HaxeFlixel/flixel/blob/dev/flixel/FlxCamera.hx
 	"""
 
@@ -282,8 +283,8 @@ class Camera:
 		self._update_ubo()
 
 	def delete(self) -> None:
-		self._framebuffer.delete()
-		self._framebuffer = None
+		self.framebuffer.delete()
+		self.framebuffer = None
 		self.texture = None
 		self.vbo.delete()
 		gl.glDeleteVertexArrays(1, ctypes.byref(self.vao))

@@ -406,12 +406,14 @@ class PNFLabel(Label, WorldObject):
 		# NOTE: Set _user_group whenever context's group changes
 		self._user_group = self._context.group
 
+		# TODO Custom text module time, this is not going to hold with the latest
+		# graphics backend defacement
 		decoration_shader = _DECORATION_SHADER_CONTAINER.get_program()
 		self.background_decoration_group = self.decoration_class(
-			decoration_shader, self._context.camera.ubo, order=0, parent=self._user_group
+			decoration_shader, self._context.cameras[0].ubo, order=0, parent=self._user_group
 		)
 		self.foreground_decoration_group = self.decoration_class(
-			decoration_shader, self._context.camera.ubo, order=2, parent=self._user_group
+			decoration_shader, self._context.cameras[0].ubo, order=2, parent=self._user_group
 		)
 
 		self.group_cache = {}
@@ -465,7 +467,7 @@ class PNFLabel(Label, WorldObject):
 		change_batch = new_batch != old_batch
 
 		if (
-			parent_context.camera != self._context.camera or
+			parent_context.cameras != self._context.cameras or
 			parent_context.group != self._context.group.parent
 		):
 			raise RuntimeError(

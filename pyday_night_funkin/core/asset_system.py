@@ -16,9 +16,9 @@ from pyglet import image
 from pyglet.image.atlas import AllocatorException, TextureBin
 from pyglet import media
 
-from pyday_night_funkin.constants import ADDRESS_PADDING
 from pyday_night_funkin.core.almost_xml_parser import AlmostXMLParser
 from pyday_night_funkin.core import ogg_decoder
+from pyday_night_funkin.utils import dump_id
 
 if t.TYPE_CHECKING:
 	from pyglet.image import AbstractImage, Texture
@@ -72,10 +72,7 @@ class Resource:
 		return hash(str(self.path.resolve()))
 
 	def __repr__(self) -> str:
-		return (
-			f"<{self.__class__.__name__} {self.path!r} at "
-			f"0x{id(self):0>{ADDRESS_PADDING}X}>"
-		)
+		return f"<{self.__class__.__name__} {self.path!r} at {dump_id(self)}>"
 
 
 class PathResource(Resource):

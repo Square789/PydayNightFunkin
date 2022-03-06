@@ -68,7 +68,7 @@ class PNFSpriteContainer(PNFSprite):
 	def set_context(self, parent_context: "Context") -> None:
 		self._context.batch = parent_context.batch
 		self._context.group = PNFGroup(parent=parent_context.group)
-		self._context.camera = parent_context.camera
+		self._context.cameras = parent_context.cameras
 		for x in self._sprites:
 			x.set_context(self._context)
 
