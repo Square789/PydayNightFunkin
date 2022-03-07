@@ -168,6 +168,9 @@ class BaseScene(Container):
 		"""
 		Add a SceneObject to the scene on the given layer with the
 		given camera.
+		Note that this may become ugly if the object is owned by
+		another scene, be sure to remove it from there with `remove`
+		(`keep=True`) beforehand.
 		If no layer is supplied, will default to the first layer.
 		If no camera is supplied, will default to the default camera.
 		"""
@@ -216,16 +219,17 @@ class BaseScene(Container):
 
 		for camera in (self._default_camera, *self.cameras.values()):
 			camera.framebuffer.bind()
-			gl.glClearColor(0, 0, 0, 0) # (.7, 0, 0, .2)
+			# NOTE: While the viewport is nice to shrink the game, it also affects all draw
+			# operations on the cameras, which crams the sprites into their fb's corners.
+			# Need to set it to this for framebuffer rendering
+			gl.glViewport(0, 0, camera._width, camera._height)
+			gl.glClearColor(*camera.clear_color)
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 			self.batch.draw(camera) # Draw everything in the camera's draw list to the camera's FBO
 			camera.framebuffer.unbind() # Binds default fbo again
 
-			camera.program.use()
-			gl.glBindVertexArray(camera.vao)
-			gl.glBindTexture(gl.GL_TEXTURE_2D, camera.texture.id)
-			gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
-			gl.glBindVertexArray(0)
+			self.game.window.set_viewport()
+			camera.draw_framebuffer()
 
 	def get_context(
 		self,
@@ -234,8 +238,8 @@ class BaseScene(Container):
 	) -> Context:
 		"""
 		Returns a context for the given layer and camera names.
-		Both may also be none, in which case the first layer or the
-		default dummy camera will be returned.
+		Both may also be `None`, in which case the first layer or the
+		default camera will be returned.
 		"""
 		return Context(self.batch, self.get_layer(layer).get_group(), self.get_camera(camera))
 
@@ -246,7 +250,7 @@ class BaseScene(Container):
 		"""
 		return next(iter(self.layers.values())) if layer is None else self.layers[layer]
 
-	def get_camera(self, camera: t.Optional[str]) -> Camera:
+	def get_camera(self, camera: t.Optional[str] = None) -> Camera:
 		"""
 		Returns the camera with the given name or the scene's default
 		camera if `None` is given.

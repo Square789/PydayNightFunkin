@@ -82,9 +82,9 @@ class Camera:
 	)
 
 	def __init__(self, x: int, y: int, w: int, h: int):
-		self._x = x
+		self._screen_x = 10 + x
 		"""Absolute x position of the camera's display quad."""
-		self._y = y
+		self._screen_y = 10 + y
 		"""Absolute y position of the camera's display quad."""
 
 		self._width = w
@@ -94,6 +94,9 @@ class Camera:
 
 		self._rotation = 0
 		"""Rotation of the camera's display quad."""
+
+		self._x = 0
+		self._y = 0
 
 		self._view_width = self._width
 		"""
@@ -116,6 +119,9 @@ class Camera:
 		A list of shaders that will be sequentially applied to this
 		camera's display quad.
 		"""
+
+		self.clear_color = (0, .6, 0, 0)
+		"""Color the camera's frame buffer is cleared with."""
 
 		self.framebuffer = Framebuffer()
 		self.texture = Texture.create(w, h)
@@ -147,12 +153,12 @@ class Camera:
 
 		# These should be totally wrong, but it works. Don't ask.
 		tex_coords = (ctypes.c_float * 12)(
-			 0.,  0.,
-			 1.,  1.,
-			 1.,  0.,
-			 0.,  0.,
-			 1.,  1.,
-			 0.,  1.,
+			 0., 0.,
+			 1., 1.,
+			 1., 0.,
+			 0., 0.,
+			 1., 1.,
+			 0., 1.,
 		)
 		self.vbo.set_data(
 			_QUAD_VBO_TEX_COORD_SEGMENT_START,
@@ -161,31 +167,47 @@ class Camera:
 		)
 
 		gl.glCreateVertexArrays(1, ctypes.byref(self.vao))
-		gl.glBindVertexArray(self.vao)
-		self.vbo.bind()
-		gl.glEnableVertexAttribArray(0)
-		gl.glVertexAttribPointer(
+		# Enable vertex attribute indices
+		gl.glEnableVertexArrayAttrib(self.vao, 0)
+		gl.glEnableVertexArrayAttrib(self.vao, 1)
+		# Specify vertex layout for the attributes
+		gl.glVertexArrayAttribFormat(self.vao, 0, 2, gl.GL_FLOAT, gl.GL_FALSE, 0)
+		gl.glVertexArrayAttribFormat(self.vao, 1, 2, gl.GL_FLOAT, gl.GL_FALSE, 0)
+		# Associate the binding points with the buffer the vertices should be sourced from
+		gl.glVertexArrayVertexBuffer(
+			self.vao,
 			0,
-			2,
-			gl.GL_FLOAT,
-			gl.GL_FALSE,
-			2 * GL_TYPE_SIZES[gl.GL_FLOAT],
+			self.vbo.id,
 			_QUAD_VBO_POSITION_SEGMENT_START,
+			2 * GL_TYPE_SIZES[gl.GL_FLOAT]
 		)
-		gl.glEnableVertexAttribArray(1)
-		gl.glVertexAttribPointer(
+		gl.glVertexArrayVertexBuffer(
+			self.vao,
 			1,
-			2,
-			gl.GL_FLOAT,
-			gl.GL_FALSE,
-			2 * GL_TYPE_SIZES[gl.GL_FLOAT],
+			self.vbo.id,
 			_QUAD_VBO_TEX_COORD_SEGMENT_START,
+			2 * GL_TYPE_SIZES[gl.GL_FLOAT],
 		)
-		gl.glBindVertexArray(0)
+		# Link the shader attribute index with the binding point
+		gl.glVertexArrayAttribBinding(self.vao, 0, 0)
+		gl.glVertexArrayAttribBinding(self.vao, 1, 1)
 
 		self._update_ubo()
 		self._update_vbo()
 		# self._update_proj_mat()
+
+	def draw_framebuffer(self) -> None:
+		"""
+		Draws the camera's framebuffer.
+		This changes the active program as well as the texture bound
+		to `TEXTURE_2D`.
+		"""
+		self.program.use()
+		gl.glBindVertexArray(self.vao)
+		gl.glActiveTexture(gl.GL_TEXTURE0)
+		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture.id)
+		gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+		gl.glBindVertexArray(0)
 
 	@classmethod
 	def get_dummy(cls) -> "Camera":
@@ -203,10 +225,10 @@ class Camera:
 			ubo.GAME_DIMENSIONS[:] = (GAME_WIDTH, GAME_HEIGHT)
 
 	def _update_vbo(self) -> None:
-		x1 = self._x
-		y1 = self._y + self._height
-		x2 = self._x + self._width
-		y2 = self._y
+		x1 = self._screen_x
+		y1 = self._screen_y + self._height
+		x2 = self._screen_x + self._width
+		y2 = self._screen_y
 		v = [
 			(x1, y1), #0
 			(x2, y1), #1

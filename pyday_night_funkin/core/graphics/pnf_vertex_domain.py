@@ -187,20 +187,18 @@ class PNFVertexDomain:
 					f"but {self.__class__.__name__} does not know {shader_attr.name!r}."
 				)
 			attr = self.attributes[shader_attr.name]
-
-			gl.glBindVertexArray(vao_id) # Bind vao so the below affects it
-			attr.gl_buffer.bind() # Bind the attribute's vertex buffer
-			draw_list.index_buffer.bind() # Bind the draw list's index buffer
-			gl.glEnableVertexArrayAttrib(vao_id, shader_attr.location) # Legit no idea what this does
-			gl.glVertexAttribPointer(
-				shader_attr.location, attr.count, attr.type, attr.normalize, 0, 0
-			) # Source the attribute from the buffer bound at ARRAY_BUFFER.
-			gl.glBindVertexArray(0)
-
-			#bp = attr.binding_point
-			#gl.glVertexArrayVertexBuffer(vao_id, bp, attr.gl_buffer.id, 0, attr.element_size)
-			#gl.glVertexArrayAttribBinding(vao_id, shader_attr.location, bp)
-			#gl.glVertexArrayAttribFormat(vao_id, bp, attr.count, attr.type, attr.normalize, 0)
+			bp = attr.binding_point
+			loc = shader_attr.location
+			# Set index/element buffer
+			gl.glVertexArrayElementBuffer(vao_id, draw_list.index_buffer.id)
+			# Enable the shader location / attribute index
+			gl.glEnableVertexArrayAttrib(vao_id, loc)
+			# Specify vertex layout for the attribute at index `loc`
+			gl.glVertexArrayAttribFormat(vao_id, loc, attr.count, attr.type, attr.normalize, 0)
+			# Associate the binding point with the buffer vertices should be sourced from.
+			gl.glVertexArrayVertexBuffer(vao_id, bp, attr.gl_buffer.id, 0, attr.element_size)
+			# Link the shader attribute index with the binding point
+			gl.glVertexArrayAttribBinding(vao_id, loc, bp)
 
 		# WARNING: Should shaders be deleted and their ids reassigned,
 		# this may fail in disgusting ways

@@ -325,7 +325,6 @@ class PNFSprite(WorldObject):
 		context: Context = None,
 		usage: t.Literal["dynamic", "stream", "static"] = "dynamic",
 		subpixel: bool = False,
-		program: "ShaderProgram" = None,
 	) -> None:
 		image = CNST.ERROR_TEXTURE if image is None else image
 

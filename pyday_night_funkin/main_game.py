@@ -5,6 +5,10 @@ import typing as t
 from loguru import logger
 import pyglet
 
+# You really want to leave this set to `True` unless you haven't
+# seen an OpenGL error for at least 20 hours
+pyglet.options["debug_gl"] = True
+
 from pyglet.window.key import KeyStateHandler
 
 from pyday_night_funkin import base_game_pack
@@ -22,7 +26,7 @@ from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.12-dev-K"
+__version__ = "0.0.12-dev-L"
 
 
 class _FPSData:
@@ -72,6 +76,7 @@ class Game():
 			resizable = True,
 			vsync = False,
 		)
+		self.window.set_caption(f"PydayNightFunkin' v{__version__}")
 
 		self.pyglet_ksh = KeyStateHandler()
 		self.key_handler = KeyHandler(self.save_data.config.key_bindings)
