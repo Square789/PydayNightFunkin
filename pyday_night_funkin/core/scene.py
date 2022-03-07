@@ -291,5 +291,6 @@ class BaseScene(Container):
 			cam.delete()
 		self._default_camera.delete()
 
-		del self.batch
-		del self.game # reference breaking or something
+		self.batch.delete()
+		self.batch = None
+		self.game = None # reference breaking or something

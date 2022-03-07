@@ -162,10 +162,11 @@ class PNFVertexDomain:
 
 	def ensure_vao(self, shader: "ShaderProgram", draw_list: "DrawList") -> None:
 		"""
-		If no VAO for this shader has been created yet,
-		sets up all attribute bindings for this vertex domain's managed
-		attribute bundle in context of the given shader program
-		and stores them in an internal VAO for future use.
+		If no VAO for this shader/draw list combination has been
+		created yet, sets up all attribute bindings for this vertex
+		domain's managed attribute bundle in context of the given
+		shader program and stores them in an internal VAO for future
+		use.
 		"""
 		if draw_list.name not in self._vaos:
 			self._vaos[draw_list.name] = {}
@@ -241,6 +242,20 @@ class PNFVertexDomain:
 		Deallocates `size` vertices starting from `start`.
 		"""
 		self._allocator.dealloc(start, size)
+
+	def delete(self) -> None:
+		"""
+		Deletes all vertex buffers and VAOs of this domain.
+		"""
+		for attr in self.attributes.values():
+			attr.gl_buffer.delete()
+
+		vao_count = sum(len(d) for d in self._vaos.values())
+		vao_ids: t.List[gl.GLuint] = []
+		for d in self._vaos.values():
+			vao_ids.extend(d.values())
+
+		gl.glDeleteVertexArrays(vao_count, (gl.GLuint * vao_count)(*vao_ids))
 
 	def _resize(self, new_size: int) -> None:
 		# The buffers in `self.attributes` can always hold `self._allocator.capacity`

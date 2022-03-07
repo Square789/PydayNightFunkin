@@ -453,6 +453,15 @@ class PNFBatch:
 		"""
 		self._draw_lists[draw_list].remove_group(group)
 
+	def delete(self) -> None:
+		"""
+		Deletes all vertex domain's buffers this batch is using.
+		This will break all interfacers owned by this batch, so be
+		sure they are not going to be used anymore.
+		"""
+		for dom in self._vertex_domains.values():
+			dom.delete()
+
 	def _dump_debug_info(self) -> None:
 		pass
 	# 	print(self._dump())
