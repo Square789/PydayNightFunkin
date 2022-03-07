@@ -8,6 +8,7 @@ from pyglet.window.key import E, O, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN
 from pyday_night_funkin.characters import Boyfriend
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_label import PNFLabel
+from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.note import NOTE_TYPE
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
@@ -42,6 +43,12 @@ class TestScene(MusicBeatScene):
 		self.boyfriend.animation.play("idle")
 
 		# self.label = self.create_object(camera="main", object_class=PNFLabel, text="test")
+		self.label = self.create_object(
+			camera = "main",
+			object_class = PNFText,
+			text = "Hello World!",
+			font_name = "Consolas",
+		)
 
 	@staticmethod
 	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:

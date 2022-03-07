@@ -7,6 +7,9 @@ from pyglet.window import Window
 
 from pyday_night_funkin import constants as CNST
 
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.types import Numeric
+
 
 class PNFWindow(Window):
 	"""
@@ -21,7 +24,7 @@ class PNFWindow(Window):
 			0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT, 0, -1, 1
 		)
 
-	def on_resize(self, width, height):
+	def on_resize(self, width: "Numeric", height: "Numeric") -> None:
 		cur_wh_ratio = width / height if height > 0 else 999
 		tgt_wh_ratio = CNST.GAME_WIDTH / CNST.GAME_HEIGHT
 

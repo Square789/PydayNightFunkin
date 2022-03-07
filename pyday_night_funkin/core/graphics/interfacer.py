@@ -17,7 +17,7 @@ class PNFBatchInterfacer:
 	vertex buffer its vertices belong to and is passed to higher
 	drawables for management of those.
 	The interfacer's purpose is to make the right calls to the
-	graphics backend's trifecta of batches, domains and drawlists,
+	graphics backend's trifecta of batches, domains and draw lists,
 	all from the viewpoint of a single drawable.
 
 	! WARNING ! Forgetting to call `delete` on this will leak
@@ -119,9 +119,18 @@ class PNFBatchInterfacer:
 			self._group = new_group
 
 	def get_state(self, dl_id: t.Hashable) -> "GLState":
+		"""
+		Returns the GLState the interfacer's vertices are being drawn
+		with in the given draw list.
+		The draw list must exist.
+		"""
 		return self.batch._draw_lists[dl_id]._group_data[self._group].state
 
 	def _migrate_domain(self, new_domain: "PNFVertexDomain") -> None:
+		"""
+		Performs all the mutations required to copy vertex data from
+		the current domain into a new one.
+		"""
 		if self.domain.attributes.keys() != new_domain.attributes.keys():
 			raise ValueError("Vertex domain attribute bundle mismatch!")
 
@@ -141,6 +150,10 @@ class PNFBatchInterfacer:
 		self.indices = tuple(i + index_shift for i in self.indices)
 
 	def set_states(self, new_states: t.Dict[t.Hashable, "GLState"]) -> None:
+		"""
+		Modifies the draw lists and the states
+		that the interfacer's vertices should be drawn in/with.
+		"""
 		pending_dls = set(self._draw_lists)
 		for dl_id, state in new_states.items():
 			if dl_id in pending_dls:
@@ -157,12 +170,15 @@ class PNFBatchInterfacer:
 		self._draw_lists = list(new_states.keys())
 
 	def set_visibility(self, new_visibility: bool) -> None:
+		"""
+		Sets the visibility of the interfacer's vertices in all of
+		their draw lists.
+		"""
 		if self._visible == new_visibility:
 			return
 
-		# FIXME hackish
+		# TODO this is kinda hackish, but works well enough
 		for dl_id in self._draw_lists:
-			# _visible is read from the interfacer, this should do it
 			self.batch._draw_lists[dl_id]._dirty = True
 
 		self._visible = new_visibility

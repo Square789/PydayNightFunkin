@@ -88,15 +88,14 @@ class BaseScene(Container):
 
 		self._default_camera = Camera(0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
 		# TODO allow creation of different size cameras
-		self.cameras = {
-			name: Camera(0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
+		self.cameras = OrderedDict(
+			(name, Camera(0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT))
 			for name in self.get_camera_names()
-		}
+		)
 
-		# TODO hack, remove
-		self.batch._get_draw_list(self._default_camera)
-		for c in self.cameras.values():
-			self.batch._get_draw_list(c)
+		# Fails when nothing is added to a camera otherwise.
+		for cam in (self._default_camera, *self.cameras):
+			self.batch._get_draw_list(cam)
 
 		self.sfx_ring = SFXRing(CNST.SFX_RING_SIZE)
 
@@ -217,12 +216,9 @@ class BaseScene(Container):
 
 		for camera in (self._default_camera, *self.cameras.values()):
 			camera.framebuffer.bind()
-
-			# gl.glClearColor(.7, 0, 0, .2)
-			gl.glClearColor(0, 0, 0, 0)
+			gl.glClearColor(0, 0, 0, 0) # (.7, 0, 0, .2)
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 			self.batch.draw(camera) # Draw everything in the camera's draw list to the camera's FBO
-
 			camera.framebuffer.unbind() # Binds default fbo again
 
 			camera.program.use()
@@ -231,7 +227,11 @@ class BaseScene(Container):
 			gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 			gl.glBindVertexArray(0)
 
-	def get_context(self, layer: t.Optional[str] = None, camera: t.Optional[str] = None) -> Context:
+	def get_context(
+		self,
+		layer: t.Optional[str] = None,
+		camera: t.Optional[str] = None,
+	) -> Context:
 		"""
 		Returns a context for the given layer and camera names.
 		Both may also be none, in which case the first layer or the

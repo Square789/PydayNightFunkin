@@ -22,7 +22,7 @@ from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.12-dev-I"
+__version__ = "0.0.12-dev-J"
 
 
 class _FPSData:
@@ -52,6 +52,7 @@ class _FPSData:
 			)
 			self.fmt_max_frame_time = self.max_frame_time if self.max_frame_time >= 0 else "?"
 			self._reset_measurements()
+			print(f"AVG {self.fmt_avg_frame_time:>10.3f} MAX {self.fmt_max_frame_time:>10.3f}")
 
 
 class Game():
@@ -95,7 +96,7 @@ class Game():
 
 		# Push initial scene
 		self.push_scene(TitleScene)
-		# self.push_scene(TestScene)
+		#self.push_scene(TestScene)
 		#self.push_scene(TriangleScene)
 
 	def _on_scene_stack_change(self) -> None:
@@ -118,12 +119,16 @@ class Game():
 		# different contexts? Yeah idk about OpenGL, but it will lead to
 		# unexpected errors later when switching scenes and often recreating
 		# VAOs.
-		if self.debug and self.use_debug_pane:
+		if self.use_debug_pane:
 			def debug_setup(_):
 				self._fps = _FPSData()
 				self.debug_pane = DebugPane(8)
 				logger.add(self.debug_pane.add_message)
 				logger.info(f"Game started (v{__version__}), pyglet version {pyglet.version}")
+			pyglet.clock.schedule_once(debug_setup, 0.0)
+		elif self.debug:
+			def debug_setup(_):
+				self._fps = _FPSData()
 			pyglet.clock.schedule_once(debug_setup, 0.0)
 		else:
 			logger.remove(0)
@@ -173,9 +178,9 @@ class Game():
 		for scene in self._scenes_to_draw:
 			scene.draw()
 
+		draw_time = (perf_counter() - stime) * 1000
 		if self.use_debug_pane:
 			self.debug_pane.draw()
-			draw_time = (perf_counter() - stime) * 1000
 			self._fps.bump(draw_time + self._update_time)
 			# Prints frame x-1's draw time in frame x, but who cares
 			self.debug_pane.update(
@@ -185,6 +190,8 @@ class Game():
 				draw_time,
 				self._update_time,
 			)
+		elif self.debug:
+			self._fps.bump(draw_time + self._update_time)
 
 	def _modify_scene_stack(self) -> float:
 		"""

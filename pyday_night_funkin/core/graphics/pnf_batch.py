@@ -23,7 +23,9 @@ _INDEX_TYPE_SIZE = GL_TYPE_SIZES[_INDEX_TYPE]
 # NOTE: This is just a class with a list. May be useful for further
 # work, may also turn out completely useless.
 class GroupChain:
-	def __init__(self, groups: t.Sequence["GroupData"]) -> None:
+	__slots__ = ("groups",)
+
+	def __init__(self, groups: t.Iterable["GroupData"]) -> None:
 		self.groups = list(groups)
 		# self.used_vertex_domains = {g.interfacer.domain for g in groups}
 		# self.used_draw_modes = {g.interfacer.draw_mode for g in groups}
@@ -79,19 +81,17 @@ class DrawList:
 		self._group_data: t.Dict["PNFGroup", "GroupData"] = defaultdict(GroupData)
 		self.index_buffer = BufferObject(gl.GL_ELEMENT_ARRAY_BUFFER, 0, gl.GL_DYNAMIC_DRAW)
 
-	# TODO: Useless """optimization""", do it later when the rest works
-	# def _add_group_parents(self, group: "PNFGroup") -> None:
-	# 	if group in self._group_data:
-	# 		return
-
-	# 	if group.parent is None:
-	# 		self._top_groups.add(group)
-	# 	else:
-	# 		if group.parent not in self._group_data:
-	# 			self._add_group_parents(group.parent)
-	# 		self._group_data[group.parent].children.add(group)
-
-	# 	self._dirty = True
+	def _add_group_parent(self, group: "PNFGroup") -> None:
+		"""
+		Simpler case of `add_group` for when group parents are added
+		to the group tree. Should only be called by `add_group`.
+		"""
+		if group.parent is None:
+			self._top_groups.add(group)
+		else:
+			if group.parent not in self._group_data:
+				self._add_group_parent(group.parent)
+			self._group_data[group.parent].children.add(group)
 
 	def add_group(
 		self,
@@ -111,7 +111,7 @@ class DrawList:
 			self._top_groups.add(group)
 		else:
 			if group.parent not in self._group_data:
-				self.add_group(group.parent)
+				self._add_group_parent(group.parent)
 			self._group_data[group.parent].children.add(group)
 
 		self._group_data[group].interfacer = interfacer
@@ -120,8 +120,7 @@ class DrawList:
 
 	def remove_group(self, group: "PNFGroup") -> None:
 		"""
-		Removes an interfacer and its group from this draw
-		list's group tree.
+		Removes a group from this draw list's group tree.
 		"""
 		gd = self._group_data[group]
 		if gd.children:
@@ -295,9 +294,6 @@ class DrawList:
 		"""
 		Sets the content of the index buffer to the given data.
 		"""
-		# and
-		# refreshes all VAOs of all vertex domains to use it.
-		#"""
 		indices = (C_TYPE_MAP[_INDEX_TYPE] * len(data))(*data)
 		self.index_buffer.set_size_and_data(GL_TYPE_SIZES[_INDEX_TYPE] * len(indices), indices)
 
@@ -405,21 +401,11 @@ class PNFBatch:
 		return interfacer
 
 	def draw(self, draw_list_name: t.Hashable):
+		"""
+		Draws the given draw list.
+		"""
 		draw_list = self._draw_lists[draw_list_name]
-		if draw_list.check_dirty():
-			pass
-			# If the draw list was dirty, its index buffer now changed.
-			# Update its VAOs to use the new index buffer.
-			# for dom in self._vertex_domains.values():
-			# 	if draw_list_name not in dom._vaos:
-			# 		continue
-			# 	for vao in dom._vaos[draw_list_name].values():
-			# 		gl.glBindVertexArray(vao)
-			# 		gl.glBindBuffer(draw_list.index_buffer.target, draw_list.index_buffer.id)
-			# 		gl.glBindVertexArray(0)
-			# NOTE: Above can probably deleted since index buffers keep their id
-			# throughout their lifetime
-
+		draw_list.check_dirty()
 		draw_list.draw()
 
 	def _introduce_interfacer(
@@ -453,9 +439,18 @@ class PNFBatch:
 		group: "PNFGroup",
 		state: GLState,
 	) -> None:
+		"""
+		Adds a group alongside with its owning interfacer and the state
+		it should be drawn under to the given draw list, which is newly
+		created when not present.
+		"""
 		self._get_draw_list(draw_list).add_group(group, interfacer, state)
 
-	def remove_group(self, draw_list, group) -> None:
+	def remove_group(self, draw_list: t.Hashable, group: "PNFGroup") -> None:
+		"""
+		Removes the given group from the given draw list's group tree.
+		The draw list must exist.
+		"""
 		self._draw_lists[draw_list].remove_group(group)
 
 	def _dump_debug_info(self) -> None:

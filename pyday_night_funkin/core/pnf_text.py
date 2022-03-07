@@ -32,5 +32,6 @@ class PNFText(WorldObject):
 
 		glyphs: t.List["Glyph"] = font_tex.get_glyphs(text)
 
-		# for glyph in glyphs:
-		# 	print(vars(glyph))
+		for glyph in glyphs:
+			print(vars(glyph))
+
