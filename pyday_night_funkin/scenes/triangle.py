@@ -9,7 +9,7 @@ from pyglet import gl
 from pyglet.window.key import LEFT, UP, DOWN, RIGHT, X, Z
 
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
-from pyday_night_funkin.core.context import Context
+from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as st
 from pyday_night_funkin.core.scene import BaseScene
@@ -85,15 +85,15 @@ class Triangle(SceneObject):
 		self._y = y
 		self.cam_ubo = cam_ubo
 
-		self._context = Context(
+		self._context = SceneContext(
 			batch,
 			PNFGroup(group, 0, self._build_gl_state()),
 		)
 
 		self._create_interfacer()
 
-	def set_context(self, parent_context: "Context") -> None:
-		self._context = Context(
+	def set_context(self, parent_context: "SceneContext") -> None:
+		self._context = SceneContext(
 			parent_context.batch,
 			PNFGroup(parent_context.group, 0, self._build_gl_state()),
 		)

@@ -16,7 +16,7 @@ if t.TYPE_CHECKING:
 
 _COLOR_SET_SHADER_CONTAINER = ShaderContainer(
 	PNFSpriteVertexShader.generate(),
-	PNFSpriteFragmentShader.generate(0.01, PNFSpriteFragmentShader.COLOR.SET),
+	PNFSpriteFragmentShader.generate(PNFSpriteFragmentShader.COLOR.SET),
 )
 
 class AlphabetCharacter(PNFSprite):

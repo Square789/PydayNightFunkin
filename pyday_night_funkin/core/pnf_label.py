@@ -58,7 +58,7 @@ from pyglet.text.layout import (
 	_GlyphBox, TextLayout, decoration_fragment_source, layout_fragment_source
 )
 
-from pyday_night_funkin.core.context import Context
+from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup, state
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
@@ -434,7 +434,7 @@ class PNFLabel(Label, WorldObject):
 		context=None,
 		wrap_lines=True,
 	) -> None:
-		self._context = context or Context()
+		self._context = context or SceneContext()
 
 		# === NOTE: Copypaste of `pyglet.text.__init__.Label:__init__`
 		document = decode_text(text)
@@ -503,7 +503,7 @@ class PNFLabel(Label, WorldObject):
 	def update(self, dt: float) -> None:
 		pass
 
-	def set_context(self, parent_context: "Context") -> None:
+	def set_context(self, parent_context: "SceneContext") -> None:
 		new_batch = parent_context.batch
 		old_batch = self._context.batch
 	

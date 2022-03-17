@@ -19,7 +19,7 @@ class ShaderContainer():
 
 	def get_program(self) -> ShaderProgram:
 		"""
-		If needed, compiles and returns the program.
+		If needed, compiles, and returns the program.
 		"""
 		if self._prog is None:
 			self._compile()

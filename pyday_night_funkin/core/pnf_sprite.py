@@ -8,7 +8,7 @@ from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.core.context import Context
+from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
@@ -107,10 +107,6 @@ uniform sampler2D sprite_texture;
 
 
 void main() {{
-	if (vertex_colors.a < {alpha_limit}) {{
-		discard;
-	}}
-
 	final_color = {color_behavior};
 }}
 """
@@ -131,15 +127,8 @@ class PNFSpriteFragmentShader():
 		SET =   "vec4(vertex_colors.rgb, texture(sprite_texture, texture_coords.xy).a)"
 
 	@classmethod
-	def generate(
-		cls,
-		alpha_limit: float = 0.01,
-		color_behavior: str = COLOR.BLEND,
-	) -> str:
-		return cls.src.format(
-			alpha_limit=alpha_limit,
-			color_behavior=color_behavior,
-		)
+	def generate(cls, color_behavior: str = COLOR.BLEND) -> str:
+		return cls.src.format(color_behavior=color_behavior)
 
 
 class Movement():
@@ -297,7 +286,7 @@ class PNFSprite(WorldObject):
 	"""
 	Pretty much *the* core scene object, the sprite!
 	It can show images or animations, do all sort of transforms, have
-	a shader as well as a camera on it and comes with effect support.
+	a shader as well as cameras on it and comes with effect support.
 	"""
 
 	_TWEEN_ATTR_NAME_MAP = {
@@ -322,7 +311,7 @@ class PNFSprite(WorldObject):
 		y: "Numeric" = 0,
 		blend_src = gl.GL_SRC_ALPHA,
 		blend_dest = gl.GL_ONE_MINUS_SRC_ALPHA,
-		context: Context = None,
+		context: SceneContext = None,
 		usage: t.Literal["dynamic", "stream", "static"] = "dynamic",
 		subpixel: bool = False,
 	) -> None:
@@ -358,9 +347,11 @@ class PNFSprite(WorldObject):
 		self._blend_dest = blend_dest
 
 		if context is None:
-			self._context = Context()
+			self._context = SceneContext()
 		else:
-			self._context = Context(context.batch, PNFGroup(parent=context.group), context.cameras)
+			self._context = SceneContext(
+				context.batch, PNFGroup(parent=context.group), context.cameras
+			)
 
 		self._create_interfacer()
 
@@ -401,7 +392,7 @@ class PNFSprite(WorldObject):
 		)
 		self._update_position()
 
-	def set_context(self, parent_context: "Context") -> None:
+	def set_context(self, parent_context: "SceneContext") -> None:
 		"""
 		This function actually doesn't set a context, it just
 		modifies the existing one and takes all necessary steps for
@@ -787,9 +778,6 @@ class PNFSprite(WorldObject):
 		prev_h, prev_w = self._texture.height, self._texture.width
 		if texture.id is not self._texture.id:
 			self._texture = texture
-			# TODO: Rebuilding the states completely is kind of a waste,
-			# you could just change the TextureBindingState and
-			# be done, but yada yada -> issue #28.
 			self._interfacer.set_states(
 				{camera: self._build_gl_state(camera.ubo) for camera in self._context.cameras}
 			)

@@ -92,15 +92,15 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.diff_arrow_left.animation.add_from_frames("press", ui_tex["arrow push left"])
 		self.diff_arrow_left.animation.play("idle")
 
+		self.difficulty_indicator = self.create_object("bg", x=larrx + 130, y=larry)
+		# Shoutouts to tyler "ninjamuffin99" blevins for using specific
+		# animation frames for positioning of UI elements;
+		# The fact that `EASY` is the first animation added is relevant here.
 		_diff_offset_map = {
 			DIFFICULTY.EASY: (20, 0),
 			DIFFICULTY.NORMAL: (70, 0),
 			DIFFICULTY.HARD: (20, 0),
 		}
-		self.difficulty_indicator = self.create_object("bg", x=larrx + 130, y=larry)
-		# Shoutouts to tyler "ninjamuffin99" blevins for using specific
-		# animation frames for positioning of UI elements;
-		# The fact that `EASY` is the first animation added is relevant here.
 		for diff in DIFFICULTY:
 			self.difficulty_indicator.animation.add_from_frames(
 				str(diff.value), ui_tex[diff.to_atlas_prefix()], offset=_diff_offset_map[diff]

@@ -106,10 +106,10 @@ class PNFBatchInterfacer:
 		"""
 		if new_batch != self.batch:
 			self.batch._remove_interfacer(self)
-			self._group = new_group
 			self._migrate_domain(new_batch._get_vertex_domain(self.domain.attribute_bundle))
 			self._draw_lists.clear()
 			self.batch = new_batch
+			self._group = new_group
 			self.batch._introduce_interfacer(self, states) # calls set_states
 		elif new_group != self._group:
 			for dl_id in self._draw_lists:

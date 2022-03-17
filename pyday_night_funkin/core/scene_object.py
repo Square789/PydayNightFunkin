@@ -1,7 +1,7 @@
 
 import typing as t
 
-from pyday_night_funkin.core.context import Context
+from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.graphics import PNFGroup
 
 
@@ -16,7 +16,7 @@ class SceneObject:
 	def __init__(self) -> None:
 		raise NotImplementedError("You shouldn't init a SceneObject directly!")
 
-	def set_context(self, parent_context: "Context") -> None:
+	def set_context(self, parent_context: "SceneContext") -> None:
 		"""
 		Called when object is added to a scene/the parent context
 		changes.
@@ -30,7 +30,7 @@ class SceneObject:
 		Should clear all possible references to the context.
 		By default, will set the context to an empty context.
 		"""
-		self.set_context(Context())
+		self.set_context(SceneContext())
 
 	def delete(self) -> None:
 		"""
@@ -83,8 +83,8 @@ class Container(SceneObject):
 		self._members.remove(object)
 		object.invalidate_context()
 
-	def set_context(self, parent_context: "Context") -> None:
-		self._context = Context(parent_context.batch, PNFGroup(parent=parent_context.group))
+	def set_context(self, parent_context: "SceneContext") -> None:
+		self._context = SceneContext(parent_context.batch, PNFGroup(parent=parent_context.group))
 		for spr in self._members:
 			spr.set_context(self._context)
 

@@ -4,7 +4,7 @@ import queue
 import typing as t
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.core.context import Context
+from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.pnf_label import PNFLabel
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
@@ -36,7 +36,7 @@ class DebugPane():
 				font_size = self.FONT_SIZE,
 				x = 10,
 				y = (self.FONT_SIZE * i + self.LINE_DIST * i),
-				context = Context(self.batch, self.foreground, None),
+				context = SceneContext(self.batch, self.foreground, None),
 			) for i in range(line_amount)
 		]
 		self.fps_label = PNFLabel(
@@ -45,13 +45,13 @@ class DebugPane():
 			font_size = self.FONT_SIZE + 4,
 			x = 20,
 			y = ((self.FONT_SIZE * (line_amount + 1)) + 4 + self.LINE_DIST * line_amount),
-			context = Context(self.batch, self.foreground, None),
+			context = SceneContext(self.batch, self.foreground, None),
 		)
 		self.rect = PNFSprite(
 			image = CNST.PIXEL_TEXTURE,
 			x = self.PADDING,
 			y = 0,
-			context = Context(self.batch, self.background, None),
+			context = SceneContext(self.batch, self.background, None),
 		)
 		self.rect.scale_x = CNST.GAME_WIDTH - 2 * self.PADDING
 		self.rect.scale_y = (self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1))

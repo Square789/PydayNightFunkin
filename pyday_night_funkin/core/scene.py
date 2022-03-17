@@ -9,7 +9,7 @@ from pyglet.window.key import B, R
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
-from pyday_night_funkin.core.context import Context
+from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.pnf_player import SFXRing
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
@@ -68,6 +68,7 @@ class BaseScene(Container):
 		super().__init__()
 
 		self.game = game
+
 		self.batch = PNFBatch()
 
 		self.draw_passthrough = True
@@ -153,7 +154,7 @@ class BaseScene(Container):
 		self._members.append(member)
 		return member
 
-	def set_context(self, _: Context) -> None:
+	def set_context(self, _: SceneContext) -> None:
 		raise RuntimeError("Can't set a scene's context, it's the scene hierarchy root!")
 
 	def invalidate_context(self) -> None:
@@ -210,7 +211,7 @@ class BaseScene(Container):
 
 	def draw(self) -> None:
 		"""
-		Draw the scene.
+		Draws the scene.
 		There should be no reason to override this.
 		"""
 
@@ -235,13 +236,13 @@ class BaseScene(Container):
 		self,
 		layer: t.Optional[str] = None,
 		camera: t.Optional[str] = None,
-	) -> Context:
+	) -> SceneContext:
 		"""
 		Returns a context for the given layer and camera names.
 		Both may also be `None`, in which case the first layer or the
 		default camera will be returned.
 		"""
-		return Context(self.batch, self.get_layer(layer).get_group(), self.get_camera(camera))
+		return SceneContext(self.batch, self.get_layer(layer).get_group(), self.get_camera(camera))
 
 	def get_layer(self, layer: t.Optional[str] = None) -> Layer:
 		"""

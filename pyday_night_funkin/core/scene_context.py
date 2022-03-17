@@ -5,7 +5,7 @@ from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.graphics import PNFBatch, get_default_batch, PNFGroup
 
 
-class Context():
+class SceneContext():
 	"""
 	Graphics context, which is fancy talk for a batch, a group and
 	cameras in a slotted container class.
@@ -32,4 +32,4 @@ class Context():
 		if isinstance(cameras, Camera):
 			self.cameras = (cameras,)
 		else:
-			self.cameras = cameras or (Camera.get_dummy(),)
+			self.cameras = tuple(cameras or (Camera.get_dummy(),))

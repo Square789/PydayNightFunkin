@@ -15,9 +15,6 @@ if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
 
 
-
-CENTER = CENTER_X, CENTER_Y = (GAME_WIDTH // 2, GAME_HEIGHT // 2)
-
 _QUAD_VBO_POSITION_SEGMENT_SIZE = GL_TYPE_SIZES[gl.GL_FLOAT] * 12
 _QUAD_VBO_POSITION_SEGMENT_START = GL_TYPE_SIZES[gl.GL_FLOAT] * 0
 _QUAD_VBO_TEX_COORD_SEGMENT_SIZE = GL_TYPE_SIZES[gl.GL_FLOAT] * 12
@@ -118,6 +115,7 @@ class Camera:
 		"""
 		A list of shaders that will be sequentially applied to this
 		camera's display quad.
+		NOT IMPLEMENTED as of 0.0.12-dev-M.
 		"""
 
 		self.clear_color = (0, .6, 0, 0)
@@ -255,8 +253,8 @@ class Camera:
 		"""
 		# This may not respect zoom. Or, it may, and I am completely
 		# forgetting something.
-		self._x = where[0] - CENTER_X # (self._width / 2)
-		self._y = where[1] - CENTER_Y # (self._height / 2)
+		self._x = where[0] - (self._width / 2)
+		self._y = where[1] - (self._height / 2)
 		self._update_ubo()
 
 	def set_follow_target(self, tgt: t.Optional[Vec2], lerp: float = 1.0):
@@ -270,8 +268,8 @@ class Camera:
 		# reduced to a point. Take advantage of that and reduce it
 		# to the halved display width here.
 
-		tgt_x = self._follow_target[0] - CENTER_X # (self._width / 2)
-		tgt_y = self._follow_target[1] - CENTER_Y # (self._height / 2)
+		tgt_x = self._follow_target[0] - (self._width / 2)
+		tgt_y = self._follow_target[1] - (self._height / 2)
 
 		self._x += (tgt_x - self._x) * self._follow_lerp
 		self._y += (tgt_y - self._y) * self._follow_lerp
