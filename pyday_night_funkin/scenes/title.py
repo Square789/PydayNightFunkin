@@ -5,7 +5,6 @@ import typing as t
 from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
-from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin import scenes
 
@@ -55,8 +54,6 @@ class TitleScene(scenes.MusicBeatScene):
 
 		self._intro_ended = False
 		self._leaving_scene = False
-
-		self.create_object("main", None, PNFText, text="Hello World", font_name="Consolas")
 
 		self.text_lines: t.List[t.List["AlphabetCharacter"]] = []
 

@@ -148,6 +148,12 @@ class BaseScene(Container):
 		The object will be given a fitting `context` filled
 		in by the scene if not otherwise given. (And if you give it a
 		custom one, you better know what you're doing.)
+
+		Note that `self.create_object("lyr", "cam", Cls, 1, 2, n=3)` is
+		effectively equivalent to
+		`x = Cls(1, 2, n=3); self.add(x, "lyr", cam")`, but a bit
+		faster as no migration from a virtual batch to the scene's batch
+		has to happen.
 		"""
 		kwargs.setdefault("context", self.get_context(layer, camera))
 		member = object_class(*args, **kwargs)
@@ -223,7 +229,10 @@ class BaseScene(Container):
 			# NOTE: While the viewport is nice to shrink the game, it also affects all draw
 			# operations on the cameras, which crams the sprites into their fb's corners.
 			# Need to set it to this for framebuffer rendering
-			gl.glViewport(0, 0, camera._width, camera._height)
+			# TODO: Gotta do more experimenting with haxeflixel cameras to accurately replicate
+			gl.glViewport(0, 0, CNST.GAME_WIDTH**2 // camera._width, CNST.GAME_HEIGHT**2 // camera._height,)
+			#gl.glViewport(0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
+			#gl.glViewport(0, 0, camera._width, camera._height)
 			gl.glClearColor(*camera.clear_color)
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 			self.batch.draw(camera) # Draw everything in the camera's draw list to the camera's FBO

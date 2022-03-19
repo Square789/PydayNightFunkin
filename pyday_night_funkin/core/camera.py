@@ -118,7 +118,7 @@ class Camera:
 		NOT IMPLEMENTED as of 0.0.12-dev-M.
 		"""
 
-		self.clear_color = (0, .6, 0, 0)
+		self.clear_color = (0, .6, 0, .3)
 		"""Color the camera's frame buffer is cleared with."""
 
 		self.framebuffer = Framebuffer()
@@ -221,6 +221,7 @@ class Camera:
 			ubo.zoom = self._zoom
 			ubo.position[:] = (self._x, self._y)
 			ubo.GAME_DIMENSIONS[:] = (GAME_WIDTH, GAME_HEIGHT)
+			#ubo.GAME_DIMENSIONS[:] = (self._width, self._height)
 
 	def _update_vbo(self) -> None:
 		x1 = self._screen_x

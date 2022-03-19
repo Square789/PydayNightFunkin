@@ -51,9 +51,9 @@ class WorldObject(SceneObject):
 	A scene object occupying space, intended to be drawn.
 	"""
 
-	def __init__(self) -> None:
-		self._x = 0
-		self._y = 0
+	def __init__(self, x: int = 0, y: int = 0) -> None:
+		self._x = x
+		self._y = y
 
 
 class Container(SceneObject):

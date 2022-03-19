@@ -59,14 +59,15 @@ mat4 m_camera_trans_scale = mat4(1.0);
 
 
 void main() {{
-	m_trans_scale[3][0] = translate.x + anim_offset.x + frame_offset.x * scale.x;
-	m_trans_scale[3][1] = translate.y + anim_offset.y + frame_offset.y * scale.y;
+	m_trans_scale[3].xy = translate + anim_offset + (frame_offset * scale);
 	m_trans_scale[0][0] = scale.x;
 	m_trans_scale[1][1] = scale.y;
+
 	m_rotation[0][0] =  cos(-radians(rotation));
 	m_rotation[0][1] =  sin(-radians(rotation));
 	m_rotation[1][0] = -sin(-radians(rotation));
 	m_rotation[1][1] =  cos(-radians(rotation));
+
 	// Camera transform and zoom scale
 	m_camera_trans_scale[3][0] = (
 		(camera.zoom * -camera.GAME_DIMENSIONS.x / 2) +
@@ -315,6 +316,8 @@ class PNFSprite(WorldObject):
 		usage: t.Literal["dynamic", "stream", "static"] = "dynamic",
 		subpixel: bool = False,
 	) -> None:
+		super().__init__(x, y)
+
 		image = CNST.ERROR_TEXTURE if image is None else image
 
 		self.animation = AnimationController()
@@ -324,8 +327,6 @@ class PNFSprite(WorldObject):
 		self.movement: t.Optional[Movement] = None
 		self.effects: t.List["EffectBound"] = []
 
-		self._x = x
-		self._y = y
 		self._interfacer = None
 		self._rotation = 0
 		self._opacity = 255

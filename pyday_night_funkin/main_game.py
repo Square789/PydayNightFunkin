@@ -26,7 +26,7 @@ from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.12-dev-M"
+__version__ = "0.0.12-dev-N"
 
 
 class _FPSData:
@@ -118,21 +118,18 @@ class Game():
 		"""
 		Run the game.
 		"""
-		# Debug stuff must be set up in the game loop since otherwise the id
-		# `1` (something something standard doesn't guarantee it will be 1)
-		# will be used twice for two different vertex array objects in 2
-		# different contexts? Yeah idk about OpenGL, but it will lead to
-		# unexpected errors later when switching scenes and often recreating
-		# VAOs.
-		if self.use_debug_pane or self.debug:
-			def debug_setup(_):
+		# Must be set up in the game loop since otherwise some OpenGL
+		# stuff will go wrong.
+		def setup(_):
+			if self.debug:
 				self._fps = _FPSData()
 				if self.use_debug_pane:
 					self.debug_pane = DebugPane(8)
 					logger.add(self.debug_pane.add_message)
 				logger.info(f"Game started (v{__version__}), pyglet version {pyglet.version}")
-			pyglet.clock.schedule_once(debug_setup, 0.0)
-		else:
+		pyglet.clock.schedule_once(setup, 0.0)
+
+		if not self.debug:
 			logger.remove(0)
 
 		pyglet.clock.schedule_interval(self.update, 1 / 60.0)

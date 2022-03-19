@@ -1,43 +1,16 @@
 
 import typing as t
 
-if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.graphics.state import GLState
-
-
 class PNFGroup:
 	"""
-	# TODO if state shenanigans are done, fix this docstring
-	Groups supply an OpenGL state and define an ordered tree which
-	dictates element draw order.
-	! WARNING ! Groups are mutable, but any changes to them must
-	immediatedly be reported to associated interfacers.
-	TODO this sucks, find workarounds.
+	Groups define a tree which dictates element draw order.
 	"""
 
-	def __init__(
-		self,
-		parent: t.Optional["PNFGroup"] = None,
-		order: int = 0,
-		# state: t.Optional["GLState"] = None,
-	) -> None:
+	__slots__ = ("parent", "order")
+
+	def __init__(self, parent: t.Optional["PNFGroup"] = None, order: int = 0) -> None:
 		self.parent = parent
 		self.order = order
-		# self.state = state
-		# """OpenGL state the group must be drawn with."""
-
-		# self.visible = True
-		# """
-		# Whether the group is visible. Note that this does not
-		# affect any child groups.
-		# """
-
-		# if state is None or self.state.program is None:
-		# 	# Errors way later when a draw list is built with this group
-		# 	# raise ValueError("Each group requires a `ProgramStatePart`!")
-		# 	self.program = None
-		# else:
-		# 	self.program = self.state.program
 
 	def __gt__(self, other) -> bool:
 		if not isinstance(other, PNFGroup):

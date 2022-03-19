@@ -7,7 +7,6 @@ from pyglet.window.key import E, O, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN
 
 from pyday_night_funkin.characters import Boyfriend
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
-from pyday_night_funkin.core.pnf_label import PNFLabel
 from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.note import NOTE_TYPE
@@ -42,12 +41,15 @@ class TestScene(MusicBeatScene):
 		)
 		self.boyfriend.animation.play("idle")
 
-		# self.label = self.create_object(camera="main", object_class=PNFLabel, text="test")
 		self.label = self.create_object(
-			camera = "main",
+			"ye_olde_layer",
+			"main",
 			object_class = PNFText,
+			x = 10,
+			y = 200,
 			text = "Hello World!",
 			font_name = "Consolas",
+			font_size = 24,
 		)
 
 	@staticmethod
@@ -110,6 +112,8 @@ class TestScene(MusicBeatScene):
 			self.cameras["main"].zoom -= .01
 
 		if ksh[O]:
-			self.label.text += "!"
+			self.label.x += 1
+			# self.label.text += "!"
 		if ksh[P]:
-			self.label.text = self.label.text[:-1]
+			self.label.x -= 1
+			# self.label.text = self.label.text[:-1]

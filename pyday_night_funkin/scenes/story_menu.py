@@ -3,7 +3,7 @@ import typing as t
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
-from pyday_night_funkin.core.pnf_label import PNFLabel
+from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
@@ -132,7 +132,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		# ) # Doesn't work, probably broke the labels too hard. Too bad!
 		self.week_title_txt = self.create_object(
 			"bg",
-			object_class = PNFLabel,
+			object_class = PNFText,
 			x = CNST.GAME_WIDTH * 0.7,
 			y = 10,
 			text = "",
@@ -168,7 +168,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 				header.target_y = i - index
 
 			self.week_title_txt.text = WEEKS[index].display_name
-			self.week_title_txt.x = CNST.GAME_WIDTH - (self.week_title_txt.content_width + 10)
+			# self.week_title_txt.x = CNST.GAME_WIDTH - (self.week_title_txt.content_width + 10)
 
 			# self.tracklist_txt.text = "TRACKS:\n" + "\n".join(
 			# 	scene.get_display_name().upper() for scene in WEEKS[index].levels
