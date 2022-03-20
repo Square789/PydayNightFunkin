@@ -71,3 +71,11 @@ class SFXRing():
 			if i not in self._busy:
 				return i
 		return None
+
+	def delete(self) -> None:
+		for player in self.players:
+			player.stop()
+			player.delete()
+		self.players = []
+		# Unnecessary but i like me some good cleanup
+		self._busy = set()

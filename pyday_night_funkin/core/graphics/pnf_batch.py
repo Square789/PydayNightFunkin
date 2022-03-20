@@ -217,6 +217,7 @@ class DrawList:
 		# a sort by the most expensive thing to switch (shader programs)
 		for chain in chains:
 			chain.groups.sort(key=lambda g: g.state.program.id)
+			# chain.groups.sort(key=lambda g: hash(g.interfacer.domain.attribute_bundle))
 
 		if not chains:
 			return [], []

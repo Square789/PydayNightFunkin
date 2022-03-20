@@ -397,6 +397,7 @@ class _AssetSystemManager():
 
 		result = res.load(self)
 		if cache:
+			# print("STORING", res, "IN CACHE")
 			self._cache[res] = result
 		return result
 
@@ -409,8 +410,10 @@ class _AssetSystemManager():
 		"""
 		if entries:
 			for e in entries:
+				# print(f"POPPING {e} FROM CACHE")
 				self._cache.pop(e, None) # don't error on nonexistent cache entries
 		else:
+			# print("PURGING CACHE")
 			self._cache.clear()
 
 	def register_assets(self, *names: str) -> None:

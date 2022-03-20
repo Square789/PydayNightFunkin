@@ -4,9 +4,10 @@ import queue
 import typing as t
 
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
-from pyday_night_funkin.core.pnf_label import PNFLabel
+from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.utils import to_rgb_tuple
 
@@ -30,21 +31,19 @@ class DebugPane():
 		self.batch = PNFBatch()
 		self._queue = Queue()
 		self.labels = [
-			PNFLabel(
-				"",
-				font_name = "Consolas",
-				font_size = self.FONT_SIZE,
+			PNFText(
 				x = 10,
 				y = (self.FONT_SIZE * i + self.LINE_DIST * i),
+				font_name = "Consolas",
+				font_size = self.FONT_SIZE,
 				context = SceneContext(self.batch, self.foreground, None),
 			) for i in range(line_amount)
 		]
-		self.fps_label = PNFLabel(
-			"",
-			font_name = "Consolas",
-			font_size = self.FONT_SIZE + 4,
+		self.fps_label = PNFText(
 			x = 20,
 			y = ((self.FONT_SIZE * (line_amount + 1)) + 4 + self.LINE_DIST * line_amount),
+			font_name = "Consolas",
+			font_size = self.FONT_SIZE + 4,
 			context = SceneContext(self.batch, self.foreground, None),
 		)
 		self.rect = PNFSprite(
@@ -105,4 +104,4 @@ class DebugPane():
 		"""
 		Draw the DebugPane.
 		"""
-		self.batch.draw()
+		self.batch.draw(Camera.get_dummy())

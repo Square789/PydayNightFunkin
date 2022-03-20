@@ -168,7 +168,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 				header.target_y = i - index
 
 			self.week_title_txt.text = WEEKS[index].display_name
-			# self.week_title_txt.x = CNST.GAME_WIDTH - (self.week_title_txt.content_width + 10)
+			self.week_title_txt.x = CNST.GAME_WIDTH - (self.week_title_txt.content_width + 10)
 
 			# self.tracklist_txt.text = "TRACKS:\n" + "\n".join(
 			# 	scene.get_display_name().upper() for scene in WEEKS[index].levels

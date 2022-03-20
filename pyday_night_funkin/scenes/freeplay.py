@@ -4,8 +4,8 @@ import typing as t
 from pyday_night_funkin.alphabet import MenuTextLine
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.asset_system import load_asset, ASSET
-from pyday_night_funkin.core.pnf_label import PNFLabel
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
+from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.scene import BaseScene
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
 from pyday_night_funkin.menu import Menu
@@ -36,27 +36,26 @@ class FreeplayScene(BaseScene):
 		self.bg = self.create_object("bg", image=load_asset(ASSET.IMG_MENU_BG_BLUE))
 
 		load_asset(ASSET.FONT_VCR)
-		# self.score_text = self.create_object(
-		# 	"textfg",
-		# 	object_class = PNFLabel,
-		# 	x = CNST.GAME_WIDTH * .7,
-		# 	y = 5,
-		# 	font_name = "VCR OSD Mono",
-		# 	font_size = 32,
-		# 	color = to_rgba_tuple(CNST.WHITE),
-		# 	align = "right",
-		# )
-		# self.diff_text = self.create_object(
-		# 	"textfg",
-		# 	object_class = PNFLabel,
-		# 	x = self.score_text.x,
-		# 	y = self.score_text.y + 36,
-		# 	font_name = "VCR OSD Mono",
-		# 	font_size = 24,
-		# )
+		self.score_text = self.create_object(
+			"textfg",
+			object_class = PNFText,
+			x = CNST.GAME_WIDTH * .7,
+			y = 5,
+			font_name = "VCR OSD Mono",
+			font_size = 32,
+			color = to_rgba_tuple(CNST.WHITE),
+			align = ALIGNMENT.RIGHT,
+		)
+		self.diff_text = self.create_object(
+			"textfg",
+			object_class = PNFText,
+			x = self.score_text.x,
+			y = self.score_text.y + 36,
+			font_name = "VCR OSD Mono",
+			font_size = 24,
+		)
 
-		# score_bg = self.create_object("fg", x=self.score_text.x - 6, y=0, image=CNST.PIXEL_TEXTURE)
-		score_bg = self.create_object("fg", x=100 - 6, y=0, image=CNST.PIXEL_TEXTURE)
+		score_bg = self.create_object("fg", x=self.score_text.x - 6, y=0, image=CNST.PIXEL_TEXTURE)
 		score_bg.scale_x = CNST.GAME_WIDTH * .35
 		score_bg.scale_y = 66
 		score_bg.color = to_rgb_tuple(CNST.BLACK)
@@ -140,7 +139,6 @@ class FreeplayScene(BaseScene):
 			)
 
 	def _on_diff_select(self, i: int, state: bool) -> None:
-		return
 		if state:
 			self.diff_text.text = DIFFICULTY(i).name
 

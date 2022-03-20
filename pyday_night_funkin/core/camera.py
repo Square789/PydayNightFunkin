@@ -79,9 +79,9 @@ class Camera:
 	)
 
 	def __init__(self, x: int, y: int, w: int, h: int):
-		self._screen_x = 10 + x
+		self._screen_x = x
 		"""Absolute x position of the camera's display quad."""
-		self._screen_y = 10 + y
+		self._screen_y = y
 		"""Absolute y position of the camera's display quad."""
 
 		self._width = w
@@ -118,7 +118,7 @@ class Camera:
 		NOT IMPLEMENTED as of 0.0.12-dev-M.
 		"""
 
-		self.clear_color = (0, .6, 0, .3)
+		self.clear_color = (0, .6, 0, 0)
 		"""Color the camera's frame buffer is cleared with."""
 
 		self.framebuffer = Framebuffer()

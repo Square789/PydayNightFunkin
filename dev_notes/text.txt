@@ -1,0 +1,28 @@
+
+word_wrap | auto_size | legal?
+          |           |   X    [manually set width, probably just cut text off if it's too long]
+          |     X     |   X    [happily lays out in a single long line]
+    X     |           |   X    [manually set width, appropiately line wrap]
+    X     |     X     |        [not allowed (by haxeflixel anyways, i don't see the problem in figuring out the longest line's width and working with that)]
+
+text layout:
+	For left-to-right text:
+		For LEFT alignment:
+			brainlessly do left alignment
+		else:
+			figure out true line length
+			if available length is given [auto_size is False; width > 0]:
+				start laying out at (width - line_length)/(CENTER ? 2 : 1) 
+			else:
+				idk how you wanna meaningfully do the other alignment types.
+				Everything would just be left-aligned anyways if the text sized to exactly as much as it needs.
+
+	else:
+		# later, maybe. put it on the list. you know, the really long list with a bunch of bullshit on it. yeah, that one.
+
+A different rendering state => multiple interfacers (!) would be required for:
+	- Other fonts (if i do this, then faaaaar later-on)
+	- Other shader programs/blending modes (not really doing that so eh)
+	- Text decoration / The borders FlxText has.
+	  This may be slightly annoying, would certainly require one additional interfacer.
+	  I think pyglet already does something like that with its TextDecorationGroup/TextLayoutGroup

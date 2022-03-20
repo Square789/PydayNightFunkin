@@ -12,6 +12,11 @@ Known to fail with:
 # Module is a dysfunctional hack as of now (17.03.2022),
 # but I'm confident there will be something in like 2 weeks
 
+# Module barely does its job as of 20.03, still lacking
+# features and can be optimized to the moon and back [although
+# for that use C-extensions and do it later.
+# Remember: MAKE IT WORK. MAKE IT RIGHT. MAKE IT FAST]
+
 from enum import IntEnum
 import typing as t
 
@@ -119,11 +124,23 @@ void main() {
 
 class _Line:
 	"""
-	Small line dataclass for text layout.
+	Line dataclass for text layout.
 	"""
+	def __init__(
+		self,
+		y_offset: int,
+		glyphs: t.Sequence["Glyph"],
+		width: int,
+	) -> None:
+		"""
+		y_offset: Specifies line offset relative to the text.
+		glyphs: Glyphs on this line.
+		width: The exact width the glyphs take to be fully displayed.
+		"""
+		self.y_offset = y_offset
+		self.glyphs = glyphs
+		self.width = width
 
-	def __init__(self) -> None:
-		pass
 
 class ALIGNMENT(IntEnum):
 	LEFT = 0
@@ -142,10 +159,10 @@ class PNFText(WorldObject):
 		text: str = "",
 		font_size: int = 8,
 		font_name: t.Optional[str] = None,
-		color: t.Tuple[int, int, int, int] = (0x00, 0x00, 0x00, 0xFF),
+		color: t.Tuple[int, int, int, int] = (0xFF, 0xFF, 0xFF, 0xFF),
 		multiline: bool = False,
 		field_width: int = 0,
-		alignment: ALIGNMENT = ALIGNMENT.LEFT,
+		align: ALIGNMENT = ALIGNMENT.LEFT,
 		context: t.Optional[SceneContext] = None,
 	) -> None:
 		super().__init__(x, y)
@@ -158,12 +175,22 @@ class PNFText(WorldObject):
 		self._font_name = font_name
 		self._font_size = font_size
 		self._color = color
+		self._autosize = field_width <= 0
+		self._field_width = 0
+		self._multiline = multiline
+		self._align = align
+
+		self.content_width = 0
+		"""
+		Pixels the label's contents take up. This may be lower than
+		the manually set width [TODO but never higher?].
+		"""
+
+		self.lines: t.List[_Line] = []
+		self._layout_lines()
 
 		self._interfacer = None
 		self._create_interfacer()
-
-	def set_format(self) -> None:
-		pass
 
 	def _build_state(self, ftex: "Texture", cam: "Camera") -> state.GLState:
 		"""
@@ -179,42 +206,35 @@ class PNFText(WorldObject):
 		)
 
 	def _create_interfacer(self) -> None:
-		# TODO: platform specific type hint, remove
-		font_tex: "Win32DirectWriteFont" = load_font(self._font_name, self._font_size)
-
-		glyphs: t.List["Glyph"] = font_tex.get_glyphs(self._text)
-
 		x_advance = 0
 		indices = []
 		vertices = []
 		tex_coords = []
-		owner = None
-		for i, glyph in enumerate(glyphs):
-			indices += [x + (i * 4) for x in (0, 1, 2, 0, 2, 3)]
-			v0: "Numeric"
-			v1: "Numeric"
-			v2: "Numeric"
-			v3: "Numeric"
-			# v3 and v1 swapped as glyph.vertices assumes bottom-left origin
-			v0, v3, v2, v1 = glyph.vertices
+		owner = (
+			self.lines[0].glyphs[0].owner if self.lines and self.lines[0].glyphs
+			else load_font().get_glyphs("A")[0].owner
+		)
+		for line in self.lines:
+			for i, glyph in enumerate(line.glyphs):
+				indices += [x + (i * 4) for x in (0, 1, 2, 0, 2, 3)]
+				v0: "Numeric"
+				v1: "Numeric"
+				v2: "Numeric"
+				v3: "Numeric"
+				# v3 and v1 swapped as glyph.vertices assumes bottom-left origin
+				v0, v3, v2, v1 = glyph.vertices
 
-			v0 += x_advance
-			v2 += x_advance
-			vertices += [v0, v1, v2, v1, v2, v3, v0, v3]
+				v0 += x_advance
+				v2 += x_advance
+				vertices += [v0, v1, v2, v1, v2, v3, v0, v3]
 
-			tex_coords.extend(glyph.tex_coords)
-			x_advance += glyph.advance
-			if owner is None:
-				owner = glyph.owner
-			elif owner is not glyph.owner:
-				raise RuntimeError("booo")
+				tex_coords.extend(glyph.tex_coords)
+				x_advance += glyph.advance
 
-		# NOTE: Still no idea how stuff works exactly, adding this as a workaround
-		# for empty strings
-		if owner is None:
-			owner = load_font().get_glyphs("A")[0].owner
+				if owner is not glyph.owner:
+					raise RuntimeError("Booo!")
 
-		vertex_amt = 4 * len(glyphs)
+		vertex_amt = len(vertices) // 2
 		self._interfacer = self._context.batch.add_indexed(
 			vertex_amt,
 			gl.GL_TRIANGLES,
@@ -230,8 +250,24 @@ class PNFText(WorldObject):
 			("colors4B/", self._color * vertex_amt),
 		)
 
-	def _relayout_lines(self) -> None:
-		pass
+	def _layout_lines(self) -> None:
+		"""
+		Lays out the PNFText's text in lines depending on whether it's
+		single-or multiline.
+		"""
+		# TODO: platform specific type hint, remove
+		font: "Win32DirectWriteFont" = load_font(self._font_name, self._font_size)
+		if self._multiline:
+			self.lines = []
+			y_offset = 0
+			for text_line in self._text.splitlines():
+				glyphs: t.List["Glyph"] = font.get_glyphs(text_line)
+				self.lines.append(_Line(y_offset, text_line, sum(g.advance for g in glyphs)))
+		else:
+			glyphs: t.List["Glyph"] = font.get_glyphs(self._text)
+			self.lines = [_Line(0, glyphs, sum(g.advance for g in glyphs))]
+
+		self.content_width = max(l.width for l in self.lines)
 
 	def set_context(self, parent_context: "SceneContext") -> None:
 		self._context = SceneContext(
@@ -252,6 +288,7 @@ class PNFText(WorldObject):
 	@text.setter
 	def text(self, new_text: str) -> None:
 		self._text = new_text
+		self._layout_lines()
 		self._interfacer.delete()
 		self._create_interfacer()
 

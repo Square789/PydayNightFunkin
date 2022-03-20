@@ -21,7 +21,6 @@ class BufferObject:
 		self.usage = usage
 		self.target = target
 		self.size = size
-		self._deleted = False
 
 		gl.glCreateBuffers(1, self.id)
 		gl.glNamedBufferData(self.id, size, None, usage)
@@ -54,14 +53,7 @@ class BufferObject:
 		self.size = new_size
 
 	def delete(self) -> None:
-		if self._deleted:
-			return
-
 		gl.glDeleteBuffers(1, self.id)
-		self._deleted = True
-
-	def __del__(self) -> None:
-		self.delete()
 
 
 class MappedBufferObject(BufferObject):
@@ -125,7 +117,7 @@ class MappedBufferObject(BufferObject):
 		new = (ctypes.c_ubyte * new_size)()
 		ctypes.memmove(new, self._ram_buffer, min(new_size, self.size))
 		self._ram_buffer = new
-		gl.glNamedBufferData(self.id, new_size, None, self.usage)
+		gl.glNamedBufferData(self.id, new_size, ctypes.addressof(self._ram_buffer), self.usage)
 		self._dirty = False
 		self.size = new_size
 
