@@ -1,7 +1,7 @@
 
 word_wrap | auto_size | legal?
           |           |   X    [manually set width, probably just cut text off if it's too long]
-          |     X     |   X    [happily lays out in a single long line]
+          |     X     |   X    [happily lays out in a single long line.]
     X     |           |   X    [manually set width, appropiately line wrap]
     X     |     X     |        [not allowed (by haxeflixel anyways, i don't see the problem in figuring out the longest line's width and working with that)]
 

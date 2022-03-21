@@ -9,10 +9,10 @@ from pyglet.window.key import B, R
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
-from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.pnf_player import SFXRing
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
+from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import Container, SceneObject
 
 if t.TYPE_CHECKING:

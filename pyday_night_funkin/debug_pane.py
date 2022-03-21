@@ -5,10 +5,10 @@ import typing as t
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
-from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
+from pyday_night_funkin.core.scene import SceneContext
 from pyday_night_funkin.utils import to_rgb_tuple
 
 

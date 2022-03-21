@@ -140,12 +140,6 @@ class Camera:
 		display quad.
 		"""
 
-		# self.projection_matrix = None
-		# """
-		# Projection matrix that should be bound to window.projection
-		# before rendering with this camera.
-		# """
-
 		# Below is largely stolen from
 		# https://learnopengl.com/Advanced-OpenGL/Framebuffers
 
@@ -192,7 +186,6 @@ class Camera:
 
 		self._update_ubo()
 		self._update_vbo()
-		# self._update_proj_mat()
 
 	def draw_framebuffer(self) -> None:
 		"""
@@ -237,11 +230,6 @@ class Camera:
 		# Not going through the trouble of indexing (yet)
 		data = (ctypes.c_float * 12)(*v[0], *v[2], *v[1], *v[0], *v[2], *v[3])
 		self.vbo.set_data(0, _QUAD_VBO_POSITION_SEGMENT_SIZE, data)
-
-	# def _update_proj_mat(self) -> None:
-	# 	self.projection_matrix = Mat4.orthogonal_projection(
-	# 		0, self._width, self._height, 0, -1, 1
-	# 	)
 
 	def update(self, dt: float) -> None:
 		if self._follow_target is not None:

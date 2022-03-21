@@ -2,13 +2,19 @@
 import typing as t
 
 from pyday_night_funkin.core.camera import Camera
-from pyday_night_funkin.core.graphics import PNFBatch, get_default_batch, PNFGroup
+from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup, get_default_batch
 
 
 class SceneContext():
 	"""
-	Graphics context, which is fancy talk for a batch, a group and
+	A scene context, which is fancy talk for a batch, a group and
 	cameras in a slotted container class.
+
+	This thing is in a way passed down the entire hierarchy of a
+	scene. Each drawable/container requires its own group, (which)
+	is usually just created as a child group to the group of the
+	received context, but the other two are references to the same
+	object.
 	"""
 
 	__slots__ = ("batch", "cameras", "group")
@@ -33,3 +39,4 @@ class SceneContext():
 			self.cameras = (cameras,)
 		else:
 			self.cameras = tuple(cameras or (Camera.get_dummy(),))
+

@@ -3,7 +3,7 @@ import typing as t
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
-from pyday_night_funkin.core.pnf_text import PNFText
+from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
@@ -118,18 +118,19 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.diff_arrow_right.animation.play("idle")
 
 		load_asset(ASSET.FONT_VCR)
-		# self.tracklist_txt = self.create_object(
-		# 	"bg",
-		# 	object_class = PNFLabel,
-		# 	x = CNST.GAME_WIDTH * .05,
-		# 	y = yellow_stripe.height + 100,
-		# 	text = "TRACKS",
-		# 	font_name = "VCR OSD Mono",
-		# 	font_size = 32,
-		# 	color = to_rgba_tuple(0xE55777FF),
-		# 	multiline = True,
-		# 	width = 500,
-		# ) # Doesn't work, probably broke the labels too hard. Too bad!
+		self.tracklist_txt = self.create_object(
+			"bg",
+			object_class = PNFText,
+			x = (CNST.GAME_WIDTH - 500) * .5 - CNST.GAME_WIDTH * .35,
+			y = yellow_stripe.height + 100,
+			text = "TRACKS",
+			font_name = "VCR OSD Mono",
+			font_size = 32,
+			color = to_rgba_tuple(0xE55777FF),
+			multiline = True,
+			align = ALIGNMENT.CENTER,
+			width = 500,
+		)
 		self.week_title_txt = self.create_object(
 			"bg",
 			object_class = PNFText,
@@ -161,24 +162,27 @@ class StoryMenuScene(scenes.MusicBeatScene):
 	def _on_week_select(self, index: int, state: bool) -> None:
 		if not state:
 			self.week_headers[index].opacity = 153
-		else:
-			self.week_headers[index].opacity = 255
-			self.sfx_ring.play(load_asset(ASSET.SOUND_MENU_SCROLL))
-			for i, header in enumerate(self.week_headers):
-				header.target_y = i - index
+			return
 
-			self.week_title_txt.text = WEEKS[index].display_name
-			self.week_title_txt.x = CNST.GAME_WIDTH - (self.week_title_txt.content_width + 10)
+		self.week_headers[index].opacity = 255
+		self.sfx_ring.play(load_asset(ASSET.SOUND_MENU_SCROLL))
+		for i, header in enumerate(self.week_headers):
+			header.target_y = i - index
 
-			# self.tracklist_txt.text = "TRACKS:\n" + "\n".join(
-			# 	scene.get_display_name().upper() for scene in WEEKS[index].levels
-			# )
+		self.week_title_txt.text = WEEKS[index].display_name
+		self.week_title_txt.x = CNST.GAME_WIDTH - (self.week_title_txt.content_width + 10)
 
-			# # TODO: Come up with some screen centering code for labels.
-			# # Possibly a common superclass of PNFSprite, since that's what flixel does with
-			# # FlxObject anyways. Unfortunately, requires more hacks or custom labels.
-			# self.tracklist_txt.x = \
-			# 	(CNST.GAME_WIDTH - self.tracklist_txt.content_width) *.5 - CNST.GAME_WIDTH * .35
+		self.tracklist_txt.text = "TRACKS\n\n" + "\n".join(
+			scene.get_display_name().upper() for scene in WEEKS[index].levels
+		)
+
+		# TODO: The code below is bogus, actually.
+		# Still, come up with common screen centering code.
+		# # TODO: Come up with some screen centering code for labels.
+		# # Possibly a common superclass of PNFSprite, since that's what flixel does with
+		# # FlxObject anyways. Unfortunately, requires more hacks or custom labels.
+		# self.tracklist_txt.x = \
+		# 	(CNST.GAME_WIDTH - self.tracklist_txt.) *.5 - CNST.GAME_WIDTH * .35
 
 	def _on_diff_select(self, index: int, state: bool) -> None:
 		if not state:
@@ -199,10 +203,11 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.sfx_ring.play(load_asset(ASSET.SOUND_MENU_CONFIRM))
 		self.week_chars[1].animation.play("story_menu_confirm")
 		self.week_headers[index].start_toggle(
-			1.0, 0.1, True, True,
-			lambda s: setattr(s, "color", to_rgb_tuple(0x33FFFFFF)),
-			lambda s: setattr(s, "color", to_rgb_tuple(CNST.WHITE)),
-			lambda w=WEEKS[index]: self._set_ingame_scene(w),
+			1.0,
+			0.1,
+			on_toggle_on =  lambda s: setattr(s, "color", to_rgb_tuple(0x33FFFFFF)),
+			on_toggle_off = lambda s: setattr(s, "color", to_rgb_tuple(CNST.WHITE)),
+			on_complete =   lambda w=WEEKS[index]: self._set_ingame_scene(w),
 		)
 
 	def _set_ingame_scene(self, week: "Week") -> None:

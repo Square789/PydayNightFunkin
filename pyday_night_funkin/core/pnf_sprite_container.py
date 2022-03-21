@@ -1,15 +1,15 @@
 
 import typing as t
 
-from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.graphics import PNFGroup
 from pyday_night_funkin.core.pnf_sprite import EffectBound, Movement, PNFSprite
+from pyday_night_funkin.core.scene_context import SceneContext
+from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.utils import clamp
 
 if t.TYPE_CHECKING:
 	from pyglet.math import Vec2
-	from pyday_night_funkin.core.scene_context import SceneContext
 	from pyday_night_funkin.types import Numeric
 
 V = t.TypeVar("V")
@@ -48,9 +48,7 @@ class PNFSpriteContainer(PNFSprite):
 		self.movement: t.Optional[Movement] = None
 		self.effects: t.List["EffectBound"] = []
 
-		self._x = x
-		self._y = y
-		self._rotation = 0
+		WorldObject.__init__(self, x, y)
 		self._opacity = 255
 		self._rgb = (255, 255, 255)
 		self._scale = 1.0
@@ -65,9 +63,9 @@ class PNFSpriteContainer(PNFSprite):
 		for spr in sprites:
 			self.add(spr)
 
-	def set_context(self, parent_context: "SceneContext") -> None:
+	def set_context(self, parent_context: SceneContext) -> None:
 		self._context.batch = parent_context.batch
-		self._context.group = PNFGroup(parent=parent_context.group)
+		self._context.group = PNFGroup(parent_context.group)
 		self._context.cameras = parent_context.cameras
 		for x in self._sprites:
 			x.set_context(self._context)

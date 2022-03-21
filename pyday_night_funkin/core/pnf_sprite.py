@@ -3,15 +3,14 @@ from math import pi, sin
 import typing as t
 
 from pyglet import gl
-from pyglet.graphics.shader import ShaderProgram
 from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
+from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
@@ -328,7 +327,6 @@ class PNFSprite(WorldObject):
 		self.effects: t.List["EffectBound"] = []
 
 		self._interfacer = None
-		self._rotation = 0
 		self._opacity = 255
 		self._rgb = (255, 255, 255)
 		self._scale = 1.0
@@ -393,7 +391,7 @@ class PNFSprite(WorldObject):
 		)
 		self._update_position()
 
-	def set_context(self, parent_context: "SceneContext") -> None:
+	def set_context(self, parent_context: SceneContext) -> None:
 		"""
 		This function actually doesn't set a context, it just
 		modifies the existing one and takes all necessary steps for
@@ -416,7 +414,7 @@ class PNFSprite(WorldObject):
 
 		if rebuild_group:
 			self._context.cameras = new_cams
-			self._context.group = PNFGroup(parent=new_group)
+			self._context.group = PNFGroup(new_group)
 
 		if change_batch or rebuild_group:
 			self._interfacer.migrate(self._context.batch, self._context.group, new_states)
@@ -513,25 +511,23 @@ class PNFSprite(WorldObject):
 		self.effects.append(t)
 		return t
 
-	def remove_effect(self, *effects: Effect, fail_loudly: bool = False) -> None:
+	def remove_effect(self, *effects: Effect) -> None:
 		"""
 		Removes effects from the sprite.
 		Supply nothing to clear all effects. This will abruptly stop
 		all effects without calling their on_complete callbacks.
 		Supply any amount of effects to have only these removed.
-		If `fail_loudly` is not set to `True`, any errors on removing
-		will be suppressed, otherwise `ValueError` is raised.
+		No exception is raised for non-existent effects.
 		"""
 		if not effects:
 			self.effects.clear()
 			return
 
-		try:
-			for e in effects:
+		for e in effects:
+			try:
 				self.effects.remove(e)
-		except ValueError:
-			if fail_loudly:
-				raise
+			except ValueError:
+				pass
 
 	def start_movement(
 		self,

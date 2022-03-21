@@ -1,8 +1,8 @@
 
 import typing as t
 
-from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.graphics import PNFGroup
+from pyday_night_funkin.core.scene_context import SceneContext
 
 
 class SceneObject:
@@ -16,7 +16,7 @@ class SceneObject:
 	def __init__(self) -> None:
 		raise NotImplementedError("You shouldn't init a SceneObject directly!")
 
-	def set_context(self, parent_context: "SceneContext") -> None:
+	def set_context(self, parent_context: SceneContext) -> None:
 		"""
 		Called when object is added to a scene/the parent context
 		changes.
@@ -51,9 +51,12 @@ class WorldObject(SceneObject):
 	A scene object occupying space, intended to be drawn.
 	"""
 
+	# TODO extract common stuff from subclasses
+	# and expand this class with it.
 	def __init__(self, x: int = 0, y: int = 0) -> None:
 		self._x = x
 		self._y = y
+		self._rotation = 0
 
 
 class Container(SceneObject):
@@ -83,15 +86,17 @@ class Container(SceneObject):
 		self._members.remove(object)
 		object.invalidate_context()
 
-	def set_context(self, parent_context: "SceneContext") -> None:
-		self._context = SceneContext(parent_context.batch, PNFGroup(parent=parent_context.group))
-		for spr in self._members:
-			spr.set_context(self._context)
+	def set_context(self, parent_context: SceneContext) -> None:
+		self._context = SceneContext(
+			parent_context.batch, PNFGroup(parent_context.group), parent_context.cameras
+		)
+		for m in self._members:
+			m.set_context(self._context)
 
 	def delete(self) -> None:
-		for spr in self._members:
-			spr.delete()
+		for m in self._members:
+			m.delete()
 
 	def update(self, dt: float) -> None:
-		for spr in self._members:
-			spr.update(dt)
+		for m in self._members:
+			m.update(dt)

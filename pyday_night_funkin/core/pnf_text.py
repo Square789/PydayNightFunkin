@@ -25,7 +25,7 @@ from pyglet.gl import gl
 
 from pyday_night_funkin.core.graphics import state
 from pyday_night_funkin.core.graphics.pnf_group import PNFGroup
-from pyday_night_funkin.core.scene_context import SceneContext
+from pyday_night_funkin.core.scene import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 
@@ -112,7 +112,7 @@ _PNF_TEXT_FRAGMENT_SOURCE = """
 in vec4 frag_colors;
 in vec3 frag_tex_coords;
 
-out vec4 final_color;
+layout(location = 0) out vec4 final_color;
 
 uniform sampler2D sprite_texture;
 
@@ -161,7 +161,7 @@ class PNFText(WorldObject):
 		font_name: t.Optional[str] = None,
 		color: t.Tuple[int, int, int, int] = (0xFF, 0xFF, 0xFF, 0xFF),
 		multiline: bool = False,
-		field_width: int = 0,
+		width: int = 0,
 		align: ALIGNMENT = ALIGNMENT.LEFT,
 		context: t.Optional[SceneContext] = None,
 	) -> None:
@@ -169,14 +169,14 @@ class PNFText(WorldObject):
 
 		self._context = (
 			SceneContext() if context is None
-			else SceneContext(context.batch, PNFGroup(parent=context.group), context.cameras)
+			else SceneContext(context.batch, PNFGroup(context.group), context.cameras)
 		)
 		self._text = text
 		self._font_name = font_name
 		self._font_size = font_size
 		self._color = color
-		self._autosize = field_width <= 0
-		self._field_width = 0
+		self._autosize = width <= 0
+		self._width = width
 		self._multiline = multiline
 		self._align = align
 
@@ -206,7 +206,6 @@ class PNFText(WorldObject):
 		)
 
 	def _create_interfacer(self) -> None:
-		x_advance = 0
 		indices = []
 		vertices = []
 		tex_coords = []
@@ -214,22 +213,33 @@ class PNFText(WorldObject):
 			self.lines[0].glyphs[0].owner if self.lines and self.lines[0].glyphs
 			else load_font().get_glyphs("A")[0].owner
 		)
+		i = 0
 		for line in self.lines:
-			for i, glyph in enumerate(line.glyphs):
-				indices += [x + (i * 4) for x in (0, 1, 2, 0, 2, 3)]
+			x_advance = 0
+			if self._align is not ALIGNMENT.LEFT:
+				x_advance = (
+					max(self._width - line.width, 0) /
+					(2 if self._align is ALIGNMENT.CENTER else 1)
+				)
+			line_y_offset = line.y_offset
+			for glyph in line.glyphs:
 				v0: "Numeric"
 				v1: "Numeric"
 				v2: "Numeric"
 				v3: "Numeric"
 				# v3 and v1 swapped as glyph.vertices assumes bottom-left origin
 				v0, v3, v2, v1 = glyph.vertices
-
 				v0 += x_advance
 				v2 += x_advance
+				v1 += line_y_offset
+				v3 += line_y_offset
 				vertices += [v0, v1, v2, v1, v2, v3, v0, v3]
+				x_advance += glyph.advance
 
 				tex_coords.extend(glyph.tex_coords)
-				x_advance += glyph.advance
+
+				indices += [x + (i * 4) for x in (0, 1, 2, 0, 2, 3)]
+				i += 1
 
 				if owner is not glyph.owner:
 					raise RuntimeError("Booo!")
@@ -246,8 +256,8 @@ class PNFText(WorldObject):
 			("tex_coords3f/", tex_coords),
 			("scale2f/", (1.0, 1.0) * vertex_amt),
 			("scroll_factor2f/", (1.0, 1.0) * vertex_amt),
-			("rotation1f/", (0.0,) * vertex_amt),
-			("colors4B/", self._color * vertex_amt),
+			("rotation1f/", (self._rotation,) * vertex_amt),
+			("colors4Bn/", self._color * vertex_amt),
 		)
 
 	def _layout_lines(self) -> None:
@@ -262,7 +272,8 @@ class PNFText(WorldObject):
 			y_offset = 0
 			for text_line in self._text.splitlines():
 				glyphs: t.List["Glyph"] = font.get_glyphs(text_line)
-				self.lines.append(_Line(y_offset, text_line, sum(g.advance for g in glyphs)))
+				self.lines.append(_Line(y_offset, glyphs, sum(g.advance for g in glyphs)))
+				y_offset += font.ascent
 		else:
 			glyphs: t.List["Glyph"] = font.get_glyphs(self._text)
 			self.lines = [_Line(0, glyphs, sum(g.advance for g in glyphs))]

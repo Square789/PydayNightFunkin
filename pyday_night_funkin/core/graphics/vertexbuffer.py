@@ -25,25 +25,49 @@ class BufferObject:
 		gl.glCreateBuffers(1, self.id)
 		gl.glNamedBufferData(self.id, size, None, usage)
 
-	def set_size_and_data(self, size: int, data: int) -> None:
+	def set_size_and_data(self, size: int, data: ctypes.Array) -> None:
+		"""
+		Resizes the buffer to accomodate the new data of the given
+		`size`.
+		"""
 		gl.glNamedBufferData(self.id, size, data, self.usage)
 		self.size = size
 
 	def set_data(self, start: int, size: int, data: ctypes.Array) -> None:
-		# print(id(self), start, size, "<", ", ".join(map(str, data)), ">")
+		"""
+		Sets the next `size` bytes starting from `start` to `data`.
+		`data` must be of the same length as `size` and the size may
+		not exceed the buffer's size.
+		"""
 		gl.glNamedBufferSubData(self.id, start, size, data)
 
 	def get_data(self, start: int, size: int) -> ctypes.Array:
-		res = (ctypes.c_ubyte * size)()
+		"""
+		Retrieves the next `size` bytes from `start`.
+		May be truncated if `size` exceeds the buffer's size.
+		"""
+		if start + size > self.size:
+			size = max(0, self.size - start)
+		fetched_size = min(self.size - start, size - start)
+		res = (ctypes.c_ubyte * fetched_size)()
 		data = gl.glMapNamedBuffer(self.id, gl.GL_READ_ONLY)
-		ctypes.memmove(res, data + start, size)
+		ctypes.memmove(res, data + start, fetched_size)
 		gl.glUnmapNamedBuffer(self.id)
 		return res
 
 	def bind(self, target: t.Optional[int] = None) -> None:
+		"""
+		Binds the buffer by binding it to the specified target or its
+		standard `__init__`-given target.
+		"""
 		gl.glBindBuffer(self.target if target is None else target, self.id)
 
 	def resize(self, new_size: int) -> None:
+		"""
+		Resizes the buffer to take `new_size` bytes. Will truncate or
+		zero-fill existing data, depending on whether the buffer grew
+		or shrunk.
+		"""
 		gl.glNamedBufferData(
 			self.id,
 			new_size,
@@ -53,6 +77,7 @@ class BufferObject:
 		self.size = new_size
 
 	def delete(self) -> None:
+		"""Deletes the buffer on the OpenGL side."""
 		gl.glDeleteBuffers(1, self.id)
 
 
@@ -77,11 +102,6 @@ class MappedBufferObject(BufferObject):
 		self.size = size
 
 	def set_data(self, start: int, size: int, data: ctypes.Array) -> None:
-		"""
-		Sets the next `size` bytes starting from `start` to `data`.
-		`data` must be of the same length as `size` and the size may
-		not exceed the buffer's size.
-		"""
 		# bytes required to handle any type that isn't c_[u]byte
 		self._ram_buffer[start : start+size] = bytes(data)
 		if not self._dirty:
@@ -93,10 +113,6 @@ class MappedBufferObject(BufferObject):
 			self._dirty_max = max(self._dirty_max, start + size)
 
 	def get_data(self, start: int, size: int) -> ctypes.Array:
-		"""
-		Retrieves the next `size` bytes from `start`.
-		May be truncated if `size` exceeds the buffer's size.
-		"""
 		return self._ram_buffer[start : start+size]
 
 	def bind(self, target: t.Optional[int] = None) -> None:
@@ -109,11 +125,6 @@ class MappedBufferObject(BufferObject):
 		super().bind(target)
 
 	def resize(self, new_size: int) -> None:
-		"""
-		Resizes the MappableBufferObject to take `new_size` bytes.
-		Will truncate or zero-fill existing data, depending on whether
-		the buffer grew or shrunk.
-		"""
 		new = (ctypes.c_ubyte * new_size)()
 		ctypes.memmove(new, self._ram_buffer, min(new_size, self.size))
 		self._ram_buffer = new

@@ -53,5 +53,5 @@ class PNFWindow(Window):
 		self.set_viewport()
 
 	def clear(self) -> None:
-		gl.glClearColor(.6, 0, 0, 1)
+		gl.glClearColor(0, 0, 0, 1)
 		super().clear()
