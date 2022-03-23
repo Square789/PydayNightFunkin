@@ -206,7 +206,8 @@ class PNFVertexDomain:
 
 	def bind_vao(self, program: "ShaderProgram", draw_list_name: t.Hashable) -> None:
 		"""
-		Binds the VAO for # TODO
+		Binds the VAO for the program using the given draw list's
+		index buffer.
 		Remember to call `unbind_vao` before calling **any** vertex
 		gl functions afterwards, otherwise it will be erroneously
 		affected.

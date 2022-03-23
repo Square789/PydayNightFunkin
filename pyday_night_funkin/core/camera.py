@@ -115,7 +115,7 @@ class Camera:
 		"""
 		A list of shaders that will be sequentially applied to this
 		camera's display quad.
-		NOT IMPLEMENTED as of 0.0.12-dev-M.
+		NOT IMPLEMENTED.
 		"""
 
 		self.clear_color = (0, .6, 0, 0)

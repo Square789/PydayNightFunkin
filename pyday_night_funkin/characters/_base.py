@@ -43,7 +43,7 @@ class Character(PNFSprite):
 
 	def dance(self) -> None:
 		"""
-		Make the character play their idle animation.
+		Makes the character play their idle animation.
 		Subclassable for characters that alternate between dancing
 		poses, by default just plays an animation called `idle`.
 		"""

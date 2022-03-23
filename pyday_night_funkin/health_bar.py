@@ -34,7 +34,7 @@ class HealthBar():
 		bg_layer, bar_layer, icon_layer = layers
 
 		bar_image = load_asset(ASSET.IMG_HEALTH_BAR)
-		self.health_bar = scene.create_object(
+		self.background = scene.create_object(
 			bg_layer,
 			camera,
 			x = (CNST.GAME_WIDTH - bar_image.width) // 2,
@@ -42,7 +42,7 @@ class HealthBar():
 			image = bar_image,
 		)
 
-		bar_y = self.health_bar.y + 4
+		bar_y = self.background.y + 4
 		self.opponent_bar = scene.create_object(
 			bar_layer,
 			camera,
@@ -61,7 +61,7 @@ class HealthBar():
 		self.opponent_icons = load_asset(ASSET.IMG_ICON_GRID, opponent_icon_name)
 		self.player_icons = load_asset(ASSET.IMG_ICON_GRID, player_icon_name)
 		# This assumes all opponent and player icons are of same height (i mean, they are)
-		icon_y = self.health_bar.y + (bar_image.height - self.opponent_icons[0].height) // 2
+		icon_y = self.background.y + (bar_image.height - self.opponent_icons[0].height) // 2
 		self.opponent_sprite = scene.create_object(
 			icon_layer, camera, x = 0, y = icon_y, image = self.opponent_icons[0]
 		)
@@ -80,8 +80,8 @@ class HealthBar():
 		accordingly and icons will be changed to their ded state if
 		below the health bar's ded threshold.
 		"""
-		bar_width = self.health_bar._texture.width - 8
-		opponent_bar_x = self.health_bar.x + 4
+		bar_width = self.background._texture.width - 8
+		opponent_bar_x = self.background.x + 4
 		opponent_bar_width = int((1.0 - clamp(new_health, 0.0, 1.0)) * bar_width)
 		player_bar_x = opponent_bar_x + opponent_bar_width
 		player_bar_width = bar_width - opponent_bar_width

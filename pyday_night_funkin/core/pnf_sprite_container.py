@@ -22,7 +22,9 @@ class PNFSpriteContainer(PNFSprite):
 	API, while not inheriting from it, but from PNFSprite instead.
 	Yep, this thing breaks the LSP.
 	It's important to note that the Container itself should never
-	have any sort of graphical representation.
+	have any sort of graphical representation, does not own an
+	interfacer and any sort of attempt to interact with one will
+	result in AttributeErrors.
 	"""
 
 	_TWEEN_ATTR_NAME_MAP = {
@@ -54,8 +56,6 @@ class PNFSpriteContainer(PNFSprite):
 		self._scale = 1.0
 		self._scale_x = 1.0
 		self._scale_y = 1.0
-		self._scroll_factor = (1.0, 1.0)
-		self._visible = True
 
 		self._context = context or SceneContext()
 
@@ -73,11 +73,10 @@ class PNFSpriteContainer(PNFSprite):
 	def add(self, sprite: PNFSprite) -> None:
 		"""
 		Adds a sprite to this sprite container. Will modify the
-		sprite's position etc., so in a way it now belongs to this
+		sprite's position, so in a way it now belongs to this
 		container.
 		"""
-		sprite.x += self._x
-		sprite.y += self._y
+		sprite.position = (sprite.x + self._x, sprite.y + self._y)
 		self._sprites.add(sprite)
 		sprite.set_context(self._context)
 
@@ -85,8 +84,7 @@ class PNFSpriteContainer(PNFSprite):
 		"""
 		Removes a sprite from this sprite container.
 		"""
-		sprite.x -= self._x
-		sprite.y -= self._y
+		sprite.position = (sprite.x - self._x, sprite.y - self._y)
 		sprite.invalidate_context()
 		self._sprites.remove(sprite)
 
@@ -102,7 +100,8 @@ class PNFSpriteContainer(PNFSprite):
 
 	def transform_children(self, func: t.Callable[[PNFSprite, V], t.Any], val: V) -> None:
 		"""
-		# TODO DOCOCOCOOCOCOC
+		Applies a function taking a sprite and a single parameter of
+		any type to each sprite with the given parameter.
 		"""
 		for sprite in self._sprites:
 			func(sprite, val)
@@ -131,18 +130,11 @@ class PNFSpriteContainer(PNFSprite):
 		)
 
 	# === PNFSprite property setter overrides === #
+	# (Well, some of them.)
 
 	@staticmethod
 	def _transform_x(sprite: PNFSprite, x: "Numeric") -> None:
 		sprite.x += x
-
-	@staticmethod
-	def _transform_y(sprite: PNFSprite, y: "Numeric") -> None:
-		sprite.y += y
-
-	@staticmethod
-	def _transform_opacity(sprite: PNFSprite, opacity: int) -> None:
-		sprite.opacity += opacity
 
 	def _set_x(self, x: "Numeric") -> None:
 		self.transform_children(self._transform_x, x - self._x)
@@ -151,12 +143,32 @@ class PNFSpriteContainer(PNFSprite):
 	x = property(PNFSprite.x.fget, _set_x)
 
 
+	@staticmethod
+	def _transform_y(sprite: PNFSprite, y: "Numeric") -> None:
+		sprite.y += y
+
 	def _set_y(self, y: "Numeric") -> None:
 		self.transform_children(self._transform_y, y - self._y)
 		self._y = y
 
 	y = property(PNFSprite.y.fget, _set_y)
 
+
+	@staticmethod
+	def _transform_position(sprite: PNFSprite, position: t.Tuple[int, int]) -> None:
+		sprite.position = position
+
+	def _set_position(self, new_position: t.Tuple[int, int]) -> None:
+		delta = (new_position[0] - self._x, new_position[1] - self._y)
+		self.transform_children(self._transform_position, delta)
+		self._x, self._y = new_position
+
+	position = property(PNFSprite.position.fget, _set_position)
+
+
+	@staticmethod
+	def _transform_opacity(sprite: PNFSprite, opacity: int) -> None:
+		sprite.opacity += opacity
 
 	def _set_opacity(self, opacity: int) -> None:
 		opacity = clamp(opacity, 0, 255)

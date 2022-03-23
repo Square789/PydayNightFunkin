@@ -150,7 +150,6 @@ class SaveData:
 	def load(cls):
 		"""
 		Loads savedata from disk.
-		# TODO handle exceptions
 		"""
 		cfgp = get_savedata_location() / CONFIG
 		if cfgp.exists():
@@ -173,7 +172,6 @@ class SaveData:
 	def save(self) -> None:
 		"""
 		Saves the savedata to disk.
-		# TODO handle exceptions
 		"""
 		with (get_savedata_location() / CONFIG).open("w") as f:
 			json.dump(self.config.to_dict(), f)

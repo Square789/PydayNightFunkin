@@ -77,6 +77,9 @@ void main() {
 
 """
 
+# NOTE: Scene definitely broken since 0.0.12-dev-? graphics rewrites,
+# can't really be bothered to fix it
+
 class Triangle(SceneObject):
 	shader_container = ShaderContainer(vertex_shader, fragment_shader)
 
@@ -87,7 +90,7 @@ class Triangle(SceneObject):
 
 		self._context = SceneContext(
 			batch,
-			PNFGroup(group, 0, self._build_gl_state()),
+			PNFGroup(group, 0),
 		)
 
 		self._create_interfacer()
@@ -95,7 +98,7 @@ class Triangle(SceneObject):
 	def set_context(self, parent_context: SceneContext) -> None:
 		self._context = SceneContext(
 			parent_context.batch,
-			PNFGroup(parent_context.group, 0, self._build_gl_state()),
+			PNFGroup(parent_context.group, 0),
 		)
 
 	def _build_gl_state(self):

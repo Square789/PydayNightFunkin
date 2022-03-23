@@ -64,6 +64,7 @@ class InGameScene(scenes.MusicBeatScene):
 
 		self.health = 0.5
 		self.combo = 0
+		self.score = 0
 
 		self._last_followed_singer = 0
 		self.zoom_cams = False
@@ -169,6 +170,8 @@ class InGameScene(scenes.MusicBeatScene):
 		self.hud_cam = self.cameras["hud"]
 
 		self.hud = self.create_hud()
+		self.hud.update_score(0)
+		self.hud.update_health(0.5)
 
 	def resync(self) -> None:
 		logger.info("Resyncing...")
@@ -240,7 +243,6 @@ class InGameScene(scenes.MusicBeatScene):
 		for c in (self.boyfriend, self.girlfriend, self.opponent):
 			c.dance()
 			c.check_animation_controller()
-		# self.opponent.check_animation_controller() # for the `main_cam.look_at` below
 
 		self.main_cam.zoom = self.get_default_cam_zoom()
 		self.main_cam.look_at(self.opponent.get_midpoint() + Vec2(400, 0))
@@ -335,6 +337,9 @@ class InGameScene(scenes.MusicBeatScene):
 			else:
 				self.hud.arrow_confirm(type_)
 				self.on_note_hit(player_res[type_])
+				# TODO extract to on_note_hit etc, rework this yada yada
+				self.score += 100
+				self.hud.update_score(self.score)
 
 		self.boyfriend.dont_idle = bool(pressed)
 

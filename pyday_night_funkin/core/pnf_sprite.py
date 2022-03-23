@@ -52,20 +52,22 @@ layout (std140) uniform CameraAttrs {{
 }} camera;
 
 
-mat4 m_trans_scale = mat4(1.0);
-mat4 m_rotation = mat4(1.0);
+mat4 m_scale = mat4(1.0);
+mat4 m_rotate = mat4(1.0);
+mat4 m_translate = mat4(1.0);
 mat4 m_camera_trans_scale = mat4(1.0);
 
 
 void main() {{
-	m_trans_scale[3].xy = translate + anim_offset + (frame_offset * scale);
-	m_trans_scale[0][0] = scale.x;
-	m_trans_scale[1][1] = scale.y;
+	m_translate[3].xy = translate + anim_offset + (frame_offset * scale);
 
-	m_rotation[0][0] =  cos(-radians(rotation));
-	m_rotation[0][1] =  sin(-radians(rotation));
-	m_rotation[1][0] = -sin(-radians(rotation));
-	m_rotation[1][1] =  cos(-radians(rotation));
+	m_scale[0][0] = scale.x;
+	m_scale[1][1] = scale.y;
+
+	m_rotate[0][0] =  cos(-radians(rotation));
+	m_rotate[0][1] =  sin(-radians(rotation));
+	m_rotate[1][0] = -sin(-radians(rotation));
+	m_rotate[1][1] =  cos(-radians(rotation));
 
 	// Camera transform and zoom scale
 	m_camera_trans_scale[3][0] = (
@@ -85,8 +87,9 @@ void main() {{
 		window.projection *
 		window.view *
 		m_camera_trans_scale *
-		m_trans_scale *
-		m_rotation *
+		m_translate *
+		m_rotate *
+		m_scale *
 		vec4(position, 0, 1)
 	;
 
@@ -327,14 +330,9 @@ class PNFSprite(WorldObject):
 		self.effects: t.List["EffectBound"] = []
 
 		self._interfacer = None
+		self._color = (255, 255, 255)
 		self._opacity = 255
-		self._rgb = (255, 255, 255)
-		self._scale = 1.0
-		self._scale_x = 1.0
-		self._scale_y = 1.0
-		self._scroll_factor = (1.0, 1.0)
-		self._visible = True
-		self._texture = eval("image.get_texture()") # stfu pylance
+		self._texture = image.get_texture()
 
 		if isinstance(image, TextureArrayRegion):
 			raise NotImplementedError("Hey VSauce, Michael here. What is a TextureArrayRegion?")
@@ -345,12 +343,7 @@ class PNFSprite(WorldObject):
 		self._blend_src = blend_src
 		self._blend_dest = blend_dest
 
-		if context is None:
-			self._context = SceneContext()
-		else:
-			self._context = SceneContext(
-				context.batch, PNFGroup(parent=context.group), context.cameras
-			)
+		self._context = SceneContext() if context is None else context.inherit()
 
 		self._create_interfacer()
 
@@ -382,14 +375,14 @@ class PNFSprite(WorldObject):
 			"position2f/" + usage,
 			("anim_offset2f/" + usage, (0, 0) * 4),
 			("frame_offset2f/" + usage, (0, 0) * 4),
-			("colors4Bn/" + usage, (*self._rgb, int(self._opacity)) * 4),
+			("colors4Bn/" + usage, (*self._color, int(self._opacity)) * 4),
 			("translate2f/" + usage, (self._x, self._y) * 4),
 			("scale2f/" + usage, (self._scale * self._scale_x, self._scale * self._scale_y) * 4),
 			("rotation1f/" + usage, (self._rotation,) * 4),
 			("scroll_factor2f/" + usage, self._scroll_factor * 4),
 			("tex_coords3f/" + usage, self._texture.tex_coords),
 		)
-		self._update_position()
+		self._update_vertex_positions()
 
 	def set_context(self, parent_context: SceneContext) -> None:
 		"""
@@ -570,8 +563,7 @@ class PNFSprite(WorldObject):
 
 		if self.movement is not None:
 			dx, dy = self.movement.update(dt)
-			self.x += dx
-			self.y += dy
+			self.position = (self._x + dx, self._y + dy)
 
 		finished_effects = []
 		for effect in self.effects:
@@ -645,64 +637,46 @@ class PNFSprite(WorldObject):
 
 	@property
 	def x(self) -> "Numeric":
-		"""
-		The sprite's x coordinate.
-		"""
+		"""The sprite's x coordinate."""
 		return self._x
 
 	@x.setter
-	def x(self, x: "Numeric") -> None:
-		self._x = x
-		self._interfacer.set_data("translate", (x, self._y) * 4)
+	def x(self, new_x: "Numeric") -> None:
+		self._x = new_x
+		self._interfacer.set_data("translate", (new_x, self._y) * 4)
 
 	@property
 	def y(self) -> "Numeric":
-		"""
-		The sprite's y coordinate.
-		"""
+		"""The sprite's y coordinate."""
 		return self._y
 
 	@y.setter
-	def y(self, y: "Numeric") -> None:
-		self._y = y
-		self._interfacer.set_data("translate", (self._x, y) * 4)
+	def y(self, new_y: "Numeric") -> None:
+		self._y = new_y
+		self._interfacer.set_data("translate", (self._x, new_y) * 4)
 
 	@property
-	def rotation(self) -> "Numeric":
+	def position(self) -> t.Tuple["Numeric", "Numeric"]:
 		"""
-		The sprite's rotation.
+		The sprite's position. Sets both x and y at the same time and
+		should run just about 3.7% faster.
 		"""
+		return (self._x, self._y)
+
+	@position.setter
+	def position(self, new_position: t.Tuple["Numeric", "Numeric"]) -> None:
+		self._x, self._y = new_position
+		self._interfacer.set_data("translate", new_position * 4)
+
+	@property
+	def rotation(self) -> float:
+		"""The sprite's rotation, in degrees."""
 		return self._rotation
 
 	@rotation.setter
-	def rotation(self, rotation: "Numeric") -> None:
-		self._rotation = rotation
-		self._interfacer.set_data("rotation", (self._rotation,) * 4)
-
-	@property
-	def opacity(self) -> "Numeric":
-		"""
-		The sprite's opacity.
-		0 is completely transparent, 255 completely opaque.
-		"""
-		return self._opacity
-
-	@opacity.setter
-	def opacity(self, opacity: "Numeric") -> None:
-		self._opacity = opacity
-		self._interfacer.set_data("colors", (*self._rgb, int(self._opacity)) * 4)
-
-	@property
-	def scale(self) -> "Numeric":
-		"""
-		The sprite's scale along both axes.
-		"""
-		return self._scale
-
-	@scale.setter
-	def scale(self, scale: "Numeric") -> None:
-		self._scale = scale
-		self._interfacer.set_data("scale", (scale * self._scale_x, scale * self._scale_y) * 4)
+	def rotation(self, new_rotation: float) -> None:
+		self._rotation = new_rotation
+		self._interfacer.set_data("rotation", (new_rotation,) * 4)
 
 	@property
 	def scale_x(self) -> "Numeric":
@@ -712,10 +686,10 @@ class PNFSprite(WorldObject):
 		return self._scale_x
 
 	@scale_x.setter
-	def scale_x(self, scale_x: "Numeric") -> None:
-		self._scale_x = scale_x
+	def scale_x(self, new_scale_x: "Numeric") -> None:
+		self._scale_x = new_scale_x
 		self._interfacer.set_data(
-			"scale", (self._scale * scale_x, self._scale * self._scale_y) * 4
+			"scale", (self._scale * new_scale_x, self._scale * self._scale_y) * 4
 		)
 
 	@property
@@ -726,10 +700,25 @@ class PNFSprite(WorldObject):
 		return self._scale_y
 
 	@scale_y.setter
-	def scale_y(self, scale_y: "Numeric") -> None:
-		self._scale_y = scale_y
+	def scale_y(self, new_scale_y: "Numeric") -> None:
+		self._scale_y = new_scale_y
 		self._interfacer.set_data(
-			"scale", (self._scale * self._scale_x, self._scale * scale_y) * 4
+			"scale", (self._scale * self._scale_x, self._scale * new_scale_y) * 4
+		)
+
+	@property
+	def scale(self) -> "Numeric":
+		"""
+		The sprite's scale along both axes.
+		"""
+		return self._scale
+
+	@scale.setter
+	def scale(self, new_scale: "Numeric") -> None:
+		self._scale = new_scale
+		self._interfacer.set_data(
+			"scale",
+			(new_scale * self._scale_x, new_scale * self._scale_y) * 4,
 		)
 
 	@property
@@ -737,7 +726,7 @@ class PNFSprite(WorldObject):
 		"""
 		The sprite's scroll factor.
 		Determines how hard camera movement will displace the sprite.
-		Very useful for parallax effects etc.
+		Very useful for parallax effects.
 		"""
 		return self._scroll_factor
 
@@ -747,18 +736,32 @@ class PNFSprite(WorldObject):
 		self._interfacer.set_data("scroll_factor", new_sf * 4)
 
 	@property
-	def color(self) -> t.List[int]:
+	def color(self) -> t.Tuple[int, int, int]:
 		"""
 		The sprite's color tint.
 		This may have wildly varying results if a special shader
 		was set.
 		"""
-		return self._rgb
+		return self._color
 
 	@color.setter
-	def color(self, color: t.Iterable[int]) -> None:
-		self._rgb = list(map(int, color))
-		self._interfacer.set_data("colors", (*self._rgb, int(self._opacity)) * 4)
+	def color(self, new_color: t.Tuple[int, int, int]) -> None:
+		self._color = new_color
+		self._interfacer.set_data("colors", (*new_color, self._opacity) * 4)
+
+	@property
+	def opacity(self) -> int:
+		"""
+		The sprite's opacity.
+		0 is completely transparent, 255 completely opaque.
+		"""
+		return self._opacity
+
+	@opacity.setter
+	def opacity(self, new_opacity: "Numeric") -> None:
+		new_opacity = int(new_opacity)
+		self._opacity = new_opacity
+		self._interfacer.set_data("colors", (*self._color, new_opacity) * 4)
 
 	@property
 	def visible(self) -> bool:
@@ -782,11 +785,10 @@ class PNFSprite(WorldObject):
 			self._texture = texture
 		self._interfacer.set_data("tex_coords", texture.tex_coords)
 		# If this is not done, screws over vertices if the texture changes
-		# dimension thanks to top left coords
 		if prev_h != texture.height or prev_w != texture.width:
-			self._update_position()
+			self._update_vertex_positions()
 
-	def _update_position(self):
+	def _update_vertex_positions(self):
 		# Contains some manipulations to the creation of position
 		# vertices since otherwise the sprite would be displayed
 		# upside down

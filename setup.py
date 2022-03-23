@@ -30,5 +30,5 @@ extensions = [
 setup(
 	name = "PydayNightFunkin",
 	packages = find_packages("pyday_night_funkin"),
-	ext_modules = cythonize(extensions, language_level = 3),
+	ext_modules = cythonize(extensions, language_level=3),
 )

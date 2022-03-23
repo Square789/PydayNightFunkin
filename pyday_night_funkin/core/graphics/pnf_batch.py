@@ -122,8 +122,7 @@ class DrawList:
 		"""
 		Removes a group from this draw list's group tree.
 		"""
-		gd = self._group_data[group]
-		if gd.children:
+		if self._group_data[group].children:
 			raise ValueError(f"Drawable group {group!r} has children, can not remove.")
 
 		self._delete_group(group)

@@ -5,12 +5,14 @@ import typing as t
 
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.asset_system import load_asset, ASSET
+from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
 from pyday_night_funkin.enums import ANIMATION_TAG
 from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.note import NOTE_TYPE, RATING
 
 if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 	from pyday_night_funkin.scenes import InGameScene
 
 
@@ -59,7 +61,7 @@ class HUD():
 		self.number_textures = [load_asset(getattr(ASSET, f"IMG_NUM{i}")) for i in range(10)]
 
 		note_sprites = load_asset(ASSET.XML_NOTES)
-		self.static_arrows = [{}, {}]
+		self.static_arrows: t.List[t.Dict[NOTE_TYPE, "PNFSprite"]] = [{}, {}]
 		for i, note_type in product((0, 1), NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
 			arrow_width = note_sprites[atlas_names[0]][0].texture.width
@@ -88,12 +90,27 @@ class HUD():
 			self._scene.get_player_icon(),
 			self.health_bar_layers,
 		)
-		self.update_health(0.5)
 
-	def update_health(self, health: float):
+		load_asset(ASSET.FONT_VCR)
+		self.score_text = scene.create_object(
+			self.health_bar_layers[0],
+			self.camera,
+			PNFText,
+			x = self.health_bar.background.x + self.health_bar.background.width - 190,
+			y = self.health_bar.background.y + 30,
+			text = "",
+			font_size = 16,
+			font_name = "VCR OSD Mono",
+			align = ALIGNMENT.RIGHT,
+		)
+
+	def update_health(self, health: float) -> None:
 		self.health_bar.update(health)
 
-	def combo_popup(self, rating: RATING, combo: int):
+	def update_score(self, new_score: int) -> None:
+		self.score_text.text = f"Score:{new_score}"
+
+	def combo_popup(self, rating: RATING, combo: int) -> None:
 		"""
 		Pops up sprites to notify of a combo and a note hit rating.
 		"""

@@ -1,9 +1,11 @@
 
 import typing as t
 
-from pyday_night_funkin.core.graphics import PNFGroup
 from pyday_night_funkin.core.scene_context import SceneContext
+from pyday_night_funkin.types import Numeric
 
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.camera import Camera
 
 class SceneObject:
 	"""
@@ -48,16 +50,31 @@ class SceneObject:
 
 class WorldObject(SceneObject):
 	"""
-	A scene object occupying space, intended to be drawn.
+	A scene object occupying space and a camera array,
+	intended to be drawn.
 	"""
 
-	# TODO extract common stuff from subclasses
-	# and expand this class with it.
-	def __init__(self, x: int = 0, y: int = 0) -> None:
+	def __init__(self, x: "Numeric" = 0, y: "Numeric" = 0) -> None:
 		self._x = x
 		self._y = y
-		self._rotation = 0
+		self._rotation = 0.0
+		self._scale = 1.0
+		self._scale_x = 1.0
+		self._scale_y = 1.0
+		self._scroll_factor = (1.0, 1.0)
+		self._cameras: t.List["Camera"] = []
 
+	# NOTE: I would add a bunch of x, y, position, rotation etc. properties
+	# here. Unfortunately, when it comes to inheriting properties is where
+	# python really stops shining, you'd end up either having properties
+	# delegate to a method which is then overridden, or have to redefine
+	# the property in the subclass anyways. I tested it, code in
+	# `dev_notes\property_subclass.py`, the former is nearly twice as slow.
+	# Premature optimization this, premature optimization that, but these
+	# properties are being used dozens of times each frame, so I will:
+	# - Repeat them in each subclass
+	# - Not put them here since WorldObjects aren't ever being created
+	#   themselves so it'd be just dead code for show
 
 class Container(SceneObject):
 	"""
@@ -87,9 +104,7 @@ class Container(SceneObject):
 		object.invalidate_context()
 
 	def set_context(self, parent_context: SceneContext) -> None:
-		self._context = SceneContext(
-			parent_context.batch, PNFGroup(parent_context.group), parent_context.cameras
-		)
+		self._context = parent_context.inherit()
 		for m in self._members:
 			m.set_context(self._context)
 

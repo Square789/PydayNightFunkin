@@ -130,18 +130,18 @@ class BaseScene(Container):
 	def create_object(
 		self,
 		layer: t.Optional[str] = None,
-		camera: t.Optional[str] = None,
+		cameras: t.Optional[t.Union[str, t.Iterable[str]]] = None,
 		object_class: t.Type["SceneObjectBound"] = PNFSprite,
 		*args,
 		**kwargs,
 	) -> "SceneObjectBound":
 		"""
-		Creates a scene object on the given layer belonging to a
-		camera. If a camera name is specified (and the camera exists
-		in the scene), the object will be registered with it and its
-		transformations immediatedly applied. If no camera name is
-		specified, the object will be attached to a default camera
-		that is never moved.
+		Creates a scene object on the given layer belonging to one or
+		multiple cameras. If one or more camera names are specified
+		(and the cameras exist in the scene), the object will be
+		registered with them.
+		If no camera name is specified, the object will be attached to
+		the scene's default camera.
 		The object will be created from the given `object_class` type
 		with all args and kwargs. Note that because they are so
 		fundamental, by default the object class is `PNFSprite`.
@@ -149,13 +149,15 @@ class BaseScene(Container):
 		in by the scene if not otherwise given. (And if you give it a
 		custom one, you better know what you're doing.)
 
-		Note that `self.create_object("lyr", "cam", Cls, 1, 2, n=3)` is
-		effectively equivalent to
-		`x = Cls(1, 2, n=3); self.add(x, "lyr", cam")`, but a bit
+		Note that `self.create_object("lyr", "cam", Cls, 1, 2, n=3)`
+		is effectively equivalent to
+		`x = Cls(1, 2, n=3); self.add(x, "lyr", "cam")`, but a bit
 		faster as no migration from a virtual batch to the scene's batch
 		has to happen.
 		"""
-		kwargs.setdefault("context", self.get_context(layer, camera))
+		if isinstance(cameras, str):
+			cameras = (cameras,)
+		kwargs.setdefault("context", self.get_context(layer, cameras))
 		member = object_class(*args, **kwargs)
 		self._members.append(member)
 		return member
@@ -170,19 +172,19 @@ class BaseScene(Container):
 		self,
 		obj: SceneObject,
 		layer: t.Optional[str] = None,
-		camera: t.Optional[str] = None,
+		cameras: t.Optional[t.Iterable[str]] = None,
 	) -> None:
 		"""
-		Add a SceneObject to the scene on the given layer with the
-		given camera.
+		Adds a SceneObject to the scene on the given layer with the
+		given cameras.
 		Note that this may become ugly if the object is owned by
 		another scene, be sure to remove it from there with `remove`
 		(`keep=True`) beforehand.
 		If no layer is supplied, will default to the first layer.
-		If no camera is supplied, will default to the default camera.
+		If no cameras are supplied, will default to the default camera.
 		"""
 		self._members.append(obj)
-		obj.set_context(self.get_context(layer, camera))
+		obj.set_context(self.get_context(layer, cameras))
 
 	def remove(self, obj: SceneObject, keep: bool = False) -> None:
 		"""
@@ -243,29 +245,20 @@ class BaseScene(Container):
 
 	def get_context(
 		self,
-		layer: t.Optional[str] = None,
-		camera: t.Optional[str] = None,
+		layer_name: t.Optional[str] = None,
+		camera_names: t.Optional[t.Iterable[str]] = None,
 	) -> SceneContext:
 		"""
 		Returns a context for the given layer and camera names.
 		Both may also be `None`, in which case the first layer or the
 		default camera will be returned.
 		"""
-		return SceneContext(self.batch, self.get_layer(layer).get_group(), self.get_camera(camera))
-
-	def get_layer(self, layer: t.Optional[str] = None) -> Layer:
-		"""
-		Returns the layer with the given name or the first layer if
-		`None` is given.
-		"""
-		return next(iter(self.layers.values())) if layer is None else self.layers[layer]
-
-	def get_camera(self, camera: t.Optional[str] = None) -> Camera:
-		"""
-		Returns the camera with the given name or the scene's default
-		camera if `None` is given.
-		"""
-		return self.cameras.get(camera, self._default_camera)
+		layer = next(iter(self.layers.values())) if layer_name is None else self.layers[layer_name]
+		cameras = (
+			(self._default_camera,) if camera_names is None
+			else tuple(self.cameras[cam] for cam in camera_names)
+		)
+		return SceneContext(self.batch, layer.get_group(), cameras)
 
 	def remove_scene(self, *args, **kwargs) -> None:
 		"""

@@ -45,10 +45,10 @@ in vec2 translate;
 in vec2 scale;
 in vec2 scroll_factor;
 in vec3 tex_coords;
-in vec4 colors;
+in vec4 color;
 in float rotation;
 
-out vec4 frag_colors;
+out vec4 frag_color;
 out vec3 frag_tex_coords;
 
 uniform WindowBlock {
@@ -63,20 +63,22 @@ layout (std140) uniform CameraAttrs {
 } camera;
 
 
-mat4 m_trans_scale = mat4(1.0);
-mat4 m_rotation = mat4(1.0);
+mat4 m_translate = mat4(1.0);
+mat4 m_scale = mat4(1.0);
+mat4 m_rotate = mat4(1.0);
 mat4 m_camera_trans_scale = mat4(1.0);
 
 
 void main() {
-	m_trans_scale[3].xy = translate;
-	m_trans_scale[0][0] = scale.x;
-	m_trans_scale[1][1] = scale.y;
+	m_translate[3].xy = translate;
 
-	m_rotation[0][0] =  cos(-radians(rotation));
-	m_rotation[0][1] =  sin(-radians(rotation));
-	m_rotation[1][0] = -sin(-radians(rotation));
-	m_rotation[1][1] =  cos(-radians(rotation));
+	m_scale[0][0] = scale.x;
+	m_scale[1][1] = scale.y;
+
+	m_rotate[0][0] =  cos(-radians(rotation));
+	m_rotate[0][1] =  sin(-radians(rotation));
+	m_rotate[1][0] = -sin(-radians(rotation));
+	m_rotate[1][1] =  cos(-radians(rotation));
 
 	// Camera transform and zoom scale
 	m_camera_trans_scale[3][0] = (
@@ -96,12 +98,13 @@ void main() {
 		window.projection *
 		window.view *
 		m_camera_trans_scale *
-		m_trans_scale *
-		m_rotation *
+		m_translate *
+		m_rotate *
+		m_scale *
 		vec4(position, 0, 1)
 	;
 
-	frag_colors = colors;
+	frag_color = color;
 	frag_tex_coords = tex_coords;
 }
 """
@@ -109,7 +112,7 @@ void main() {
 _PNF_TEXT_FRAGMENT_SOURCE = """
 #version 450
 
-in vec4 frag_colors;
+in vec4 frag_color;
 in vec3 frag_tex_coords;
 
 layout(location = 0) out vec4 final_color;
@@ -118,7 +121,7 @@ uniform sampler2D sprite_texture;
 
 
 void main() {
-	final_color = vec4(frag_colors.rgb, texture(sprite_texture, frag_tex_coords.xy).a);
+	final_color = vec4(frag_color.rgb, texture(sprite_texture, frag_tex_coords.xy).a);
 }
 """
 
@@ -167,10 +170,7 @@ class PNFText(WorldObject):
 	) -> None:
 		super().__init__(x, y)
 
-		self._context = (
-			SceneContext() if context is None
-			else SceneContext(context.batch, PNFGroup(context.group), context.cameras)
-		)
+		self._context = SceneContext() if context is None else context.inherit()
 		self._text = text
 		self._font_name = font_name
 		self._font_size = font_size
@@ -254,10 +254,10 @@ class PNFText(WorldObject):
 			("position2f/", vertices),
 			("translate2f/", (self._x, self._y) * vertex_amt),
 			("tex_coords3f/", tex_coords),
-			("scale2f/", (1.0, 1.0) * vertex_amt),
-			("scroll_factor2f/", (1.0, 1.0) * vertex_amt),
+			("scale2f/", (self._scale * self._scale_x, self._scale * self._scale_y) * vertex_amt),
+			("scroll_factor2f/", self._scroll_factor * vertex_amt),
 			("rotation1f/", (self._rotation,) * vertex_amt),
-			("colors4Bn/", self._color * vertex_amt),
+			("color4Bn/", self._color * vertex_amt),
 		)
 
 	def _layout_lines(self) -> None:
@@ -281,9 +281,7 @@ class PNFText(WorldObject):
 		self.content_width = max(l.width for l in self.lines)
 
 	def set_context(self, parent_context: "SceneContext") -> None:
-		self._context = SceneContext(
-			parent_context.batch, PNFGroup(parent=parent_context.group), parent_context.cameras
-		)
+		self._context = parent_context.inherit()
 		self._interfacer.delete()
 		self._create_interfacer()
 
@@ -303,6 +301,10 @@ class PNFText(WorldObject):
 		self._interfacer.delete()
 		self._create_interfacer()
 
+	# === Superclass property redefinitions below === #
+
+	# Position
+
 	@property
 	def x(self) -> "Numeric":
 		return self._x
@@ -320,3 +322,70 @@ class PNFText(WorldObject):
 	def y(self, new_y: "Numeric") -> None:
 		self._y = new_y
 		self._interfacer.set_data("translate", (self._x, new_y) * self._interfacer.size)
+
+	@property
+	def position(self) -> t.Tuple["Numeric", "Numeric"]:
+		return (self._x, self._y)
+
+	@position.setter
+	def position(self, new_position: t.Tuple["Numeric", "Numeric"]) -> None:
+		self._x, self._y = new_position
+		self._interfacer.set_data("translate", new_position * self._interfacer.size)
+
+	# Rotation
+
+	@property
+	def rotation(self) -> float:
+		return self._rotation
+
+	@rotation.setter
+	def rotation(self, new_rotation: float) -> None:
+		self._rotation = new_rotation
+		self._interfacer.set_data("rotation", (new_rotation,) * 4)
+
+	# Scale
+
+	@property
+	def scale_x(self) -> "Numeric":
+		return self._scale_x
+
+	@scale_x.setter
+	def scale_x(self, new_scale_x: "Numeric") -> None:
+		self._scale_x = new_scale_x
+		self._interfacer.set_data(
+			"scale", (self._scale * new_scale_x, self._scale * self._scale_y) * 4
+		)
+
+	@property
+	def scale_y(self) -> "Numeric":
+		return self._scale_y
+
+	@scale_y.setter
+	def scale_y(self, new_scale_y: "Numeric") -> None:
+		self._scale_y = new_scale_y
+		self._interfacer.set_data(
+			"scale", (self._scale * self._scale_x, self._scale * new_scale_y) * 4
+		)
+
+	@property
+	def scale(self) -> "Numeric":
+		return self._scale
+
+	@scale.setter
+	def scale(self, new_scale: "Numeric") -> None:
+		self._scale = new_scale
+		self._interfacer.set_data(
+			"scale",
+			(new_scale * self._scale_x, new_scale * self._scale_y) * 4,
+		)
+
+	# Scroll factor
+
+	@property
+	def scroll_factor(self) -> t.Tuple[float, float]:
+		return self._scroll_factor
+
+	@scroll_factor.setter
+	def scroll_factor(self, new_sf: t.Tuple[float, float]) -> None:
+		self._scroll_factor = new_sf
+		self._interfacer.set_data("scroll_factor", new_sf * 4)
