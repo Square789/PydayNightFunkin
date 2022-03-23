@@ -18,7 +18,7 @@ from pyglet import media
 
 from pyday_night_funkin.core.almost_xml_parser import AlmostXMLParser
 from pyday_night_funkin.core import ogg_decoder
-from pyday_night_funkin.utils import dump_id
+from pyday_night_funkin.core.utils import dump_id
 
 if t.TYPE_CHECKING:
 	from pyglet.image import AbstractImage, Texture

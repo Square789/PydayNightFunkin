@@ -1,16 +1,13 @@
 
 from itertools import islice
-import sys
 import typing as t
+
+from pyday_night_funkin.core.constants import ADDRESS_PADDING
 
 if t.TYPE_CHECKING:
 	from pyglet.image import Texture
 
 T = t.TypeVar("T")
-
-
-
-ADDRESS_PADDING = (sys.maxsize.bit_length() + 1) // 4
 
 
 class ListWindow(t.Generic[T]):

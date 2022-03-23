@@ -7,10 +7,10 @@ from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.asset_system import load_asset, ASSET
 from pyday_night_funkin.core.scene import BaseScene
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, out_quad
+from pyday_night_funkin.core.utils import to_rgb_tuple
 from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
-from pyday_night_funkin.utils import to_rgb_tuple
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite

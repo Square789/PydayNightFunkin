@@ -4,12 +4,13 @@ import queue
 import typing as t
 
 import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.core.constants import PIXEL_TEXTURE
 from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene import SceneContext
-from pyday_night_funkin.utils import to_rgb_tuple
+from pyday_night_funkin.core.utils import to_rgb_tuple
 
 
 class DebugPane():
@@ -47,7 +48,7 @@ class DebugPane():
 			context = SceneContext(self.batch, self.foreground, None),
 		)
 		self.rect = PNFSprite(
-			image = CNST.PIXEL_TEXTURE,
+			image = PIXEL_TEXTURE,
 			x = self.PADDING,
 			y = 0,
 			context = SceneContext(self.batch, self.background, None),

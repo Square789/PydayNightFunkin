@@ -6,11 +6,10 @@ from pyday_night_funkin.core.pnf_sprite import EffectBound, Movement, PNFSprite
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
-from pyday_night_funkin.utils import clamp
+from pyday_night_funkin.core.utils import clamp
 
 if t.TYPE_CHECKING:
-	from pyglet.math import Vec2
-	from pyday_night_funkin.types import Numeric
+	from pyday_night_funkin.core.types import Numeric
 
 V = t.TypeVar("V")
 
@@ -52,10 +51,7 @@ class PNFSpriteContainer(PNFSprite):
 
 		WorldObject.__init__(self, x, y)
 		self._opacity = 255
-		self._rgb = (255, 255, 255)
-		self._scale = 1.0
-		self._scale_x = 1.0
-		self._scale_y = 1.0
+		self._color = (255, 255, 255)
 
 		self._context = context or SceneContext()
 

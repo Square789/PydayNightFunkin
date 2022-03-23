@@ -8,7 +8,7 @@ from pyglet.window import Window
 from pyday_night_funkin import constants as CNST
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.types import Numeric
+	from pyday_night_funkin.core.types import Numeric
 
 
 class PNFWindow(Window):
@@ -45,8 +45,9 @@ class PNFWindow(Window):
 			max(1, viewport_height),
 		)
 
-	def set_viewport(self) -> None:
-		gl.glViewport(*self._vpa)
+	def set_viewport(self, args: t.Optional[t.Tuple[int, int, int, int]] = None) -> None:
+		args = self._vpa if args is None else args
+		gl.glViewport(*args)
 
 	def on_resize(self, width: "Numeric", height: "Numeric") -> None:
 		self._update_viewport_args(width, height)

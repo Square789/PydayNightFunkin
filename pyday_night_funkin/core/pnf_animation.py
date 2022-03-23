@@ -5,8 +5,8 @@ from pyglet.math import Vec2
 
 if t.TYPE_CHECKING:
 	from pyglet.image import Texture
-	from pyday_night_funkin.utils import FrameInfoTexture
-	from pyday_night_funkin.types import Numeric
+	from pyday_night_funkin.core.types import Numeric
+	from pyday_night_funkin.core.utils import FrameInfoTexture
 
 
 class OffsetAnimationFrame:

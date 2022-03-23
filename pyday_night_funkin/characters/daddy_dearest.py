@@ -8,7 +8,7 @@ from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.enums import ANIMATION_TAG
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.types import Numeric
+	from pyday_night_funkin.core.types import Numeric
 
 
 class DaddyDearest(Character):

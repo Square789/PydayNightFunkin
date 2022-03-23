@@ -11,8 +11,8 @@ from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.note import NOTE_TYPE, SUSTAIN_STAGE, Note
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_player import PNFPlayer
+from pyday_night_funkin.core.utils import lerp
 from pyday_night_funkin import scenes
-from pyday_night_funkin.utils import lerp
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.characters import Character, Boyfriend, Girlfriend

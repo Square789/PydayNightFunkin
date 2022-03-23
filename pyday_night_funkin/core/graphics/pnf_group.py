@@ -1,6 +1,9 @@
 
 import typing as t
 
+from pyday_night_funkin.core.utils import dump_id
+
+
 class PNFGroup:
 	"""
 	Groups define a tree which dictates element draw order.
@@ -24,5 +27,5 @@ class PNFGroup:
 
 	def __repr__(self) -> str:
 		return (
-			f"<{self.__class__.__name__} order={self.order} at 0x{id(self):>016X}>"
+			f"<{self.__class__.__name__} order={self.order} at {dump_id(self)}>"
 		)

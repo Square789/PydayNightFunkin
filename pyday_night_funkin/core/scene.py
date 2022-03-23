@@ -1,5 +1,6 @@
 
 from collections import OrderedDict
+import ctypes
 import typing as t
 
 from loguru import logger
@@ -9,7 +10,9 @@ from pyglet.window.key import B, R
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
+from pyday_night_funkin.core.constants import MAX_ALPHA_SSBO_BINDING_IDX
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
+from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
 from pyday_night_funkin.core.pnf_player import SFXRing
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene_context import SceneContext
@@ -19,6 +22,8 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
 	SceneObjectBound = t.TypeVar("SceneObjectBound", bound=SceneObject)
 
+
+PIXEL_AMOUNT = CNST.GAME_HEIGHT * CNST.GAME_WIDTH
 
 class Layer():
 	"""
@@ -71,6 +76,12 @@ class BaseScene(Container):
 
 		self.batch = PNFBatch()
 
+		self._max_alpha_ssbo = BufferObject(
+			gl.GL_SHADER_STORAGE_BUFFER,
+			PIXEL_AMOUNT * 4,
+			gl.GL_STREAM_COPY,
+		)
+
 		self.draw_passthrough = True
 		self.update_passthrough = False
 
@@ -98,7 +109,7 @@ class BaseScene(Container):
 		for cam in (self._default_camera, *self.cameras):
 			self.batch._get_draw_list(cam)
 
-		self.sfx_ring = SFXRing(CNST.SFX_RING_SIZE)
+		self.sfx_ring = SFXRing()
 
 	@staticmethod
 	def get_camera_names() -> t.Sequence[str]:
@@ -155,8 +166,6 @@ class BaseScene(Container):
 		faster as no migration from a virtual batch to the scene's batch
 		has to happen.
 		"""
-		if isinstance(cameras, str):
-			cameras = (cameras,)
 		kwargs.setdefault("context", self.get_context(layer, cameras))
 		member = object_class(*args, **kwargs)
 		self._members.append(member)
@@ -172,7 +181,7 @@ class BaseScene(Container):
 		self,
 		obj: SceneObject,
 		layer: t.Optional[str] = None,
-		cameras: t.Optional[t.Iterable[str]] = None,
+		cameras: t.Optional[t.Union[str, t.Iterable[str]]] = None,
 	) -> None:
 		"""
 		Adds a SceneObject to the scene on the given layer with the
@@ -226,15 +235,35 @@ class BaseScene(Container):
 		# Framebuffer shenanigans stolen from
 		# https://learnopengl.com/Advanced-OpenGL/Framebuffers
 
+		# gl.glBindBufferBase(
+		# 	gl.GL_SHADER_STORAGE_BUFFER,
+		# 	MAX_ALPHA_SSBO_BINDING_IDX,
+		# 	self._max_alpha_ssbo.id,
+		# )
 		for camera in (self._default_camera, *self.cameras.values()):
+			# # Afaict GL_RED and GL_UNSIGNED_INT are completely useless
+			# # and would only be useful for filling some kind of image buffer,
+			# # which is not what this one is being used for.
+			# gl.glClearNamedBufferData(
+			# 	self._max_alpha_ssbo.id,
+			# 	gl.GL_R32UI,
+			# 	gl.GL_RED,
+			# 	gl.GL_UNSIGNED_INT,
+			# 	None,
+			# )
 			camera.framebuffer.bind()
 			# NOTE: While the viewport is nice to shrink the game, it also affects all draw
 			# operations on the cameras, which crams the sprites into their fb's corners.
 			# Need to set it to this for framebuffer rendering
 			# TODO: Gotta do more experimenting with haxeflixel cameras to accurately replicate
-			gl.glViewport(0, 0, CNST.GAME_WIDTH**2 // camera._width, CNST.GAME_HEIGHT**2 // camera._height,)
-			#gl.glViewport(0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
-			#gl.glViewport(0, 0, camera._width, camera._height)
+			self.game.window.set_viewport((
+				0,
+				0,
+				CNST.GAME_WIDTH**2 // camera._width,
+				CNST.GAME_HEIGHT**2 // camera._height,
+			))
+			#0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT
+			#0, 0, camera._width, camera._height
 			gl.glClearColor(*camera.clear_color)
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 			self.batch.draw(camera) # Draw everything in the camera's draw list to the camera's FBO
@@ -246,13 +275,15 @@ class BaseScene(Container):
 	def get_context(
 		self,
 		layer_name: t.Optional[str] = None,
-		camera_names: t.Optional[t.Iterable[str]] = None,
+		camera_names: t.Optional[t.Union[str, t.Iterable[str]]] = None,
 	) -> SceneContext:
 		"""
 		Returns a context for the given layer and camera names.
 		Both may also be `None`, in which case the first layer or the
 		default camera will be returned.
 		"""
+		if isinstance(camera_names, str):
+			camera_names = (camera_names,)
 		layer = next(iter(self.layers.values())) if layer_name is None else self.layers[layer_name]
 		cameras = (
 			(self._default_camera,) if camera_names is None
@@ -299,6 +330,8 @@ class BaseScene(Container):
 		self._default_camera.delete()
 
 		self.sfx_ring.delete()
+
+		self._max_alpha_ssbo.delete()
 
 		self.batch.delete()
 		self.batch = None

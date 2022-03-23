@@ -3,14 +3,15 @@ import typing as t
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
+from pyday_night_funkin.core.constants import PIXEL_TEXTURE
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
+from pyday_night_funkin.core.utils import lerp, to_rgb_tuple, to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
-from pyday_night_funkin.utils import lerp, to_rgb_tuple, to_rgba_tuple
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.characters import Character
@@ -42,7 +43,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		if not self.game.player.playing:
 			self.game.player.set(load_asset(ASSET.MUSIC_MENU))
 
-		yellow_stripe = self.create_object("mid", x=0, y=56, image=CNST.PIXEL_TEXTURE)
+		yellow_stripe = self.create_object("mid", x=0, y=56, image=PIXEL_TEXTURE)
 		yellow_stripe.scale_x = CNST.GAME_WIDTH
 		yellow_stripe.scale_y = 400
 		yellow_stripe.color = to_rgb_tuple(0xF9CF51FF)

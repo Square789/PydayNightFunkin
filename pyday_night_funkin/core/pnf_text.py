@@ -23,8 +23,8 @@ import typing as t
 from pyglet.font import load as load_font
 from pyglet.gl import gl
 
+from pyday_night_funkin.core.constants import MAX_ALPHA_SSBO_BINDING_IDX
 from pyday_night_funkin.core.graphics import state
-from pyday_night_funkin.core.graphics.pnf_group import PNFGroup
 from pyday_night_funkin.core.scene import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
@@ -34,7 +34,7 @@ if t.TYPE_CHECKING:
 	from pyglet.font.base import Glyph
 	from pyglet.image import Texture
 	from pyday_night_funkin.core.camera import Camera
-	from pyday_night_funkin.types import Numeric
+	from pyday_night_funkin.core.types import Numeric
 
 
 _PNF_TEXT_VERTEX_SOURCE = """
@@ -56,7 +56,7 @@ uniform WindowBlock {
 	mat4 view;
 } window;
 
-layout (std140) uniform CameraAttrs {
+layout(std140) uniform CameraAttrs {
 	float zoom;
 	vec2  position;
 	vec2  GAME_DIMENSIONS;
@@ -109,20 +109,44 @@ void main() {
 }
 """
 
-_PNF_TEXT_FRAGMENT_SOURCE = """
+# _PNF_TEXT_FRAGMENT_SOURCE = f"""
+# #version 450
+
+# in vec4 frag_color;
+# in vec3 frag_tex_coords;
+
+# layout(location = 0) out vec4 final_color;
+
+# layout(binding = {MAX_ALPHA_SSBO_BINDING_IDX}) buffer MaxAlphaBuffer {{
+# 	uint a[];
+# }};
+# layout(origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;
+
+# uniform sampler2D sprite_texture;
+
+
+# void main() {{
+# 	final_color = vec4(frag_color.rgb, texture(sprite_texture, frag_tex_coords.xy).a);
+# 	atomicMax(
+# 		a[int(gl_FragCoord.x) + int(gl_FragCoord.y) * 1280],
+# 		uint(clamp(final_color.a * 256, 0, 255))
+# 	);
+# }}
+# """
+
+_PNF_TEXT_FRAGMENT_SOURCE = f"""
 #version 450
 
 in vec4 frag_color;
 in vec3 frag_tex_coords;
 
-layout(location = 0) out vec4 final_color;
+out vec4 final_color;
 
 uniform sampler2D sprite_texture;
 
-
-void main() {
+void main() {{
 	final_color = vec4(frag_color.rgb, texture(sprite_texture, frag_tex_coords.xy).a);
-}
+}}
 """
 
 class _Line:

@@ -2,10 +2,10 @@
 import typing as t
 
 from pyday_night_funkin.core.scene_context import SceneContext
-from pyday_night_funkin.types import Numeric
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.camera import Camera
+	from pyday_night_funkin.core.types import Numeric
 
 class SceneObject:
 	"""

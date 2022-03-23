@@ -7,6 +7,7 @@ from pyglet.image import Framebuffer, Texture
 from pyglet.math import Mat4, Vec2
 
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
+from pyday_night_funkin.core.constants import MAX_ALPHA_SSBO_BINDING_IDX
 from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
 from pyday_night_funkin.core.graphics.shared import GL_TYPE_SIZES
 from pyday_night_funkin.core.shaders import ShaderContainer
@@ -22,9 +23,11 @@ _QUAD_VBO_TEX_COORD_SEGMENT_START = GL_TYPE_SIZES[gl.GL_FLOAT] * 12
 _QUAD_VBO_SIZE = _QUAD_VBO_POSITION_SEGMENT_SIZE + _QUAD_VBO_TEX_COORD_SEGMENT_SIZE
 
 CAMERA_QUAD_VERTEX_SHADER = """
-#version 330 core
+#version 450
 layout (location = 0) in vec2 position;
 layout (location = 1) in vec2 tex_coords;
+
+out vec2 texture_coords;
 
 uniform WindowBlock {
 	mat4 projection;
@@ -37,8 +40,6 @@ layout (std140) uniform CameraAttrs {
 	vec2  GAME_DIMENSIONS;
 } camera;
 
-out vec2 texture_coords;
-
 void main() {
 	gl_Position = 
 		window.projection *
@@ -49,17 +50,44 @@ void main() {
 }
 """
 
-CAMERA_QUAD_FRAGMENT_SHADER = """
-#version 330 core
+# CAMERA_QUAD_FRAGMENT_SHADER = f"""
+# #version 450
+# in vec2 texture_coords;
+# layout(origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;
+
+# out vec4 final_color;
+
+# uniform WindowBlock {{
+# 	mat4 projection;
+# 	mat4 view;
+# }} window;
+
+# uniform sampler2D camera_texture;
+
+# layout(std430, binding = {MAX_ALPHA_SSBO_BINDING_IDX}) readonly buffer MaxAlphaBuffer {{
+# 	uint a[];
+# }};
+
+# void main() {{
+# 	float ralpha = float(
+# 		a[int(gl_FragCoord.x) + int(gl_FragCoord.y) * 1280]
+# 	) / 256.0;
+# 	final_color = vec4(texture(camera_texture, texture_coords).rgb, ralpha);
+# }}
+# """
+
+CAMERA_QUAD_FRAGMENT_SHADER = f"""
+#version 450
 in vec2 texture_coords;
+layout(origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;
 
 out vec4 final_color;
 
 uniform sampler2D camera_texture;
 
-void main() {
+void main() {{
 	final_color = texture(camera_texture, texture_coords);
-}
+}}
 """
 
 
@@ -118,7 +146,7 @@ class Camera:
 		NOT IMPLEMENTED.
 		"""
 
-		self.clear_color = (0, .6, 0, 0)
+		self.clear_color = (0, 0, 0, 0)
 		"""Color the camera's frame buffer is cleared with."""
 
 		self.framebuffer = Framebuffer()

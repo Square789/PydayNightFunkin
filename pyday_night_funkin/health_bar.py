@@ -5,7 +5,7 @@ from pyglet.image import ImageData, Texture
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
-from pyday_night_funkin.utils import clamp, to_rgba_bytes
+from pyday_night_funkin.core.utils import clamp, to_rgba_bytes
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGameScene

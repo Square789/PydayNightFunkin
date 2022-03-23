@@ -8,10 +8,10 @@ from pyday_night_funkin.core.pnf_sprite import (
 )
 from pyday_night_funkin.core.pnf_sprite_container import PNFSpriteContainer
 from pyday_night_funkin.core.shaders import ShaderContainer
-from pyday_night_funkin.utils import lerp
+from pyday_night_funkin.core.utils import lerp
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.types import Numeric
+	from pyday_night_funkin.core.types import Numeric
 
 
 _COLOR_SET_SHADER_CONTAINER = ShaderContainer(

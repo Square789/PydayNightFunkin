@@ -16,7 +16,7 @@ from pyday_night_funkin.core.asset_system import (
 	OggResource, ImageResource, JSONResource, PathResource, TextResource, XMLResource,
 	FontResource, register_assets, register_routers, add_asset_system
 )
-from pyday_night_funkin.utils import FrameInfoTexture
+from pyday_night_funkin.core.utils import FrameInfoTexture
 
 if t.TYPE_CHECKING:
 	from pathlib import Path

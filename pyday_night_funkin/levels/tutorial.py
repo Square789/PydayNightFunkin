@@ -1,11 +1,11 @@
 
 import typing as t
 from pyday_night_funkin.characters import Boyfriend, Girlfriend, FlipIdleCharacter
-from pyday_night_funkin.constants import ERROR_TEXTURE
+from pyday_night_funkin.core.constants import ERROR_TEXTURE
+from pyday_night_funkin.core.utils import FrameInfoTexture
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.levels import common
 from pyday_night_funkin.scenes import InGameScene
-from pyday_night_funkin.utils import FrameInfoTexture
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.characters import Character

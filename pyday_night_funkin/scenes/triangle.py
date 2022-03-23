@@ -18,7 +18,7 @@ from pyday_night_funkin.core.shaders import ShaderContainer
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
-	from pyday_night_funkin.types import Numeric
+	from pyday_night_funkin.core.types import Numeric
 
 
 vertex_shader = """

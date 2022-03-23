@@ -6,7 +6,8 @@ from loguru import logger
 import pyglet
 
 # You really want to leave this set to `True` unless you haven't
-# seen an OpenGL error for at least 20 hours
+# touched the rendering backend AND not seen an OpenGL error for at
+# least 20 hours
 pyglet.options["debug_gl"] = True
 
 from pyglet.window.key import KeyStateHandler
@@ -16,7 +17,7 @@ from pyday_night_funkin.core import ogg_decoder
 from pyday_night_funkin.core.pnf_player import PNFPlayer, SFXRing
 from pyday_night_funkin.core.pnf_window import PNFWindow
 from pyday_night_funkin.core.scene import BaseScene
-from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT, SFX_RING_SIZE
+from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.core.key_handler import KeyHandler
 from pyday_night_funkin.save_data import SaveData
@@ -26,7 +27,7 @@ from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.12-dev-Q"
+__version__ = "0.0.12-dev-R"
 
 
 class _FPSData:
@@ -81,7 +82,7 @@ class Game():
 		self.key_handler = KeyHandler(self.save_data.config.key_bindings)
 
 		self.player = PNFPlayer()
-		self.sfx_ring = SFXRing(SFX_RING_SIZE)
+		self.sfx_ring = SFXRing()
 
 		self.window.push_handlers(self.key_handler)
 		self.window.push_handlers(self.pyglet_ksh)

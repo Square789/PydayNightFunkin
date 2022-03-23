@@ -6,7 +6,7 @@ from pyglet import gl
 from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
 
-import pyday_night_funkin.constants as CNST
+from pyday_night_funkin.core.constants import ERROR_TEXTURE, MAX_ALPHA_SSBO_BINDING_IDX
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
@@ -14,12 +14,12 @@ from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
-from pyday_night_funkin.utils import clamp
+from pyday_night_funkin.core.utils import clamp
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import UniformBufferObject
 	from pyday_night_funkin.core.camera import Camera
-	from pyday_night_funkin.types import Numeric
+	from pyday_night_funkin.core.types import Numeric
 
 EffectBound = t.TypeVar("EffectBound", bound="Effect")
 
@@ -45,12 +45,11 @@ uniform WindowBlock {{
 	mat4 view;
 }} window;
 
-layout (std140) uniform CameraAttrs {{
+layout(std140) uniform CameraAttrs {{
 	float zoom;
 	vec2  position;
 	vec2  GAME_DIMENSIONS;
 }} camera;
-
 
 mat4 m_scale = mat4(1.0);
 mat4 m_rotate = mat4(1.0);
@@ -98,6 +97,31 @@ void main() {{
 }}
 """
 
+# _PNF_SPRITE_FRAGMENT_SHADER_SOURCE = f"""
+# #version 450
+
+# in vec4 vertex_colors;
+# in vec3 texture_coords;
+
+# out vec4 final_color;
+
+# layout(binding = {MAX_ALPHA_SSBO_BINDING_IDX}) buffer MaxAlphaBuffer {{{{
+# 	uint a[];
+# }}}};
+# layout(origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;
+
+# uniform sampler2D sprite_texture;
+
+
+# void main() {{{{
+# 	final_color = {{color_behavior}};
+# 	atomicMax(
+# 		a[int(gl_FragCoord.x) + int(gl_FragCoord.y) * 1280],
+# 		uint(clamp(final_color.a * 256, 0, 255))
+# 	);
+# }}}}
+# """
+
 _PNF_SPRITE_FRAGMENT_SHADER_SOURCE = """
 #version 450
 
@@ -107,7 +131,6 @@ in vec3 texture_coords;
 out vec4 final_color;
 
 uniform sampler2D sprite_texture;
-
 
 void main() {{
 	final_color = {color_behavior};
@@ -320,7 +343,7 @@ class PNFSprite(WorldObject):
 	) -> None:
 		super().__init__(x, y)
 
-		image = CNST.ERROR_TEXTURE if image is None else image
+		image = ERROR_TEXTURE if image is None else image
 
 		self.animation = AnimationController()
 
