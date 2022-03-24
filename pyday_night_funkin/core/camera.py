@@ -16,18 +16,24 @@ if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
 
 
-_QUAD_VBO_POSITION_SEGMENT_SIZE = GL_TYPE_SIZES[gl.GL_FLOAT] * 12
-_QUAD_VBO_POSITION_SEGMENT_START = GL_TYPE_SIZES[gl.GL_FLOAT] * 0
-_QUAD_VBO_TEX_COORD_SEGMENT_SIZE = GL_TYPE_SIZES[gl.GL_FLOAT] * 12
-_QUAD_VBO_TEX_COORD_SEGMENT_START = GL_TYPE_SIZES[gl.GL_FLOAT] * 12
-_QUAD_VBO_SIZE = _QUAD_VBO_POSITION_SEGMENT_SIZE + _QUAD_VBO_TEX_COORD_SEGMENT_SIZE
+_QUAD_VBO_POSITION_SEGMENT_SIZE = GL_TYPE_SIZES[gl.GL_FLOAT] * 2 * 6
+_QUAD_VBO_POSITION_SEGMENT_START = 0
+_QUAD_VBO_TEX_COORD_SEGMENT_SIZE = GL_TYPE_SIZES[gl.GL_FLOAT] * 2 * 6
+_QUAD_VBO_TEX_COORD_SEGMENT_START = _QUAD_VBO_POSITION_SEGMENT_START + _QUAD_VBO_POSITION_SEGMENT_SIZE
+_QUAD_VBO_FILL_COLOR_SEGMENT_SIZE = GL_TYPE_SIZES[gl.GL_UNSIGNED_BYTE] * 4 * 6
+_QUAD_VBO_FILL_COLOR_SEGMENT_START = _QUAD_VBO_TEX_COORD_SEGMENT_START + _QUAD_VBO_TEX_COORD_SEGMENT_SIZE
+_QUAD_VBO_SIZE = (
+	_QUAD_VBO_POSITION_SEGMENT_SIZE + _QUAD_VBO_TEX_COORD_SEGMENT_SIZE + _QUAD_VBO_FILL_COLOR_SEGMENT_SIZE
+)
 
 CAMERA_QUAD_VERTEX_SHADER = """
 #version 450
 layout (location = 0) in vec2 position;
-layout (location = 1) in vec2 tex_coords;
+layout (location = 1) in vec2 in_texture_coords;
+layout (location = 2) in vec4 in_fill_color;
 
 out vec2 texture_coords;
+out vec4 fill_color;
 
 uniform WindowBlock {
 	mat4 projection;
@@ -46,7 +52,8 @@ void main() {
 		window.view *
 		vec4(position, 0.0, 1.0);
 
-	texture_coords = tex_coords;
+	texture_coords = in_texture_coords;
+	fill_color = in_fill_color;
 }
 """
 
@@ -79,14 +86,20 @@ void main() {
 CAMERA_QUAD_FRAGMENT_SHADER = f"""
 #version 450
 in vec2 texture_coords;
-layout(origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;
+in vec4 fill_color;
 
 out vec4 final_color;
 
 uniform sampler2D camera_texture;
 
 void main() {{
-	final_color = texture(camera_texture, texture_coords);
+	vec4 out_color = texture(camera_texture, texture_coords);
+	final_color = vec4(
+		fill_color.r * 0.0 + out_color.r * 1.0,
+		fill_color.g * 0.0 + out_color.g * 1.0,
+		fill_color.b * 0.0 + out_color.b * 1.0,
+		fill_color.a * 0.0 + out_color.a * 1.0
+	);
 }}
 """
 
@@ -186,13 +199,21 @@ class Camera:
 			tex_coords,
 		)
 
+		self.vbo.set_data(
+			_QUAD_VBO_FILL_COLOR_SEGMENT_START,
+			_QUAD_VBO_FILL_COLOR_SEGMENT_SIZE,
+			(ctypes.c_ubyte * 24)(),
+		)
+
 		gl.glCreateVertexArrays(1, ctypes.byref(self.vao))
 		# Enable vertex attribute indices
 		gl.glEnableVertexArrayAttrib(self.vao, 0)
 		gl.glEnableVertexArrayAttrib(self.vao, 1)
+		gl.glEnableVertexArrayAttrib(self.vao, 2)
 		# Specify vertex layout for the attributes
 		gl.glVertexArrayAttribFormat(self.vao, 0, 2, gl.GL_FLOAT, gl.GL_FALSE, 0)
 		gl.glVertexArrayAttribFormat(self.vao, 1, 2, gl.GL_FLOAT, gl.GL_FALSE, 0)
+		gl.glVertexArrayAttribFormat(self.vao, 2, 4, gl.GL_UNSIGNED_BYTE, gl.GL_TRUE, 0)
 		# Associate the binding points with the buffer the vertices should be sourced from
 		gl.glVertexArrayVertexBuffer(
 			self.vao,
@@ -208,9 +229,17 @@ class Camera:
 			_QUAD_VBO_TEX_COORD_SEGMENT_START,
 			2 * GL_TYPE_SIZES[gl.GL_FLOAT],
 		)
+		gl.glVertexArrayVertexBuffer(
+			self.vao,
+			2,
+			self.vbo.id,
+			_QUAD_VBO_FILL_COLOR_SEGMENT_START,
+			4 * GL_TYPE_SIZES[gl.GL_UNSIGNED_BYTE],
+		)
 		# Link the shader attribute index with the binding point
 		gl.glVertexArrayAttribBinding(self.vao, 0, 0)
 		gl.glVertexArrayAttribBinding(self.vao, 1, 1)
+		gl.glVertexArrayAttribBinding(self.vao, 2, 2)
 
 		self._update_ubo()
 		self._update_vbo()

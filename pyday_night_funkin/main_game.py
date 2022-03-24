@@ -27,7 +27,7 @@ from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.12-dev-R"
+__version__ = "0.0.12-dev-S"
 
 
 class _FPSData:
@@ -62,7 +62,7 @@ class _FPSData:
 class Game():
 	def __init__(self) -> None:
 		self.debug = True
-		self.use_debug_pane = True
+		self.use_debug_pane = False
 		# These have to be setup later, see `run`
 		self._update_time = 0
 		self._fps: t.Optional[_FPSData] = None
