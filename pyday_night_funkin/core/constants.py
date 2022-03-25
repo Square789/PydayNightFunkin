@@ -13,6 +13,3 @@ ERROR_TEXTURE = CheckerImagePattern(
 PIXEL_TEXTURE = ImageData(1, 1, "RGBA", b"\xFF\xFF\xFF\xFF").get_texture()
 
 SFX_RING_SIZE = 4
-
-MAX_ALPHA_SSBO_BINDING_IDX = 0
-MAX_ALPHA_TEXTURE_UNIT = 3

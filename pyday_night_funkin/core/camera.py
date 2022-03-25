@@ -7,7 +7,6 @@ from pyglet.image import Framebuffer, Texture
 from pyglet.math import Mat4, Vec2
 
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
-from pyday_night_funkin.core.constants import MAX_ALPHA_SSBO_BINDING_IDX
 from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
 from pyday_night_funkin.core.graphics.shared import GL_TYPE_SIZES
 from pyday_night_funkin.core.shaders import ShaderContainer
@@ -157,7 +156,7 @@ class Camera:
 		"""
 		A list of shaders that will be sequentially applied to this
 		camera's display quad.
-		NOT IMPLEMENTED.
+		TODO: NOT IMPLEMENTED.
 		"""
 
 		self.clear_color = (0, 0, 0, 0)
@@ -170,13 +169,13 @@ class Camera:
 		self.program = self._shader_container.get_program()
 		self.ubo = self._shader_container.get_camera_ubo()
 
-		self.vao = gl.GLuint()
+		self.quad_vao = gl.GLuint()
 		"""
 		VAO that needs to be bound to properly render the camera's
 		display quad.
 		"""
 
-		self.vbo = BufferObject(gl.GL_ARRAY_BUFFER, _QUAD_VBO_SIZE, gl.GL_DYNAMIC_DRAW)
+		self.quad_vbo = BufferObject(gl.GL_ARRAY_BUFFER, _QUAD_VBO_SIZE, gl.GL_DYNAMIC_DRAW)
 		"""
 		VBO containing the vertices to properly render the camera's
 		display quad.
@@ -194,67 +193,68 @@ class Camera:
 			 1., 1.,
 			 0., 1.,
 		)
-		self.vbo.set_data(
+		self.quad_vbo.set_data(
 			_QUAD_VBO_TEX_COORD_SEGMENT_START,
 			_QUAD_VBO_TEX_COORD_SEGMENT_SIZE,
 			tex_coords,
 		)
 
-		self.vbo.set_data(
+		self.quad_vbo.set_data(
 			_QUAD_VBO_FILL_COLOR_SEGMENT_START,
 			_QUAD_VBO_FILL_COLOR_SEGMENT_SIZE,
 			(ctypes.c_ubyte * 24)(),
 		)
 
-		gl.glCreateVertexArrays(1, ctypes.byref(self.vao))
+		gl.glCreateVertexArrays(1, ctypes.byref(self.quad_vao))
 		# Enable vertex attribute indices
-		gl.glEnableVertexArrayAttrib(self.vao, 0)
-		gl.glEnableVertexArrayAttrib(self.vao, 1)
-		gl.glEnableVertexArrayAttrib(self.vao, 2)
+		gl.glEnableVertexArrayAttrib(self.quad_vao, 0)
+		gl.glEnableVertexArrayAttrib(self.quad_vao, 1)
+		gl.glEnableVertexArrayAttrib(self.quad_vao, 2)
 		# Specify vertex layout for the attributes
-		gl.glVertexArrayAttribFormat(self.vao, 0, 2, gl.GL_FLOAT, gl.GL_FALSE, 0)
-		gl.glVertexArrayAttribFormat(self.vao, 1, 2, gl.GL_FLOAT, gl.GL_FALSE, 0)
-		gl.glVertexArrayAttribFormat(self.vao, 2, 4, gl.GL_UNSIGNED_BYTE, gl.GL_TRUE, 0)
+		gl.glVertexArrayAttribFormat(self.quad_vao, 0, 2, gl.GL_FLOAT, gl.GL_FALSE, 0)
+		gl.glVertexArrayAttribFormat(self.quad_vao, 1, 2, gl.GL_FLOAT, gl.GL_FALSE, 0)
+		gl.glVertexArrayAttribFormat(self.quad_vao, 2, 4, gl.GL_UNSIGNED_BYTE, gl.GL_TRUE, 0)
 		# Associate the binding points with the buffer the vertices should be sourced from
 		gl.glVertexArrayVertexBuffer(
-			self.vao,
+			self.quad_vao,
 			0,
-			self.vbo.id,
+			self.quad_vbo.id,
 			_QUAD_VBO_POSITION_SEGMENT_START,
 			2 * GL_TYPE_SIZES[gl.GL_FLOAT]
 		)
 		gl.glVertexArrayVertexBuffer(
-			self.vao,
+			self.quad_vao,
 			1,
-			self.vbo.id,
+			self.quad_vbo.id,
 			_QUAD_VBO_TEX_COORD_SEGMENT_START,
 			2 * GL_TYPE_SIZES[gl.GL_FLOAT],
 		)
 		gl.glVertexArrayVertexBuffer(
-			self.vao,
+			self.quad_vao,
 			2,
-			self.vbo.id,
+			self.quad_vbo.id,
 			_QUAD_VBO_FILL_COLOR_SEGMENT_START,
 			4 * GL_TYPE_SIZES[gl.GL_UNSIGNED_BYTE],
 		)
 		# Link the shader attribute index with the binding point
-		gl.glVertexArrayAttribBinding(self.vao, 0, 0)
-		gl.glVertexArrayAttribBinding(self.vao, 1, 1)
-		gl.glVertexArrayAttribBinding(self.vao, 2, 2)
+		gl.glVertexArrayAttribBinding(self.quad_vao, 0, 0)
+		gl.glVertexArrayAttribBinding(self.quad_vao, 1, 1)
+		gl.glVertexArrayAttribBinding(self.quad_vao, 2, 2)
 
 		self._update_ubo()
 		self._update_vbo()
 
 	def draw_framebuffer(self) -> None:
 		"""
-		Draws the camera's framebuffer.
+		Draws the camera's framebuffer as a fullscreen quad.
 		This changes the active program as well as the texture bound
 		to `TEXTURE_2D`.
 		"""
 		self.program.use()
-		gl.glBindVertexArray(self.vao)
+		self.program["camera_texture"] = 0
 		gl.glActiveTexture(gl.GL_TEXTURE0)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture.id)
+		gl.glBindVertexArray(self.quad_vao)
 		gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 		gl.glBindVertexArray(0)
 
@@ -287,7 +287,7 @@ class Camera:
 		]
 		# Not going through the trouble of indexing (yet)
 		data = (ctypes.c_float * 12)(*v[0], *v[2], *v[1], *v[0], *v[2], *v[3])
-		self.vbo.set_data(0, _QUAD_VBO_POSITION_SEGMENT_SIZE, data)
+		self.quad_vbo.set_data(0, _QUAD_VBO_POSITION_SEGMENT_SIZE, data)
 
 	def update(self, dt: float) -> None:
 		if self._follow_target is not None:
@@ -352,6 +352,7 @@ class Camera:
 	def delete(self) -> None:
 		self.framebuffer.delete()
 		self.framebuffer = None
+		self._max_alpha_texture = None
 		self.texture = None
-		self.vbo.delete()
-		gl.glDeleteVertexArrays(1, ctypes.byref(self.vao))
+		self.quad_vbo.delete()
+		gl.glDeleteVertexArrays(1, ctypes.byref(self.quad_vao))

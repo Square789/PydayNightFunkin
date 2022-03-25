@@ -23,14 +23,12 @@ import typing as t
 from pyglet.font import load as load_font
 from pyglet.gl import gl
 
-from pyday_night_funkin.core.constants import MAX_ALPHA_SSBO_BINDING_IDX
 from pyday_night_funkin.core.graphics import state
 from pyday_night_funkin.core.scene import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 
 if t.TYPE_CHECKING:
-	from pyglet.font import Win32DirectWriteFont
 	from pyglet.font.base import Glyph
 	from pyglet.image import Texture
 	from pyday_night_funkin.core.camera import Camera

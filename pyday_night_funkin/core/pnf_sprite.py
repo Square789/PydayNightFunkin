@@ -6,7 +6,7 @@ from pyglet import gl
 from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
 
-from pyday_night_funkin.core.constants import ERROR_TEXTURE, MAX_ALPHA_SSBO_BINDING_IDX, MAX_ALPHA_TEXTURE_UNIT
+from pyday_night_funkin.core.constants import ERROR_TEXTURE
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
@@ -378,8 +378,9 @@ class PNFSprite(WorldObject):
 			s.UBOBindingStatePart(cam_ubo),
 			s.TextureUnitStatePart(gl.GL_TEXTURE0),
 			s.TextureStatePart(self._texture),
+			s.UniformStatePart("sprite_texture", 0),
 			s.EnableStatePart(gl.GL_BLEND),
-			s.BlendFuncStatePart(self._blend_src, self._blend_dest),
+			s.SeparateBlendFuncStatePart(self._blend_src, self._blend_dest, gl.GL_ONE, self._blend_dest)
 		)
 
 	def _create_interfacer(self):

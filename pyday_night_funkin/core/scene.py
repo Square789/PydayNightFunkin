@@ -1,17 +1,14 @@
 
 from collections import OrderedDict
-import ctypes
 import typing as t
 
 from loguru import logger
 from pyglet.clock import Clock
-from pyglet.image import Texture
 from pyglet.gl import gl
 from pyglet.window.key import B, R
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
-from pyday_night_funkin.core.constants import MAX_ALPHA_SSBO_BINDING_IDX, MAX_ALPHA_TEXTURE_UNIT
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
 from pyday_night_funkin.core.pnf_player import SFXRing
@@ -236,22 +233,12 @@ class BaseScene(Container):
 		# Framebuffer shenanigans stolen from
 		# https://learnopengl.com/Advanced-OpenGL/Framebuffers
 
-		# gl.glBindBufferBase(
-		# 	gl.GL_SHADER_STORAGE_BUFFER,
-		# 	MAX_ALPHA_SSBO_BINDING_IDX,
-		# 	self._max_alpha_ssbo.id,
-		# )
+		# Rendering scheme stolen here.
+		# I would like to send Tamschi eternal gratitude.
+		# https://stackoverflow.com/questions/2171085/
+		# opengl-blending-with-previous-contents-of-framebuffer
+
 		for camera in (self._default_camera, *self.cameras.values()):
-			# # Afaict GL_RED and GL_UNSIGNED_INT are completely useless
-			# # and would only be useful for filling some kind of image buffer,
-			# # which is not what this one is being used for.
-			# gl.glClearNamedBufferData(
-			# 	self._max_alpha_ssbo.id,
-			# 	gl.GL_R32UI,
-			# 	gl.GL_RED,
-			# 	gl.GL_UNSIGNED_INT,
-			# 	None,
-			# )
 			camera.framebuffer.bind()
 			# NOTE: While the viewport is nice to shrink the game, it also affects all draw
 			# operations on the cameras, which crams the sprites into their fb's corners.
@@ -267,10 +254,12 @@ class BaseScene(Container):
 			#0, 0, camera._width, camera._height
 			gl.glClearColor(*camera.clear_color)
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+			gl.glBlendFuncSeparate(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA, gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
 			self.batch.draw(camera) # Draw everything in the camera's draw list to the camera's FBO
 			camera.framebuffer.unbind() # Binds default fbo again
 
 			self.game.window.set_viewport()
+			gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
 			camera.draw_framebuffer()
 
 	def get_context(

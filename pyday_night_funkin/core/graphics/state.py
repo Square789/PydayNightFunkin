@@ -60,7 +60,7 @@ class UniformStatePart(StatePart):
 	def concretize(self, program_sp: ProgramStatePart) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
 		# NOTE: Ye olde private pyglet access
 		uniform = program_sp.program.uniforms[self._name]
-		gl_type, gl_func, _, count = shader._uniform_setters[uniform.type]
+		gl_type, gl_func, _, _, count = shader._uniform_setters[uniform.type]
 		loc = uniform.location
 		self._c_array = (gl_type * uniform.length)()
 		if uniform.length == 1:
@@ -128,6 +128,19 @@ class BlendFuncStatePart(StatePart):
 
 	def __init__(self, src, dest) -> None:
 		self.args = (src, dest)
+
+# https://stackoverflow.com/questions/2171085/opengl-blending-with-previous-contents-of-framebuffer
+# Tamschi i love your answer so much i can not express it like oh my god
+# 5 days of work with bullshit "max alpha" structures when all that could've
+# been solved with a separate blend func huuhhhghghhg
+
+class SeparateBlendFuncStatePart(StatePart):
+	cost = 1
+	gl_func = gl.glBlendFuncSeparate
+	required = ((EnableStatePart, (gl.GL_BLEND,)),)
+
+	def __init__(self, srcc, destc, srca, desta) -> None:
+		self.args = (srcc, destc, srca, desta)
 
 
 StateIdentifier = t.Tuple[t.Type[StatePart], t.Tuple]
