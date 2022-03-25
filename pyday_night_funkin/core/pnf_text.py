@@ -152,6 +152,8 @@ void main() {{
 class _Line:
 	"""
 	Line dataclass for text layout.
+	A line effectively stands for a text baseline with some offset
+	to the label's origin coordinates.
 	"""
 	def __init__(
 		self,
@@ -245,19 +247,32 @@ class PNFText(WorldObject):
 					max(self._width - line.width, 0) /
 					(2 if self._align is ALIGNMENT.CENTER else 1)
 				)
-			line_y_offset = line.y_offset
 			for glyph in line.glyphs:
-				v0: "Numeric"
-				v1: "Numeric"
-				v2: "Numeric"
-				v3: "Numeric"
-				# v3 and v1 swapped as glyph.vertices assumes bottom-left origin
-				v0, v3, v2, v1 = glyph.vertices
-				v0 += x_advance
-				v2 += x_advance
-				v1 += line_y_offset
-				v3 += line_y_offset
-				vertices += [v0, v1, v2, v1, v2, v3, v0, v3]
+				# print(vars(glyph))
+
+				# # Reverse engineer the glyph's offsets
+				# glyph_x_offset = glyph.vertices[0] - glyph.lsb
+				# glyph_y_offset = glyph.vertices[1] + glyph.baseline
+
+				# # baseline describes distance of the glyph's texture's bottom to the baseline.
+				# # Positive value means the glyph quad must be placed below the baseline
+				# # Negative value means the glyph quad must be placed above the baseline
+				# x0 = x_advance + glyph_x_offset + glyph.lsb
+				# x1 = x0 + glyph.width
+
+				# y0 = definite_baseline + glyph.baseline + glyph_y_offset
+				# y1 = y0 - glyph.height
+
+				#                  ^
+				# x0y0x1y1 setup above and below do the same, below is just faster probably
+				#                            v
+
+				x0 = x_advance + glyph.vertices[0]
+				x1 = x0 + glyph.width
+				y0 = line.y_offset + 2*glyph.baseline + glyph.vertices[1]
+				y1 = y0 - glyph.height
+
+				vertices += [x0, y0, x1, y0, x1, y1, x0, y1]
 				x_advance += glyph.advance
 
 				tex_coords.extend(glyph.tex_coords)
@@ -289,18 +304,17 @@ class PNFText(WorldObject):
 		Lays out the PNFText's text in lines depending on whether it's
 		single-or multiline.
 		"""
-		# TODO: platform specific type hint, remove
-		font: "Win32DirectWriteFont" = load_font(self._font_name, self._font_size)
+		font = load_font(self._font_name, self._font_size)
 		if self._multiline:
 			self.lines = []
-			y_offset = 0
+			baseline_offset = font.ascent
 			for text_line in self._text.splitlines():
 				glyphs: t.List["Glyph"] = font.get_glyphs(text_line)
-				self.lines.append(_Line(y_offset, glyphs, sum(g.advance for g in glyphs)))
-				y_offset += font.ascent
+				self.lines.append(_Line(baseline_offset, glyphs, sum(g.advance for g in glyphs)))
+				baseline_offset += font.ascent
 		else:
 			glyphs: t.List["Glyph"] = font.get_glyphs(self._text)
-			self.lines = [_Line(0, glyphs, sum(g.advance for g in glyphs))]
+			self.lines = [_Line(font.ascent, glyphs, sum(g.advance for g in glyphs))]
 
 		self.content_width = max(l.width for l in self.lines)
 
