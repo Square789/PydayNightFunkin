@@ -91,6 +91,7 @@ in vec4 fill_color;
 out vec4 final_color;
 
 uniform sampler2D camera_texture;
+uniform sampler2D max_alpha_texture;
 
 void main() {{
 	vec4 out_color = texture(camera_texture, texture_coords);

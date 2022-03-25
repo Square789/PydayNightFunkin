@@ -58,9 +58,8 @@ class UniformStatePart(StatePart):
 		self._c_array = None
 
 	def concretize(self, program_sp: ProgramStatePart) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
-		# NOTE: Ye olde private pyglet background access
-		# TODO: in pyglet>=2.0dev14, this doesn't just return the dict keys anymore, change it then
-		uniform = program_sp.program._uniforms[self._name]
+		# NOTE: Ye olde private pyglet access
+		uniform = program_sp.program.uniforms[self._name]
 		gl_type, gl_func, _, count = shader._uniform_setters[uniform.type]
 		loc = uniform.location
 		self._c_array = (gl_type * uniform.length)()

@@ -6,7 +6,7 @@ from pyglet import gl
 from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
 
-from pyday_night_funkin.core.constants import ERROR_TEXTURE, MAX_ALPHA_SSBO_BINDING_IDX
+from pyday_night_funkin.core.constants import ERROR_TEXTURE, MAX_ALPHA_SSBO_BINDING_IDX, MAX_ALPHA_TEXTURE_UNIT
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation

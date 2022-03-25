@@ -5,12 +5,13 @@ import typing as t
 
 from loguru import logger
 from pyglet.clock import Clock
+from pyglet.image import Texture
 from pyglet.gl import gl
 from pyglet.window.key import B, R
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
-from pyday_night_funkin.core.constants import MAX_ALPHA_SSBO_BINDING_IDX
+from pyday_night_funkin.core.constants import MAX_ALPHA_SSBO_BINDING_IDX, MAX_ALPHA_TEXTURE_UNIT
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
 from pyday_night_funkin.core.pnf_player import SFXRing
@@ -76,11 +77,11 @@ class BaseScene(Container):
 
 		self.batch = PNFBatch()
 
-		self._max_alpha_ssbo = BufferObject(
-			gl.GL_SHADER_STORAGE_BUFFER,
-			PIXEL_AMOUNT * 4,
-			gl.GL_STREAM_COPY,
-		)
+		# self._max_alpha_ssbo = BufferObject(
+		# 	gl.GL_SHADER_STORAGE_BUFFER,
+		# 	PIXEL_AMOUNT * 4,
+		# 	gl.GL_STREAM_COPY,
+		# )
 
 		self.draw_passthrough = True
 		self.update_passthrough = False
@@ -331,7 +332,7 @@ class BaseScene(Container):
 
 		self.sfx_ring.delete()
 
-		self._max_alpha_ssbo.delete()
+		# self._max_alpha_ssbo.delete()
 
 		self.batch.delete()
 		self.batch = None

@@ -178,17 +178,18 @@ class PNFVertexDomain:
 		vao_id = gl.GLuint()
 		gl.glCreateVertexArrays(1, ctypes.byref(vao_id))
 
-		for shader_attr in shader.attributes.values():
+		for shader_attr_name, shader_attr_dict in shader.attributes.items():
 			# Attributes are linked with shaders by their name as passed
 			# in the add call
-			if shader_attr.name not in self.attributes:
+			if shader_attr_name not in self.attributes:
 				raise ValueError(
-					f"Shader program {shader.id!r} contained vertex attribute {shader_attr},"
-					f"but {self.__class__.__name__} does not know {shader_attr.name!r}."
+					f"Shader program {shader.id!r} contained vertex attribute"
+					f"{shader_attr_name!r}, but {self.__class__.__name__} does not know "
+					f"{shader_attr_name!r}."
 				)
-			attr = self.attributes[shader_attr.name]
+			attr = self.attributes[shader_attr_name]
 			bp = attr.binding_point
-			loc = shader_attr.location
+			loc = shader_attr_dict["location"]
 			# Set index/element buffer
 			gl.glVertexArrayElementBuffer(vao_id, draw_list.index_buffer.id)
 			# Enable the shader location / attribute index
