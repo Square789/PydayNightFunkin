@@ -107,31 +107,6 @@ void main() {
 }
 """
 
-# _PNF_TEXT_FRAGMENT_SOURCE = f"""
-# #version 450
-
-# in vec4 frag_color;
-# in vec3 frag_tex_coords;
-
-# layout(location = 0) out vec4 final_color;
-
-# layout(binding = {MAX_ALPHA_SSBO_BINDING_IDX}) buffer MaxAlphaBuffer {{
-# 	uint a[];
-# }};
-# layout(origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;
-
-# uniform sampler2D sprite_texture;
-
-
-# void main() {{
-# 	final_color = vec4(frag_color.rgb, texture(sprite_texture, frag_tex_coords.xy).a);
-# 	atomicMax(
-# 		a[int(gl_FragCoord.x) + int(gl_FragCoord.y) * 1280],
-# 		uint(clamp(final_color.a * 256, 0, 255))
-# 	);
-# }}
-# """
-
 _PNF_TEXT_FRAGMENT_SOURCE = f"""
 #version 450
 
@@ -226,7 +201,9 @@ class PNFText(WorldObject):
 			state.TextureStatePart(ftex),
 			state.UBOBindingStatePart(cam.ubo),
 			state.EnableStatePart(gl.GL_BLEND),
-			state.BlendFuncStatePart(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA),
+			state.SeparateBlendFuncStatePart(
+				gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA, gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA
+			)
 		)
 
 	def _create_interfacer(self) -> None:

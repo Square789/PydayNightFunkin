@@ -74,12 +74,6 @@ class BaseScene(Container):
 
 		self.batch = PNFBatch()
 
-		# self._max_alpha_ssbo = BufferObject(
-		# 	gl.GL_SHADER_STORAGE_BUFFER,
-		# 	PIXEL_AMOUNT * 4,
-		# 	gl.GL_STREAM_COPY,
-		# )
-
 		self.draw_passthrough = True
 		self.update_passthrough = False
 
@@ -320,8 +314,6 @@ class BaseScene(Container):
 		self._default_camera.delete()
 
 		self.sfx_ring.delete()
-
-		# self._max_alpha_ssbo.delete()
 
 		self.batch.delete()
 		self.batch = None
