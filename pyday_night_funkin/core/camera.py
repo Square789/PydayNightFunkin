@@ -247,11 +247,12 @@ class Camera:
 	def draw_framebuffer(self) -> None:
 		"""
 		Draws the camera's framebuffer as a fullscreen quad.
-		This changes the active program as well as the texture bound
-		to `TEXTURE_2D`.
+		This changes the active program, the texture bound
+		to `TEXTURE_2D` and the blend func.
 		"""
 		self.program.use()
 		self.program["camera_texture"] = 0
+		gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
 		gl.glActiveTexture(gl.GL_TEXTURE0)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture.id)
 		gl.glBindVertexArray(self.quad_vao)

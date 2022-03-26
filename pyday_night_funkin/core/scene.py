@@ -253,7 +253,6 @@ class BaseScene(Container):
 			camera.framebuffer.unbind() # Binds default fbo again
 
 			self.game.window.set_viewport()
-			gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
 			camera.draw_framebuffer()
 
 	def get_context(
