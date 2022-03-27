@@ -5,11 +5,12 @@ import typing as t
 from pyglet import gl
 from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
+from pyday_night_funkin.core.animation.frames import AnimationFrame, FrameCollection
 
 from pyday_night_funkin.core.constants import ERROR_TEXTURE
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as s
-from pyday_night_funkin.core.pnf_animation import AnimationController, PNFAnimation
+from pyday_night_funkin.core.animation import Animation, AnimationController
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
@@ -27,8 +28,9 @@ EffectBound = t.TypeVar("EffectBound", bound="Effect")
 _PNF_SPRITE_VERTEX_SHADER_SOURCE = """
 #version 450
 
-in vec2 anim_offset;
 in vec2 frame_offset;
+in vec2 offset;
+in vec2 origin;
 in vec2 translate;
 in vec4 colors;
 in vec3 tex_coords;
@@ -51,6 +53,7 @@ layout(std140) uniform CameraAttrs {{
 	vec2  GAME_DIMENSIONS;
 }} camera;
 
+
 mat4 m_scale = mat4(1.0);
 mat4 m_rotate = mat4(1.0);
 mat4 m_translate = mat4(1.0);
@@ -58,6 +61,29 @@ mat4 m_camera_trans_scale = mat4(1.0);
 
 
 void main() {{
+	mat4 res_mat = mat4(1.0);
+	mat4 work_mat = mat4(1.0);
+
+	work_mat[3].xy = frame_offset;
+	res_mat *= work_mat; work_mat = mat4(1.0);
+
+	work_mat[3].xy = -1 * origin;
+	res_mat *= work_mat; work_mat = mat4(1.0);
+
+	work_mat[0][0] = scale.x;
+	work_mat[1][1] = scale.y;
+	res_mat *= work_mat; work_mat = mat4(1.0);
+
+	work_mat[0][0] =  cos(-radians(rotation));
+	work_mat[0][1] =  sin(-radians(rotation));
+	work_mat[1][0] = -sin(-radians(rotation));
+	work_mat[1][1] =  cos(-radians(rotation));
+	res_mat *= work_mat; work_mat = mat4(1.0);
+
+	work_mat[3].xy = origin + translate - ((camera.position * camera.zoom * scroll_factor) - offset);
+	res_mat *= work_mat;
+
+	/*
 	m_translate[3].xy = translate + anim_offset + (frame_offset * scale);
 
 	m_scale[0][0] = scale.x;
@@ -81,14 +107,13 @@ void main() {{
 	);
 	m_camera_trans_scale[0][0] = camera.zoom;
 	m_camera_trans_scale[1][1] = camera.zoom;
+	*/
 
 	gl_Position =
 		window.projection *
 		window.view *
 		m_camera_trans_scale *
-		m_translate *
-		m_rotate *
-		m_scale *
+		res_mat *
 		vec4(position, 0, 1)
 	;
 
@@ -320,17 +345,26 @@ class PNFSprite(WorldObject):
 
 		image = ERROR_TEXTURE if image is None else image
 
-		self.animation = AnimationController()
+		self.animation = AnimationController(self)
 
 		# NOTE: Copypaste of this exists at PNFSpriteContainer.__init__,
 		# modify it when modifying this!
 		self.movement: t.Optional[Movement] = None
 		self.effects: t.List["EffectBound"] = []
+		self._origin = (0, 0)
+		self._offset = (0, 0)
 
 		self._interfacer = None
 		self._color = (255, 255, 255)
 		self._opacity = 255
+
+		self._frame: t.Optional[AnimationFrame] = None
+
 		self._texture = image.get_texture()
+		"""The currently displayed pyglet texture."""
+
+		self._frames: t.Optional[FrameCollection] = None
+		"""Frame collection frames and textures are drawn from."""
 
 		if isinstance(image, TextureArrayRegion):
 			raise NotImplementedError("Hey VSauce, Michael here. What is a TextureArrayRegion?")
@@ -374,7 +408,8 @@ class PNFSprite(WorldObject):
 			(0, 1, 2, 0, 2, 3),
 			{camera: self._build_gl_state(camera.ubo) for camera in self._context.cameras},
 			"position2f/" + usage,
-			("anim_offset2f/" + usage, (0, 0) * 4),
+			("offset2f/" + usage, self._offset * 4),
+			("origin2f/" + usage, self._origin * 4),
 			("frame_offset2f/" + usage, (0, 0) * 4),
 			("colors4Bn/" + usage, (*self._color, int(self._opacity)) * 4),
 			("translate2f/" + usage, (self._x, self._y) * 4),
@@ -412,39 +447,6 @@ class PNFSprite(WorldObject):
 
 		if change_batch or rebuild_group:
 			self._interfacer.migrate(self._context.batch, self._context.group, new_states)
-
-	def screen_center(self, screen_dims: Vec2, x: bool = True, y: bool = True) -> None:
-		"""
-		Sets the sprite's world position so that it is centered
-		on screen. (Ignoring camera and scroll factors)
-		`x` and `y` can be set to false to only center the sprite
-		along one of the axes.
-		"""
-		if x:
-			self.x = (screen_dims[0] - self.width) // 2
-		if y:
-			self.y = (screen_dims[1] - self.height) // 2
-
-	def get_midpoint(self) -> Vec2:
-		"""
-		Returns the middle point of this sprite, based on its current
-		texture and world position.
-		"""
-		return Vec2(
-			self._x + self.signed_width * 0.5,
-			self._y + self.signed_height * 0.5,
-		)
-
-	def get_screen_position(self, cam: "Camera") -> Vec2:
-		"""
-		Returns the screen position the sprite's origin is displayed
-		at. Note that this may still be inaccurate for
-		shaders and rotation.
-		"""
-		return Vec2(
-			self._x - (cam.x * cam.zoom),
-			self._y - (cam.y * cam.zoom),
-		)
 
 	def start_tween(
 		self,
@@ -543,19 +545,12 @@ class PNFSprite(WorldObject):
 
 	def check_animation_controller(self):
 		"""
-		Tests animation controller for new textures or offsets
-		and applies them to the sprite.
+		Asks animation controller for a new frame and applies it.
 		Useful for when waiting for `update` isn't possible during
 		setup which i.e. depends on the first frame of an animation.
 		"""
-		if (new_frame := self.animation.query_new_texture()) is not None:
-			self._set_texture(new_frame)
-
-		if (new_offset := self.animation.query_new_offset()) is not None:
-			self._interfacer.set_data("anim_offset", new_offset * 4)
-
-		if (new_frame_offset := self.animation.query_new_frame_offset()) is not None:
-			self._interfacer.set_data("frame_offset", new_frame_offset * 4)
+		if (new_frame_idx := self.animation.query_new_frame()) is not None:
+			self._set_frame(self._frames[new_frame_idx])
 
 	def update(self, dt: float) -> None:
 		if self.animation.is_set:
@@ -565,6 +560,9 @@ class PNFSprite(WorldObject):
 		if self.movement is not None:
 			dx, dy = self.movement.update(dt)
 			self.position = (self._x + dx, self._y + dy)
+
+		if not self.effects:
+			return
 
 		finished_effects = []
 		for effect in self.effects:
@@ -580,27 +578,36 @@ class PNFSprite(WorldObject):
 			except ValueError:
 				pass
 
-	@property
-	def width(self) -> float:
-		return abs(self.signed_width)
+	def _set_frame(self, frame: AnimationFrame):
+		self._frame = frame
+		texture = frame.texture
+		prev_h, prev_w = self._texture.height, self._texture.width
+		if texture.id is not self._texture.id:
+			self._texture = texture
+			self._interfacer.set_states(
+				{camera: self._build_gl_state(camera.ubo) for camera in self._context.cameras}
+			)
+		else:
+			self._texture = texture
+		self._interfacer.set_data("tex_coords", texture.tex_coords)
+		self._interfacer.set_data("frame_offset", tuple(frame.offset) * 4)
+		# If this is not done, screws over vertices if the texture changes
+		if prev_h != texture.height or prev_w != texture.width:
+			self._update_vertex_positions()
 
-	@property
-	def height(self):
-		return abs(self.signed_height)
+	def _update_vertex_positions(self):
+		img = self._texture
+		x1 = -img.anchor_x
+		y1 = -img.anchor_y + img.height
+		x2 = -img.anchor_x + img.width
+		y2 = -img.anchor_y
 
-	@property
-	def signed_width(self) -> float:
-		return self._scale_x * self._scale * (
-			self.animation._base_box[0] if self.animation.is_set else
-			self._texture.width
-		)
-
-	@property
-	def signed_height(self) -> float:
-		return self._scale_y * self._scale * (
-			self.animation._base_box[1] if self.animation.is_set else
-			self._texture.height
-		)
+		if self._subpixel:
+			self._interfacer.set_data("position", (x1, y1, x2, y1, x2, y2, x1, y2))
+		else:
+			self._interfacer.set_data(
+				"position", tuple(map(int, (x1, y1, x2, y1, x2, y2, x1, y2)))
+			)
 
 	def delete(self):
 		"""
@@ -610,31 +617,43 @@ class PNFSprite(WorldObject):
 		self._interfacer = None
 		self._texture = None
 		self._context = None # GC speedup, probably
+		self.animation = None
+
+	# TODO repair below
+	@property
+	def signed_width(self) -> float:
+		return self._scale_x * self._scale * self._frame.source_dimensions[0]
+
+	@property
+	def signed_height(self) -> float:
+		return self._scale_y * self._scale * self._frame.source_dimensions[1]
 
 	# === Simple properties and private methods below === #
 
 	@property
-	def image(self) -> t.Union[PNFAnimation, AbstractImage]:
+	def image(self) -> AbstractImage:
 		"""
-		The sprite's image.
-		This will return an animation if one is playing.
-		Setting an animation via this setter is an error, use
-		`animation.play()` for that instead.
+		The sprite's currently displayed image.
+		May be from an animation if one is playing.
 		"""
-		if self.animation.is_set:
-			return self.animation.current
 		return self._texture
 
 	@image.setter
-	def image(self, image: t.Union[PNFAnimation, AbstractImage]) -> None:
-		if isinstance(image, PNFAnimation):
-			raise RuntimeError(
-				"Please play animations via the sprite's animation controller: "
-				"`sprite.animation.play()`"
-			)
+	def image(self, image: AbstractImage) -> None:
+		fc = FrameCollection()
+		fc.add_frame(image.get_texture(), Vec2(image.height, image.width), Vec2())
+		self.frames = fc
 
-		self.animation.stop()
-		self._set_texture(image.get_texture())
+	@property
+	def frames(self) -> FrameCollection:
+		return self._frames
+
+	@frames.setter
+	def frames(self, new_frames: FrameCollection) -> None:
+		self.animation.delete_animations()
+		self._frames = new_frames
+		self._set_frame(new_frames.frames[0])
+		self.origin = (.5 * self._frame.source_dimensions[0], .5 * self._frame.source_dimensions[1])
 
 	@property
 	def x(self) -> "Numeric":
@@ -723,6 +742,40 @@ class PNFSprite(WorldObject):
 		)
 
 	@property
+	def origin(self) -> t.Tuple["Numeric", "Numeric"]:
+		"""
+		The sprite's origin. TODO I can't tell what this does yet
+		"""
+		return self._origin
+
+	@origin.setter
+	def origin(self, new_origin: t.Tuple["Numeric", "Numeric"]) -> None:
+		self._origin = new_origin
+		self._interfacer.set_data("origin", new_origin * 4)
+
+	@property
+	def offset(self) -> t.Tuple["Numeric", "Numeric"]:
+		"""
+		Sprite offset.
+		Going by Flixel, technically, this is supposed to only affect
+		the hitbox, but it's flat-out used in rendering code, so that's
+		a lie.
+		# TODO check and figure out doc
+		Also, in FnF's source, this value is misused. offset is set
+		when frame data is set, depending on the first fucking frame in
+		a sprite sheet. this has then influenced manually set
+		per-animation offsets, that will likely break completely if
+		`updateHitbox` should ever be called. I can tell this is going
+		to be a pain to figure out and rectify.
+		"""
+		return self._offset
+
+	@offset.setter
+	def offset(self, new_offset: t.Tuple["Numeric", "Numeric"]) -> None:
+		self._offset = new_offset
+		self._interfacer.set_data("offset", new_offset * 4)
+
+	@property
 	def scroll_factor(self) -> t.Tuple[float, float]:
 		"""
 		The sprite's scroll factor.
@@ -774,34 +827,3 @@ class PNFSprite(WorldObject):
 	@visible.setter
 	def visible(self, visible: bool) -> None:
 		self._interfacer.set_visibility(visible)
-
-	def _set_texture(self, texture):
-		prev_h, prev_w = self._texture.height, self._texture.width
-		if texture.id is not self._texture.id:
-			self._texture = texture
-			self._interfacer.set_states(
-				{camera: self._build_gl_state(camera.ubo) for camera in self._context.cameras}
-			)
-		else:
-			self._texture = texture
-		self._interfacer.set_data("tex_coords", texture.tex_coords)
-		# If this is not done, screws over vertices if the texture changes
-		if prev_h != texture.height or prev_w != texture.width:
-			self._update_vertex_positions()
-
-	def _update_vertex_positions(self):
-		# Contains some manipulations to the creation of position
-		# vertices since otherwise the sprite would be displayed
-		# upside down
-		img = self._texture
-		x1 = -img.anchor_x
-		y1 = -img.anchor_y + img.height
-		x2 = -img.anchor_x + img.width
-		y2 = -img.anchor_y
-
-		if self._subpixel:
-			self._interfacer.set_data("position", (x1, y1, x2, y1, x2, y2, x1, y2))
-		else:
-			self._interfacer.set_data(
-				"position", tuple(map(int, (x1, y1, x2, y1, x2, y2, x1, y2)))
-			)

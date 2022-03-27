@@ -30,8 +30,9 @@ class TestScene(MusicBeatScene):
 		for i, note_type in enumerate(NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
 			s = self.create_object("ye_olde_layer", "main", x = 300, y = 50 + i*200)
+			s.frames = note_sprites
 			for anim_name, atlas_name in zip(("static", "pressed", "confirm"), atlas_names):
-				s.animation.add_from_frames(anim_name, note_sprites[atlas_name], 24, False)
+				s.animation.add_by_prefix(anim_name, atlas_name, 24, False)
 			s.scale = 1.25 - i * .25
 			s.animation.play("static")
 			self.arrows.append(s)

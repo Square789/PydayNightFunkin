@@ -46,10 +46,11 @@ class PNFSpriteContainer(PNFSprite):
 
 		# NOTE: Copypasted from PNFSprite.__init__, look into it when
 		# modifying this!
+		WorldObject.__init__(self, x, y)
 		self.movement: t.Optional[Movement] = None
 		self.effects: t.List["EffectBound"] = []
+		self._origin = (0, 0)
 
-		WorldObject.__init__(self, x, y)
 		self._opacity = 255
 		self._color = (255, 255, 255)
 

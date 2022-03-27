@@ -3,6 +3,7 @@ import math
 import typing as t
 
 from pyday_night_funkin import constants as CNST
+from pyday_night_funkin.core.animation import AnimationController
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.utils import ListWindow
 from pyday_night_funkin.enums import CONTROL
@@ -60,25 +61,26 @@ class NoteHandler(AbstractNoteHandler):
 		speeds - be invisible.)"""
 
 		note_assets = load_asset(ASSET.XML_NOTES)
+		AC = AnimationController
 		self.note_sprites = {
 			SUSTAIN_STAGE.NONE: {
-				NOTE_TYPE.LEFT: note_assets["purple"][0],
-				NOTE_TYPE.DOWN: note_assets["blue"][0],
-				NOTE_TYPE.UP: note_assets["green"][0],
-				NOTE_TYPE.RIGHT: note_assets["red"][0],
+				NOTE_TYPE.LEFT: AC.get_frames_by_prefix(note_assets, "purple")[0].texture,
+				NOTE_TYPE.DOWN: AC.get_frames_by_prefix(note_assets, "blue")[0].texture,
+				NOTE_TYPE.UP: AC.get_frames_by_prefix(note_assets, "green")[0].texture,
+				NOTE_TYPE.RIGHT: AC.get_frames_by_prefix(note_assets, "red")[0].texture,
 			},
 			SUSTAIN_STAGE.TRAIL: {
-				NOTE_TYPE.LEFT: note_assets["purple hold piece"][0],
-				NOTE_TYPE.DOWN: note_assets["blue hold piece"][0],
-				NOTE_TYPE.UP: note_assets["green hold piece"][0],
-				NOTE_TYPE.RIGHT: note_assets["red hold piece"][0],
+				NOTE_TYPE.LEFT: AC.get_frames_by_prefix(note_assets, "purple hold piece")[0].texture,
+				NOTE_TYPE.DOWN: AC.get_frames_by_prefix(note_assets, "blue hold piece")[0].texture,
+				NOTE_TYPE.UP: AC.get_frames_by_prefix(note_assets, "green hold piece")[0].texture,
+				NOTE_TYPE.RIGHT: AC.get_frames_by_prefix(note_assets, "red hold piece")[0].texture,
 			},
 			SUSTAIN_STAGE.END: {
 				# this is the worst naming of anything i have ever seen
-				NOTE_TYPE.LEFT: note_assets["pruple end hold"][0],
-				NOTE_TYPE.DOWN: note_assets["blue hold end"][0],
-				NOTE_TYPE.UP: note_assets["green hold end"][0],
-				NOTE_TYPE.RIGHT: note_assets["red hold end"][0],
+				NOTE_TYPE.LEFT: AC.get_frames_by_prefix(note_assets, "pruple end hold")[0].texture,
+				NOTE_TYPE.DOWN: AC.get_frames_by_prefix(note_assets, "blue hold end")[0].texture,
+				NOTE_TYPE.UP: AC.get_frames_by_prefix(note_assets, "green hold end")[0].texture,
+				NOTE_TYPE.RIGHT: AC.get_frames_by_prefix(note_assets, "red hold end")[0].texture,
 			},
 		}
 

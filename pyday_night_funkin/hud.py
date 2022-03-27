@@ -64,21 +64,20 @@ class HUD():
 		self.static_arrows: t.List[t.Dict[NOTE_TYPE, "PNFSprite"]] = [{}, {}]
 		for i, note_type in product((0, 1), NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
-			arrow_width = note_sprites[atlas_names[0]][0].texture.width
+			arrow_width = note_sprites.frames[0].texture.width
 			arrow_sprite = self._scene.create_object(
 				self.arrow_layer,
 				self.camera,
 				x = 50 + (CNST.GAME_WIDTH // 2) * i + (note_type.get_order() * arrow_width * .7),
 				y = CNST.STATIC_ARROW_Y,
 			)
+			arrow_sprite.frames = note_sprites
 			for anim_name, atlas_name, tag in zip(
 				("static", "pressed", "confirm"),
 				atlas_names,
 				(ANIMATION_TAG.STATIC, ANIMATION_TAG.PRESSED, ANIMATION_TAG.CONFIRM),
 			):
-				arrow_sprite.animation.add_from_frames(
-					anim_name, note_sprites[atlas_name], 24, False, tags=(tag,)
-				)
+				arrow_sprite.animation.add_by_prefix(anim_name, atlas_name, 24, False, tags=(tag,))
 			arrow_sprite.scale = .7
 			arrow_sprite.animation.play("static")
 			self.static_arrows[i][note_type] = arrow_sprite

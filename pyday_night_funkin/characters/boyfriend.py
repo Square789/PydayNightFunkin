@@ -7,70 +7,65 @@ from pyday_night_funkin.characters._base import Character
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.enums import ANIMATION_TAG
 
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.animation import AnimationFrame
+	from pyday_night_funkin.core.pnf_sprite import PNFSprite
+
 
 class Boyfriend(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		anims = load_asset(ASSET.XML_BOYFRIEND)
-		story_menu_char_anims = load_asset(ASSET.XML_STORY_MENU_CHARACTERS)
+		self.frames = load_asset(ASSET.XML_BOYFRIEND)
 
-		self.animation.add_from_frames(
-			"idle", anims["BF idle dance"], 24, True, (-5, 0),
+		self.animation.add_by_prefix(
+			"idle", "BF idle dance", 24, True, (-5, 0),
 			(ANIMATION_TAG.IDLE,)
 		)
-		self.animation.add_from_frames(
-			"sing_note_left", anims["BF NOTE LEFT"], 24, False, (12, -6),
+		self.animation.add_by_prefix(
+			"sing_note_left", "BF NOTE LEFT", 24, False, (12, -6),
 			(ANIMATION_TAG.SING,)
 		)
-		self.animation.add_from_frames(
-			"miss_note_left", anims["BF NOTE LEFT MISS"], 24, False, (12, 24),
+		self.animation.add_by_prefix(
+			"miss_note_left", "BF NOTE LEFT MISS", 24, False, (12, 24),
 			(ANIMATION_TAG.MISS,)
 		)
-		self.animation.add_from_frames(
-			"sing_note_down", anims["BF NOTE DOWN"], 24, False, (-10, -50),
+		self.animation.add_by_prefix(
+			"sing_note_down", "BF NOTE DOWN", 24, False, (-10, -50),
 			(ANIMATION_TAG.SING,)
 		)
-		self.animation.add_from_frames(
-			"miss_note_down", anims["BF NOTE DOWN MISS"], 24, False, (-11, -19),
+		self.animation.add_by_prefix(
+			"miss_note_down", "BF NOTE DOWN MISS", 24, False, (-11, -19),
 			(ANIMATION_TAG.MISS,)
 		)
-		self.animation.add_from_frames(
-			"sing_note_up", anims["BF NOTE UP"], 24, False, (-29, 27),
+		self.animation.add_by_prefix(
+			"sing_note_up", "BF NOTE UP", 24, False, (-29, 27),
 			(ANIMATION_TAG.SING,)
 		)
-		self.animation.add_from_frames(
-			"miss_note_up", anims["BF NOTE UP MISS"], 24, False, (-29, 27),
+		self.animation.add_by_prefix(
+			"miss_note_up", "BF NOTE UP MISS", 24, False, (-29, 27),
 			(ANIMATION_TAG.MISS,)
 		)
-		self.animation.add_from_frames(
-			"sing_note_right", anims["BF NOTE RIGHT"], 24, False, (-38, -7),
+		self.animation.add_by_prefix(
+			"sing_note_right", "BF NOTE RIGHT", 24, False, (-38, -7),
 			(ANIMATION_TAG.SING,)
 		)
-		self.animation.add_from_frames(
-			"miss_note_right", anims["BF NOTE RIGHT MISS"], 24, False, (-30, 21),
+		self.animation.add_by_prefix(
+			"miss_note_right", "BF NOTE RIGHT MISS", 24, False, (-30, 21),
 			(ANIMATION_TAG.MISS,)
 		)
-		self.animation.add_from_frames("scared", anims["BF idle shaking"], 24, True, (-4, 0))
-		self.animation.add_from_frames(
-			"hey", anims["BF HEY!!"], 24, False, (7, 4), (ANIMATION_TAG.SPECIAL,)
+		self.animation.add_by_prefix("scared", "BF idle shaking", 24, True, (-4, 0))
+		self.animation.add_by_prefix(
+			"hey", "BF HEY!!", 24, False, (7, 4), (ANIMATION_TAG.SPECIAL,)
 		)
-		self.animation.add_from_frames(
-			"story_menu", story_menu_char_anims["BF idle dance white"],
-			24, True, tags=(ANIMATION_TAG.STORY_MENU,)
+		self.animation.add_by_prefix(
+			"game_over_ini", "BF dies", 24, False, (37, 11), (ANIMATION_TAG.GAME_OVER,)
 		)
-		self.animation.add_from_frames(
-			"story_menu_confirm", story_menu_char_anims["BF HEY!!"],
-			24, False, tags=(ANIMATION_TAG.STORY_MENU, ANIMATION_TAG.SPECIAL)
+		self.animation.add_by_prefix(
+			"game_over_loop", "BF Dead Loop", 24, True, (37, 5), (ANIMATION_TAG.GAME_OVER,)
 		)
-		self.animation.add_from_frames(
-			"game_over_ini", anims["BF dies"], 24, False, (37, 11), (ANIMATION_TAG.GAME_OVER,)
-		)
-		self.animation.add_from_frames(
-			"game_over_loop", anims["BF Dead Loop"], 24, True, (37, 5), (ANIMATION_TAG.GAME_OVER,)
-		)
-		self.animation.add_from_frames(
-			"game_over_confirm", anims["BF Dead confirm"], 24, False, (37, 69),
+		self.animation.add_by_prefix(
+			"game_over_confirm", "BF Dead confirm", 24, False, (37, 69),
 			(ANIMATION_TAG.GAME_OVER,)
 		)
 
@@ -99,7 +94,18 @@ class Boyfriend(Character):
 		super(Character, self).update(dt)
 
 	@staticmethod
-	def get_story_menu_transform() -> t.Tuple[Vec2, float]:
+	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
+		spr.animation.add_by_prefix(
+			"story_menu", "BF idle dance white", 24, True,
+			tags = (ANIMATION_TAG.STORY_MENU,)
+		)
+		spr.animation.add_by_prefix(
+			"story_menu_confirm", "BF HEY!!", 24, False,
+			tags = (ANIMATION_TAG.STORY_MENU, ANIMATION_TAG.SPECIAL)
+		)
+
+	@staticmethod
+	def get_story_menu_info() -> t.Tuple[Vec2, float]:
 		return (Vec2(-80, 0), .9)
 
 	@staticmethod

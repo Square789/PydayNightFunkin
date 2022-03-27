@@ -42,12 +42,9 @@ class MainMenuScene(BaseScene):
 			("options", self._sel_options),
 		)):
 			sprite = self.create_object("fg", y=60 + i*160)
-			sprite.animation.add_from_frames(
-				"idle", menu_item_assets[f"{name} basic"], 24, True
-			)
-			sprite.animation.add_from_frames(
-				"selected", menu_item_assets[f"{name} white"], 24, True
-			)
+			sprite.frames = menu_item_assets
+			sprite.animation.add_by_prefix("idle", f"{name} basic", 24, True)
+			sprite.animation.add_by_prefix("selected", f"{name} white", 24, True)
 			sprite.animation.play("idle", True)
 			sprite.screen_center(CNST.GAME_DIMENSIONS, y=False)
 			self._menu_items.append((name, callback, sprite))

@@ -43,12 +43,12 @@ class Week2Level(InGameScene):
 	def setup(self) -> None:
 		super().setup()
 
-		bg_anims = load_asset(ASSET.XML_HALLOWEEN_BG)
 		self.background = self.create_object("background", "main", x=-200, y=-100)
+		self.background.frames = load_asset(ASSET.XML_HALLOWEEN_BG)
 		# The masculine urge to steal the toothbrush of whoever names animations like that
-		self.background.animation.add_from_frames("idle", bg_anims["halloweem bg"])
-		self.background.animation.add_from_frames(
-			"lightning", bg_anims["halloweem bg lightning strike"], 24, False
+		self.background.animation.add_by_prefix("idle", "halloweem bg")
+		self.background.animation.add_by_prefix(
+			"lightning", "halloweem bg lightning strike", 24, False
 		)
 		self.background.animation.play("idle")
 

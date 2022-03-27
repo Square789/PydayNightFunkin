@@ -4,11 +4,10 @@ This is meant to be expanded into some sort of modding system,
 but what for anyways
 """
 
-from collections import defaultdict
 from loguru import logger
-import re
 import typing as t
 
+from pyglet.math import Vec2
 import schema
 
 from pyday_night_funkin.core.asset_system import (
@@ -16,7 +15,7 @@ from pyday_night_funkin.core.asset_system import (
 	OggResource, ImageResource, JSONResource, PathResource, TextResource, XMLResource,
 	FontResource, register_assets, register_routers, add_asset_system
 )
-from pyday_night_funkin.core.utils import FrameInfoTexture
+from pyday_night_funkin.core.animation import FrameCollection
 
 if t.TYPE_CHECKING:
 	from pathlib import Path
@@ -25,8 +24,6 @@ if t.TYPE_CHECKING:
 	from pyglet.media import Source
 	from pyday_night_funkin.enums import DIFFICULTY
 
-
-RE_SPLIT_ANIMATION_NAME = re.compile(r"^(.*)(\d{4})$")
 
 SONG_SCHEMA = schema.Schema(
 	{
@@ -183,13 +180,16 @@ class XMLRouter(AbstractAssetRouter):
 		self.element_tree = xml
 		return (ImageResource(self.xml_res_path.parent / xml.getroot().attrib["imagePath"]),)
 
-	def route_frames(self, atlas_texture: "Texture") -> t.Dict[str, t.List[FrameInfoTexture]]:
+	def route_frames(self, atlas_texture: "Texture") -> FrameCollection:
 		texture_region_cache = {}
-		frame_sequences: t.DefaultDict[str, t.List[FrameInfoTexture]] = defaultdict(list)
+		frame_collection = FrameCollection()
 		for sub_texture in self.element_tree.getroot():
 			if sub_texture.tag != "SubTexture":
 				logger.warning(f"Expected 'SubTexture' tag, got {sub_texture.tag!r}. Skipping.")
 				continue
+
+			if sub_texture.attrib.get("rotated") == "true":
+				raise NotImplementedError("Rotation isn't implemented, sorry")
 
 			name, x, y, w, h, fx, fy, fw, fh = (
 				sub_texture.attrib.get(k) for k in (
@@ -213,31 +213,23 @@ class XMLRouter(AbstractAssetRouter):
 				)
 				continue
 
-			if (match_res := RE_SPLIT_ANIMATION_NAME.match(name)) is None:
-				logger.warning(f"Invalid SubTexture name in {self.xml_res_path.name}: {name!r}")
-				continue
-
-			animation_name = match_res[1]
-			frame_id = int(match_res[2])
-			if frame_id > len(frame_sequences[animation_name]):
-				logger.warning(
-					f"Frames for animation {animation_name!r} inconsistent: current is "
-					f"frame {frame_id}, but only {len(frame_sequences[animation_name])} frames "
-					f"exist so far."
-				)
-
 			x, y, w, h = region = tuple(int(e) for e in region)
-			frame_vars = tuple(None if e is None else int(e) for e in frame_vars)
+			fx, fy, fw, fh = frame_vars = tuple(None if e is None else int(e) for e in frame_vars)
 			if region not in texture_region_cache:
 				texture_region_cache[region] = atlas_texture.get_region(
 					x, atlas_texture.height - h - y, w, h,
 				)
-			has_frame_vars = frame_vars[0] is not None
-			frame_sequences[animation_name].append(
-				FrameInfoTexture(texture_region_cache[region], has_frame_vars, frame_vars)
+
+			trimmed = frame_vars[0] is not None
+
+			frame_collection.add_frame(
+				texture_region_cache[region],
+				Vec2(fw, fh) if trimmed else Vec2(w, h),
+				Vec2(-fx, -fy) if trimmed else Vec2(0, 0),
+				name,
 			)
 
-		return dict(frame_sequences) # Don't return a defaultdict!
+		return frame_collection
 
 def load() -> None:
 	"""

@@ -6,41 +6,47 @@ from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.enums import ANIMATION_TAG
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.scenes import MusicBeatScene
+	from pyday_night_funkin.core.pnf_sprite import PNFSprite
+	from pyday_night_funkin.core.animation import AnimationFrame
 
 
 class SkidNPump(FlipIdleCharacter):
-	def __init__(self, scene: "MusicBeatScene", *args, **kwargs) -> None:
-		super().__init__(scene, *args, **kwargs)
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
 
-		anims = load_asset(ASSET.XML_SKID_N_PUMP)
+		self.frames = load_asset(ASSET.XML_SKID_N_PUMP)
 
-		self.animation.add_from_frames(
-			"sing_note_up", anims["spooky UP NOTE"], 24, False, (-20, 26),
+		self.animation.add_by_prefix(
+			"sing_note_up", "spooky UP NOTE", 24, False, (-20, 26),
 			(ANIMATION_TAG.SING,)
 		)
-		self.animation.add_from_frames(
-			"sing_note_down", anims["spooky DOWN note"], 24, False, (-50, -130),
+		self.animation.add_by_prefix(
+			"sing_note_down", "spooky DOWN note", 24, False, (-50, -130),
 			(ANIMATION_TAG.SING,)
 		)
-		self.animation.add_from_frames(
-			"sing_note_left", anims["note sing left"], 24, False, (130, -10),
+		self.animation.add_by_prefix(
+			"sing_note_left", "note sing left", 24, False, (130, -10),
 			(ANIMATION_TAG.SING,)
 		)
-		self.animation.add_from_frames(
-			"sing_note_right", anims["spooky sing right"], 24, False, (-130, -14),
+		self.animation.add_by_prefix(
+			"sing_note_right", "spooky sing right", 24, False, (-130, -14),
 			(ANIMATION_TAG.SING,)
 		)
 		self.animation.add_by_indices(
-			"idle_left", anims["spooky dance idle"], [0, 2, 6], 12, False,
+			"idle_left", "spooky dance idle", [0, 2, 6], 12, False,
 			tags=(ANIMATION_TAG.IDLE,)
 		)
 		self.animation.add_by_indices(
-			"idle_right", anims["spooky dance idle"], [8, 10, 12, 14], 12, False,
+			"idle_right", "spooky dance idle", [8, 10, 12, 14], 12, False,
 			tags=(ANIMATION_TAG.IDLE,)
 		)
-		self.animation.add_from_frames(
+
+	@staticmethod
+	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
+		spr.animation.add_by_prefix(
 			"story_menu",
-			load_asset(ASSET.XML_STORY_MENU_CHARACTERS)["spooky dance idle BLACK LINES"],
-			24, True, tags=(ANIMATION_TAG.STORY_MENU,)
+			"spooky dance idle BLACK LINES",
+			fps = 24,
+			loop = True,
+			tags = (ANIMATION_TAG.STORY_MENU,)
 		)

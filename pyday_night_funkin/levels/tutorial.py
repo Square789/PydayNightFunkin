@@ -1,8 +1,11 @@
 
 import typing as t
+
+from pyglet.math import Vec2
+
 from pyday_night_funkin.characters import Boyfriend, Girlfriend, FlipIdleCharacter
 from pyday_night_funkin.core.constants import ERROR_TEXTURE
-from pyday_night_funkin.core.utils import FrameInfoTexture
+from pyday_night_funkin.core.animation import Animation
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.levels import common
 from pyday_night_funkin.scenes import InGameScene
@@ -42,8 +45,8 @@ class Tutorial(InGameScene):
 			"girlfriend", "main", object_class=FlipIdleCharacter, scene=self, x=-100, y=-100
 		)
 		# Epic fail if no dummy animations are added
-		not_gf.animation.add_from_frames("idle_left", (FrameInfoTexture(ERROR_TEXTURE, False),))
-		not_gf.animation.add_from_frames("idle_right", (FrameInfoTexture(ERROR_TEXTURE, False),))
+		not_gf.animation.add("idle_left", (Animation([0])))
+		not_gf.animation.add("idle_right", (Animation([0])))
 		not_gf.visible = False
 		return not_gf
 

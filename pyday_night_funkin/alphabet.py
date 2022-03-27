@@ -2,7 +2,7 @@
 import typing as t
 
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
-from pyday_night_funkin.core.pnf_animation import PNFAnimation, OffsetAnimationFrame
+from pyday_night_funkin.core.animation import Animation, AnimationFrame
 from pyday_night_funkin.core.pnf_sprite import (
 	PNFSprite, PNFSpriteFragmentShader, PNFSpriteVertexShader
 )
@@ -40,7 +40,7 @@ class AlphabetCharacter(PNFSprite):
 		"?": "question mark",
 	}
 
-	_FRAMES = None
+	_FRAME_COLLECTION = None
 
 	@classmethod
 	def init_animation_dict(cls) -> None:
@@ -48,30 +48,21 @@ class AlphabetCharacter(PNFSprite):
 		Defer animation dict init to this function as `ASSET` is not
 		filled when this module is first imported.
 		"""
-		cls._FRAMES = {
-			prefix: [
-				OffsetAnimationFrame(frame.texture, 1 / 24, frame.frame_info)
-				for frame in frames
-			] for prefix, frames in load_asset(ASSET.XML_ALPHABET).items()
-		}
+		cls._FRAME_COLLECTION = load_asset(ASSET.XML_ALPHABET)
 
-	def _get_animation(self) -> t.Optional[PNFAnimation]:
-		name = self.char
-		bold = self.bold
-		_FRAMES = self._FRAMES
+	def _get_animation_prefix(self) -> t.Optional[str]:
+		char = self.char
 		_ALTS = self._ALTS
-		r = None
+		if char in _ALTS:
+			return _ALTS[char]
 
-		if name in _FRAMES:
-			r = _FRAMES[name]
-		if name in _ALTS:
-			r = _FRAMES[_ALTS[name]]
-		if name.isalpha():
-			if bold:
-				r = _FRAMES[f"{name.upper()} bold"]
+		if char.isalpha():
+			if self.bold:
+				return f"{char.upper()} bold"
 			else:
-				r = _FRAMES[f"{name} {'lowercase' if name.islower() else 'capital'}"]
-		return None if r is None else PNFAnimation(r, True)
+				return f"{char} {'lowercase' if char.islower() else 'capital'}"
+
+		return char
 
 	def __init__(
 		self,
@@ -107,10 +98,9 @@ class AlphabetCharacter(PNFSprite):
 		if should_color:
 			self.color = color
 
-		if (anim := self._get_animation()) is None:
-			raise ValueError(f"Couldn't find alphabet animation for {char!r}!")
+		self.frames = self._FRAME_COLLECTION
 
-		self.animation.add("main", anim)
+		self.animation.add_by_prefix("main", self._get_animation_prefix())
 		self.animation.play("main")
 		self.check_animation_controller()
 

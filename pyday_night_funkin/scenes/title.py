@@ -16,24 +16,24 @@ class TitleScene(scenes.MusicBeatScene):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		gf_frames = load_asset(ASSET.XML_TITLE_GIRLFRIEND)["gfDance"]
 		self.gf = self.create_object("main", x=CNST.GAME_WIDTH * 0.4, y=CNST.GAME_HEIGHT * 0.07)
-		self.gf.animation.add_by_indices("dance_left", gf_frames, [*range(15)], 24, False)
-		self.gf.animation.add_by_indices("dance_right", gf_frames, [*range(15, 30)], 24, False)
+		self.gf.frames = load_asset(ASSET.XML_TITLE_GIRLFRIEND)
+		self.gf.animation.add_by_indices("dance_left", "gfDance", [*range(15)], 24, False)
+		self.gf.animation.add_by_indices("dance_right", "gfDance", [*range(15, 30)], 24, False)
 		self.gf.visible = False
 
 		self.gf_dance_left = False
 
-		logo_frames = load_asset(ASSET.XML_GAME_LOGO)["logo bumpin"]
 		self.logo = self.create_object("main", x=-150, y=-100)
-		self.logo.animation.add_from_frames("bump", logo_frames, 24)
+		self.logo.frames = load_asset(ASSET.XML_GAME_LOGO)
+		self.logo.animation.add_by_prefix("bump", "logo bumpin", 24)
 		self.logo.animation.play("bump")
 		self.logo.visible = False
 
-		title_anims = load_asset(ASSET.XML_TITLE_ENTER)
 		self.title_text = self.create_object("title_text", x=100, y=CNST.GAME_HEIGHT * 0.8)
-		self.title_text.animation.add_from_frames("idle", title_anims["Press Enter to Begin"], 24)
-		self.title_text.animation.add_from_frames("enter", title_anims["ENTER PRESSED"], 24)
+		self.title_text.frames = load_asset(ASSET.XML_TITLE_ENTER)
+		self.title_text.animation.add_by_prefix("idle", "Press Enter to Begin", 24)
+		self.title_text.animation.add_by_prefix("enter", "ENTER PRESSED", 24)
 		self.title_text.animation.play("idle")
 		self.title_text.visible = False
 

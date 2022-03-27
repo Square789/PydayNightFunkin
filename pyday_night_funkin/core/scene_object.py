@@ -1,6 +1,8 @@
 
 import typing as t
 
+from pyglet.math import Vec2
+
 from pyday_night_funkin.core.scene_context import SceneContext
 
 if t.TYPE_CHECKING:
@@ -75,6 +77,53 @@ class WorldObject(SceneObject):
 	# - Repeat them in each subclass
 	# - Not put them here since WorldObjects aren't ever being created
 	#   themselves so it'd be just dead code for show
+
+	@property
+	def signed_width(self) -> "Numeric":
+		return 0
+
+	@property
+	def signed_height(self) -> "Numeric":
+		return 0
+
+	@property
+	def width(self) -> "Numeric":
+		return abs(self.signed_width)
+
+	@property
+	def height(self) -> "Numeric":
+		return abs(self.signed_height)
+
+	def screen_center(self, screen_dims: Vec2, x: bool = True, y: bool = True) -> None:
+		"""
+		Sets the WorldObject's world position so that it is centered
+		on screen. (Ignoring camera and scroll factors)
+		`x` and `y` can be set to false to only center the sprite
+		along one of the axes.
+		"""
+		if x:
+			self.x = (screen_dims[0] - self.width) // 2
+		if y:
+			self.y = (screen_dims[1] - self.height) // 2
+
+	def get_midpoint(self) -> Vec2:
+		"""
+		Returns the middle point of this WorldObject, based on its
+		position and dimensions.
+		"""
+		return Vec2(
+			self.x + self.signed_width * 0.5,
+			self.y + self.signed_height * 0.5,
+		)
+
+	def get_screen_position(self, cam: "Camera") -> Vec2:
+		"""
+		Returns the screen position the WorldObject's origin is
+		displayed at. Note that this may still be inaccurate for
+		shaders and rotation.
+		"""
+		return Vec2(self.x - (cam.x * cam.zoom), self.y - (cam.y * cam.zoom))
+
 
 class Container(SceneObject):
 	"""

@@ -18,21 +18,16 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.levels import Week
 
 
-# TODO this doesn't need to be its own class, just tear out the update
-# calls and throw them into the main menu scene's
 class _WeekHeader(PNFSprite):
-	"""
-	Menu item that will force itself to a given y coordinate.
-	"""
-
-	def __init__(self, target_y: int, game_dims: t.Tuple[int, int], *args, **kwargs) -> None:
+	def __init__(self, target_y: int, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 		self.target_y = target_y
-		self.game_height = game_dims[1]
 
-	def update(self, dt: float) -> None:
-		super().update(dt)
-		self.y = lerp(self._y, (self.target_y * 120) + 480, 0.17)
+
+class _WeekChar(PNFSprite):
+	def __init__(self, initializing_char_type: t.Type["Character"], *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+		self.displayed_char_type = initializing_char_type
 
 
 class StoryMenuScene(scenes.MusicBeatScene):
@@ -48,21 +43,25 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		yellow_stripe.scale_y = 400
 		yellow_stripe.color = to_rgb_tuple(0xF9CF51FF)
 
+		_story_menu_char_anims = load_asset(ASSET.XML_STORY_MENU_CHARACTERS)
+
 		# Week character setup (these get modified later)
-		self.week_chars: t.List["Character"] = []
+		self.week_chars: t.List[_WeekChar] = []
 		for i in range(3):
+			ty = WEEKS[0].story_menu_chars[i]
 			spr = self.create_object(
 				"fg",
-				object_class = WEEKS[0].story_menu_chars[i],
-				scene = self,
+				object_class = _WeekChar,
+				initializing_char_type = ty,
 				x = (CNST.GAME_WIDTH * 0.25 * (i + 1)) - 150,
 				y = 70,
 			)
+			spr.frames = _story_menu_char_anims
+			(ox, oy), s = ty.get_story_menu_info()
+			ty.initialize_story_menu_sprite(spr)
 			spr.animation.play("story_menu")
-			(ox, oy), s = spr.get_story_menu_transform()
 			spr.scale = s
-			spr.x += ox
-			spr.y += oy
+			spr.position = (spr.x + ox, spr.y + oy)
 			self.week_chars.append(spr)
 
 		ui_tex = load_asset(ASSET.XML_STORY_MENU_UI)
@@ -73,10 +72,9 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			header = self.create_object(
 				"bg",
 				object_class = _WeekHeader,
-				image = load_asset(ASSET.WEEK_HEADERS, week.header_filename),
-				y = yellow_stripe.y + yellow_stripe.height + 10,
 				target_y = i,
-				game_dims = CNST.GAME_DIMENSIONS,
+				y = yellow_stripe.y + yellow_stripe.height + 10,
+				image = load_asset(ASSET.WEEK_HEADERS, week.header_filename),
 			)
 			header.y += (header.height + 20) * i
 			header.screen_center(CNST.GAME_DIMENSIONS, y=False)
@@ -89,11 +87,13 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		larry = self.week_headers[0].y + 10
 
 		self.diff_arrow_left = self.create_object("bg", x=larrx, y=larry)
-		self.diff_arrow_left.animation.add_from_frames("idle", ui_tex["arrow left"])
-		self.diff_arrow_left.animation.add_from_frames("press", ui_tex["arrow push left"])
+		self.diff_arrow_left.frames = ui_tex
+		self.diff_arrow_left.animation.add_by_prefix("idle", "arrow left")
+		self.diff_arrow_left.animation.add_by_prefix("press", "arrow push left")
 		self.diff_arrow_left.animation.play("idle")
 
 		self.difficulty_indicator = self.create_object("bg", x=larrx + 130, y=larry)
+		self.difficulty_indicator.frames = ui_tex
 		# Shoutouts to tyler "ninjamuffin99" blevins for using specific
 		# animation frames for positioning of UI elements;
 		# The fact that `EASY` is the first animation added is relevant here.
@@ -103,8 +103,8 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			DIFFICULTY.HARD: (20, 0),
 		}
 		for diff in DIFFICULTY:
-			self.difficulty_indicator.animation.add_from_frames(
-				str(diff.value), ui_tex[diff.to_atlas_prefix()], offset=_diff_offset_map[diff]
+			self.difficulty_indicator.animation.add_by_prefix(
+				str(diff.value), diff.to_atlas_prefix(), offset=_diff_offset_map[diff]
 			)
 		self.difficulty_indicator.animation.play("0")
 		self.difficulty_indicator.check_animation_controller()
@@ -114,8 +114,9 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			x=self.difficulty_indicator.x + self.difficulty_indicator.width + 50,
 			y=larry,
 		)
-		self.diff_arrow_right.animation.add_from_frames("idle", ui_tex["arrow right"])
-		self.diff_arrow_right.animation.add_from_frames("press", ui_tex["arrow push right"])
+		self.diff_arrow_right.frames = ui_tex
+		self.diff_arrow_right.animation.add_by_prefix("idle", "arrow right")
+		self.diff_arrow_right.animation.add_by_prefix("press", "arrow push right")
 		self.diff_arrow_right.animation.play("idle")
 
 		load_asset(ASSET.FONT_VCR)
@@ -177,13 +178,17 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			scene.get_display_name().upper() for scene in WEEKS[index].levels
 		)
 
-		# TODO: The code below is bogus, actually.
-		# Still, come up with common screen centering code.
-		# # TODO: Come up with some screen centering code for labels.
-		# # Possibly a common superclass of PNFSprite, since that's what flixel does with
-		# # FlxObject anyways. Unfortunately, requires more hacks or custom labels.
-		# self.tracklist_txt.x = \
-		# 	(CNST.GAME_WIDTH - self.tracklist_txt.) *.5 - CNST.GAME_WIDTH * .35
+		for i, week_char_display_sprite in enumerate(self.week_chars):
+			target_char_type = WEEKS[index].story_menu_chars[i]
+			if week_char_display_sprite.displayed_char_type is target_char_type:
+				continue
+
+			week_char_display_sprite.animation.remove("story_menu")
+			if week_char_display_sprite.animation.exists("story_menu_confirm"):
+				week_char_display_sprite.animation.remove("story_menu_confirm")
+			target_char_type.initialize_story_menu_sprite(week_char_display_sprite)
+			week_char_display_sprite.displayed_char_type = target_char_type
+			week_char_display_sprite.animation.play("story_menu", True)
 
 	def _on_diff_select(self, index: int, state: bool) -> None:
 		if not state:
@@ -221,6 +226,9 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
+
+		for wh in self.week_headers:
+			wh.y = lerp(wh.y, (wh.target_y * 120) + 480, .17)
 
 		kh = self.game.key_handler
 		if kh.just_pressed(CONTROL.BACK):

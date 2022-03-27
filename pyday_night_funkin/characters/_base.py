@@ -7,8 +7,9 @@ from pyday_night_funkin.enums import ANIMATION_TAG
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.scenes import MusicBeatScene
+	from pyday_night_funkin.core.animation import AnimationFrame
 	from pyday_night_funkin.core.types import Numeric
+	from pyday_night_funkin.scenes import MusicBeatScene
 
 
 class Character(PNFSprite):
@@ -58,7 +59,17 @@ class Character(PNFSprite):
 		return 4
 
 	@staticmethod
-	def get_story_menu_transform() -> t.Tuple[Vec2, float]:
+	def initialize_story_menu_sprite(spr: PNFSprite) -> None:
+		"""
+		Initializes a sprite with story menu animations.
+		It is expected that an animation called `story_menu` will be
+		added. Also, `story_menu_confirm` is required for every story
+		character appearing in the center (usually just bf.)
+		"""
+		raise NotImplementedError("Subclass this.")
+
+	@staticmethod
+	def get_story_menu_info() -> t.Tuple[Vec2, float]:
 		"""
 		Returns a two-element tuple of the translation and scale the
 		character should undergo when its `story_menu` animation is

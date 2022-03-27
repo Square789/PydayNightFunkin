@@ -81,7 +81,7 @@ class PNFBatchInterfacer:
 		Deletes this interfacer.
 		Tells the vertex domain this interfacer belongs to to
 		free the space occupied and notifies its batch of its removal.
-		After deletion, it should not be used anymore.
+		After deletion, it should and can not be used anymore.
 		"""
 		if self.deleted:
 			return
