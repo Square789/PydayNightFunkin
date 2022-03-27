@@ -1,0 +1,162 @@
+Flixel apparently has three rendering modes
+blit, tile and triangles. Unclear to me how these are chosen and which one is
+even active for fnf (possibly even target-dependant). However, I'm gonna assume
+blit is not active/sprites always go down drawComplex instead of drawSimple.
+
+FlxMatrix:
+	Flixel Matrices are 3x3, unlike OpenGL's 4x4 ones.
+	| a c tx |     | a c 0 tx |
+	| b d ty |     | b d 0 ty |
+	| 0 0 1  |     | 0 0 1 0  |
+	               | 0 0 0 1  | # Probably equivalent, Idk, I'm too stupid for matrices #
+
+	tx, ty: Translation
+	a,  d : Scaling (from top right???)
+	a, b, c, d = map((cos, -sin, sin, cos), (q,)*4): Rotation around center
+	### skewing ignored ###
+
+
+FlxFrame:
+	// Unsure what this thing is.
+	// Per-animation-frame data storage, probably.
+
+	offset is "offset from top left corner of original image"
+
+	sourceSize is an image's original, uncropped size.
+
+	tileMatrix
+	blitMatrix Just like tileMatrix, except it is also translated by the "region of the image to render"
+		These two are... generated once for each FlxFrame?
+		As far as i can tell, used for atlases that demand a 90deg rotation, where they then contain the
+		appropiate transforms.
+		Also, they get translated by the frame's offset.
+
+
+FlxSprite:
+	offset supposedly only affects hitbox, but clearly it gets used during rendering,
+	so something's fishy. It gets set to (-.5 * (width - frameWidth), ...) in
+	updateHitbox. However, updateHitbox is not called anywhere in the FNF source,
+	i believe this is some sort of ugly interference with the customly
+	hacked-together Character:playAnim function.
+
+	origin defaults to sprite center. Possibly this is meant to be a rotation/scaling
+	source point, but FlxSprite.hx says "// TODO", so I won't worry about that.
+	It sometimes gets set to frameWidth * .5, frameHeight * .5, so it seems as if it is
+	just that kind of source point.
+
+	updateHitbox:
+		// So, if scale changes, I guess this function changes offset
+		// to point to the top left of the sprite regardless?
+		// Would make sense given the function name.
+		width = |scale.x| * frameWidth
+		height = |scale.y| * frameHeight
+		offset = (
+			-0.5 * (width - frameWidth),
+			-0.5 * (height - frameHeight),
+		)
+		centerOrigin();
+
+	centerOrigin:
+		origin = (frameWidth * .5, frameHeight * .5)
+
+	_point is a stupid helper variable that shouldn't be a sprite attribute
+
+	bakedRotationAngle is a float describing how many "baked rotations" exist.
+	  180 => 2, 90 => 4, 45 => 8, and so on i guess. 0 if there are none.
+	  I hope and believe there are none. Seems to be a way of pre-generating
+	  rotated sprites so that the blit render mode doesn't slow down
+
+	frameWidth|Height are only ever set to frame.sourceSize.x, so original image's dimensions
+	width|height:
+		updateHitbox sets them to abs(scale.x|y) * frameWidth|Height.
+		Copied from another sprite during a (i hope) cold path in loadGraphicFromSprite.
+			Can probably be ignored.
+
+	checkFlipX|Y:
+		Checks whether the sprite, frame or animation are flipped and
+		returns an appropiate bool. (if 2 of them are flipped, sprite is not flipped)
+
+	drawComplex:
+		// _frame is likely the current animation frame //
+		_frame.prepareMatrix(_matrix, ANGLE_0, checkFlipX(), checkFlipY()):
+			// Manipulative operation on _matrix.
+			Sets all values of _matrix to _frame.tileMatrix.
+			Redetermines whether flipping is necessary by comparing the passed values
+			against _frame.flipX|Y. (Isn't that a bug? checkFlipX|Y already do that.)
+			if flipping is necessary:
+				_frame.rotateAndFlip(_matrix, ANGLE_0, doFlipX, doFlipY)
+					// Manipulates _matrix
+					if doFlipX:
+						Scales matrix by [-1, 1]
+						translates matrix by [floor(sourceSize.x), 0]
+					if doFlipY:
+						Scales matrix by [1, -1]
+						translates matrix by [0, floor(sourceSize.y)]
+
+		Move _matrix by -origin.x and -origin.y
+
+		Scale _matrix by self.scale
+
+		if bakedRotationAngle <= 0: // No pre-rotations exist? idk
+			updateTrig()
+				// trigonometric fuckery (But only if the angle changed somewhen in the past)
+				Changes the FlxSprite's radians (angle * DEG2RAD)
+				                        _sinAngle (sin(radians))
+				                        _cosAngle (cos(radians))
+
+			Rotates the matrix if angle != 0
+
+		Translate matrix by _point (
+			Which in the calling function is set to
+				// camera is the cam under which this entire draw operation takes place
+				getScreenPosition(camera) - offset
+			) + origin
+		So effectively _matrix.translate(screenPos - offset + origin)
+		// Note how this undoes Subtracting origin!
+
+		Floors matrix translation values if this is a pixel perfect render. I think pyglet had that
+		with subpixel, but I dropped it somewhere along the way. Maybe reimplement if it is o-so-important.
+
+		camera.drawPixels(_frame, _framePixels, _matrix, colorTransforms, blend, antialiasing, shader)
+
+	getScreenPosition(point, camera):
+		// FlxBasic > FlxObject[defined here] > FlxSprite
+		point = pixelPerfectPosition ? map(floor, (x, y)) : (x, y)
+		return point - (camera.scroll.x * scrollFactor.x, camera.scroll.y * scrollFactor.y)
+
+
+Sparrow frame loading: [/graphics/frames/FlxAtlasFrames:248]
+	frames are considered trimmed if they posess the whole frame[X|Y|Width|Height] shebang
+	if trimmed:
+		frame.sourceSize is (XML:frameWidth, XML:frameHeight)
+		frame.offset is (XML:frameX, XML:frameY)
+	else:
+		frame.sourceSize is (XML:width, XML:height)
+		frame.offset is (0, 0)
+
+// origin is never really changed, so always assume origin == (fw * .5, fh * .5).
+
+SO
+Leaving out a lot of features and ignoring many other things, the steps
+to produce a rendering matrix for sprite S of frame F for camera C are effectively:
+	{point = getScreenPosition(C) - offset}  [FlxObject: 941]
+	mat = identiy()                          [FlxFrame:  147]
+	XXX // Placeholder when adding support for rotated atlas images in the indeterminate future.
+	mat.translate(F.offset)                  [FlxFrame:  163]
+	XXX if flip_x:
+	XXX 	mat.scale(-1, 1)
+	XXX 	mat.translate(F.image_width, 0)
+	XXX if flip_y:
+	XXX 	mat.scale(1, -1)
+	XXX 	mat.translate(0, F.image_height)
+	mat.translate(-S.origin.x, -S.origin.y)  [FlxSprite:711]
+	mat.scale(S.scale.x, S.scale.y)
+	mat.rotate(cos(S.angle), sin(S.angle))
+	{
+	  point += S.origin
+	  mat.translate(point.x, point.y)
+	} OR {
+	  mat.translate(S.origin + (getScreenPosition(C) - offset))
+	}
+	XXX // if subpixel, floor translations here.
+	render(mat)
