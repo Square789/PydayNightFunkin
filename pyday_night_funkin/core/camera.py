@@ -46,7 +46,7 @@ layout (std140) uniform CameraAttrs {
 } camera;
 
 void main() {
-	gl_Position = 
+	gl_Position =
 		window.projection *
 		window.view *
 		vec4(position, 0.0, 1.0);

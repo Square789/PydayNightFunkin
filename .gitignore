@@ -116,7 +116,7 @@ dmypy.json
 # VSCode settings and stuff
 .vscode/
 
-# Some local test files, mostly profiling. Root directory only. 
+# Some local test files, mostly profiling. Root directory only.
 /_*
 
 # No [usually cython generated] c files

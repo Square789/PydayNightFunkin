@@ -39,9 +39,9 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			self.game.player.set(load_asset(ASSET.MUSIC_MENU))
 
 		yellow_stripe = self.create_object("mid", x=0, y=56)
-		dump_sprite_info(yellow_stripe)
+		# dump_sprite_info(yellow_stripe)
 		yellow_stripe.image = PIXEL_TEXTURE
-		dump_sprite_info(yellow_stripe)
+		# dump_sprite_info(yellow_stripe)
 		yellow_stripe.scale_x = CNST.GAME_WIDTH
 		yellow_stripe.scale_y = 400
 		yellow_stripe.color = to_rgb_tuple(0xF9CF51FF)

@@ -68,7 +68,7 @@ void main() {{
 		origin +
 		translate -
 		(
-			(camera.position * scroll_factor) -
+			(camera.position * camera.zoom * scroll_factor) -
 			offset
 		)
 	);
@@ -553,6 +553,7 @@ class PNFSprite(WorldObject):
 		)
 
 	def refresh_offsets(self) -> None:
+		self.lazy_width, self.lazy_height = self.width, self.height
 		self.center_offset()
 		self.center_origin()
 

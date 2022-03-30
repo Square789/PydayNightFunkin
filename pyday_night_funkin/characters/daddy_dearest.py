@@ -21,23 +21,19 @@ class DaddyDearest(Character):
 		self.frames = load_asset(ASSET.XML_DADDY_DEAREST)
 
 		self.animation.add_by_prefix(
-			"idle", "Dad idle dance", 24, True, tags=(ANIMATION_TAG.IDLE,)
+			"idle", "Dad idle dance", 24, True, (0, 0), (ANIMATION_TAG.IDLE,)
 		)
 		self.animation.add_by_prefix(
-			"sing_note_left", "Dad Sing Note LEFT", 24, False, (-10, 10),
-			(ANIMATION_TAG.SING,)
+			"sing_note_left", "Dad Sing Note LEFT", 24, False, (-10, 10), (ANIMATION_TAG.SING,)
 		)
 		self.animation.add_by_prefix(
-			"sing_note_down", "Dad Sing Note DOWN", 24, False, (0, -30),
-			(ANIMATION_TAG.SING,)
+			"sing_note_down", "Dad Sing Note DOWN", 24, False, (0, -30), (ANIMATION_TAG.SING,)
 		)
 		self.animation.add_by_prefix(
-			"sing_note_up", "Dad Sing Note UP", 24, False, (-6, 50),
-			(ANIMATION_TAG.SING,)
+			"sing_note_up", "Dad Sing Note UP", 24, False, (-6, 50), (ANIMATION_TAG.SING,)
 		)
 		self.animation.add_by_prefix(
-			"sing_note_right", "Dad Sing Note RIGHT", 24, False, (0, 27),
-			(ANIMATION_TAG.SING,)
+			"sing_note_right", "Dad Sing Note RIGHT", 24, False, (0, 27), (ANIMATION_TAG.SING,)
 		)
 
 	# Idk why but if the original game says so

@@ -33,12 +33,12 @@ class SkidNPump(FlipIdleCharacter):
 			(ANIMATION_TAG.SING,)
 		)
 		self.animation.add_by_indices(
-			"idle_left", "spooky dance idle", [0, 2, 6], 12, False,
-			tags=(ANIMATION_TAG.IDLE,)
+			"idle_left", "spooky dance idle", [0, 2, 6], 12, False, (0, 0),
+			(ANIMATION_TAG.IDLE,)
 		)
 		self.animation.add_by_indices(
-			"idle_right", "spooky dance idle", [8, 10, 12, 14], 12, False,
-			tags=(ANIMATION_TAG.IDLE,)
+			"idle_right", "spooky dance idle", [8, 10, 12, 14], 12, False, (0, 0),
+			(ANIMATION_TAG.IDLE,)
 		)
 
 	@staticmethod

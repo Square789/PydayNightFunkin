@@ -29,7 +29,7 @@ VAOs store a state that describes the current vibe of all things vertex-related.
 
  - glVertexAttribDivisor
 
- - glEnableVertexAttribArray / 
+ - glEnableVertexAttribArray /
 
  - glVertexAttribBinding / "which shader attribute locations the vertex data is associated with" [https://dokipen.com/modern-opengl-part-5-feeding-vertex-data-to-shaders/]
 
