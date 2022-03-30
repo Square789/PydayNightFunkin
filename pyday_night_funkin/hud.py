@@ -1,7 +1,10 @@
 
 from itertools import product
 from random import randint
+import re
 import typing as t
+
+from pyglet.math import Vec2
 
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.asset_system import load_asset, ASSET
@@ -12,6 +15,7 @@ from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.note import NOTE_TYPE, RATING
 
 if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.animation.frames import FrameCollection
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 	from pyday_night_funkin.scenes import InGameScene
 
@@ -60,7 +64,15 @@ class HUD():
 
 		self.number_textures = [load_asset(getattr(ASSET, f"IMG_NUM{i}")) for i in range(10)]
 
-		note_sprites = load_asset(ASSET.XML_NOTES)
+		# HACK: This manipulates the cached note asset frame collection, since notes have
+		# botched offsets that are fixed with a hardcoded center->subtract in the main loop.
+		# Nobody wants that, so we hack in some offsets in right here.
+		# Both were probably found by trial-and-error, so good enough (TM)
+		note_sprites: "FrameCollection" = load_asset(ASSET.XML_NOTES)
+		for frame in note_sprites.frames:
+			if re.search(r"confirm\d+$", frame.name) is not None:
+				frame.offset -= Vec2(39, 39)
+
 		self.static_arrows: t.List[t.Dict[NOTE_TYPE, "PNFSprite"]] = [{}, {}]
 		for i, note_type in product((0, 1), NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
