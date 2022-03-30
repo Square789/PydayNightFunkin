@@ -13,6 +13,13 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.types import Numeric
 
 
+def _try_int(v: object) -> int:
+	try:
+		return int(v)
+	except ValueError:
+		return 0
+
+
 def _collect_prefixed_animation_frames(
 	frames: t.Iterable[AnimationFrame], prefix: str
 ) -> t.List[t.Tuple[AnimationFrame, int]]:
@@ -26,7 +33,7 @@ def _collect_prefixed_animation_frames(
 	prefix_len = len(prefix)
 	suffix_start_idx = prefix_candidates[0].name.find('.', prefix_len)
 	slc = slice(prefix_len, None if suffix_start_idx == -1 else suffix_start_idx)
-	return [(f, int(f.name[slc])) for f in prefix_candidates]
+	return [(f, _try_int(f.name[slc])) for f in prefix_candidates]
 
 
 class AnimationController:
@@ -43,14 +50,17 @@ class AnimationController:
 
 		self._owner_sprite = owner
 
+		self._new_animation_offset: t.Optional[t.Tuple["Numeric", "Numeric"]] = None
 		self._new_frame_index: t.Optional[int] = None
-
-	def _set_new_frame_index(self, frame_index: int) -> None:
-		self._new_frame_index = frame_index
 
 	def query_new_frame(self) -> t.Optional[int]:
 		r = self._new_frame_index
 		self._new_frame_index = None
+		return r
+
+	def query_new_animation_offset(self) -> t.Optional[t.Tuple["Numeric", "Numeric"]]:
+		r = self._new_animation_offset
+		self._new_animation_offset = None
 		return r
 
 	def _detach_animation(self) -> None:
@@ -58,16 +68,7 @@ class AnimationController:
 		self.current = self.current_name = None
 
 	def _on_new_frame(self) -> None:
-		self._set_new_frame_index(self.current.cur_index)
-
-	def get_current_frame(self) -> t.Optional[AnimationFrame]:
-		"""
-		Returns the current animation's frame or `None` if no animation
-		is set.
-		"""
-		if self.current is None:
-			return None
-		return self.current.frames[self.current.cur_frame_idx]
+		self._new_frame_index = self.current.cur_index
 
 	def get_current_frame_index(self) -> t.Optional[int]:
 		"""
@@ -76,7 +77,7 @@ class AnimationController:
 		"""
 		if self.current is None:
 			return None
-		return self.current.cur_frame_idx
+		return self.current.cur_index
 
 	@property
 	def is_set(self) -> bool:
@@ -169,10 +170,11 @@ class AnimationController:
 		frames = self._owner_sprite.frames
 		index_map = {}
 		for frame, idx in _collect_prefixed_animation_frames(frames, prefix):
-			if idx in index_map:
-				logger.info(f"Duplicate animation frame {idx}, ignoring.")
-			else:
+			if idx not in index_map:
 				index_map[idx] = frame
+			else:
+				# logger.info(f"Found >1 frame with index {idx} for prefix {prefix}, ignoring.")
+				pass # `GF Dancing Beat` keeps spamming the log here, silencing it ¯\_(ツ)_/¯
 
 		self.add(
 			name,
@@ -213,6 +215,14 @@ class AnimationController:
 		self.current_name = name
 		self.current.play(force, frame)
 
+		# TODO In HaxeFlixel, calling play will immediatedly set the frame via two cyclic
+		# references.
+		# In my clone, you'd need to call check_animation_controller. Maybe change that.
+		self._new_animation_offset = (
+			None if self.current.offset is None else
+			tuple(self.current.offset)
+		)
+		# TODO this sucks and is a lie.
 		# Set first frame
 		self._on_new_frame()
 

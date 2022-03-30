@@ -62,25 +62,26 @@ class NoteHandler(AbstractNoteHandler):
 
 		note_assets = load_asset(ASSET.XML_NOTES)
 		AC = AnimationController
+		single_frame = lambda n: AC.get_frames_by_prefix(note_assets, n)[0].texture
 		self.note_sprites = {
 			SUSTAIN_STAGE.NONE: {
-				NOTE_TYPE.LEFT: AC.get_frames_by_prefix(note_assets, "purple")[0].texture,
-				NOTE_TYPE.DOWN: AC.get_frames_by_prefix(note_assets, "blue")[0].texture,
-				NOTE_TYPE.UP: AC.get_frames_by_prefix(note_assets, "green")[0].texture,
-				NOTE_TYPE.RIGHT: AC.get_frames_by_prefix(note_assets, "red")[0].texture,
+				NOTE_TYPE.LEFT: single_frame("purple"),
+				NOTE_TYPE.DOWN: single_frame("blue"),
+				NOTE_TYPE.UP: single_frame("green"),
+				NOTE_TYPE.RIGHT: single_frame("red"),
 			},
 			SUSTAIN_STAGE.TRAIL: {
-				NOTE_TYPE.LEFT: AC.get_frames_by_prefix(note_assets, "purple hold piece")[0].texture,
-				NOTE_TYPE.DOWN: AC.get_frames_by_prefix(note_assets, "blue hold piece")[0].texture,
-				NOTE_TYPE.UP: AC.get_frames_by_prefix(note_assets, "green hold piece")[0].texture,
-				NOTE_TYPE.RIGHT: AC.get_frames_by_prefix(note_assets, "red hold piece")[0].texture,
+				NOTE_TYPE.LEFT: single_frame("purple hold piece"),
+				NOTE_TYPE.DOWN: single_frame("blue hold piece"),
+				NOTE_TYPE.UP: single_frame("green hold piece"),
+				NOTE_TYPE.RIGHT: single_frame("red hold piece"),
 			},
 			SUSTAIN_STAGE.END: {
 				# this is the worst naming of anything i have ever seen
-				NOTE_TYPE.LEFT: AC.get_frames_by_prefix(note_assets, "pruple end hold")[0].texture,
-				NOTE_TYPE.DOWN: AC.get_frames_by_prefix(note_assets, "blue hold end")[0].texture,
-				NOTE_TYPE.UP: AC.get_frames_by_prefix(note_assets, "green hold end")[0].texture,
-				NOTE_TYPE.RIGHT: AC.get_frames_by_prefix(note_assets, "red hold end")[0].texture,
+				NOTE_TYPE.LEFT: single_frame("pruple end hold"),
+				NOTE_TYPE.DOWN: single_frame("blue hold end"),
+				NOTE_TYPE.UP: single_frame("green hold end"),
+				NOTE_TYPE.RIGHT: single_frame("red hold end"),
 			},
 		}
 
@@ -138,7 +139,7 @@ class NoteHandler(AbstractNoteHandler):
 		speed = 0.45 * self.scroll_speed
 		note_vis_window_time = (CNST.GAME_HEIGHT - CNST.STATIC_ARROW_Y) / speed
 		# NOTE: Makes assumption they're all the same (spoilers: they are)
-		arrow_width = self.note_sprites[SUSTAIN_STAGE.NONE][NOTE_TYPE.UP].texture.width * 0.7
+		arrow_width = self.note_sprites[SUSTAIN_STAGE.NONE][NOTE_TYPE.UP].width * 0.7
 
 		# Checks for notes that entered the visibility window, creates their sprites.
 		while (
@@ -148,7 +149,7 @@ class NoteHandler(AbstractNoteHandler):
 			cur_note = self.notes[self.notes_visible.end]
 			x = 50 + (CNST.GAME_WIDTH // 2) * cur_note.singer + \
 				cur_note.type.get_order() * arrow_width
-			texture = self.note_sprites[cur_note.sustain_stage][cur_note.type].texture
+			texture = self.note_sprites[cur_note.sustain_stage][cur_note.type]
 			sprite = self.game_scene.create_object(
 				self.note_layer, self.note_camera, x = x, y = -2000, image = texture
 			)

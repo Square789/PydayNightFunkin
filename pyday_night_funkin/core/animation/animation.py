@@ -29,7 +29,8 @@ class Animation:
 		TODO cool docstring, but only once this misery is over for sure.
 		"""
 		if not frame_indices:
-			raise ValueError("Animation must have at least one frame!")
+			raise ValueError("Animations must have at least one frame!")
+
 		self._frame_indices = frame_indices
 		self.length = len(frame_indices)
 
@@ -44,8 +45,7 @@ class Animation:
 
 		self.playing = False
 		self.playtime = 0.0
-		self._cur_index_index = 0
-		# yeah, good name, i'm aware.
+		self._cur_index_index = 0 # yeah, good name, i'm aware.
 		self.cur_index = frame_indices[0]
 		"""
 		The currently shown index of the animation's frame indices.

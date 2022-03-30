@@ -23,7 +23,7 @@ class Boyfriend(Character):
 			(ANIMATION_TAG.IDLE,)
 		)
 		self.animation.add_by_prefix(
-			"sing_note_left", "BF NOTE LEFT", 24, False, (12, -6),
+			"sing_note_left", "BF NOTE LEFT0", 24, False, (12, -6),
 			(ANIMATION_TAG.SING,)
 		)
 		self.animation.add_by_prefix(
@@ -31,7 +31,7 @@ class Boyfriend(Character):
 			(ANIMATION_TAG.MISS,)
 		)
 		self.animation.add_by_prefix(
-			"sing_note_down", "BF NOTE DOWN", 24, False, (-10, -50),
+			"sing_note_down", "BF NOTE DOWN0", 24, False, (-10, -50),
 			(ANIMATION_TAG.SING,)
 		)
 		self.animation.add_by_prefix(
@@ -39,7 +39,7 @@ class Boyfriend(Character):
 			(ANIMATION_TAG.MISS,)
 		)
 		self.animation.add_by_prefix(
-			"sing_note_up", "BF NOTE UP", 24, False, (-29, 27),
+			"sing_note_up", "BF NOTE UP0", 24, False, (-29, 27),
 			(ANIMATION_TAG.SING,)
 		)
 		self.animation.add_by_prefix(
@@ -47,7 +47,7 @@ class Boyfriend(Character):
 			(ANIMATION_TAG.MISS,)
 		)
 		self.animation.add_by_prefix(
-			"sing_note_right", "BF NOTE RIGHT", 24, False, (-38, -7),
+			"sing_note_right", "BF NOTE RIGHT0", 24, False, (-38, -7),
 			(ANIMATION_TAG.SING,)
 		)
 		self.animation.add_by_prefix(

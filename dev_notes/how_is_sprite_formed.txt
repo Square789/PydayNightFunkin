@@ -32,6 +32,16 @@ FlxFrame:
 		Also, they get translated by the frame's offset.
 
 
+Sparrow frame loading: [/graphics/frames/FlxAtlasFrames:248]
+	frames are considered trimmed if they posess the whole frame[X|Y|Width|Height] shebang
+	if trimmed:
+		frame.sourceSize is (XML:frameWidth, XML:frameHeight)
+		frame.offset is (XML:frameX, XML:frameY)
+	else:
+		frame.sourceSize is (XML:width, XML:height)
+		frame.offset is (0, 0)
+
+
 FlxSprite:
 	offset supposedly only affects hitbox, but clearly it gets used during rendering,
 	so something's fishy. It gets set to (-.5 * (width - frameWidth), ...) in
@@ -123,18 +133,6 @@ FlxSprite:
 		// FlxBasic > FlxObject[defined here] > FlxSprite
 		point = pixelPerfectPosition ? map(floor, (x, y)) : (x, y)
 		return point - (camera.scroll.x * scrollFactor.x, camera.scroll.y * scrollFactor.y)
-
-
-Sparrow frame loading: [/graphics/frames/FlxAtlasFrames:248]
-	frames are considered trimmed if they posess the whole frame[X|Y|Width|Height] shebang
-	if trimmed:
-		frame.sourceSize is (XML:frameWidth, XML:frameHeight)
-		frame.offset is (XML:frameX, XML:frameY)
-	else:
-		frame.sourceSize is (XML:width, XML:height)
-		frame.offset is (0, 0)
-
-// origin is never really changed, so always assume origin == (fw * .5, fh * .5).
 
 SO
 Leaving out a lot of features and ignoring many other things, the steps

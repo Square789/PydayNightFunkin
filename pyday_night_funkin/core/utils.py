@@ -8,6 +8,7 @@ from pyday_night_funkin.core.constants import ADDRESS_PADDING
 
 if t.TYPE_CHECKING:
 	from pyglet.image import Texture
+	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 T = t.TypeVar("T")
 
@@ -54,3 +55,10 @@ def to_rgb_tuple(v: int) -> t.Tuple[int, int, int, int]:
 
 def dump_id(x: object) -> str:
 	return f"0x{id(x):0>{ADDRESS_PADDING}}"
+
+def dump_sprite_info(s: "PNFSprite") -> None:
+	print(f"Offset: {s.offset}")
+	print(f"Origin: {s.origin}")
+	print(f"Frame offset: {s._frame.offset}")
+	print(f"Frame source size: {s._frame.source_dimensions}")
+	print(f"w, h: {s.width}, {s.height}")

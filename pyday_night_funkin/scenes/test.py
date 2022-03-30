@@ -3,7 +3,7 @@ from random import randint
 import typing as t
 
 from pyglet.math import Vec2
-from pyglet.window.key import E, O, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
+from pyglet.window.key import B, C, E, O, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 
 from pyday_night_funkin.characters import Boyfriend
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
@@ -13,14 +13,25 @@ from pyday_night_funkin.note import NOTE_TYPE
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 
 if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 	from pyday_night_funkin.main_game import Game
+
+
+def _dump_sprite(s: "PNFSprite") -> None:
+	print(f"{s.offset=}")
+	print(f"{s.origin=}")
+	print(f"{s._frame.offset=}")
+	print(f"{s._frame.source_dimensions=}")
+	print(f"{s.width=}")
+	print(f"{s.height=}")
+	print()
 
 
 class TestScene(MusicBeatScene):
 	def __init__(self, game: "Game") -> None:
 		super().__init__(game)
 
-		self.test_sprite = self.create_object("ye_olde_layer", "main", x = 0, y = 0)
+		self.test_sprite = self.create_object("ye_olde_layer", "main")
 		self.test_sprite.scale = 4
 
 		self.conductor.bpm = 123
@@ -48,9 +59,9 @@ class TestScene(MusicBeatScene):
 			object_class = PNFText,
 			x = 10,
 			y = 200,
-			text = "Hello World!",
+			text = "Cool FNF facts: Arrow animations are broken and require hardcoded offsets!",
 			font_name = "Consolas",
-			font_size = 24,
+			font_size = 12,
 		)
 
 	@staticmethod
@@ -79,17 +90,32 @@ class TestScene(MusicBeatScene):
 		if ksh[D]:
 			self.test_sprite.x += 1
 
-		if ksh[M]:
-			self.boyfriend.animation.play("miss_note_down")
-		if ksh[I]:
-			self.boyfriend.animation.play("idle")
+		if ksh[B]:
+			if ksh[W]:
+				self.boyfriend.animation.play("sing_note_up")
+			if ksh[A]:
+				self.boyfriend.animation.play("sing_note_left")
+			if ksh[S]:
+				self.boyfriend.animation.play("sing_note_down")
+			if ksh[D]:
+				self.boyfriend.animation.play("sing_note_right")
+			if ksh[M]:
+				self.boyfriend.animation.play("miss_note_down")
+			if ksh[I]:
+				self.boyfriend.animation.play("idle")
 
 		confirm = ksh[E]
 		for k, i in ((LEFT, 0), (DOWN, 1), (UP, 2), (RIGHT, 3)):
+			arr = self.arrows[i]
 			a = ("confirm" if confirm else "pressed") if ksh[k] else "static"
-			self.arrows[i].animation.play(a)
+			arr.animation.play(a)
+			arr.check_animation_controller()
+			arr.center_offset()
+			if a == "confirm":
+				what = 18.5714 * arr.scale
+				arr.offset = (arr.offset[0] - what, arr.offset[1] - what)
 
-		if ksh[PLUS]:
+		if ksh[C]:
 			sprite = self.create_object("fore", x=randint(0, 100), y=randint(0, 100))
 			sprite.start_movement(Vec2(10, 5))
 			sprite.start_tween(

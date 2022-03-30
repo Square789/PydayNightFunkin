@@ -7,7 +7,7 @@ from pyday_night_funkin.core.constants import PIXEL_TEXTURE
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
-from pyday_night_funkin.core.utils import lerp, to_rgb_tuple, to_rgba_tuple
+from pyday_night_funkin.core.utils import dump_sprite_info, lerp, to_rgb_tuple, to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin.menu import Menu
@@ -38,10 +38,20 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		if not self.game.player.playing:
 			self.game.player.set(load_asset(ASSET.MUSIC_MENU))
 
-		yellow_stripe = self.create_object("mid", x=0, y=56, image=PIXEL_TEXTURE)
+		yellow_stripe = self.create_object("mid", x=0, y=56)
+		dump_sprite_info(yellow_stripe)
+		yellow_stripe.image = PIXEL_TEXTURE
+		dump_sprite_info(yellow_stripe)
 		yellow_stripe.scale_x = CNST.GAME_WIDTH
 		yellow_stripe.scale_y = 400
 		yellow_stripe.color = to_rgb_tuple(0xF9CF51FF)
+		# yellow_stripe.center_origin()
+		# print("WEIRD", yellow_stripe.origin, yellow_stripe.offset)
+		# yellow_stripe.refresh_offsets()
+		# print("WEIRD", yellow_stripe.origin, yellow_stripe.offset)
+		# yellow_stripe.origin = (-640, -200)
+		# yellow_stripe.offset = (0, 0)
+		# print("WEIRD", yellow_stripe.origin, yellow_stripe.offset)
 
 		_story_menu_char_anims = load_asset(ASSET.XML_STORY_MENU_CHARACTERS)
 

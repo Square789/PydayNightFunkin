@@ -64,14 +64,14 @@ void main() {{
 	mat4 res_mat = mat4(1.0);
 	mat4 work_mat = mat4(1.0);
 
-	work_mat[3].xy = frame_offset;
-	res_mat *= work_mat; work_mat = mat4(1.0);
-
-	work_mat[3].xy = -1 * origin;
-	res_mat *= work_mat; work_mat = mat4(1.0);
-
-	work_mat[0][0] = scale.x;
-	work_mat[1][1] = scale.y;
+	work_mat[3].xy = (
+		origin +
+		translate -
+		(
+			(camera.position * scroll_factor) -
+			offset
+		)
+	);
 	res_mat *= work_mat; work_mat = mat4(1.0);
 
 	work_mat[0][0] =  cos(-radians(rotation));
@@ -80,34 +80,29 @@ void main() {{
 	work_mat[1][1] =  cos(-radians(rotation));
 	res_mat *= work_mat; work_mat = mat4(1.0);
 
-	work_mat[3].xy = origin + translate - ((camera.position * camera.zoom * scroll_factor) - offset);
-	res_mat *= work_mat;
+	work_mat[0][0] = scale.x;
+	work_mat[1][1] = scale.y;
+	res_mat *= work_mat; work_mat = mat4(1.0);
 
-	/*
-	m_translate[3].xy = translate + anim_offset + (frame_offset * scale);
-
-	m_scale[0][0] = scale.x;
-	m_scale[1][1] = scale.y;
-
-	m_rotate[0][0] =  cos(-radians(rotation));
-	m_rotate[0][1] =  sin(-radians(rotation));
-	m_rotate[1][0] = -sin(-radians(rotation));
-	m_rotate[1][1] =  cos(-radians(rotation));
+	work_mat[3].xy = frame_offset - origin;
+	res_mat *= work_mat; work_mat = mat4(1.0);
 
 	// Camera transform and zoom scale
-	m_camera_trans_scale[3][0] = (
-		(camera.zoom * -camera.GAME_DIMENSIONS.x / 2) +
-		(camera.zoom * scroll_factor.x * -camera.position.x) +
-		(camera.GAME_DIMENSIONS.x / 2)
-	);
-	m_camera_trans_scale[3][1] = (
-		(camera.zoom * -camera.GAME_DIMENSIONS.y / 2) +
-		(camera.zoom * scroll_factor.y * -camera.position.y) +
-		(camera.GAME_DIMENSIONS.y / 2)
+	m_camera_trans_scale[3].xy = (
+		(camera.zoom * -camera.GAME_DIMENSIONS / 2) +
+		(camera.zoom * scroll_factor * -camera.position) +
+		(camera.GAME_DIMENSIONS / 2)
 	);
 	m_camera_trans_scale[0][0] = camera.zoom;
 	m_camera_trans_scale[1][1] = camera.zoom;
-	*/
+
+	// Notes for my dumbass cause simple things like matrices will never get into my head:
+	// - Matrix multiplication is associative: A*(B*C) == (A*B)*C
+	// - Matrix multiplication is not commutative: A*B != B*A
+	// The last matrix in a multiplication chain will be the first operation.
+	// So, to scale, rotate and THEN translate something (usual sane order):
+	// `gl_Position = m_trans * m_rot * m_scale * vec4(position, 0, 1);`
+	// Makes sense, really.
 
 	gl_Position =
 		window.projection *
@@ -353,6 +348,8 @@ class PNFSprite(WorldObject):
 		self.effects: t.List["EffectBound"] = []
 		self._origin = (0, 0)
 		self._offset = (0, 0)
+		self.lazy_width: "Numeric" = 0
+		self.lazy_height: "Numeric" = 0
 
 		self._interfacer = None
 		self._color = (255, 255, 255)
@@ -543,12 +540,31 @@ class PNFSprite(WorldObject):
 	def stop_movement(self) -> None:
 		self.movement = None
 
+	def center_offset(self) -> None:
+		self.offset = (
+			-0.5 * (self.width - self.lazy_width),
+			-0.5 * (self.height - self.lazy_height),
+		)
+
+	def center_origin(self) -> None:
+		self.origin = (
+			0.5 * self._frame.source_dimensions[0],
+			0.5 * self._frame.source_dimensions[1],
+		)
+
+	def refresh_offsets(self) -> None:
+		self.center_offset()
+		self.center_origin()
+
 	def check_animation_controller(self):
 		"""
 		Asks animation controller for a new frame and applies it.
 		Useful for when waiting for `update` isn't possible during
 		setup which i.e. depends on the first frame of an animation.
 		"""
+		if (new_offset := self.animation.query_new_animation_offset()) is not None:
+			self.offset = (-new_offset[0], -new_offset[1])
+
 		if (new_frame_idx := self.animation.query_new_frame()) is not None:
 			self._set_frame(self._frames[new_frame_idx])
 
@@ -619,7 +635,6 @@ class PNFSprite(WorldObject):
 		self._context = None # GC speedup, probably
 		self.animation = None
 
-	# TODO repair below
 	@property
 	def signed_width(self) -> float:
 		return self._scale_x * self._scale * self._frame.source_dimensions[0]
@@ -641,7 +656,7 @@ class PNFSprite(WorldObject):
 	@image.setter
 	def image(self, image: AbstractImage) -> None:
 		fc = FrameCollection()
-		fc.add_frame(image.get_texture(), Vec2(image.height, image.width), Vec2())
+		fc.add_frame(image.get_texture(), Vec2(image.width, image.height), Vec2())
 		self.frames = fc
 
 	@property
@@ -653,7 +668,8 @@ class PNFSprite(WorldObject):
 		self.animation.delete_animations()
 		self._frames = new_frames
 		self._set_frame(new_frames.frames[0])
-		self.origin = (.5 * self._frame.source_dimensions[0], .5 * self._frame.source_dimensions[1])
+		self.lazy_width, self.lazy_height = self._frame.source_dimensions
+		self.center_origin()
 
 	@property
 	def x(self) -> "Numeric":

@@ -79,15 +79,10 @@ void main() {
 	m_rotate[1][1] =  cos(-radians(rotation));
 
 	// Camera transform and zoom scale
-	m_camera_trans_scale[3][0] = (
-		(camera.zoom * -camera.GAME_DIMENSIONS.x / 2) +
-		(camera.zoom * scroll_factor.x * -camera.position.x) +
-		(camera.GAME_DIMENSIONS.x / 2)
-	);
-	m_camera_trans_scale[3][1] = (
-		(camera.zoom * -camera.GAME_DIMENSIONS.y / 2) +
-		(camera.zoom * scroll_factor.y * -camera.position.y) +
-		(camera.GAME_DIMENSIONS.y / 2)
+	m_camera_trans_scale[3].xy = (
+		(camera.zoom * -camera.GAME_DIMENSIONS / 2) +
+		(camera.zoom * scroll_factor * -camera.position) +
+		(camera.GAME_DIMENSIONS / 2)
 	);
 	m_camera_trans_scale[0][0] = camera.zoom;
 	m_camera_trans_scale[1][1] = camera.zoom;
