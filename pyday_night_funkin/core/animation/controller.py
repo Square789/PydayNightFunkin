@@ -50,25 +50,12 @@ class AnimationController:
 
 		self._owner_sprite = owner
 
-		self._new_animation_offset: t.Optional[t.Tuple["Numeric", "Numeric"]] = None
-		self._new_frame_index: t.Optional[int] = None
-
-	def query_new_frame(self) -> t.Optional[int]:
-		r = self._new_frame_index
-		self._new_frame_index = None
-		return r
-
-	def query_new_animation_offset(self) -> t.Optional[t.Tuple["Numeric", "Numeric"]]:
-		r = self._new_animation_offset
-		self._new_animation_offset = None
-		return r
-
 	def _detach_animation(self) -> None:
 		self.current.stop()
 		self.current = self.current_name = None
 
 	def _on_new_frame(self) -> None:
-		self._new_frame_index = self.current.cur_index
+		self._owner_sprite._set_frame(self.current.cur_index)
 
 	def get_current_frame_index(self) -> t.Optional[int]:
 		"""
@@ -215,15 +202,9 @@ class AnimationController:
 		self.current_name = name
 		self.current.play(force, frame)
 
-		# TODO In HaxeFlixel, calling play will immediatedly set the frame via two cyclic
-		# references.
-		# In my clone, you'd need to call check_animation_controller. Maybe change that.
-		self._new_animation_offset = (
-			None if self.current.offset is None else
-			tuple(self.current.offset)
-		)
-		# TODO this sucks and is a lie.
-		# Set first frame
+		# Apply new animation's offset and first frame
+		if self.current.offset is not None:
+			self._owner_sprite.offset = tuple(-self.current.offset)
 		self._on_new_frame()
 
 	def stop(self) -> None:

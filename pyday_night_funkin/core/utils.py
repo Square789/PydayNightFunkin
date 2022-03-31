@@ -61,4 +61,5 @@ def dump_sprite_info(s: "PNFSprite") -> None:
 	print(f"Origin: {s.origin}")
 	print(f"Frame offset: {s._frame.offset}")
 	print(f"Frame source size: {s._frame.source_dimensions}")
-	print(f"w, h: {s.width}, {s.height}")
+	print(f"w, h: {s._width}, {s._height}")
+	print()

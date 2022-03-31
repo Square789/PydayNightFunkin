@@ -4,11 +4,10 @@ import typing as t
 from pyday_night_funkin.alphabet import MenuTextLine
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.asset_system import load_asset, ASSET
-from pyday_night_funkin.core.constants import PIXEL_TEXTURE
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.scene import BaseScene
-from pyday_night_funkin.core.utils import to_rgb_tuple, to_rgba_tuple
+from pyday_night_funkin.core.utils import to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
@@ -21,7 +20,7 @@ class StickySprite(PNFSprite):
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
-		self.x = self.stickee.x + self.stickee.signed_width + 10
+		self.x = self.stickee.x + self.stickee.width + 10
 		self.y = self.stickee.y - 30
 
 
@@ -56,10 +55,8 @@ class FreeplayScene(BaseScene):
 			font_size = 24,
 		)
 
-		score_bg = self.create_object("fg", x=self.score_text.x - 6, y=0, image=PIXEL_TEXTURE)
-		score_bg.scale_x = CNST.GAME_WIDTH * .35
-		score_bg.scale_y = 66
-		score_bg.color = to_rgb_tuple(CNST.BLACK)
+		score_bg = self.create_object("fg", x=self.score_text.x - 6, y=0)
+		score_bg.make_rect(to_rgba_tuple(CNST.BLACK), CNST.GAME_WIDTH * .35, 66)
 		score_bg.opacity = 153
 
 		self.displayed_songs: t.List["scenes.InGameScene"] = []

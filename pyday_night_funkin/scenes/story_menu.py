@@ -3,11 +3,10 @@ import typing as t
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
-from pyday_night_funkin.core.constants import PIXEL_TEXTURE
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
-from pyday_night_funkin.core.utils import dump_sprite_info, lerp, to_rgb_tuple, to_rgba_tuple
+from pyday_night_funkin.core.tweens import TWEEN_ATTR, in_out_cubic, linear
+from pyday_night_funkin.core.utils import lerp, to_rgb_tuple, to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin.menu import Menu
@@ -39,19 +38,17 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			self.game.player.set(load_asset(ASSET.MUSIC_MENU))
 
 		yellow_stripe = self.create_object("mid", x=0, y=56)
-		# dump_sprite_info(yellow_stripe)
-		yellow_stripe.image = PIXEL_TEXTURE
-		# dump_sprite_info(yellow_stripe)
-		yellow_stripe.scale_x = CNST.GAME_WIDTH
-		yellow_stripe.scale_y = 400
-		yellow_stripe.color = to_rgb_tuple(0xF9CF51FF)
-		# yellow_stripe.center_origin()
-		# print("WEIRD", yellow_stripe.origin, yellow_stripe.offset)
-		# yellow_stripe.refresh_offsets()
-		# print("WEIRD", yellow_stripe.origin, yellow_stripe.offset)
-		# yellow_stripe.origin = (-640, -200)
-		# yellow_stripe.offset = (0, 0)
-		# print("WEIRD", yellow_stripe.origin, yellow_stripe.offset)
+		yellow_stripe.make_rect(to_rgba_tuple(0xF9CF51FF), CNST.GAME_WIDTH, 400)
+		def _restart():
+			yellow_stripe.rotation = 0
+			yellow_stripe.scale_x = CNST.GAME_WIDTH
+			yellow_stripe.start_tween(
+				in_out_cubic,
+				{TWEEN_ATTR.ROTATION: 20, TWEEN_ATTR.SCALE_X: CNST.GAME_WIDTH * .5},
+				2.0,
+				_restart,
+			)
+		_restart()
 
 		_story_menu_char_anims = load_asset(ASSET.XML_STORY_MENU_CHARACTERS)
 
@@ -117,7 +114,6 @@ class StoryMenuScene(scenes.MusicBeatScene):
 				str(diff.value), diff.to_atlas_prefix(), offset=_diff_offset_map[diff]
 			)
 		self.difficulty_indicator.animation.play("0")
-		self.difficulty_indicator.check_animation_controller()
 
 		self.diff_arrow_right = self.create_object(
 			"bg",

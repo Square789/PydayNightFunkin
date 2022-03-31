@@ -8,7 +8,7 @@ import pyglet
 # You really want to leave this set to `True` unless you haven't
 # touched the rendering backend AND not seen an OpenGL error for at
 # least 20 hours
-pyglet.options["debug_gl"] = False
+pyglet.options["debug_gl"] = True
 
 from pyglet.window.key import KeyStateHandler
 
@@ -26,7 +26,7 @@ from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.14-dev-C"
+__version__ = "0.0.14-dev-D"
 
 
 class _FPSData:
@@ -128,7 +128,7 @@ class Game():
 				self.debug_pane = DebugPane(8)
 				logger.add(
 					self.debug_pane.add_message,
-					format = "{time:mm:ss.SSS} | {level:<8} | {name}{function}{line} - {message}",
+					format = "{time:mm:ss.SSS} | {level:<8} | {name}:{function}@{line} - {message}",
 				)
 			logger.info(f"Game started (v{__version__}), pyglet version {pyglet.version}")
 		pyglet.clock.schedule_once(setup, 0.0)

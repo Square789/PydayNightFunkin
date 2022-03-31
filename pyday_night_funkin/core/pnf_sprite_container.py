@@ -109,20 +109,20 @@ class PNFSpriteContainer(PNFSprite):
 	# === PNFSprite property overrides === #
 
 	@property
-	def signed_width(self) -> "Numeric":
+	def width(self) -> "Numeric":
 		if not self._sprites:
 			return 0
 		return (
-			max(sprite.x + sprite.signed_width for sprite in self._sprites) -
+			max(sprite.x + sprite.width for sprite in self._sprites) -
 			min(sprite.x for sprite in self._sprites)
 		)
 
 	@property
-	def signed_height(self) -> "Numeric":
+	def height(self) -> "Numeric":
 		if not self._sprites:
 			return 0
 		return (
-			max(sprite.y + sprite.signed_height for sprite in self._sprites) -
+			max(sprite.y + sprite.height for sprite in self._sprites) -
 			min(sprite.y for sprite in self._sprites)
 		)
 

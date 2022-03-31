@@ -147,15 +147,19 @@ class NoteHandler(AbstractNoteHandler):
 			self.notes[self.notes_visible.end].time - song_pos <= note_vis_window_time
 		):
 			cur_note = self.notes[self.notes_visible.end]
-			x = 50 + (CNST.GAME_WIDTH // 2) * cur_note.singer + \
+			x = (
+				50 +
+				(CNST.GAME_WIDTH // 2) * cur_note.singer +
 				cur_note.type.get_order() * arrow_width
+			)
 			texture = self.note_sprites[cur_note.sustain_stage][cur_note.type]
 			sprite = self.game_scene.create_object(
-				self.note_layer, self.note_camera, x = x, y = -2000, image = texture
+				self.note_layer, self.note_camera, x=x, y=-2000, image=texture
 			)
 			sprite.scale = 0.7
+			sprite.recalculate_positioning()
 			if cur_note.sustain_stage != SUSTAIN_STAGE.NONE:
-				sprite.x += (arrow_width - texture.width) // 2
+				sprite.x += arrow_width // 2
 				if cur_note.sustain_stage is SUSTAIN_STAGE.TRAIL:
 					sprite.scale_y = self.game_scene.conductor.step_duration * \
 						0.015 * self.scroll_speed

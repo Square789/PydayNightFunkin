@@ -102,7 +102,7 @@ class AlphabetCharacter(PNFSprite):
 
 		self.animation.add_by_prefix("main", self._get_animation_prefix())
 		self.animation.play("main")
-		self.check_animation_controller()
+		self.set_dimensions_from_frame()
 
 
 class TextLine(PNFSpriteContainer):

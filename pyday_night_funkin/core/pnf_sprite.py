@@ -7,7 +7,7 @@ from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
 from pyday_night_funkin.core.animation.frames import AnimationFrame, FrameCollection
 
-from pyday_night_funkin.core.constants import ERROR_TEXTURE
+from pyday_night_funkin.core.constants import ERROR_TEXTURE, PIXEL_TEXTURE
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.animation import Animation, AnimationController
@@ -64,28 +64,21 @@ void main() {{
 	mat4 res_mat = mat4(1.0);
 	mat4 work_mat = mat4(1.0);
 
-	work_mat[3].xy = (
-		origin +
-		translate -
-		(
-			(camera.position * camera.zoom * scroll_factor) -
-			offset
-		)
-	);
-	res_mat *= work_mat; work_mat = mat4(1.0);
+	work_mat[3].xy = origin + translate + offset;
+	res_mat *= work_mat; work_mat = mat4(1.0);   // 4TH
 
-	work_mat[0][0] =  cos(-radians(rotation));
-	work_mat[0][1] =  sin(-radians(rotation));
-	work_mat[1][0] = -sin(-radians(rotation));
-	work_mat[1][1] =  cos(-radians(rotation));
-	res_mat *= work_mat; work_mat = mat4(1.0);
+	work_mat[0][0] =  cos(radians(rotation));
+	work_mat[0][1] =  sin(radians(rotation));
+	work_mat[1][0] = -sin(radians(rotation));
+	work_mat[1][1] =  cos(radians(rotation));
+	res_mat *= work_mat; work_mat = mat4(1.0);   // 3RD
 
 	work_mat[0][0] = scale.x;
 	work_mat[1][1] = scale.y;
-	res_mat *= work_mat; work_mat = mat4(1.0);
+	res_mat *= work_mat; work_mat = mat4(1.0);   // 2ND
 
 	work_mat[3].xy = frame_offset - origin;
-	res_mat *= work_mat; work_mat = mat4(1.0);
+	res_mat *= work_mat; work_mat = mat4(1.0);   // 1ST
 
 	// Camera transform and zoom scale
 	m_camera_trans_scale[3].xy = (
@@ -305,9 +298,10 @@ class Toggle(Effect):
 
 class PNFSprite(WorldObject):
 	"""
-	Pretty much *the* core scene object, the sprite!
-	It can show images or animations, do all sort of transforms, have
-	a shader as well as cameras on it and comes with effect support.
+	Pretty much *the* core scene object.
+	It can show images or animations, has all the transforms such as
+	position, rotation and scale and can have tweens applied to these.
+	Closely copies the behavior of FlxSprite.
 	"""
 
 	_TWEEN_ATTR_NAME_MAP = {
@@ -346,10 +340,9 @@ class PNFSprite(WorldObject):
 		# modify it when modifying this!
 		self.movement: t.Optional[Movement] = None
 		self.effects: t.List["EffectBound"] = []
+
 		self._origin = (0, 0)
 		self._offset = (0, 0)
-		self.lazy_width: "Numeric" = 0
-		self.lazy_height: "Numeric" = 0
 
 		self._interfacer = None
 		self._color = (255, 255, 255)
@@ -540,10 +533,29 @@ class PNFSprite(WorldObject):
 	def stop_movement(self) -> None:
 		self.movement = None
 
+	def make_rect(self, color: t.Tuple[int, int, int, "Numeric"], w: int = 1, h: int = 1) -> None:
+		"""
+		Convenience method that changes the sprite to be a rectangle of
+		the given color spanning by (w, h) from its current position.
+		Will make a call to `recalculate_positioning`, set an extreme
+		offset and set scale_x as well as scale_y.
+		"""
+		self.image = PIXEL_TEXTURE
+		self.recalculate_positioning()
+		self.rgba = color
+		self.scale_x = w
+		self.scale_y = h
+		# no idea how good the logic on this is. Pixel origin is (.5, .5), so this should
+		# get rid of off-by-one errors especially notable on rects on screen borders.
+		self.offset = (int(w // 2 - .5), int(h // 2 - .5))
+
+	def set_dimensions_from_frame(self) -> None:
+		self._width, self._height = self._frame.source_dimensions
+
 	def center_offset(self) -> None:
 		self.offset = (
-			-0.5 * (self.width - self.lazy_width),
-			-0.5 * (self.height - self.lazy_height),
+			-0.5 * (self._frame.source_dimensions[0] - self._width),
+			-0.5 * (self._frame.source_dimensions[1] - self._height),
 		)
 
 	def center_origin(self) -> None:
@@ -552,27 +564,20 @@ class PNFSprite(WorldObject):
 			0.5 * self._frame.source_dimensions[1],
 		)
 
-	def refresh_offsets(self) -> None:
-		self.lazy_width, self.lazy_height = self.width, self.height
+	def recalculate_positioning(self) -> None:
+		"""
+		Functionally the same as `FlxSprite:updateHitbox`.
+		Sets the sprite's width and height to the currently displayed
+		frame's (multiplied by absolute scale) and then calls
+		`center_offset` and `center_origin`.
+		"""
+		self._width = abs(self._scale * self._scale_x) * self._frame.source_dimensions[0]
+		self._height = abs(self._scale * self._scale_y) * self._frame.source_dimensions[1]
 		self.center_offset()
 		self.center_origin()
 
-	def check_animation_controller(self):
-		"""
-		Asks animation controller for a new frame and applies it.
-		Useful for when waiting for `update` isn't possible during
-		setup which i.e. depends on the first frame of an animation.
-		"""
-		if (new_offset := self.animation.query_new_animation_offset()) is not None:
-			self.offset = (-new_offset[0], -new_offset[1])
-
-		if (new_frame_idx := self.animation.query_new_frame()) is not None:
-			self._set_frame(self._frames[new_frame_idx])
-
 	def update(self, dt: float) -> None:
-		if self.animation.is_set:
-			self.animation.update(dt)
-			self.check_animation_controller()
+		self.animation.update(dt)
 
 		if self.movement is not None:
 			dx, dy = self.movement.update(dt)
@@ -595,9 +600,10 @@ class PNFSprite(WorldObject):
 			except ValueError:
 				pass
 
-	def _set_frame(self, frame: AnimationFrame):
-		self._frame = frame
-		texture = frame.texture
+	def _set_frame(self, idx: int) -> None:
+		new_frame = self.frames[idx]
+		self._frame = new_frame
+		texture = new_frame.texture
 		prev_h, prev_w = self._texture.height, self._texture.width
 		if texture.id is not self._texture.id:
 			self._texture = texture
@@ -607,7 +613,7 @@ class PNFSprite(WorldObject):
 		else:
 			self._texture = texture
 		self._interfacer.set_data("tex_coords", texture.tex_coords)
-		self._interfacer.set_data("frame_offset", tuple(frame.offset) * 4)
+		self._interfacer.set_data("frame_offset", tuple(new_frame.offset) * 4)
 		# If this is not done, screws over vertices if the texture changes
 		if prev_h != texture.height or prev_w != texture.width:
 			self._update_vertex_positions()
@@ -636,14 +642,6 @@ class PNFSprite(WorldObject):
 		self._context = None # GC speedup, probably
 		self.animation = None
 
-	@property
-	def signed_width(self) -> float:
-		return self._scale_x * self._scale * self._frame.source_dimensions[0]
-
-	@property
-	def signed_height(self) -> float:
-		return self._scale_y * self._scale * self._frame.source_dimensions[1]
-
 	# === Simple properties and private methods below === #
 
 	@property
@@ -668,8 +666,8 @@ class PNFSprite(WorldObject):
 	def frames(self, new_frames: FrameCollection) -> None:
 		self.animation.delete_animations()
 		self._frames = new_frames
-		self._set_frame(new_frames.frames[0])
-		self.lazy_width, self.lazy_height = self._frame.source_dimensions
+		self._set_frame(0)
+		self.set_dimensions_from_frame()
 		self.center_origin()
 
 	@property
@@ -805,6 +803,11 @@ class PNFSprite(WorldObject):
 	def scroll_factor(self, new_sf: t.Tuple[float, float]) -> None:
 		self._scroll_factor = new_sf
 		self._interfacer.set_data("scroll_factor", new_sf * 4)
+
+	def _set_rgba(self, new_rgba: t.Tuple[int, int, int, "Numeric"]) -> None:
+		self._color = new_rgba[:3]
+		self.opacity = new_rgba[3]
+	rgba = property(None, _set_rgba)
 
 	@property
 	def color(self) -> t.Tuple[int, int, int]:

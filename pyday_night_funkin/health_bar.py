@@ -5,13 +5,12 @@ from pyglet.image import ImageData, Texture
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
-from pyday_night_funkin.core.utils import clamp, to_rgba_bytes
+from pyday_night_funkin.core.constants import PIXEL_TEXTURE
+from pyday_night_funkin.core.utils import clamp, to_rgb_tuple, to_rgba_bytes, to_rgba_tuple
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGameScene
 
-
-ICON_X_DISPLACEMENT = 124
 
 class HealthBar():
 	"""
@@ -43,35 +42,26 @@ class HealthBar():
 		)
 
 		bar_y = self.background.y + 4
-		self.opponent_bar = scene.create_object(
-			bar_layer,
-			camera,
-			x = 0,
-			y = bar_y,
-			image = self._create_bar_part(bar_image.height - 8, opponent_color),
-		)
-		self.player_bar = scene.create_object(
-			bar_layer,
-			camera,
-			x = 0,
-			y = bar_y,
-			image = self._create_bar_part(bar_image.height - 8, player_color),
-		)
+		self.opponent_bar = scene.create_object(bar_layer, camera, y=bar_y, image=PIXEL_TEXTURE)
+		self.opponent_bar.rgba = to_rgba_tuple(opponent_color)
+		self.player_bar = scene.create_object(bar_layer, camera, y=bar_y, image=PIXEL_TEXTURE)
+		self.player_bar.rgba = to_rgba_tuple(player_color)
+		self.opponent_bar.origin = self.player_bar.origin = (0, 0)
+		self.opponent_bar.scale_y = self.player_bar.scale_y = bar_image.height - 8
 
 		self.opponent_icons = load_asset(ASSET.IMG_ICON_GRID, opponent_icon_name)
 		self.player_icons = load_asset(ASSET.IMG_ICON_GRID, player_icon_name)
-		# This assumes all opponent and player icons are of same height (i mean, they are)
+		# This assumes all opponent and player icons are of same height and width
+		# (Which they are, but hey)
 		icon_y = self.background.y + (bar_image.height - self.opponent_icons[0].height) // 2
 		self.opponent_sprite = scene.create_object(
-			icon_layer, camera, x = 0, y = icon_y, image = self.opponent_icons[0]
+			icon_layer, camera, x=0, y=icon_y, image=self.opponent_icons[0]
 		)
 		self.player_sprite = scene.create_object(
-			icon_layer, camera, x = 0, y = icon_y, image = self.player_icons[0]
+			icon_layer, camera, x=0, y=icon_y, image=self.player_icons[0]
 		)
 		self.player_sprite.scale_x = -1.0
-
-	def _create_bar_part(self, height: int, color) -> Texture:
-		return ImageData(1, height, "RGBA", to_rgba_bytes(color) * height).get_texture()
+		self.player_sprite.origin = (0, -self.player_icons[0].width)
 
 	def update(self, new_health: float) -> None:
 		"""
@@ -90,8 +80,9 @@ class HealthBar():
 		self.opponent_bar.scale_x = opponent_bar_width
 		self.player_bar.x = player_bar_x
 		self.player_bar.scale_x = player_bar_width
-		self.opponent_sprite.x = player_bar_x - ICON_X_DISPLACEMENT
-		self.player_sprite.x = player_bar_x + ICON_X_DISPLACEMENT
+
+		self.opponent_sprite.x = player_bar_x
+		self.player_sprite.x = player_bar_x
 
 		if new_health > (1.0 - self.ded_icon_threshold):
 			self.opponent_sprite.image = self.opponent_icons[1]

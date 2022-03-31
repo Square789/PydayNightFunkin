@@ -4,13 +4,12 @@ import queue
 import typing as t
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.core.constants import PIXEL_TEXTURE
 from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene import SceneContext
-from pyday_night_funkin.core.utils import to_rgb_tuple
+from pyday_night_funkin.core.utils import to_rgba_tuple
 
 
 class DebugPane():
@@ -48,14 +47,15 @@ class DebugPane():
 			context = SceneContext(self.batch, self.foreground, None),
 		)
 		self.rect = PNFSprite(
-			image = PIXEL_TEXTURE,
 			x = self.PADDING,
 			y = 0,
 			context = SceneContext(self.batch, self.background, None),
 		)
-		self.rect.scale_x = CNST.GAME_WIDTH - 2 * self.PADDING
-		self.rect.scale_y = (self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1))
-		self.rect.color = to_rgb_tuple(0x2020AAFF)
+		self.rect.make_rect(
+			to_rgba_tuple(0x2020AAFF),
+			CNST.GAME_WIDTH - 2 * self.PADDING,
+			(self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1)),
+		)
 		self.rect.opacity = 100
 
 	def add_message(self, log_message: str) -> None:

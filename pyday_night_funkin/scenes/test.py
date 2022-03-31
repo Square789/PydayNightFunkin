@@ -9,6 +9,7 @@ from pyday_night_funkin.characters import Boyfriend
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
+from pyday_night_funkin.core.utils import to_rgba_tuple
 from pyday_night_funkin.note import NOTE_TYPE
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 
@@ -17,21 +18,14 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
 
 
-def _dump_sprite(s: "PNFSprite") -> None:
-	print(f"{s.offset=}")
-	print(f"{s.origin=}")
-	print(f"{s._frame.offset=}")
-	print(f"{s._frame.source_dimensions=}")
-	print(f"{s.width=}")
-	print(f"{s.height=}")
-	print()
-
-
 class TestScene(MusicBeatScene):
 	def __init__(self, game: "Game") -> None:
 		super().__init__(game)
 
-		self.test_sprite = self.create_object("ye_olde_layer", "main")
+		self.pixel = self.create_object("ye_olde_layer")
+		self.pixel.make_rect(to_rgba_tuple(0xAA0000FF))
+
+		self.test_sprite = self.create_object("ye_olde_layer", "main", y=200)
 		self.test_sprite.scale = 4
 
 		self.conductor.bpm = 123
@@ -109,11 +103,6 @@ class TestScene(MusicBeatScene):
 			arr = self.arrows[i]
 			a = ("confirm" if confirm else "pressed") if ksh[k] else "static"
 			arr.animation.play(a)
-			arr.check_animation_controller()
-			arr.center_offset()
-			if a == "confirm":
-				what = 18.5714 * arr.scale
-				arr.offset = (arr.offset[0] - what, arr.offset[1] - what)
 
 		if ksh[C]:
 			sprite = self.create_object("fore", x=randint(0, 100), y=randint(0, 100))

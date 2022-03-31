@@ -29,6 +29,7 @@ class MainMenuScene(BaseScene):
 		for bg in (self.bg, self.bg_magenta):
 			bg.scroll_factor = (0.0, 0.18)
 			bg.scale = 1.1
+			bg.recalculate_positioning()
 			bg.screen_center(CNST.GAME_DIMENSIONS)
 
 		self.bg_magenta.visible = False
@@ -60,7 +61,7 @@ class MainMenuScene(BaseScene):
 	def _on_select(self, i: int, state: bool) -> None:
 		s = self._menu_items[i][2]
 		s.animation.play("selected" if state else "idle", True)
-		s.check_animation_controller()
+		s.recalculate_positioning()
 		s.screen_center(CNST.GAME_DIMENSIONS, y=False)
 		if state:
 			self.sfx_ring.play(self.scroll_sound)

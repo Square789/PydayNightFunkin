@@ -401,11 +401,11 @@ class PNFText(WorldObject):
 	# Width/Height
 
 	@property
-	def signed_width(self) -> "Numeric":
+	def width(self) -> "Numeric":
 		return self._width
 
 	# TODO creating a font for this? Sucks, but whatever.
 	@property
-	def signed_height(self) -> "Numeric":
+	def height(self) -> "Numeric":
 		ft = load_font(self._font_name, self._font_size)
 		return self._font_size * len(self.lines) + ft.ascent * (len(self.lines) - 1)

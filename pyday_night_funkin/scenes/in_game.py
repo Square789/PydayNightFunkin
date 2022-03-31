@@ -242,7 +242,6 @@ class InGameScene(scenes.MusicBeatScene):
 		# game. If you have complaints about that go send them to your nearest recycling bin.
 		for c in (self.boyfriend, self.girlfriend, self.opponent):
 			c.dance()
-			c.check_animation_controller()
 
 		self.main_cam.zoom = self.get_default_cam_zoom()
 		self.main_cam.look_at(self.opponent.get_midpoint() + Vec2(400, 0))

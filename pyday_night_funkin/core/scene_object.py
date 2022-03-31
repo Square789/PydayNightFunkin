@@ -59,6 +59,8 @@ class WorldObject(SceneObject):
 	def __init__(self, x: "Numeric" = 0, y: "Numeric" = 0) -> None:
 		self._x = x
 		self._y = y
+		self._width: "Numeric" = 0
+		self._height: "Numeric" = 0
 		self._rotation = 0.0
 		self._scale = 1.0
 		self._scale_x = 1.0
@@ -79,20 +81,12 @@ class WorldObject(SceneObject):
 	#   themselves so it'd be just dead code for show
 
 	@property
-	def signed_width(self) -> "Numeric":
-		return 0
-
-	@property
-	def signed_height(self) -> "Numeric":
-		return 0
-
-	@property
 	def width(self) -> "Numeric":
-		return abs(self.signed_width)
+		return self._width
 
 	@property
 	def height(self) -> "Numeric":
-		return abs(self.signed_height)
+		return self._height
 
 	def screen_center(self, screen_dims: Vec2, x: bool = True, y: bool = True) -> None:
 		"""
@@ -111,10 +105,7 @@ class WorldObject(SceneObject):
 		Returns the middle point of this WorldObject, based on its
 		position and dimensions.
 		"""
-		return Vec2(
-			self.x + self.signed_width * 0.5,
-			self.y + self.signed_height * 0.5,
-		)
+		return Vec2(self.x + self._width * 0.5, self.y + self._height * 0.5)
 
 	def get_screen_position(self, cam: "Camera") -> Vec2:
 		"""

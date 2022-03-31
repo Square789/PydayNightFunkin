@@ -5,6 +5,8 @@ import typing as t
 from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
+from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
+from pyday_night_funkin.core.utils import dump_sprite_info
 from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin import scenes
 
@@ -40,6 +42,7 @@ class TitleScene(scenes.MusicBeatScene):
 		ng_logo = load_asset(ASSET.IMG_NEWGROUNDS_LOGO)
 		self.ng_logo = self.create_object("main", image=ng_logo, y=CNST.GAME_HEIGHT * 0.52)
 		self.ng_logo.scale = 0.8
+		self.ng_logo.recalculate_positioning()
 		self.ng_logo.screen_center(CNST.GAME_DIMENSIONS, y=False)
 		self.ng_logo.visible = False
 
@@ -65,7 +68,7 @@ class TitleScene(scenes.MusicBeatScene):
 			4: self._delete_text,
 			5: lambda: (
 				self._create_text("In association", "with", "newgrounds"),
-				setattr(self.ng_logo, "visible", True)
+				setattr(self.ng_logo, "visible", True),
 			),
 			7: lambda: (self._delete_text(), setattr(self.ng_logo, "visible", False)),
 			8: lambda: self._create_text("Python rewrite by"),
