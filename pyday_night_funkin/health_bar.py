@@ -60,8 +60,7 @@ class HealthBar():
 		self.player_sprite = scene.create_object(
 			icon_layer, camera, x=0, y=icon_y, image=self.player_icons[0]
 		)
-		self.player_sprite.scale_x = -1.0
-		self.player_sprite.origin = (0, -self.player_icons[0].width)
+		self.player_sprite.flip_x = True
 
 	def update(self, new_health: float) -> None:
 		"""
@@ -74,15 +73,14 @@ class HealthBar():
 		opponent_bar_x = self.background.x + 4
 		opponent_bar_width = int((1.0 - clamp(new_health, 0.0, 1.0)) * bar_width)
 		player_bar_x = opponent_bar_x + opponent_bar_width
-		player_bar_width = bar_width - opponent_bar_width
 
 		self.opponent_bar.x = opponent_bar_x
 		self.opponent_bar.scale_x = opponent_bar_width
 		self.player_bar.x = player_bar_x
-		self.player_bar.scale_x = player_bar_width
+		self.player_bar.scale_x = bar_width - opponent_bar_width
 
-		self.opponent_sprite.x = player_bar_x
-		self.player_sprite.x = player_bar_x
+		self.player_sprite.x = player_bar_x - 26
+		self.opponent_sprite.x = player_bar_x - (self.opponent_sprite.width - 26)
 
 		if new_health > (1.0 - self.ded_icon_threshold):
 			self.opponent_sprite.image = self.opponent_icons[1]

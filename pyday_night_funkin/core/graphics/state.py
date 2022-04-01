@@ -69,7 +69,7 @@ class UniformStatePart(StatePart):
 			self._c_array[:] = self.value
 
 		return (
-			(loc, count, ctypes.addressof(self._c_array)),
+			(loc, count, hash(self.value)),
 			partial(gl_func, loc, count, self._c_array),
 		)
 

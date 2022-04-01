@@ -434,8 +434,6 @@ class InGameScene(scenes.MusicBeatScene):
 		self.pause_players()
 		self.state = GAME_STATE.ENDED
 		game_over_bf = self.create_boyfriend()
-		# TODO the passing of `main_cam` kinda sucks. Time to steal more
-		# HaxeFlixel intellectual property and keep references to cameras in every single SceneObject!
 		scx, scy = self.boyfriend.get_screen_position(self.main_cam)
 		game_over_bf.x = scx
 		game_over_bf.y = scy

@@ -2,18 +2,17 @@
 import ctypes
 import typing as t
 
-from pyglet.graphics import allocation, vertexarray
+from pyglet.graphics import allocation
 from pyglet.gl import gl
-from pyday_night_funkin.core.graphics.interfacer import PNFBatchInterfacer
 
 from pyday_night_funkin.core.graphics.shared import (
 	C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT, TYPE_MAP, USAGE_MAP
 )
 from pyday_night_funkin.core.graphics.vertexbuffer import MappedBufferObject
+from pyday_night_funkin.core.utils import dump_id
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
-	from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 	from pyday_night_funkin.core.graphics.pnf_batch import DrawList
 
 
@@ -69,11 +68,10 @@ class PNFVertexDomainAttribute:
 			usage
 		)
 
-	def set_data(self, start: int, size: int, data) -> None:
-		cdata = (self.c_type * (size * self.count))(*data)
-		self.set_raw_data(start, size, cdata)
+	def set_data(self, start: int, size: int, data: t.Iterable) -> None:
+		self.set_raw_data(start, size, (self.c_type * (size * self.count))(*data))
 
-	def set_raw_data(self, start: int, size: int, data) -> None:
+	def set_raw_data(self, start: int, size: int, data: ctypes.Array) -> None:
 		self.gl_buffer.set_data(self.element_size * start, self.element_size * size, data)
 
 	def get_data(self, start, size) -> ctypes.Array:
@@ -92,7 +90,7 @@ class PNFVertexDomainAttribute:
 		return (
 			f"<{self.__class__.__name__} (OpenGL buffer id {self.gl_buffer.id}) "
 			f"count={self.count} type={self.type} normalize={self.normalize} usage={self.usage} "
-			f"at 0x{id(self):>016X}>"
+			f"at {dump_id(self)}>"
 		)
 
 
@@ -183,7 +181,7 @@ class PNFVertexDomain:
 			# in the add call
 			if shader_attr_name not in self.attributes:
 				raise ValueError(
-					f"Shader program {shader.id!r} contained vertex attribute"
+					f"Shader program {shader.id!r} contained vertex attribute "
 					f"{shader_attr_name!r}, but {self.__class__.__name__} does not know "
 					f"{shader_attr_name!r}."
 				)

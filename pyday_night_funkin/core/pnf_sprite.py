@@ -2,6 +2,7 @@
 from math import pi, sin
 import typing as t
 
+from loguru import logger
 from pyglet import gl
 from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
@@ -28,16 +29,24 @@ EffectBound = t.TypeVar("EffectBound", bound="Effect")
 _PNF_SPRITE_VERTEX_SHADER_SOURCE = """
 #version 450
 
-in vec2 frame_offset;
-in vec2 offset;
-in vec2 origin;
-in vec2 translate;
-in vec4 colors;
-in vec3 tex_coords;
-in vec2 scale;
+// 12 vtx attrs is totally not a sign of me doing anything wrong
+// Plus, these are realistically going to be calculated 3 times more
+// that needed for each sprite. Oh well, calculating them on the python
+// side is out of the question, that's what I get for using this
+// language.
+
 in vec2 position;
+in vec2 translate;
+in vec2 offset;
+in vec2 frame_offset;
+in vec2 frame_dimensions;
+in vec2 flip;
 in vec2 scroll_factor;
+in vec2 origin;
 in float rotation;
+in vec2 scale;
+in vec3 tex_coords;
+in vec4 colors;
 
 out vec4 vertex_colors;
 out vec3 texture_coords;
@@ -54,31 +63,45 @@ layout(std140) uniform CameraAttrs {{
 }} camera;
 
 
-mat4 m_scale = mat4(1.0);
-mat4 m_rotate = mat4(1.0);
-mat4 m_translate = mat4(1.0);
-mat4 m_camera_trans_scale = mat4(1.0);
-
-
 void main() {{
+	mat4 m_camera_trans_scale = mat4(1.0);
 	mat4 res_mat = mat4(1.0);
 	mat4 work_mat = mat4(1.0);
 
+	bvec2 flip = bvec2(bool(uint(flip.x) & 1), bool(uint(flip.y) & 1));
+
 	work_mat[3].xy = origin + translate + offset;
-	res_mat *= work_mat; work_mat = mat4(1.0);   // 4TH
+	res_mat *= work_mat; work_mat = mat4(1.0);      // 5TH
 
 	work_mat[0][0] =  cos(radians(rotation));
 	work_mat[0][1] =  sin(radians(rotation));
 	work_mat[1][0] = -sin(radians(rotation));
 	work_mat[1][1] =  cos(radians(rotation));
-	res_mat *= work_mat; work_mat = mat4(1.0);   // 3RD
+	res_mat *= work_mat; work_mat = mat4(1.0);      // 4TH
 
+	work_mat[3].xy = -origin * scale;
 	work_mat[0][0] = scale.x;
 	work_mat[1][1] = scale.y;
-	res_mat *= work_mat; work_mat = mat4(1.0);   // 2ND
+	res_mat *= work_mat; work_mat = mat4(1.0);      // 3RD
 
-	work_mat[3].xy = frame_offset - origin;
-	res_mat *= work_mat; work_mat = mat4(1.0);   // 1ST
+	if (flip.x && flip.y) {{
+		work_mat[0][0] = -1;
+		work_mat[1][1] = -1;
+		work_mat[3].xy = frame_dimensions;
+		res_mat *= work_mat; work_mat = mat4(1.0);
+	}} else if (flip.x) {{
+		work_mat[0][0] = -1;
+		work_mat[3].x = frame_dimensions.x;
+		res_mat *= work_mat; work_mat = mat4(1.0);
+	}} else if (flip.y) {{
+		work_mat[1][1] = -1;
+		work_mat[3].y = frame_dimensions.y;
+		res_mat *= work_mat; work_mat = mat4(1.0);
+	}}                                              // 2ND
+
+	work_mat[3].xy = frame_offset;
+	// res_mat *= work_mat; work_mat = mat4(1.0);   // 1ST
+	res_mat *= work_mat;
 
 	// Camera transform and zoom scale
 	m_camera_trans_scale[3].xy = (
@@ -177,6 +200,7 @@ class Effect():
 	"""
 	"Abstract" effect class intertwined with the PNFSprite.
 	"""
+
 	def __init__(
 		self,
 		duration: float,
@@ -343,15 +367,21 @@ class PNFSprite(WorldObject):
 
 		self._origin = (0, 0)
 		self._offset = (0, 0)
+		self._flip_x = False
+		self._flip_y = False
 
 		self._interfacer = None
 		self._color = (255, 255, 255)
 		self._opacity = 255
 
 		self._frame: t.Optional[AnimationFrame] = None
+		"""The currently displayed animation frame."""
 
 		self._texture = image.get_texture()
-		"""The currently displayed pyglet texture."""
+		"""
+		The currently displayed pyglet texture.
+		Should pretty much always be `self._frame.texture`.
+		"""
 
 		self._frames: t.Optional[FrameCollection] = None
 		"""Frame collection frames and textures are drawn from."""
@@ -366,7 +396,6 @@ class PNFSprite(WorldObject):
 		self._blend_dest = blend_dest
 
 		self._context = SceneContext() if context is None else context.inherit()
-
 		self._create_interfacer()
 
 		self.image = image
@@ -398,15 +427,17 @@ class PNFSprite(WorldObject):
 			(0, 1, 2, 0, 2, 3),
 			{camera: self._build_gl_state(camera.ubo) for camera in self._context.cameras},
 			"position2f/" + usage,
-			("offset2f/" + usage, self._offset * 4),
-			("origin2f/" + usage, self._origin * 4),
-			("frame_offset2f/" + usage, (0, 0) * 4),
-			("colors4Bn/" + usage, (*self._color, int(self._opacity)) * 4),
 			("translate2f/" + usage, (self._x, self._y) * 4),
-			("scale2f/" + usage, (self._scale * self._scale_x, self._scale * self._scale_y) * 4),
-			("rotation1f/" + usage, (self._rotation,) * 4),
+			("offset2f/" + usage, self._offset * 4),
+			"frame_offset2f/" + usage,
+			"frame_dimensions2f/" + usage,
+			("flip2B/" + usage, (self._flip_x, self._flip_y) * 4),
 			("scroll_factor2f/" + usage, self._scroll_factor * 4),
+			("origin2f/" + usage, self._origin * 4),
+			("rotation1f/" + usage, (self._rotation,) * 4),
+			("scale2f/" + usage, (self._scale * self._scale_x, self._scale * self._scale_y) * 4),
 			("tex_coords3f/" + usage, self._texture.tex_coords),
+			("colors4Bn/" + usage, (*self._color, int(self._opacity)) * 4),
 		)
 		self._update_vertex_positions()
 
@@ -541,24 +572,39 @@ class PNFSprite(WorldObject):
 		offset and set scale_x as well as scale_y.
 		"""
 		self.image = PIXEL_TEXTURE
-		self.recalculate_positioning()
-		self.rgba = color
 		self.scale_x = w
 		self.scale_y = h
+		self.recalculate_positioning()
+		self.rgba = color
 		# no idea how good the logic on this is. Pixel origin is (.5, .5), so this should
 		# get rid of off-by-one errors especially notable on rects on screen borders.
 		self.offset = (int(w // 2 - .5), int(h // 2 - .5))
 
 	def set_dimensions_from_frame(self) -> None:
+		"""
+		Sets the sprite's width and height to the currently displayed
+		frame's, ignoring scale.
+		"""
 		self._width, self._height = self._frame.source_dimensions
 
 	def center_offset(self) -> None:
+		"""
+		Sets the sprite's offset to negative half the difference of the
+		currently displayed frame's dimensions and the sprite's width/
+		height. The width/height is assumed to reflect the sprite's
+		scale, so that the offset readjusts the error that stems from
+		moving a scaled frame. [Or something like that. I think.]
+		"""
 		self.offset = (
 			-0.5 * (self._frame.source_dimensions[0] - self._width),
 			-0.5 * (self._frame.source_dimensions[1] - self._height),
 		)
 
 	def center_origin(self) -> None:
+		"""
+		Centers the sprite's origin to the currently displayed frame's
+		midpoint. Completely ignores scaling.
+		"""
 		self.origin = (
 			0.5 * self._frame.source_dimensions[0],
 			0.5 * self._frame.source_dimensions[1],
@@ -614,16 +660,20 @@ class PNFSprite(WorldObject):
 			self._texture = texture
 		self._interfacer.set_data("tex_coords", texture.tex_coords)
 		self._interfacer.set_data("frame_offset", tuple(new_frame.offset) * 4)
+		self._interfacer.set_data("frame_dimensions", tuple(new_frame.source_dimensions) * 4)
 		# If this is not done, screws over vertices if the texture changes
 		if prev_h != texture.height or prev_w != texture.width:
 			self._update_vertex_positions()
 
 	def _update_vertex_positions(self):
 		img = self._texture
-		x1 = -img.anchor_x
-		y1 = -img.anchor_y + img.height
-		x2 = -img.anchor_x + img.width
-		y2 = -img.anchor_y
+		x1 = 0
+		y1 = img.height
+		x2 = img.width
+		y2 = 0
+
+		if img.anchor_x != 0 or img.anchor_y != 0:
+			logger.warning("Ignored anchor on pyglet texture was not 0!")
 
 		if self._subpixel:
 			self._interfacer.set_data("position", (x1, y1, x2, y1, x2, y2, x1, y2))
@@ -647,8 +697,10 @@ class PNFSprite(WorldObject):
 	@property
 	def image(self) -> AbstractImage:
 		"""
-		The sprite's currently displayed image.
-		May be from an animation if one is playing.
+		The sprite's currently displayed image, from an animation if
+		one is playing.
+		Note that setting an image will replace all frames on this
+		sprite and destroy any existing animations.
 		"""
 		return self._texture
 
@@ -664,6 +716,9 @@ class PNFSprite(WorldObject):
 
 	@frames.setter
 	def frames(self, new_frames: FrameCollection) -> None:
+		if not new_frames.frames:
+			raise ValueError("Can't have empty frame collections!")
+
 		self.animation.delete_animations()
 		self._frames = new_frames
 		self._set_frame(0)
@@ -759,7 +814,10 @@ class PNFSprite(WorldObject):
 	@property
 	def origin(self) -> t.Tuple["Numeric", "Numeric"]:
 		"""
-		The sprite's origin. TODO I can't tell what this does yet
+		The sprite's origin.
+		This is a point the sprite will be rotated and scaled around,
+		measured in pixels. It is not moved by the sprite scaling,
+		look into `recalculate_positioning` for that.
 		"""
 		return self._origin
 
@@ -775,14 +833,14 @@ class PNFSprite(WorldObject):
 		Going by Flixel, technically, this is supposed to only affect
 		the hitbox, but it's flat-out used in rendering code, so that's
 		a lie.
-		# TODO check and figure out doc
-		Also, in FnF's source, this value is misused. offset is set
-		when frame data is set, depending on the first fucking frame in
-		a sprite sheet. this has then influenced manually set
-		per-animation offsets, that will likely break completely if
-		`updateHitbox` should ever be called. I can tell this is going
-		to be a pain to figure out and rectify.
+		From what I could tell, the offset is applied at the very end
+		of rendering, when rotation and scale have all taken place.
 		"""
+		# Also, in FnF's source, this value is misused. offset is set
+		# when frame data is set, depending on the first fucking frame in
+		# a sprite sheet. this has then influenced manually set
+		# per-animation offsets, that will likely break completely if
+		# `updateHitbox` should ever be called. pain.
 		return self._offset
 
 	@offset.setter
@@ -847,3 +905,29 @@ class PNFSprite(WorldObject):
 	@visible.setter
 	def visible(self, visible: bool) -> None:
 		self._interfacer.set_visibility(visible)
+
+	@property
+	def flip_x(self) -> bool:
+		"""
+		Unsurprisingly, determines whether the sprite is flipped on
+		the x axis.
+		"""
+		return self._flip_x
+
+	@flip_x.setter
+	def flip_x(self, new_flip_x: bool) -> None:
+		self._flip_x = new_flip_x
+		self._interfacer.set_data("flip", (new_flip_x, self._flip_y) * 4)
+
+	@property
+	def flip_y(self) -> bool:
+		"""
+		Unsurprisingly, determines whether the sprite is flipped on
+		the y axis.
+		"""
+		return self._flip_y
+
+	@flip_y.setter
+	def flip_y(self, new_flip_y: bool) -> None:
+		self._flip_y = new_flip_y
+		self._interfacer.set_data("flip", (self._flip_x, new_flip_y) * 4)

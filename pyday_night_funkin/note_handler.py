@@ -12,6 +12,9 @@ from pyday_night_funkin.note import Note, NOTE_TYPE, SUSTAIN_STAGE
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGameScene
 
+# NOTE: Value extracted from width of first frame in the note spritesheet.
+_MAGIC_ARROW_OFFSET = 157 * .7
+
 
 class AbstractNoteHandler:
 	"""
@@ -65,10 +68,10 @@ class NoteHandler(AbstractNoteHandler):
 		single_frame = lambda n: AC.get_frames_by_prefix(note_assets, n)[0].texture
 		self.note_sprites = {
 			SUSTAIN_STAGE.NONE: {
-				NOTE_TYPE.LEFT: single_frame("purple"),
-				NOTE_TYPE.DOWN: single_frame("blue"),
-				NOTE_TYPE.UP: single_frame("green"),
-				NOTE_TYPE.RIGHT: single_frame("red"),
+				NOTE_TYPE.LEFT: single_frame("purple0"),
+				NOTE_TYPE.DOWN: single_frame("blue0"),
+				NOTE_TYPE.UP: single_frame("green0"),
+				NOTE_TYPE.RIGHT: single_frame("red0"),
 			},
 			SUSTAIN_STAGE.TRAIL: {
 				NOTE_TYPE.LEFT: single_frame("purple hold piece"),
@@ -138,8 +141,6 @@ class NoteHandler(AbstractNoteHandler):
 		# Pixels a note traverses in a millisecond
 		speed = 0.45 * self.scroll_speed
 		note_vis_window_time = (CNST.GAME_HEIGHT - CNST.STATIC_ARROW_Y) / speed
-		# NOTE: Makes assumption they're all the same (spoilers: they are)
-		arrow_width = self.note_sprites[SUSTAIN_STAGE.NONE][NOTE_TYPE.UP].width * 0.7
 
 		# Checks for notes that entered the visibility window, creates their sprites.
 		while (
@@ -147,22 +148,25 @@ class NoteHandler(AbstractNoteHandler):
 			self.notes[self.notes_visible.end].time - song_pos <= note_vis_window_time
 		):
 			cur_note = self.notes[self.notes_visible.end]
-			x = (
-				50 +
-				(CNST.GAME_WIDTH // 2) * cur_note.singer +
-				cur_note.type.get_order() * arrow_width
-			)
-			texture = self.note_sprites[cur_note.sustain_stage][cur_note.type]
 			sprite = self.game_scene.create_object(
-				self.note_layer, self.note_camera, x=x, y=-2000, image=texture
+				self.note_layer,
+				self.note_camera,
+				x = (
+					50 +
+					cur_note.type.get_order() * CNST.NOTE_WIDTH +
+					(CNST.GAME_WIDTH // 2) * cur_note.singer
+				),
+				y = -2000,
+				image = self.note_sprites[cur_note.sustain_stage][cur_note.type],
 			)
 			sprite.scale = 0.7
 			sprite.recalculate_positioning()
-			if cur_note.sustain_stage != SUSTAIN_STAGE.NONE:
-				sprite.x += arrow_width // 2
+			if cur_note.sustain_stage is not SUSTAIN_STAGE.NONE:
+				sprite.opacity = 153
+				sprite.x += (_MAGIC_ARROW_OFFSET - sprite.width) / 2
 				if cur_note.sustain_stage is SUSTAIN_STAGE.TRAIL:
-					sprite.scale_y = self.game_scene.conductor.step_duration * \
-						0.015 * self.scroll_speed
+					sprite.scale_y = self.game_scene.conductor.step_duration * (1/30) * speed
+					sprite.recalculate_positioning()
 			cur_note.sprite = sprite
 			self.notes_visible.end += 1
 

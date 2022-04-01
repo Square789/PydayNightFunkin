@@ -137,24 +137,18 @@ FlxSprite:
 SO
 Leaving out a lot of features and ignoring many other things, the steps
 to produce a rendering matrix for sprite S of frame F for camera C are effectively:
-	{point = getScreenPosition(C) - offset}  [FlxObject: 941]
 	mat = identiy()                          [FlxFrame:  147]
-	XXX // Placeholder when adding support for rotated atlas images in the indeterminate future.
+	XXX // Placeholder when adding support for rotated atlas images somewhen.
 	mat.translate(F.offset)                  [FlxFrame:  163]
-	XXX if flip_x:
-	XXX 	mat.scale(-1, 1)
-	XXX 	mat.translate(F.image_width, 0)
-	XXX if flip_y:
-	XXX 	mat.scale(1, -1)
-	XXX 	mat.translate(0, F.image_height)
+	if flip_x:
+		mat.scale(-1, 1)
+		mat.translate(F.image_width, 0)
+	if flip_y:
+		mat.scale(1, -1)
+		mat.translate(0, F.image_height)
 	mat.translate(-S.origin.x, -S.origin.y)  [FlxSprite:711]
 	mat.scale(S.scale.x, S.scale.y)
 	mat.rotate(cos(S.angle), sin(S.angle))
-	{
-	  point += S.origin
-	  mat.translate(point.x, point.y)
-	} OR {
-	  mat.translate(S.origin + (getScreenPosition(C) - offset))
-	}
+	mat.translate(S.origin + (getScreenPosition(C) - S.offset))
 	XXX // if subpixel, floor translations here.
 	render(mat)

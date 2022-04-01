@@ -1,13 +1,10 @@
 
 import typing as t
 
-from pyglet.math import Vec2
-
 from pyday_night_funkin.enums import ANIMATION_TAG
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.animation import AnimationFrame
 	from pyday_night_funkin.core.types import Numeric
 	from pyday_night_funkin.scenes import MusicBeatScene
 
@@ -69,13 +66,14 @@ class Character(PNFSprite):
 		raise NotImplementedError("Subclass this.")
 
 	@staticmethod
-	def get_story_menu_info() -> t.Tuple[Vec2, float]:
+	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], float]:
 		"""
-		Returns a two-element tuple of the translation and scale the
-		character should undergo when its `story_menu` animation is
-		displayed. Default is a null vector and 1.
+		Returns a two-element tuple of the offset and scale the
+		character should have set when its `story_menu` animation is
+		displayed. Default is (100, 100) [you can blame the original
+		game for that] and 1.
 		"""
-		return (Vec2(0, 0), 1)
+		return ((0, 0), 1)
 
 	@staticmethod
 	def get_string() -> str:

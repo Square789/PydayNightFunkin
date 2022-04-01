@@ -91,6 +91,7 @@ class HUD():
 			):
 				arrow_sprite.animation.add_by_prefix(anim_name, atlas_name, 24, False, tags=(tag,))
 			arrow_sprite.scale = .7
+			arrow_sprite.recalculate_positioning()
 			arrow_sprite.animation.play("static")
 			self.static_arrows[i][note_type] = arrow_sprite
 

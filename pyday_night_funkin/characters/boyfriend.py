@@ -8,8 +8,8 @@ from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.enums import ANIMATION_TAG
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.animation import AnimationFrame
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
+	from pyday_night_funkin.core.types import Numeric
 
 
 class Boyfriend(Character):
@@ -105,8 +105,8 @@ class Boyfriend(Character):
 		)
 
 	@staticmethod
-	def get_story_menu_info() -> t.Tuple[Vec2, float]:
-		return (Vec2(-80, 0), .9)
+	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], float]:
+		return ((-80, 0), .9)
 
 	@staticmethod
 	def get_string() -> str:

@@ -2,12 +2,9 @@
 from itertools import islice
 import typing as t
 
-from pyglet.math import Vec2
-
 from pyday_night_funkin.core.constants import ADDRESS_PADDING
 
 if t.TYPE_CHECKING:
-	from pyglet.image import Texture
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 T = t.TypeVar("T")

@@ -1,15 +1,13 @@
 
 import typing as t
 
-from pyglet.math import Vec2
-
 from pyday_night_funkin.characters._base import FlipIdleCharacter
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.enums import ANIMATION_TAG
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.animation import AnimationFrame
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
+	from pyday_night_funkin.core.types import Numeric
 
 
 class Girlfriend(FlipIdleCharacter):
@@ -55,8 +53,8 @@ class Girlfriend(FlipIdleCharacter):
 		)
 
 	@staticmethod
-	def get_story_menu_info() -> t.Tuple[Vec2, float]:
-		return (Vec2(0, 0), .5)
+	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], float]:
+		return ((0, 0), .5)
 
 	@staticmethod
 	def get_string() -> str:

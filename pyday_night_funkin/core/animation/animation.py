@@ -24,10 +24,6 @@ class Animation:
 		offset: t.Optional[t.Union[t.Tuple[int, int], Vec2]] = None,
 		tags: t.Sequence[t.Hashable] = (),
 	):
-		"""
-		Creates an Animation.
-		TODO cool docstring, but only once this misery is over for sure.
-		"""
 		if not frame_indices:
 			raise ValueError("Animations must have at least one frame!")
 

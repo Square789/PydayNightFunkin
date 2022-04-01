@@ -20,9 +20,6 @@ class MusicBeatScene(BaseScene):
 	def update(self, dt: float) -> None:
 		super().update(dt)
 
-		# NOTE: When conductor is thrown off, may call on_step_hit
-		# with same values twice. Logger should scream bloody murder then.
-
 		lc = self.conductor.get_last_bpm_change()
 		new_step = lc.step + floor(
 			(self.conductor.song_position - lc.song_time) / self.conductor.step_duration

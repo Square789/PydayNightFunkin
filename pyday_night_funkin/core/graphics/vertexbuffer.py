@@ -9,7 +9,6 @@ import typing as t
 
 from pyglet.gl import gl
 
-# TODO Write documentation if this turns out to be worth keeping
 
 class BufferObject:
 	"""
@@ -102,8 +101,11 @@ class MappedBufferObject(BufferObject):
 		self.size = size
 
 	def set_data(self, start: int, size: int, data: ctypes.Array) -> None:
-		# bytes required to handle any type that isn't c_[u]byte
-		self._ram_buffer[start : start+size] = bytes(data)
+		ctypes.memmove(
+			ctypes.addressof(self._ram_buffer) + start,
+			ctypes.byref(data),
+			min(size, self.size - start), # whichever is smaller: given array size or remaining
+		)
 		if not self._dirty:
 			self._dirty = True
 			self._dirty_min = start
@@ -113,7 +115,8 @@ class MappedBufferObject(BufferObject):
 			self._dirty_max = max(self._dirty_max, start + size)
 
 	def get_data(self, start: int, size: int) -> ctypes.Array:
-		return self._ram_buffer[start : start+size]
+		r = self._ram_buffer[start : start+size]
+		return (ctypes.c_ubyte * len(r))(*r)
 
 	def bind(self, target: t.Optional[int] = None) -> None:
 		"""

@@ -3,7 +3,7 @@ from random import randint
 import typing as t
 
 from pyglet.math import Vec2
-from pyglet.window.key import B, C, E, O, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
+from pyglet.window.key import B, C, E, F, O, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 
 from pyday_night_funkin.characters import Boyfriend
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
@@ -14,7 +14,6 @@ from pyday_night_funkin.note import NOTE_TYPE
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 	from pyday_night_funkin.main_game import Game
 
 
@@ -85,6 +84,8 @@ class TestScene(MusicBeatScene):
 			self.test_sprite.x += 1
 
 		if ksh[B]:
+			if ksh[F]:
+				self.boyfriend.flip_x = not self.boyfriend.flip_x
 			if ksh[W]:
 				self.boyfriend.animation.play("sing_note_up")
 			if ksh[A]:

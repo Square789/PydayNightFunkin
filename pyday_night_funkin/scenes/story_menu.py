@@ -1,5 +1,6 @@
 
 import typing as t
+from pyday_night_funkin.characters.daddy_dearest import DaddyDearest
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
@@ -39,18 +40,18 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 		yellow_stripe = self.create_object("mid", x=0, y=56)
 		yellow_stripe.make_rect(to_rgba_tuple(0xF9CF51FF), CNST.GAME_WIDTH, 400)
-		def _restart():
-			yellow_stripe.rotation = 0
-			yellow_stripe.scale_x = CNST.GAME_WIDTH
-			yellow_stripe.start_tween(
-				in_out_cubic,
-				{TWEEN_ATTR.ROTATION: 20, TWEEN_ATTR.SCALE_X: CNST.GAME_WIDTH * .5},
-				2.0,
-				_restart,
-			)
-		_restart()
 
 		_story_menu_char_anims = load_asset(ASSET.XML_STORY_MENU_CHARACTERS)
+
+		# I hate this so, so, so much.
+		tmp = self.create_object("fg", object_class=_WeekChar, initializing_char_type=DaddyDearest)
+		tmp.frames = _story_menu_char_anims
+		DaddyDearest.initialize_story_menu_sprite(tmp)
+		tmp.animation.play("story_menu")
+		tmp.scale = 0.5 # le hardcoded value
+		tmp.recalculate_positioning()
+		self._OPPONENT_SPRITE_BASE_WIDTH = tmp.width
+		self.remove(tmp)
 
 		# Week character setup (these get modified later)
 		self.week_chars: t.List[_WeekChar] = []
@@ -64,11 +65,12 @@ class StoryMenuScene(scenes.MusicBeatScene):
 				y = 70,
 			)
 			spr.frames = _story_menu_char_anims
-			(ox, oy), s = ty.get_story_menu_info()
 			ty.initialize_story_menu_sprite(spr)
 			spr.animation.play("story_menu")
-			spr.scale = s
-			spr.position = (spr.x + ox, spr.y + oy)
+			spr.recalculate_positioning()
+			spr.scale = ty.get_story_menu_info()[1]
+			spr.recalculate_positioning()
+			# spr.position = (spr.x + ox, spr.y + oy)
 			self.week_chars.append(spr)
 
 		ui_tex = load_asset(ASSET.XML_STORY_MENU_UI)
@@ -193,8 +195,13 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			if week_char_display_sprite.animation.exists("story_menu_confirm"):
 				week_char_display_sprite.animation.remove("story_menu_confirm")
 			target_char_type.initialize_story_menu_sprite(week_char_display_sprite)
+			week_char_display_sprite.animation.play("story_menu")
+
+			o, s = target_char_type.get_story_menu_info()
+			week_char_display_sprite.offset = o
+			week_char_display_sprite.scale = (self._OPPONENT_SPRITE_BASE_WIDTH * s) / week_char_display_sprite._frame.source_dimensions[0]
+
 			week_char_display_sprite.displayed_char_type = target_char_type
-			week_char_display_sprite.animation.play("story_menu", True)
 
 	def _on_diff_select(self, index: int, state: bool) -> None:
 		if not state:
