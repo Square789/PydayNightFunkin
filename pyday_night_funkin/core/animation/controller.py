@@ -204,7 +204,7 @@ class AnimationController:
 
 		# Apply new animation's offset and first frame
 		if self.current.offset is not None:
-			self._owner_sprite.offset = tuple(-self.current.offset)
+			self._owner_sprite.offset = tuple(self.current.offset)
 		self._on_new_frame()
 
 	def stop(self) -> None:

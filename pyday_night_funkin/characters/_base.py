@@ -66,14 +66,19 @@ class Character(PNFSprite):
 		raise NotImplementedError("Subclass this.")
 
 	@staticmethod
-	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], float]:
+	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], "Numeric", "Numeric"]:
 		"""
-		Returns a two-element tuple of the offset and scale the
-		character should have set when its `story_menu` animation is
-		displayed. Default is (100, 100) [you can blame the original
-		game for that] and 1.
+		Returns a three-element tuple of, when its story menu animaion
+		is displayed:
+			- The offset that should be applied to the sprite
+			- The scale the sprite should apply to a default factor of
+			  214.5 when it is selected
+			- An initial scale that should be applied to the story menu
+			  sprite if the story menu is initialized with it selected.
+		Default is (100, 100) [you can blame the original game for
+		that], 1 and 1.
 		"""
-		return ((0, 0), 1)
+		return ((100, 100), 1, 1)
 
 	@staticmethod
 	def get_string() -> str:

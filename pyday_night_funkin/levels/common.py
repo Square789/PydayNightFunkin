@@ -42,12 +42,12 @@ def setup_default_stage(self: "InGameScene") -> t.Tuple["PNFSprite", "PNFSprite"
 		"background1", "main", x=-650, y=600, image=load_asset(ASSET.IMG_STAGE_FRONT)
 	)
 	stagefront.scroll_factor = (.9, .9)
-	stagefront.scale = 1.1
+	stagefront.set_scale_and_repos(1.1)
 
 	stagecurtains = self.create_object(
 		"curtains", "main", x=-500, y=-300, image=load_asset(ASSET.IMG_STAGE_CURTAINS)
 	)
 	stagecurtains.scroll_factor = (1.3, 1.3)
-	stagecurtains.scale = 0.9
+	stagecurtains.set_scale_and_repos(.9)
 
 	return (stageback, stagefront, stagecurtains)

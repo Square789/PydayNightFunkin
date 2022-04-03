@@ -70,7 +70,7 @@ void main() {{
 
 	bvec2 flip = bvec2(bool(uint(flip.x) & 1), bool(uint(flip.y) & 1));
 
-	work_mat[3].xy = origin + translate + offset;
+	work_mat[3].xy = origin + translate - offset;
 	res_mat *= work_mat; work_mat = mat4(1.0);      // 5TH
 
 	work_mat[0][0] =  cos(radians(rotation));
@@ -578,7 +578,7 @@ class PNFSprite(WorldObject):
 		self.rgba = color
 		# no idea how good the logic on this is. Pixel origin is (.5, .5), so this should
 		# get rid of off-by-one errors especially notable on rects on screen borders.
-		self.offset = (int(w // 2 - .5), int(h // 2 - .5))
+		self.offset = (-int(w // 2 - .5), -int(h // 2 - .5))
 
 	def set_dimensions_from_frame(self) -> None:
 		"""
@@ -596,8 +596,8 @@ class PNFSprite(WorldObject):
 		moving a scaled frame. [Or something like that. I think.]
 		"""
 		self.offset = (
-			-0.5 * (self._frame.source_dimensions[0] - self._width),
-			-0.5 * (self._frame.source_dimensions[1] - self._height),
+			-0.5 * (self._width - self._frame.source_dimensions[0]),
+			-0.5 * (self._height - self._frame.source_dimensions[1]),
 		)
 
 	def center_origin(self) -> None:
@@ -609,6 +609,13 @@ class PNFSprite(WorldObject):
 			0.5 * self._frame.source_dimensions[0],
 			0.5 * self._frame.source_dimensions[1],
 		)
+
+	def get_current_frame_dimensions(self) -> Vec2:
+		""""
+		Returns the currently displayed frame's source dimensions.
+		No scaling, no nothing.
+		"""
+		return self._frame.source_dimensions
 
 	def recalculate_positioning(self) -> None:
 		"""
@@ -772,6 +779,10 @@ class PNFSprite(WorldObject):
 	def scale_x(self) -> "Numeric":
 		"""
 		The sprite's scale along the x axis.
+		The sprite's scale along the y axis.
+		Attention: Sprites get weird with scaling and rotation when
+		their scale is changed and `recalculate_positioning` is not
+		called. Try `set_scale_x_and_repos` for convenience instead.
 		"""
 		return self._scale_x
 
@@ -782,10 +793,18 @@ class PNFSprite(WorldObject):
 			"scale", (self._scale * new_scale_x, self._scale * self._scale_y) * 4
 		)
 
+	def set_scale_x_and_repos(self, new_scale_x: "Numeric") -> None:
+		"""Sets scale_x and calls `recalculate_positioning`"""
+		self.scale_x = new_scale_x
+		self.recalculate_positioning()
+
 	@property
 	def scale_y(self) -> "Numeric":
 		"""
 		The sprite's scale along the y axis.
+		Attention: Sprites get weird with scaling and rotation when
+		their scale is changed and `recalculate_positioning` is not
+		called. Try `set_scale_y_and_repos` for convenience instead.
 		"""
 		return self._scale_y
 
@@ -796,10 +815,18 @@ class PNFSprite(WorldObject):
 			"scale", (self._scale * self._scale_x, self._scale * new_scale_y) * 4
 		)
 
+	def set_scale_y_and_repos(self, new_scale_y: "Numeric") -> None:
+		"""Sets scale_y and calls `recalculate_positioning`"""
+		self.scale_y = new_scale_y
+		self.recalculate_positioning()
+
 	@property
 	def scale(self) -> "Numeric":
 		"""
 		The sprite's scale along both axes.
+		Attention: Sprites get weird with scaling and rotation when
+		their scale is changed and `recalculate_positioning` is not
+		called. Try `set_scale_and_repos` for convenience instead.
 		"""
 		return self._scale
 
@@ -810,6 +837,11 @@ class PNFSprite(WorldObject):
 			"scale",
 			(new_scale * self._scale_x, new_scale * self._scale_y) * 4,
 		)
+
+	def set_scale_and_repos(self, new_scale: "Numeric") -> None:
+		"""Sets scale and calls `recalculate_positioning`"""
+		self.scale = new_scale
+		self.recalculate_positioning()
 
 	@property
 	def origin(self) -> t.Tuple["Numeric", "Numeric"]:

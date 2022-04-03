@@ -63,5 +63,5 @@ WEEKS: t.Sequence[Week] = (
 		(chr.SkidNPump, chr.Boyfriend, chr.Girlfriend),
 		(Spookeez, South),
 		"week2.png",
-	)
+	),
 )

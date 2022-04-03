@@ -159,14 +159,14 @@ class NoteHandler(AbstractNoteHandler):
 				y = -2000,
 				image = self.note_sprites[cur_note.sustain_stage][cur_note.type],
 			)
-			sprite.scale = 0.7
-			sprite.recalculate_positioning()
+			sprite.set_scale_and_repos(.7)
 			if cur_note.sustain_stage is not SUSTAIN_STAGE.NONE:
 				sprite.opacity = 153
 				sprite.x += (_MAGIC_ARROW_OFFSET - sprite.width) / 2
 				if cur_note.sustain_stage is SUSTAIN_STAGE.TRAIL:
-					sprite.scale_y = self.game_scene.conductor.step_duration * (1/30) * speed
-					sprite.recalculate_positioning()
+					sprite.set_scale_y_and_repos(
+						self.game_scene.conductor.step_duration * (1/30) * speed
+					)
 			cur_note.sprite = sprite
 			self.notes_visible.end += 1
 

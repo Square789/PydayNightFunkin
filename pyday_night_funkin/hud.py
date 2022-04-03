@@ -76,11 +76,14 @@ class HUD():
 		self.static_arrows: t.List[t.Dict[NOTE_TYPE, "PNFSprite"]] = [{}, {}]
 		for i, note_type in product((0, 1), NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
-			arrow_width = note_sprites.frames[0].texture.width
 			arrow_sprite = self._scene.create_object(
 				self.arrow_layer,
 				self.camera,
-				x = 50 + (CNST.GAME_WIDTH // 2) * i + (note_type.get_order() * arrow_width * .7),
+				x = (
+					50 +
+					(CNST.GAME_WIDTH // 2) * i +
+					(note_type.get_order() * CNST.NOTE_WIDTH )
+				),
 				y = CNST.STATIC_ARROW_Y,
 			)
 			arrow_sprite.frames = note_sprites
@@ -90,8 +93,7 @@ class HUD():
 				(ANIMATION_TAG.STATIC, ANIMATION_TAG.PRESSED, ANIMATION_TAG.CONFIRM),
 			):
 				arrow_sprite.animation.add_by_prefix(anim_name, atlas_name, 24, False, tags=(tag,))
-			arrow_sprite.scale = .7
-			arrow_sprite.recalculate_positioning()
+			arrow_sprite.set_scale_and_repos(.7)
 			arrow_sprite.animation.play("static")
 			self.static_arrows[i][note_type] = arrow_sprite
 
@@ -135,8 +137,7 @@ class HUD():
 			image = self.note_rating_textures[rating],
 		)
 		combo_sprite.screen_center(CNST.GAME_DIMENSIONS)
-		combo_sprite.x = x - 40
-		combo_sprite.y -= 60
+		combo_sprite.position = (x - 40, combo_sprite.y - 60)
 		combo_sprite.scale = 0.7
 
 		combo_sprite.start_movement((0, -150), (0, 600))
@@ -159,8 +160,7 @@ class HUD():
 				image = self.number_textures[int(digit)],
 			)
 			sprite.screen_center(CNST.GAME_DIMENSIONS)
-			sprite.x = x + (43 * i) - 90
-			sprite.y += 80
+			sprite.position = (x + (43 * i) - 90, sprite.y + 80)
 			sprite.scale = .5
 
 			sprite.start_movement(

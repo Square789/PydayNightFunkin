@@ -41,8 +41,7 @@ class TitleScene(scenes.MusicBeatScene):
 
 		ng_logo = load_asset(ASSET.IMG_NEWGROUNDS_LOGO)
 		self.ng_logo = self.create_object("main", image=ng_logo, y=CNST.GAME_HEIGHT * 0.52)
-		self.ng_logo.scale = 0.8
-		self.ng_logo.recalculate_positioning()
+		self.ng_logo.set_scale_and_repos(.8)
 		self.ng_logo.screen_center(CNST.GAME_DIMENSIONS, y=False)
 		self.ng_logo.visible = False
 

@@ -49,8 +49,8 @@ class DaddyDearest(Character):
 		)
 
 	@staticmethod
-	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], float]:
-		return ((120, 200), 1)
+	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], "Numeric", "Numeric"]:
+		return ((120, 200), 1, .5)
 
 	@staticmethod
 	def get_string() -> str:

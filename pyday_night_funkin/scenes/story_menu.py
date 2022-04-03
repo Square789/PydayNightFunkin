@@ -6,8 +6,8 @@ import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.core.tweens import TWEEN_ATTR, in_out_cubic, linear
-from pyday_night_funkin.core.utils import lerp, to_rgb_tuple, to_rgba_tuple
+from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
+from pyday_night_funkin.core.utils import dump_sprite_info, lerp, to_rgb_tuple, to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin.menu import Menu
@@ -43,16 +43,6 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 		_story_menu_char_anims = load_asset(ASSET.XML_STORY_MENU_CHARACTERS)
 
-		# I hate this so, so, so much.
-		tmp = self.create_object("fg", object_class=_WeekChar, initializing_char_type=DaddyDearest)
-		tmp.frames = _story_menu_char_anims
-		DaddyDearest.initialize_story_menu_sprite(tmp)
-		tmp.animation.play("story_menu")
-		tmp.scale = 0.5 # le hardcoded value
-		tmp.recalculate_positioning()
-		self._OPPONENT_SPRITE_BASE_WIDTH = tmp.width
-		self.remove(tmp)
-
 		# Week character setup (these get modified later)
 		self.week_chars: t.List[_WeekChar] = []
 		for i in range(3):
@@ -60,15 +50,15 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			spr = self.create_object(
 				"fg",
 				object_class = _WeekChar,
-				initializing_char_type = ty,
-				x = (CNST.GAME_WIDTH * 0.25 * (i + 1)) - 150,
+				initializing_char_type = None if ty is WEEKS[0].story_menu_chars[0] else ty,
+				x = (CNST.GAME_WIDTH * 0.25 * (i + 1)) - 150 - (80 * (i == 1)),
 				y = 70,
 			)
 			spr.frames = _story_menu_char_anims
 			ty.initialize_story_menu_sprite(spr)
 			spr.animation.play("story_menu")
-			spr.recalculate_positioning()
-			spr.scale = ty.get_story_menu_info()[1]
+			#spr.recalculate_positioning()
+			spr.scale = ty.get_story_menu_info()[2]
 			spr.recalculate_positioning()
 			# spr.position = (spr.x + ox, spr.y + oy)
 			self.week_chars.append(spr)
@@ -101,16 +91,13 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.diff_arrow_left.animation.add_by_prefix("press", "arrow push left")
 		self.diff_arrow_left.animation.play("idle")
 
-		self.difficulty_indicator = self.create_object("bg", x=larrx + 130, y=larry)
-		self.difficulty_indicator.frames = ui_tex
-		# Shoutouts to tyler "ninjamuffin99" blevins for using specific
-		# animation frames for positioning of UI elements;
-		# The fact that `EASY` is the first animation added is relevant here.
 		_diff_offset_map = {
 			DIFFICULTY.EASY: (20, 0),
 			DIFFICULTY.NORMAL: (70, 0),
 			DIFFICULTY.HARD: (20, 0),
 		}
+		self.difficulty_indicator = self.create_object("bg", x=larrx + 130, y=larry)
+		self.difficulty_indicator.frames = ui_tex
 		for diff in DIFFICULTY:
 			self.difficulty_indicator.animation.add_by_prefix(
 				str(diff.value), diff.to_atlas_prefix(), offset=_diff_offset_map[diff]
@@ -197,9 +184,14 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			target_char_type.initialize_story_menu_sprite(week_char_display_sprite)
 			week_char_display_sprite.animation.play("story_menu")
 
-			o, s = target_char_type.get_story_menu_info()
+			o, s, _ = target_char_type.get_story_menu_info()
 			week_char_display_sprite.offset = o
-			week_char_display_sprite.scale = (self._OPPONENT_SPRITE_BASE_WIDTH * s) / week_char_display_sprite._frame.source_dimensions[0]
+			# 214.5 is extracted as the default `width` of sprite 0, which is truth is kind of
+			# a constant as Daddy Dearest will always be the first character fed in.
+			week_char_display_sprite.scale = (
+				(214.5 * s) /
+				week_char_display_sprite.get_current_frame_dimensions()[0]
+			) # workaround cause i dont feel like adding a setGraphicsSize equivalent
 
 			week_char_display_sprite.displayed_char_type = target_char_type
 

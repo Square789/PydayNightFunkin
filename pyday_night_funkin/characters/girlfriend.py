@@ -20,12 +20,12 @@ class Girlfriend(FlipIdleCharacter):
 			"cheer", "GF Cheer", 24, False, tags=(ANIMATION_TAG.SPECIAL,)
 		)
 		self.animation.add_by_indices(
-			"idle_left", "GF Dancing Beat", range(15), 24, False,
-			(0, -9), (ANIMATION_TAG.IDLE,)
+			"idle_left", "GF Dancing Beat", range(15), 24, False, (0, -9),
+			(ANIMATION_TAG.IDLE,)
 		)
 		self.animation.add_by_indices(
-			"idle_right", "GF Dancing Beat", range(15, 30), 24, False,
-			(0, -9), (ANIMATION_TAG.IDLE,)
+			"idle_right", "GF Dancing Beat", range(15, 30), 24, False, (0, -9),
+			(ANIMATION_TAG.IDLE,)
 		)
 		self.animation.add_by_prefix(
 			"sing_note_left", "GF left note", 24, False, (0, -19), (ANIMATION_TAG.SING,)
@@ -53,8 +53,8 @@ class Girlfriend(FlipIdleCharacter):
 		)
 
 	@staticmethod
-	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], float]:
-		return ((0, 0), .5)
+	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], "Numeric", "Numeric"]:
+		return ((100, 100), 1, .5)
 
 	@staticmethod
 	def get_string() -> str:

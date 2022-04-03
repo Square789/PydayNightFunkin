@@ -21,8 +21,17 @@ class TestScene(MusicBeatScene):
 	def __init__(self, game: "Game") -> None:
 		super().__init__(game)
 
-		self.pixel = self.create_object("ye_olde_layer")
-		self.pixel.make_rect(to_rgba_tuple(0xAA0000FF))
+		self.scroll_factor_tests = []
+		for i in range(5):
+			spr = self.create_object(
+				"ye_olde_layer",
+				"main",
+				x = 800 + i*25,
+				y = 100,
+			)
+			spr.make_rect(to_rgba_tuple((int(0xFFFFFF * (0.2 + i*0.15))) << 8 | 0xFF), 25, 25)
+			spr.scroll_factor = (0.25 * i, 0.25 * i)
+			self.scroll_factor_tests.append(spr)
 
 		self.test_sprite = self.create_object("ye_olde_layer", "main", y=200)
 		self.test_sprite.scale = 4

@@ -105,8 +105,8 @@ class Boyfriend(Character):
 		)
 
 	@staticmethod
-	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], float]:
-		return ((-80, 0), .9)
+	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], "Numeric", "Numeric"]:
+		return ((100, 100), 1, .9)
 
 	@staticmethod
 	def get_string() -> str:
