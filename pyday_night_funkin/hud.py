@@ -66,7 +66,7 @@ class HUD():
 
 		# HACK: This manipulates the cached note asset frame collection, since notes have
 		# botched offsets that are fixed with a hardcoded center->subtract in the main loop.
-		# Nobody wants that, so we hack in some offsets in right here.
+		# Nobody wants that, so we hack in some offsets right here.
 		# Both were probably found by trial-and-error, so good enough (TM)
 		note_sprites: "FrameCollection" = load_asset(ASSET.XML_NOTES)
 		for frame in note_sprites.frames:
@@ -79,11 +79,7 @@ class HUD():
 			arrow_sprite = self._scene.create_object(
 				self.arrow_layer,
 				self.camera,
-				x = (
-					50 +
-					(CNST.GAME_WIDTH // 2) * i +
-					(note_type.get_order() * CNST.NOTE_WIDTH )
-				),
+				x = 50 + (CNST.GAME_WIDTH // 2) * i + (note_type.get_order() * CNST.NOTE_WIDTH),
 				y = CNST.STATIC_ARROW_Y,
 			)
 			arrow_sprite.frames = note_sprites

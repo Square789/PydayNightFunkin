@@ -28,8 +28,7 @@ class MainMenuScene(BaseScene):
 
 		for bg in (self.bg, self.bg_magenta):
 			bg.scroll_factor = (0.0, 0.18)
-			bg.scale = 1.1
-			bg.recalculate_positioning()
+			bg.set_scale_and_repos(1.1)
 			bg.screen_center(CNST.GAME_DIMENSIONS)
 
 		self.bg_magenta.visible = False

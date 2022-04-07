@@ -57,10 +57,8 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			spr.frames = _story_menu_char_anims
 			ty.initialize_story_menu_sprite(spr)
 			spr.animation.play("story_menu")
-			#spr.recalculate_positioning()
 			spr.scale = ty.get_story_menu_info()[2]
 			spr.recalculate_positioning()
-			# spr.position = (spr.x + ox, spr.y + oy)
 			self.week_chars.append(spr)
 
 		ui_tex = load_asset(ASSET.XML_STORY_MENU_UI)

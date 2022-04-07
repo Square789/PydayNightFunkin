@@ -60,19 +60,21 @@ class InGameScene(scenes.MusicBeatScene):
 		# crashes.
 		# self.song_players = PlayerGroup((self.inst_player, self.voice_player))
 
-		self.song_data = None
+		self.song_data: t.Optional[t.Dict] = None
 
-		self.health = 0.5
-		self.combo = 0
-		self.score = 0
+		self.health: float = 0.5
+		self.combo: int = 0
+		self.score: int = 0
 
-		self._last_followed_singer = 0
-		self.zoom_cams = False
+		self._last_followed_singer: int = 0
+		self.zoom_cams: bool = False
 
-		self.gf_speed = 1
+		self.gf_speed: int = 1
 		"""
 		Causes `self.girlfriend.dance` to be called on each xth beat.
 		"""
+
+		self._conductor_resync_threshold: float = 20.0
 
 		self.setup()
 		self.load_song()
@@ -276,9 +278,12 @@ class InGameScene(scenes.MusicBeatScene):
 			self.state is GAME_STATE.PLAYING
 		):
 			self.conductor.song_position += dt * 1000
+			self._conductor_resync_threshold = lerp(self._conductor_resync_threshold, 20, .4 * dt)
+			print(self._conductor_resync_threshold)
 			if self.state is GAME_STATE.PLAYING:
 				discrepancy = self.inst_player.time * 1000 - self.conductor.song_position
-				if abs(discrepancy) > 20:
+				if abs(discrepancy) > self._conductor_resync_threshold:
+					self._conductor_resync_threshold *= 1.5
 					logger.warning(f"Player ahead of conductor by {discrepancy:.4f} ms.")
 					self.resync()
 
@@ -342,19 +347,21 @@ class InGameScene(scenes.MusicBeatScene):
 
 		self.boyfriend.dont_idle = bool(pressed)
 
-		prevent_scene_mod = False
+		handler_called = False
 		if self.game.debug:
 			if self.game.key_handler.just_pressed(CONTROL.DEBUG_DESYNC):
 				desync = random.randint(-400, 400)
 				logger.debug(f"Desyncing conductor by {desync}ms")
 				self.conductor.song_position += desync
 			if self.game.key_handler.just_pressed(CONTROL.DEBUG_WIN):
-				prevent_scene_mod = True
+				handler_called = True
 				self.on_song_end()
-			if self.game.key_handler.just_pressed(CONTROL.DEBUG_LOSE) and not prevent_scene_mod:
+			if self.game.key_handler.just_pressed(CONTROL.DEBUG_LOSE) and not handler_called:
+				handler_called = True
 				self.on_game_over()
 
-		if self.key_handler.just_pressed(CONTROL.ENTER) and not prevent_scene_mod:
+		if self.key_handler.just_pressed(CONTROL.ENTER) and not handler_called:
+			handler_called = True
 			self.on_pause()
 
 	def on_note_hit(self, note: Note) -> None:

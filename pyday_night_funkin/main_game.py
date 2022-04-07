@@ -26,7 +26,7 @@ from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.15"
+__version__ = "0.0.16"
 
 
 class _FPSData:
@@ -141,8 +141,21 @@ class Game():
 
 	def push_scene(self, new_scene_cls: t.Type[BaseScene], *args, **kwargs) -> None:
 		"""
-		Requests push of a new scene onto the scene stack which will then
-		be the topmost scene.
+		Requests push of a new scene onto the scene stack which will
+		then be the topmost scene.
+		The game instance will be passed as the first argument to the
+		scene class, with any args and kwargs following it.
+		Note that this method will not do its job if a scene has
+		already been pushed before in this update tick. Use
+		`push_scene_always` for that.
+		"""
+		if not self._pending_scene_stack_additions:
+			self._pending_scene_stack_additions.append((new_scene_cls, args, kwargs))
+
+	def push_scene_always(self, new_scene_cls: t.Type[BaseScene], *args, **kwargs) -> None:
+		"""
+		Requests push of a new scene onto the scene stack, which will
+		then be the topmost scene.
 		The game instance will be passed as the first argument to the
 		scene class, with any args and kwargs following it.
 		"""
@@ -159,10 +172,12 @@ class Game():
 		"""
 		Clears the existing scene stack and then sets the given scene
 		passed in the same manner as in `push_scene` to be its only
-		member.
+		member. Clears any possibly pending scene additions beforehand
+		as well.
 		"""
 		for scene in self._scene_stack:
 			self._pending_scene_stack_removals.add(scene)
+		self._pending_scene_stack_additions.clear()
 
 		self.push_scene(new_scene_type, *args, **kwargs)
 

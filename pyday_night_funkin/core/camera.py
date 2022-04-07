@@ -56,32 +56,6 @@ void main() {
 }
 """
 
-# CAMERA_QUAD_FRAGMENT_SHADER = f"""
-# #version 450
-# in vec2 texture_coords;
-# layout(origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;
-
-# out vec4 final_color;
-
-# uniform WindowBlock {{
-# 	mat4 projection;
-# 	mat4 view;
-# }} window;
-
-# uniform sampler2D camera_texture;
-
-# layout(std430, binding = {MAX_ALPHA_SSBO_BINDING_IDX}) readonly buffer MaxAlphaBuffer {{
-# 	uint a[];
-# }};
-
-# void main() {{
-# 	float ralpha = float(
-# 		a[int(gl_FragCoord.x) + int(gl_FragCoord.y) * 1280]
-# 	) / 256.0;
-# 	final_color = vec4(texture(camera_texture, texture_coords).rgb, ralpha);
-# }}
-# """
-
 CAMERA_QUAD_FRAGMENT_SHADER = f"""
 #version 450
 in vec2 texture_coords;
