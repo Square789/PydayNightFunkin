@@ -3,14 +3,18 @@
 from random import choice, randint
 import typing as t
 
-from pyday_night_funkin.characters import Character, Boyfriend, Girlfriend, SkidNPump
+from pyday_night_funkin.base_game_pack import Boyfriend, Girlfriend, SkidNPump, Monster
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.scenes import InGameScene
 from pyday_night_funkin.levels import common
 
 if t.TYPE_CHECKING:
+	from pyday_night_funkin.character import Character
 	from pyday_night_funkin.hud import HUD
 	from pyday_night_funkin.note_handler import AbstractNoteHandler
+
+
+MonsterChar = Monster # yikes
 
 
 class Week2Level(InGameScene):
@@ -62,7 +66,7 @@ class Week2Level(InGameScene):
 
 	def create_opponent(self) -> "Character":
 		return self.create_object(
-			"stage", "main", object_class=SkidNPump, scene=self, x=100, y=300
+			"stage", "main", SkidNPump, scene=self, x=100, y=300
 		)
 
 	def on_beat_hit(self) -> None:
@@ -91,12 +95,14 @@ class South(Week2Level):
 		return "south"
 
 
-# Later
-# class Monster(Week2Level):
-# 	@staticmethod
-# 	def get_song() -> str:
-# 		return "monster"
+class Monster(Week2Level):
+	@staticmethod
+	def get_song() -> str:
+		return "monster"
 
-# 	@staticmethod
-# 	def get_opponent_icon() -> str:
-# 		return "monster"
+	@staticmethod
+	def get_opponent_icon() -> str:
+		return "monster"
+
+	def create_opponent(self) -> "Character":
+		return self.create_object("stage", "main", MonsterChar, scene=self, x=100, y=230)

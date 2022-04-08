@@ -255,6 +255,8 @@ class BaseScene(Container):
 			self.game.window.set_viewport()
 			camera.draw_framebuffer()
 
+		gl.glUseProgram(0)
+
 	def get_context(
 		self,
 		layer_name: t.Optional[str] = None,

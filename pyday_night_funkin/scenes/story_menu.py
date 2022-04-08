@@ -1,6 +1,5 @@
 
 import typing as t
-from pyday_night_funkin.characters.daddy_dearest import DaddyDearest
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
@@ -14,7 +13,7 @@ from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.characters import Character
+	from pyday_night_funkin.character import Character
 	from pyday_night_funkin.levels import Week
 
 

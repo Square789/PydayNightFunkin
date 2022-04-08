@@ -1,7 +1,7 @@
 """
 Specifies the base game's assets and asset routers.
 This is meant to be expanded into some sort of modding system,
-but what for anyways
+but uuh, those plans are far in the future.
 """
 
 from loguru import logger
@@ -13,16 +13,19 @@ import schema
 from pyday_night_funkin.core.asset_system import (
 	ASSET, ASSET_ROUTER, AbstractAssetRouter, AssetSystem, AssetSystemEntry as ASE,
 	OggResource, ImageResource, JSONResource, PathResource, TextResource, XMLResource,
-	FontResource, register_assets, register_routers, add_asset_system
+	FontResource, register_assets, register_routers, add_asset_system, load_asset
 )
 from pyday_night_funkin.core.animation import FrameCollection
+from pyday_night_funkin.character import Character, FlipIdleCharacter
+from pyday_night_funkin.enums import ANIMATION_TAG, DIFFICULTY
 
 if t.TYPE_CHECKING:
 	from pathlib import Path
 	from xml.etree.ElementTree import ElementTree
 	from pyglet.image import Texture
 	from pyglet.media import Source
-	from pyday_night_funkin.enums import DIFFICULTY
+	from pyday_night_funkin.core.pnf_sprite import PNFSprite
+	from pyday_night_funkin.core.types import Numeric
 
 
 SONG_SCHEMA = schema.Schema(
@@ -36,9 +39,8 @@ SONG_SCHEMA = schema.Schema(
 					schema.Optional("changeBPM"): bool,
 					"mustHitSection": bool,
 					"sectionNotes": [[float, int, float]],
-					"typeOfSection": int,
 					# Keys I've seen that are ignored:
-					# altAnim.
+					# altAnim, typeOfSection.
 					schema.Optional(str): object,
 				},
 				lambda d: ("bpm" in d) or not ("changeBPM" in d),
@@ -383,3 +385,268 @@ def load() -> None:
 	})
 
 	add_asset_system(_DEFAULT_ASSET_SYSTEM)
+
+
+class Boyfriend(Character):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.frames = load_asset(ASSET.XML_BOYFRIEND)
+
+		self.animation.add_by_prefix(
+			"idle", "BF idle dance", 24, True, (-5, 0),
+			(ANIMATION_TAG.IDLE,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_left", "BF NOTE LEFT0", 24, False, (12, -6),
+			(ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"miss_note_left", "BF NOTE LEFT MISS", 24, False, (12, 24),
+			(ANIMATION_TAG.MISS,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_down", "BF NOTE DOWN0", 24, False, (-10, -50),
+			(ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"miss_note_down", "BF NOTE DOWN MISS", 24, False, (-11, -19),
+			(ANIMATION_TAG.MISS,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_up", "BF NOTE UP0", 24, False, (-29, 27),
+			(ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"miss_note_up", "BF NOTE UP MISS", 24, False, (-29, 27),
+			(ANIMATION_TAG.MISS,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_right", "BF NOTE RIGHT0", 24, False, (-38, -7),
+			(ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"miss_note_right", "BF NOTE RIGHT MISS", 24, False, (-30, 21),
+			(ANIMATION_TAG.MISS,)
+		)
+		self.animation.add_by_prefix("scared", "BF idle shaking", 24, True, (-4, 0))
+		self.animation.add_by_prefix(
+			"hey", "BF HEY!!", 24, False, (7, 4), (ANIMATION_TAG.SPECIAL,)
+		)
+		self.animation.add_by_prefix(
+			"game_over_ini", "BF dies", 24, False, (37, 11), (ANIMATION_TAG.GAME_OVER,)
+		)
+		self.animation.add_by_prefix(
+			"game_over_loop", "BF Dead Loop", 24, True, (37, 5), (ANIMATION_TAG.GAME_OVER,)
+		)
+		self.animation.add_by_prefix(
+			"game_over_confirm", "BF Dead confirm", 24, False, (37, 69),
+			(ANIMATION_TAG.GAME_OVER,)
+		)
+
+	def update(self, dt: float) -> None:
+		singing = self.animation.has_tag(ANIMATION_TAG.SING)
+		missing = self.animation.has_tag(ANIMATION_TAG.MISS)
+		if singing or missing:
+			self.hold_timer += dt
+		else:
+			self.hold_timer = 0
+
+		# If no keys are being held (dont_idle managed by the InGameScene) and the sing animation
+		# has been running for a while now, move back to idling.
+		if (
+			self.hold_timer > self.scene.conductor.beat_duration * 0.001 and
+			not self.dont_idle and singing
+		):
+			self.animation.play("idle")
+
+		# If le epic fail animation ended, return to idling at a specific frame for some reason
+		if missing and not self.animation.current.playing:
+			self.animation.play("idle", True, 10)
+
+		# Skip `Character.update` because it ruins everything
+		# Admittedly this also ruins everything but you can blame the original code for that.
+		super(Character, self).update(dt)
+
+	@staticmethod
+	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
+		spr.animation.add_by_prefix(
+			"story_menu", "BF idle dance white", 24, True,
+			tags = (ANIMATION_TAG.STORY_MENU,)
+		)
+		spr.animation.add_by_prefix(
+			"story_menu_confirm", "BF HEY!!", 24, False,
+			tags = (ANIMATION_TAG.STORY_MENU, ANIMATION_TAG.SPECIAL)
+		)
+
+	@staticmethod
+	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], "Numeric", "Numeric"]:
+		return ((100, 100), 1, .9)
+
+	@staticmethod
+	def get_string() -> str:
+		return "bf"
+
+
+class DaddyDearest(Character):
+
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.frames = load_asset(ASSET.XML_DADDY_DEAREST)
+
+		self.animation.add_by_prefix(
+			"idle", "Dad idle dance", 24, True, (0, 0), (ANIMATION_TAG.IDLE,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_left", "Dad Sing Note LEFT", 24, False, (-10, 10), (ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_down", "Dad Sing Note DOWN", 24, False, (0, -30), (ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_up", "Dad Sing Note UP", 24, False, (-6, 50), (ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_right", "Dad Sing Note RIGHT", 24, False, (0, 27), (ANIMATION_TAG.SING,)
+		)
+
+	# Idk why but if the original game says so
+	@staticmethod
+	def get_hold_timeout() -> "Numeric":
+		return 6.1
+
+	@staticmethod
+	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
+		spr.animation.add_by_prefix(
+			"story_menu",
+			"Dad idle dance BLACK LINE",
+			fps = 24,
+			loop = True,
+			tags = (ANIMATION_TAG.STORY_MENU,),
+		)
+
+	@staticmethod
+	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], "Numeric", "Numeric"]:
+		return ((120, 200), 1, .5)
+
+	@staticmethod
+	def get_string() -> str:
+		return "dad"
+
+
+class Girlfriend(FlipIdleCharacter):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.frames = load_asset(ASSET.XML_GIRLFRIEND)
+
+		self.animation.add_by_prefix(
+			"cheer", "GF Cheer", 24, False, tags=(ANIMATION_TAG.SPECIAL,)
+		)
+		self.animation.add_by_indices(
+			"idle_left", "GF Dancing Beat", range(15), 24, False, (0, -9),
+			(ANIMATION_TAG.IDLE,)
+		)
+		self.animation.add_by_indices(
+			"idle_right", "GF Dancing Beat", range(15, 30), 24, False, (0, -9),
+			(ANIMATION_TAG.IDLE,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_left", "GF left note", 24, False, (0, -19), (ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_down", "GF Down Note", 24, False, (0, -20), (ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_up", "GF Up Note", 24, False, (0, 4), (ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_right", "GF Right Note", 24, False, (0, -20), (ANIMATION_TAG.SING,)
+		)
+		# Nice space at the end bro
+		self.animation.add_by_prefix("scared", "GF FEAR ", 24, True, (-2, -17))
+
+	@staticmethod
+	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
+		spr.animation.add_by_prefix(
+			"story_menu",
+			"GF Dancing Beat WHITE",
+			fps = 24,
+			loop = True,
+			tags = (ANIMATION_TAG.STORY_MENU,),
+		)
+
+	@staticmethod
+	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], "Numeric", "Numeric"]:
+		return ((100, 100), 1, .5)
+
+	@staticmethod
+	def get_string() -> str:
+		return "gf"
+
+
+class SkidNPump(FlipIdleCharacter):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.frames = load_asset(ASSET.XML_SKID_N_PUMP)
+
+		self.animation.add_by_prefix(
+			"sing_note_up", "spooky UP NOTE", 24, False, (-20, 26),
+			(ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_down", "spooky DOWN note", 24, False, (-50, -130),
+			(ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_left", "note sing left", 24, False, (130, -10),
+			(ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_right", "spooky sing right", 24, False, (-130, -14),
+			(ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_indices(
+			"idle_left", "spooky dance idle", [0, 2, 6], 12, False, (0, 0),
+			(ANIMATION_TAG.IDLE,)
+		)
+		self.animation.add_by_indices(
+			"idle_right", "spooky dance idle", [8, 10, 12, 14], 12, False, (0, 0),
+			(ANIMATION_TAG.IDLE,)
+		)
+
+	@staticmethod
+	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
+		spr.animation.add_by_prefix(
+			"story_menu",
+			"spooky dance idle BLACK LINES",
+			fps = 24,
+			loop = True,
+			tags = (ANIMATION_TAG.STORY_MENU,)
+		)
+
+
+class Monster(Character):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.frames = load_asset(ASSET.XML_MONSTER)
+
+		# It's like they're trying to win a naming inconsistency award
+		self.animation.add_by_prefix(
+			"idle", "monster idle", 24, False, (0, 0), (ANIMATION_TAG.IDLE,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_up", "monster up note", 24, False, (-20, 50), (ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_down", "monster down", 24, False, (-30, -40), (ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_left", "Monster left note", 24, False, (-30, 0), (ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_right", "Monster Right note", 24, False, (-51, 0), (ANIMATION_TAG.SING,)
+		)

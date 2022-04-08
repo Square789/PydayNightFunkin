@@ -5,7 +5,7 @@ import typing as t
 from pyglet.math import Vec2
 from pyglet.window.key import B, C, E, F, O, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 
-from pyday_night_funkin.characters import Boyfriend
+from pyday_night_funkin.base_game_pack import Boyfriend
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.core.tweens import TWEEN_ATTR

@@ -279,7 +279,6 @@ class InGameScene(scenes.MusicBeatScene):
 		):
 			self.conductor.song_position += dt * 1000
 			self._conductor_resync_threshold = lerp(self._conductor_resync_threshold, 20, .4 * dt)
-			print(self._conductor_resync_threshold)
 			if self.state is GAME_STATE.PLAYING:
 				discrepancy = self.inst_player.time * 1000 - self.conductor.song_position
 				if abs(discrepancy) > self._conductor_resync_threshold:

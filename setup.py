@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 import os
 import platform
@@ -23,6 +24,11 @@ extensions = [
 	Extension(
 		name = "pyday_night_funkin.core.almost_xml_parser.almost_xml_parser",
 		sources = ["pyday_night_funkin/core/almost_xml_parser/almost_xml_parser.pyx"],
+		extra_compile_args = ECA,
+	),
+	Extension(
+		name = "pyday_night_funkin.core.graphics.allocation",
+		sources = ["pyday_night_funkin/core/graphics/allocation.pyx"],
 		extra_compile_args = ECA,
 	),
 ]

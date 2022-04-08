@@ -3,7 +3,7 @@ import typing as t
 
 from pyglet.math import Vec2
 
-from pyday_night_funkin.characters import Boyfriend, Girlfriend, FlipIdleCharacter
+from pyday_night_funkin.base_game_pack import Boyfriend, Girlfriend, FlipIdleCharacter
 from pyday_night_funkin.core.constants import ERROR_TEXTURE
 from pyday_night_funkin.core.animation import Animation
 from pyday_night_funkin.hud import HUD
@@ -11,7 +11,7 @@ from pyday_night_funkin.levels import common
 from pyday_night_funkin.scenes import InGameScene
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.characters import Character
+	from pyday_night_funkin.character import Character
 	from pyday_night_funkin.note_handler import AbstractNoteHandler
 
 

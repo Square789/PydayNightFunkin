@@ -2,14 +2,14 @@
 from loguru import logger
 import typing as t
 
-from pyday_night_funkin.characters import Boyfriend, DaddyDearest, Girlfriend
+from pyday_night_funkin.base_game_pack import Boyfriend, DaddyDearest, Girlfriend
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.levels import common
 from pyday_night_funkin.note_handler import AbstractNoteHandler
 from pyday_night_funkin.scenes.in_game import InGameScene
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.characters import Character, Boyfriend, Girlfriend
+	from pyday_night_funkin.character import Character
 
 
 class Week1Level(InGameScene):

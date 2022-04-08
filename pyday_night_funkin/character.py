@@ -102,3 +102,4 @@ class FlipIdleCharacter(Character):
 	def dance(self) -> None:
 		self._dance_right = not self._dance_right
 		self.animation.play("idle_right" if self._dance_right else "idle_left")
+

@@ -2,13 +2,13 @@
 from dataclasses import dataclass
 import typing as t
 
-from pyday_night_funkin import characters as chr
+from pyday_night_funkin.base_game_pack import Boyfriend, Girlfriend, DaddyDearest, SkidNPump
 from pyday_night_funkin.levels.tutorial import Tutorial
-from pyday_night_funkin.levels.week1level import Bopeebo, Fresh, DadBattle
-from pyday_night_funkin.levels.week2level import Spookeez, South
+from pyday_night_funkin.levels import week1level as week1
+from pyday_night_funkin.levels import week2level as week2
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.characters import Character
+	from pyday_night_funkin.character import Character
 	from pyday_night_funkin.scenes import InGameScene
 
 
@@ -48,20 +48,20 @@ class Week:
 WEEKS: t.Sequence[Week] = (
 	Week(
 		"",
-		(chr.DaddyDearest, chr.Boyfriend, chr.Girlfriend),
+		(DaddyDearest, Boyfriend, Girlfriend),
 		(Tutorial,),
 		"week0.png",
 	),
 	Week(
 		"DADDY DEAREST",
-		(chr.DaddyDearest, chr.Boyfriend, chr.Girlfriend),
-		(Bopeebo, Fresh, DadBattle),
+		(DaddyDearest, Boyfriend, Girlfriend),
+		(week1.Bopeebo, week1.Fresh, week1.DadBattle),
 		"week1.png",
 	),
 	Week(
 		"SPOOKY MONTH",
-		(chr.SkidNPump, chr.Boyfriend, chr.Girlfriend),
-		(Spookeez, South),
+		(SkidNPump, Boyfriend, Girlfriend),
+		(week2.Spookeez, week2.South, week2.Monster),
 		"week2.png",
 	),
 )

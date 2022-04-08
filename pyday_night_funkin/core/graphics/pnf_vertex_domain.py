@@ -2,12 +2,12 @@
 import ctypes
 import typing as t
 
-from pyglet.graphics import allocation
 from pyglet.gl import gl
 
 from pyday_night_funkin.core.graphics.shared import (
 	C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT, TYPE_MAP, USAGE_MAP
 )
+from pyday_night_funkin.core.graphics import allocation
 from pyday_night_funkin.core.graphics.vertexbuffer import MappedBufferObject
 from pyday_night_funkin.core.utils import dump_id
 
