@@ -8,7 +8,7 @@ import pyglet
 # You really want to leave this set to `True` unless you haven't
 # touched the rendering backend AND not seen an OpenGL error for at
 # least 20 hours on at least three different systems.
-pyglet.options["debug_gl"] = True
+pyglet.options["debug_gl"] = False
 
 from pyglet.window.key import KeyStateHandler
 
@@ -26,7 +26,7 @@ from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.17"
+__version__ = "0.0.18"
 
 
 class _FPSData:
@@ -76,6 +76,16 @@ class Game():
 			vsync = False,
 			caption = f"PydayNightFunkin' v{__version__}",
 		)
+
+		# OpenGL context is probably good here
+		try:
+			from pyday_night_funkin.core.graphics.cygl import gl as cygl
+		except ImportError:
+			pass
+		else:
+			logger.info("Cygl module found, initializing it.")
+			from pyglet.gl import gl
+			cygl.initialize(gl)
 
 		self.pyglet_ksh = KeyStateHandler()
 		self.key_handler = KeyHandler(self.save_data.config.key_bindings)

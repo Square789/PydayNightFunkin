@@ -1,4 +1,4 @@
-from core.stb_vorbis.stb_vorbis cimport *
+from pyday_night_funkin.core.stb_vorbis.stb_vorbis cimport *
 from libc.stdlib cimport malloc, free
 
 

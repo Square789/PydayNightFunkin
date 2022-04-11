@@ -1,6 +1,6 @@
 """
 This stuff is more or less a dumbed down copy of the vertexbuffers
-found in `pyglet.graphics.vertexbuffer`. Experimental and not finished.
+found in `pyglet.graphics.vertexbuffer`.
 """
 
 
@@ -45,12 +45,18 @@ class BufferObject:
 		Retrieves the next `size` bytes from `start`.
 		May be truncated if `size` exceeds the buffer's size.
 		"""
-		if start + size > self.size:
-			size = max(0, self.size - start)
-		fetched_size = min(self.size - start, size - start)
+		fetched_size = min(size, self.size - start)
 		res = (ctypes.c_ubyte * fetched_size)()
-		data = gl.glMapNamedBuffer(self.id, gl.GL_READ_ONLY)
-		ctypes.memmove(res, data + start, fetched_size)
+		if fetched_size == 0:
+			return res
+
+		data = gl.glMapNamedBufferRange(
+			self.id,
+			start,
+			fetched_size,
+			gl.GL_MAP_READ_BIT,
+		)
+		ctypes.memmove(res, data, fetched_size)
 		gl.glUnmapNamedBuffer(self.id)
 		return res
 
@@ -74,6 +80,12 @@ class BufferObject:
 			self.usage,
 		)
 		self.size = new_size
+
+	def ensure(self) -> None:
+		"""
+		Ensures that possibly pending data is uploaded to the GPU.
+		"""
+		pass
 
 	def delete(self) -> None:
 		"""Deletes the buffer on the OpenGL side."""
