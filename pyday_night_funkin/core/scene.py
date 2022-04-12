@@ -206,7 +206,7 @@ class BaseScene(Container):
 				logger.debug("hello")
 
 			if self.game.pyglet_ksh[B]:
-				self.batch._dump_debug_info()
+				print(self.batch.dump_debug_info())
 
 		self._passed_time += dt
 		self.clock.tick()

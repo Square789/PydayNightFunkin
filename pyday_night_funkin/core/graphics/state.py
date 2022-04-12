@@ -159,7 +159,7 @@ class GLState:
 		program: t.Optional["ShaderProgram"] = None,
 	) -> None:
 		self.parts = parts
-		self.part_set: t.Set[StateIdentifier] = {ident for ident, _ in parts}
+		self.part_set: t.FrozenSet[StateIdentifier] = frozenset(ident for ident, _ in parts)
 		self.program = program
 
 	@classmethod

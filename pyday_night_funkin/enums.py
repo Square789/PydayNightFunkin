@@ -58,3 +58,4 @@ class ANIMATION_TAG(IntEnum):
 	PRESSED = 6
 	CONFIRM = 7
 	GAME_OVER = 8
+	HAIR = 9

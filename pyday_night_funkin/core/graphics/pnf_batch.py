@@ -11,6 +11,7 @@ from pyday_night_funkin.core.graphics.pnf_vertex_domain import PNFVertexDomain
 from pyday_night_funkin.core.graphics.shared import C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT
 from pyday_night_funkin.core.graphics.state import GLState
 from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
+from pyday_night_funkin.core.utils import dump_id
 
 if t.TYPE_CHECKING:
 	from .pnf_group import PNFGroup
@@ -173,7 +174,7 @@ class DrawList:
 
 				# Extend current chain with all of the child group's subgroups
 				subchains, cg_intact = self._visit(child_group)
-				# If this group is a connecting group, consider it intact if the
+				# This group may be a connecting group, consider it intact if the
 				# children bridge to any drawable child group
 				group_intact = group_intact or cg_intact or bool(subchains)
 				for subchain in subchains:
@@ -211,12 +212,13 @@ class DrawList:
 
 		# Below converts the group chains into GL calls.
 		# TODO: This can certainly be optimized further by reordering
-		# groups that share a GroupChain smartly.
+		# groups that share a GroupChain smartly in order to minimize
+		# state switch cost.
 		# Unfortunately, I am too stupid to figure out how, so just have
 		# a sort by the most expensive thing to switch (shader programs)
 		for chain in chains:
 			chain.groups.sort(key=lambda g: g.state.program.id)
-			# chain.groups.sort(key=lambda g: hash(g.interfacer.domain.attribute_bundle))
+			# chain.groups.sort(key=lambda g: hash(g.state.part_set))
 
 		if not chains:
 			return [], []
@@ -324,6 +326,28 @@ class DrawList:
 		self._group_data = None
 		self._top_groups = None
 
+	def dump_group_tree(self, gi: t.Iterable["PNFGroup"] = None, indent: int = 2) -> str:
+		r = ""
+		if gi is None:
+			gi = self._top_groups
+		for g in gi:
+			gd = self._group_data[g]
+			r += f"{' ' * indent}Group {g}"
+			if gd.interfacer is not None:
+				r += (
+					f", Interfacer {dump_id(gd.interfacer)}, "
+					f"state hash {hash(gd.state.part_set)}"
+				)
+			r += "\n"
+			if gd.children:
+				r += self.dump_group_tree(self._group_data[g].children, indent + 2)
+
+		return r
+
+	def dump_debug_info(self) -> str:
+		r = f"  Calls in draw list: {len(self.funcs)}\n"
+		r += self.dump_group_tree()
+		return r
 
 class PNFBatch:
 	"""
@@ -465,38 +489,15 @@ class PNFBatch:
 		for dl in self._draw_lists.values():
 			dl.delete()
 
-	def _dump_debug_info(self) -> None:
-		pass
-	# 	print(self._dump())
+	def dump_debug_info(self) -> None:
+		r = ""
+		r += f"\nInterfacers created and alive: {len(self._interfacers)}"
+		r += f"\nDraw list info:"
+		for dl_name, dl in self._draw_lists.items():
+			r += f"\nDraw list {dl_name}:"
+			r += dl.dump_debug_info()
 
-	# def _dump(self) -> str:
-	# 	r = ""
-	# 	for k, v in self._vertex_domains.items():
-	# 		r += repr(k) + ": " + repr(v) + "\n"
-	# 		for name, attr in v.attributes.items():
-	# 			r += f"  {name:<20}: {attr!r}\n"
-	# 			arr_ptr = ctypes.cast(attr.gl_buffer.data, ctypes.POINTER(attr.c_type))
-	# 			r += (" " * 22) + ": "
-	# 			r += ' '.join(
-	# 				str(arr_ptr[x])
-	# 				for x in range(min(100, attr.gl_buffer.size // ctypes.sizeof(attr.c_type)))
-	# 			)
-	# 			r += "\n"
-	# 		r += "\n"
-
-	# 	idx_type = C_TYPE_MAP[_INDEX_TYPE]
-	# 	idx_ptr = ctypes.cast(self.index_buffer.data, ctypes.POINTER(idx_type))
-	# 	r += "\nIndex buffer: "
-	# 	r += ' '.join(
-	# 		str(idx_ptr[x])
-	# 		for x in range(min(100, self.index_buffer.size // ctypes.sizeof(idx_type)))
-	# 	)
-
-	# 	r += f"\n\Interfacers created and alive: {len(self._interfacers)}"
-	# 	r += f"\nGroups in group registry: {len(self._group_data)}"
-	# 	r += f"\nCalls in draw list: {len(self._draw_list)}"
-
-	# 	return r
+		return r
 
 
 _fake_batch = PNFBatch()

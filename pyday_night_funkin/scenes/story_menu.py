@@ -56,7 +56,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			spr.frames = _story_menu_char_anims
 			ty.initialize_story_menu_sprite(spr)
 			spr.animation.play("story_menu")
-			spr.scale = ty.get_story_menu_info()[2]
+			spr.scale = 0.9 if i == 1 else 0.5
 			spr.recalculate_positioning()
 			self.week_chars.append(spr)
 
@@ -180,16 +180,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 				week_char_display_sprite.animation.remove("story_menu_confirm")
 			target_char_type.initialize_story_menu_sprite(week_char_display_sprite)
 			week_char_display_sprite.animation.play("story_menu")
-
-			o, s, _ = target_char_type.get_story_menu_info()
-			week_char_display_sprite.offset = o
-			# 214.5 is extracted as the default `width` of sprite 0, which is truth is kind of
-			# a constant as Daddy Dearest will always be the first character fed in.
-			week_char_display_sprite.scale = (
-				(214.5 * s) /
-				week_char_display_sprite.get_current_frame_dimensions()[0]
-			) # workaround cause i dont feel like adding a setGraphicsSize equivalent
-
+			target_char_type.transform_story_menu_sprite(week_char_display_sprite)
 			week_char_display_sprite.displayed_char_type = target_char_type
 
 	def _on_diff_select(self, index: int, state: bool) -> None:

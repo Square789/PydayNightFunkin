@@ -254,6 +254,8 @@ def load() -> None:
 		"XML_SKID_N_PUMP",
 		"XML_MONSTER",
 		"XML_HALLOWEEN_BG",
+		"XML_PICO",
+
 		"IMG_STAGE_BACK",
 		"IMG_STAGE_FRONT",
 		"IMG_STAGE_CURTAINS",
@@ -280,7 +282,20 @@ def load() -> None:
 		"IMG_MENU_BG",
 		"IMG_MENU_DESAT",
 		"IMG_MENU_BG_BLUE",
+		"IMG_PHILLY_BEHIND_TRAIN",
+		"IMG_PHILLY_CITY",
+		"IMG_PHILLY_SKY",
+		"IMG_PHILLY_STREET",
+		"IMG_PHILLY_TRAIN",
+		# my god why
+		"IMG_PHILLY_WIN0",
+		"IMG_PHILLY_WIN1",
+		"IMG_PHILLY_WIN2",
+		"IMG_PHILLY_WIN3",
+		"IMG_PHILLY_WIN4",
+
 		"FONT_VCR",
+
 		"SOUND_INTRO_3",
 		"SOUND_INTRO_2",
 		"SOUND_INTRO_1",
@@ -290,14 +305,20 @@ def load() -> None:
 		"SOUND_MENU_SCROLL",
 		"SOUND_THUNDER0",
 		"SOUND_THUNDER1",
+		"SOUND_TRAIN",
+
 		"MUSIC_MENU",
 		"MUSIC_GAME_OVER",
 		"MUSIC_GAME_OVER_END",
+
 		"PATH_SONGS",
 		"PATH_DATA",
 		"PATH_WEEK_HEADERS",
+
 		"TXT_INTRO_TEXT",
+
 		"SONGS",
+
 		"WEEK_HEADERS",
 	)
 
@@ -321,6 +342,7 @@ def load() -> None:
 		ASSET.XML_SKID_N_PUMP: ASE(XMLResource("week2/images/spooky_kids_assets.xml"), ASSET_ROUTER.XML),
 		ASSET.XML_MONSTER: ASE(XMLResource("week2/images/Monster_Assets.xml"), ASSET_ROUTER.XML),
 		ASSET.XML_HALLOWEEN_BG: ASE(XMLResource("week2/images/halloween_bg.xml"), ASSET_ROUTER.XML),
+		ASSET.XML_PICO: ASE(XMLResource("week3/images/Pico_FNF_assetss.xml"), ASSET_ROUTER.XML),
 
 		ASSET.IMG_STAGE_BACK: ImageResource("shared/images/stageback.png"),
 		ASSET.IMG_STAGE_FRONT: ImageResource("shared/images/stagefront.png"),
@@ -348,7 +370,16 @@ def load() -> None:
 		ASSET.IMG_MENU_BG: ImageResource("preload/images/menuBG.png"),
 		ASSET.IMG_MENU_DESAT: ImageResource("preload/images/menuDesat.png"),
 		ASSET.IMG_MENU_BG_BLUE: ImageResource("preload/images/menuBGBlue.png"),
-
+		ASSET.IMG_PHILLY_BEHIND_TRAIN: ImageResource("week3/images/philly/behindTrain.png"),
+		ASSET.IMG_PHILLY_CITY: ImageResource("week3/images/philly/city.png"),
+		ASSET.IMG_PHILLY_SKY: ImageResource("week3/images/philly/sky.png"),
+		ASSET.IMG_PHILLY_STREET: ImageResource("week3/images/philly/street.png"),
+		ASSET.IMG_PHILLY_TRAIN: ImageResource("week3/images/philly/train.png"),
+		ASSET.IMG_PHILLY_WIN0: ImageResource("week3/images/philly/win0.png"),
+		ASSET.IMG_PHILLY_WIN1: ImageResource("week3/images/philly/win1.png"),
+		ASSET.IMG_PHILLY_WIN2: ImageResource("week3/images/philly/win2.png"),
+		ASSET.IMG_PHILLY_WIN3: ImageResource("week3/images/philly/win3.png"),
+		ASSET.IMG_PHILLY_WIN4: ImageResource("week3/images/philly/win4.png"),
 		ASSET.FONT_VCR: FontResource("fonts/vcr.ttf"),
 
 		ASSET.SOUND_INTRO_3: OggResource("shared/sounds/intro3.ogg"),
@@ -360,6 +391,7 @@ def load() -> None:
 		ASSET.SOUND_MENU_SCROLL: OggResource("preload/sounds/scrollMenu.ogg"),
 		ASSET.SOUND_THUNDER0: OggResource("shared/sounds/thunder_1.ogg"),
 		ASSET.SOUND_THUNDER1: OggResource("shared/sounds/thunder_2.ogg"),
+		ASSET.SOUND_TRAIN: OggResource("shared/sounds/train_passes.ogg"),
 
 		ASSET.MUSIC_MENU: OggResource("preload/music/freakyMenu.ogg"),
 		ASSET.MUSIC_GAME_OVER: OggResource("shared/music/gameOver.ogg"),
@@ -480,10 +512,6 @@ class Boyfriend(Character):
 		)
 
 	@staticmethod
-	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], "Numeric", "Numeric"]:
-		return ((100, 100), 1, .9)
-
-	@staticmethod
 	def get_string() -> str:
 		return "bf"
 
@@ -527,8 +555,9 @@ class DaddyDearest(Character):
 		)
 
 	@staticmethod
-	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], "Numeric", "Numeric"]:
-		return ((120, 200), 1, .5)
+	def transform_story_menu_sprite(spr: "PNFSprite") -> None:
+		spr.offset = (120, 200)
+		spr.scale = 214.5 / spr.get_current_frame_dimensions()[0]
 
 	@staticmethod
 	def get_string() -> str:
@@ -566,6 +595,26 @@ class Girlfriend(FlipIdleCharacter):
 		)
 		# Nice space at the end bro
 		self.animation.add_by_prefix("scared", "GF FEAR ", 24, True, (-2, -17))
+		self.animation.add_by_indices(
+			"hair_blow", "GF Dancing Beat Hair blowing", [*range(4)], 24, True,
+			(45, -8), (ANIMATION_TAG.HAIR,)
+		)
+		self.animation.add_by_indices(
+			"hair_fall", "GF Dancing Beat Hair Landing", [*range(12)], 24, False,
+			(0, -9), (ANIMATION_TAG.HAIR,)
+		)
+
+	def dance(self) -> None:
+		if not self.animation.has_tag(ANIMATION_TAG.HAIR):
+			super().dance()
+
+	def update(self, dt: float) -> None:
+		super().update(dt)
+		if (ca := self.animation.current) is None:
+			return
+
+		if ANIMATION_TAG.HAIR in ca.tags and not ca.playing:
+			self.animation.play("idle_right")
 
 	@staticmethod
 	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
@@ -576,10 +625,6 @@ class Girlfriend(FlipIdleCharacter):
 			loop = True,
 			tags = (ANIMATION_TAG.STORY_MENU,),
 		)
-
-	@staticmethod
-	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], "Numeric", "Numeric"]:
-		return ((100, 100), 1, .5)
 
 	@staticmethod
 	def get_string() -> str:
@@ -649,4 +694,37 @@ class Monster(Character):
 		)
 		self.animation.add_by_prefix(
 			"sing_note_right", "Monster Right note", 24, False, (-51, 0), (ANIMATION_TAG.SING,)
+		)
+
+
+class Pico(Character):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.frames = load_asset(ASSET.XML_PICO)
+
+		self.animation.add_by_prefix(
+			"idle", "Pico Idle Dance", offset=(0, 0), tags=(ANIMATION_TAG.IDLE,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_up", "pico Up note0", offset=(-29, 27), tags=(ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_down", "Pico Down Note0", offset=(200, -70), tags=(ANIMATION_TAG.SING,)
+		)
+		# MY GOD WHY
+		self.animation.add_by_prefix(
+			"sing_note_left", "Pico Note Right0", offset=(65, 9), tags=(ANIMATION_TAG.SING,)
+		)
+		self.animation.add_by_prefix(
+			"sing_note_right", "Pico NOTE LEFT0", offset=(-68, -7), tags=(ANIMATION_TAG.SING,)
+		)
+
+		self.flip_x = True
+
+	@staticmethod
+	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
+		spr.animation.add_by_prefix(
+			"story_menu", "Pico Idle Dance", 24, True,
+			tags = (ANIMATION_TAG.STORY_MENU,)
 		)

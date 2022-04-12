@@ -66,19 +66,19 @@ class Character(PNFSprite):
 		raise NotImplementedError("Subclass this.")
 
 	@staticmethod
-	def get_story_menu_info() -> t.Tuple[t.Tuple["Numeric", "Numeric"], "Numeric", "Numeric"]:
+	def transform_story_menu_sprite(spr: PNFSprite) -> None:
 		"""
-		Returns a three-element tuple of, when its story menu animaion
-		is displayed:
-			- The offset that should be applied to the sprite
-			- The scale the sprite should apply to a default factor of
-			  214.5 when it is selected
-			- An initial scale that should be applied to the story menu
-			  sprite if the story menu is initialized with it selected.
-		Default is (100, 100) [you can blame the original game for
-		that], 1 and 1.
+		Applies a transformation to the story menu sprite that makes it
+		look acceptable enough.
+		By default, sets the sprite offset to (100, 100), the scale
+		to 214.5 / current frame width. [Parameters like that are
+		probably an indicator i should loosen up how closely I want to
+		be following the OG game's spaghetti.]
 		"""
-		return ((100, 100), 1, 1)
+		spr.offset = (100, 100)
+		# 214.5 is extracted as the default `width` of sprite 0, which is truth is kind of
+		# a constant as Daddy Dearest will always be the character the story menu is created with.
+		spr.scale = 214.5 / spr.get_current_frame_dimensions()[0]
 
 	@staticmethod
 	def get_string() -> str:

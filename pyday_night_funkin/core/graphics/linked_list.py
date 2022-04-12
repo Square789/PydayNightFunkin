@@ -14,6 +14,11 @@ class LinkedList(t.Generic[T]):
 		self._head: t.Optional["LinkedListNode"] = None
 		self._tail: t.Optional["LinkedListNode"] = None
 
+	def __iter__(self) -> t.Iterable[T]:
+		c = self._head
+		while c is not None:
+			yield c.value
+			c = c.next
 
 class LinkedListNode(t.Generic[T]):
 	__slots__ = ("value", "next")

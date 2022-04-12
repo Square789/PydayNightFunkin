@@ -15,7 +15,7 @@ from pyday_night_funkin.core.utils import lerp
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.characters import Character, Boyfriend, Girlfriend
+	from pyday_night_funkin.base_game_pack import Character, Boyfriend, Girlfriend
 	from pyday_night_funkin.core.scene import BaseScene
 	from pyday_night_funkin.main_game import Game
 	from pyday_night_funkin.note_handler import AbstractNoteHandler
