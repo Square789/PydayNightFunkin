@@ -7,6 +7,7 @@ from loguru import logger
 from pyglet.gl import gl
 
 from pyday_night_funkin.core.graphics.interfacer import PNFBatchInterfacer
+from pyday_night_funkin.core.graphics.pnf_group import PNFGroup
 from pyday_night_funkin.core.graphics.pnf_vertex_domain import PNFVertexDomain
 from pyday_night_funkin.core.graphics.shared import C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT
 from pyday_night_funkin.core.graphics.state import GLState
@@ -78,8 +79,10 @@ class DrawList:
 		needs to be drawn.
 		"""
 
-		self._top_groups: t.Set["PNFGroup"] = set()
+		# self._top_groups: t.Set["PNFGroup"] = set()
+		self._top_group = PNFGroup()
 		self._group_data: t.Dict["PNFGroup", "GroupData"] = defaultdict(GroupData)
+		self._group_data[self._top_group]
 		self.index_buffer = BufferObject(gl.GL_ELEMENT_ARRAY_BUFFER, 0, gl.GL_DYNAMIC_DRAW)
 
 	def _add_group_parent(self, group: "PNFGroup") -> None:
@@ -87,12 +90,15 @@ class DrawList:
 		Simpler case of `add_group` for when group parents are added
 		to the group tree. Should only be called by `add_group`.
 		"""
-		if group.parent is None:
-			self._top_groups.add(group)
+		parent = group.parent
+		if parent is None:
+			self._group_data[self._top_group].children.add(group)
 		else:
-			if group.parent not in self._group_data:
-				self._add_group_parent(group.parent)
-			self._group_data[group.parent].children.add(group)
+			if parent not in self._group_data:
+				self._add_group_parent(parent)
+			# elif self._group_data[parent].interfacer is not None:
+			# 	raise ValueError("Drawable groups can not have children!")
+			self._group_data[parent].children.add(group)
 
 	def add_group(
 		self,
@@ -109,7 +115,7 @@ class DrawList:
 			raise ValueError(f"Group {group!r} is already known in DrawList {self.name!r}.")
 
 		if group.parent is None:
-			self._top_groups.add(group)
+			self._group_data[self._top_group].children.add(group)
 		else:
 			if group.parent not in self._group_data:
 				self._add_group_parent(group.parent)
@@ -136,7 +142,7 @@ class DrawList:
 		"""
 		if group.parent is not None and group.parent in self._group_data:
 			self._group_data[group.parent].children.remove(group)
-		self._top_groups.discard(group)
+		self._group_data[self._top_group].children.discard(group)
 		self._group_data.pop(group)
 
 		self._dirty = True
@@ -157,32 +163,43 @@ class DrawList:
 			# Don't draw invisible groups now
 			chains.append([group])
 
+		if group_intact and self._group_data[group].children:
+			raise RuntimeError("Drawn group with children found.")
+
 		if self._group_data[group].children:
-			# The only case where order can be dropped is if many childless
-			# groups of same order are on the same level.
 			sc = sorted(self._group_data[group].children)
 			cur_order = sc[0].order
-			cur_group_list: t.List["PNFGroup"] = []
 
+			withheld_group_chains: t.List[t.List["PNFGroup"]] = []
+			cur_group_chain: t.List["PNFGroup"] = []
 			for child_group in sc:
 				# If a child group breaks order (Booo!), add chain so far and reset
 				if child_group.order != cur_order:
-					if cur_group_list:
-						chains.append(cur_group_list)
-						cur_group_list = []
+					if cur_group_chain:
+						chains.append(cur_group_chain)
+						cur_group_chain = []
+					if withheld_group_chains:
+						chains.extend(withheld_group_chains)
+						withheld_group_chains = []
 					cur_order = child_group.order
 
-				# Extend current chain with all of the child group's subgroups
 				subchains, cg_intact = self._visit(child_group)
 				# This group may be a connecting group, consider it intact if the
 				# children bridge to any drawable child group
 				group_intact = group_intact or cg_intact or bool(subchains)
-				for subchain in subchains:
-					cur_group_list.extend(subchain)
+				if len(subchains) == 1:
+					# This is an unordered child group. Neat, expand current chain with it
+					# fully
+					cur_group_chain.extend(subchains[0])
+				else:
+					# We want to add these last in order to be able to merge chains with
+					# no order differences first.
+					withheld_group_chains.extend(subchains)
 
 			# Add last outstanding group list
-			if cur_group_list:
-				chains.append(cur_group_list)
+			if cur_group_chain:
+				chains.append(cur_group_chain)
+			chains.extend(withheld_group_chains)
 
 		# This group is dangling, delete it.
 		if not group_intact:
@@ -203,25 +220,25 @@ class DrawList:
 		calls to draw the scene which you want to draw and a list
 		of indices the index buffer must contain at that point.
 		"""
-		chains: t.List[GroupChain] = []
-		for group in sorted(self._top_groups):
-			chains.extend(
-				GroupChain(self._group_data[g] for g in raw_chain)
-				for raw_chain in self._visit(group)[0]
-			)
+		chains = [
+			GroupChain(self._group_data[g] for g in raw_chain)
+			for raw_chain in self._visit(self._top_group)[0]
+		]
+
+		if not chains:
+			return [], []
 
 		# Below converts the group chains into GL calls.
 		# TODO: This can certainly be optimized further by reordering
 		# groups that share a GroupChain smartly in order to minimize
 		# state switch cost.
 		# Unfortunately, I am too stupid to figure out how, so just have
-		# a sort by the most expensive thing to switch (shader programs)
+		# whatever this is. Smushes together common states, which is good
+		# enough for the most part.
 		for chain in chains:
-			chain.groups.sort(key=lambda g: g.state.program.id)
-			# chain.groups.sort(key=lambda g: hash(g.state.part_set))
+			chain.groups.sort(key=lambda g: hash(g.state.part_set))
 
-		if not chains:
-			return [], []
+		# AT THIS POINT the chains can be flattened.
 
 		cur_state = GLState.from_state_parts()
 		draw_list = []
@@ -324,12 +341,12 @@ class DrawList:
 		self.index_buffer.delete()
 
 		self._group_data = None
-		self._top_groups = None
+		# self._top_groups = None
 
 	def dump_group_tree(self, gi: t.Iterable["PNFGroup"] = None, indent: int = 2) -> str:
 		r = ""
 		if gi is None:
-			gi = self._top_groups
+			gi = [self._top_group]
 		for g in gi:
 			gd = self._group_data[g]
 			r += f"{' ' * indent}Group {g}"
@@ -342,11 +359,14 @@ class DrawList:
 			if gd.children:
 				r += self.dump_group_tree(self._group_data[g].children, indent + 2)
 
+
 		return r
 
 	def dump_debug_info(self) -> str:
 		r = f"  Calls in draw list: {len(self.funcs)}\n"
 		r += self.dump_group_tree()
+		r += "Generated group chains:\n"
+		r += "\n".join(map(repr, self._visit(self._top_group)[0]))
 		return r
 
 class PNFBatch:
@@ -489,12 +509,11 @@ class PNFBatch:
 		for dl in self._draw_lists.values():
 			dl.delete()
 
-	def dump_debug_info(self) -> None:
-		r = ""
-		r += f"\nInterfacers created and alive: {len(self._interfacers)}"
+	def dump_debug_info(self) -> str:
+		r = f"Interfacers created and alive: {len(self._interfacers)}"
 		r += f"\nDraw list info:"
 		for dl_name, dl in self._draw_lists.items():
-			r += f"\nDraw list {dl_name}:"
+			r += f"\nDraw list {dl_name}:\n"
 			r += dl.dump_debug_info()
 
 		return r
