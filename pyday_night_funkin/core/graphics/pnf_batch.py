@@ -359,7 +359,6 @@ class DrawList:
 			if gd.children:
 				r += self.dump_group_tree(self._group_data[g].children, indent + 2)
 
-
 		return r
 
 	def dump_debug_info(self) -> str:

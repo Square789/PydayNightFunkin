@@ -26,7 +26,7 @@ from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 if ogg_decoder not in pyglet.media.get_decoders():
 	pyglet.media.add_decoders(ogg_decoder)
 
-__version__ = "0.0.20"
+__version__ = "0.0.21"
 
 
 class _FPSData:
@@ -259,4 +259,5 @@ class Game():
 		for scene in self._scenes_to_update:
 			scene.update(dt)
 
+		self.key_handler.post_update()
 		self._update_time = (perf_counter() - stime) * 1000

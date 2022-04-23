@@ -9,14 +9,14 @@ class KeyHandler():
 	"""
 	Class to manage key presses.
 	"""
+
 	def __init__(self, key_bindings: t.Dict[CONTROL, int]):
 		"""
 		# TODO Le doc
 		"""
 		self.key_bindings = key_bindings
-		# 0: All held keys
-		# 1: Whether key just got pressed (reset once just_pressed) is queried
-		self.control_states = {k: [set(), False] for k in key_bindings.keys()}
+		self.control_activators: t.Dict[CONTROL, t.Set[int]] = {k: set() for k in key_bindings.keys()}
+		self._just_pressed_controls: t.Set[CONTROL] = set()
 
 		_key_to_control_map = defaultdict(list)
 		for ctrl, keys in key_bindings.items():
@@ -29,17 +29,17 @@ class KeyHandler():
 			return
 		for control in self._key_to_control_map[key_sym]:
 			pressed_before = self.pressed(control)
-			self.control_states[control][0].add(key_sym)
+			self.control_activators[control].add(key_sym)
 			if not pressed_before:
-				self.control_states[control][1] = True
+				self._just_pressed_controls.add(control)
 
 	def on_key_release(self, key_sym: int, modifiers: int) -> None:
 		if key_sym not in self._key_to_control_map:
 			return
 		for control in self._key_to_control_map[key_sym]:
-			self.control_states[control][0].discard(key_sym)
+			self.control_activators[control].discard(key_sym)
 			if not self.pressed(control):
-				self.control_states[control][1] = False
+				self._just_pressed_controls.discard(control)
 
 	def just_pressed(self, control: CONTROL) -> bool:
 		"""
@@ -49,15 +49,22 @@ class KeyHandler():
 		calls as long as the control is not fully released by deactivation
 		of all its triggering keys and pressed again.
 		"""
-		retv = self.control_states[control][1]
-		self.control_states[control][1] = False
-		return retv
+		return control in self._just_pressed_controls
 
 	def pressed(self, control: CONTROL) -> bool:
 		"""
 		Returns whether a control is pressed/being held down.
 		"""
-		return bool(self.control_states[control][0])
+		return bool(self.control_activators[control])
+
+	def post_update(self) -> None:
+		"""
+		This method will remove the "just pressed" association of all
+		pressed controls where it may exist.
+		Should never be called by user code, this will be managed
+		by the game loop.
+		"""
+		self._just_pressed_controls.clear()
 
 	def __getitem__(self, control: CONTROL) -> bool:
 		return self.pressed(control)

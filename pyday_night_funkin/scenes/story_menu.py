@@ -228,10 +228,6 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			self.game.set_scene(scenes.MainMenuScene)
 
 		self.week_menu.update()
-		# NOTE: diff_menu can't ever see CONTROL.CONFIRM as pressed
-		# since week_menu eats it up. Add a tiny hack here for that.
-		if self.week_menu.choice_made:
-			self.diff_menu.choice_made = True
 		self.diff_menu.update()
 
 		self.diff_arrow_left.animation.play("press" if kh[CONTROL.LEFT] else "idle")

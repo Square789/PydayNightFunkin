@@ -224,5 +224,6 @@ class NoteHandler(AbstractNoteHandler):
 			):
 				# Congrats, note hit
 				res_hit_map[note.type] = note
+				note.on_hit(song_pos, self.safe_window)
 
 		return opponent_hit_notes, missed_notes, res_hit_map

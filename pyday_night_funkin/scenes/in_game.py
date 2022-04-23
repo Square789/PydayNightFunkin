@@ -367,7 +367,6 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		Called whenever a note is hit.
 		"""
-		note.on_hit(self.conductor.song_position, self.game.save_data.config.safe_window)
 		self.boyfriend.hold_timer = 0.0
 		self.boyfriend.animation.play(f"sing_note_{note.type.name.lower()}", True)
 
