@@ -133,8 +133,8 @@ class Week3Level(InGameScene):
 			if not self.train_sound_player.playing:
 				self.train_sound_player.set(self.train_sound)
 
-	def delete(self) -> None:
-		super().delete()
+	def destroy(self) -> None:
+		super().destroy()
 		self.train_sound_player.delete()
 
 

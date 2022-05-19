@@ -35,6 +35,9 @@ class PNFPlayer(Player):
 			self.next_source()
 		self._set_playing(False)
 
+	def delete(self) -> None:
+		self._set_playing(False)
+		super().delete()
 
 class SFXRingFullException(RuntimeError):
 	pass
@@ -77,7 +80,6 @@ class SFXRing():
 
 	def delete(self) -> None:
 		for player in self.players:
-			player.stop()
 			player.delete()
 		self.players = []
 		# Unnecessary but i like me some good cleanup

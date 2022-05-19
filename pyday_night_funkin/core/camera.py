@@ -64,7 +64,6 @@ in vec4 fill_color;
 out vec4 final_color;
 
 uniform sampler2D camera_texture;
-uniform sampler2D max_alpha_texture;
 
 void main() {{
 	vec4 out_color = texture(camera_texture, texture_coords);
@@ -327,7 +326,7 @@ class Camera:
 	def delete(self) -> None:
 		self.framebuffer.delete()
 		self.framebuffer = None
-		self._max_alpha_texture = None
 		self.texture = None
 		self.quad_vbo.delete()
+		self.quad_vbo = None
 		gl.glDeleteVertexArrays(1, ctypes.byref(self.quad_vao))

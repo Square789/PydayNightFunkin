@@ -103,7 +103,6 @@ def initialize(module):
 {}
 
 	cdef set uninitialized = set(NEEDS_INITIALIZATION)
-	cdef SetGLFunc_f
 	for name in dir(module):
 		if name in NEEDS_INITIALIZATION:
 			# print("initing", name)

@@ -41,7 +41,9 @@ if __name__ == "__main__":
 	if USE_EXPERIMENTAL_CYGL:
 		r = subprocess.run([sys.executable, "./pyday_night_funkin/core/graphics/cygl/gen_gl.py"])
 		if r.returncode != 0:
+			print("gen_gl script failed.")
 			sys.exit(1)
+
 		extensions.extend((
 			Extension(
 				name = "pyday_night_funkin.core.graphics.cygl.gl",

@@ -299,6 +299,10 @@ class BaseScene(Container):
 		"""
 		self.game.remove_scene(subscene)
 
+	@t.final
+	def delete(self) -> None:
+		raise RuntimeError("To delete scenes, use `destroy`!")
+
 	def destroy(self) -> None:
 		"""
 		Destroy the scene by deleting its members and graphics batch.

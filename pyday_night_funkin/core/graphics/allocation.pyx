@@ -63,8 +63,31 @@ import array
 #  expensive
 
 
+# This is seriously not worth the effort, allocation takes
+# up extremely little time.
+# cdef class SizeTArrayList:
+# 	cdef size_t *ptr
+# 	cdef size_t length
+# 	cdef size_t capacity
+
+# 	def __cinit__(self, size_t ini_capacity):
+# 		pass
+
+# 	cdef uint8_t insert(self, size_t index, size_t value):
+# 		return 0
+
+# 	cdef void delete(self, size_t index):
+# 		pass
+
+# 	cdef uint8_t append(self, size_t value):
+# 		return 0
+
+# 	def __dealloc__(self):
+# 		pass
+
+
 class AllocatorMemoryException(Exception):
-	"""The buffer is not large enough to fulfil an allocation.
+	"""The buffer is not large enough to fulfill an allocation.
 
 	Raised by `Allocator` methods when the operation failed due to
 	lack of buffer space.  The buffer should be increased to at least
@@ -182,8 +205,8 @@ cdef class Allocator:
 			if free_size == size:
 				# Merge previous block with this one (removing this free space)
 				self.sizes[i] += free_size + alloc_size
-				del self.starts[i+1]
-				del self.sizes[i+1]
+				self.starts.pop(i + 1)
+				self.sizes.pop(i + 1)
 				return free_start
 			elif free_size > size:
 				# Increase size of previous block to intrude into this free
@@ -260,8 +283,8 @@ cdef class Allocator:
 				# Merge block with next (region is expanded in place to
 				# exactly fill the free space)
 				self.sizes[i] += free_size + self.sizes[i + 1]
-				del self.starts[i + 1]
-				del self.sizes[i + 1]
+				self.starts.pop(i + 1)
+				self.sizes.pop(i + 1)
 				return start
 			elif free_size > new_size - size:
 				# Expand region in place
@@ -313,8 +336,8 @@ cdef class Allocator:
 
 		if p == 0 and size == alloc_size:
 			# Remove entire block
-			del self.starts[i]
-			del self.sizes[i]
+			self.starts.pop(i)
+			self.sizes.pop(i)
 		elif p == 0:
 			# Truncate beginning of block
 			self.starts[i] += size
