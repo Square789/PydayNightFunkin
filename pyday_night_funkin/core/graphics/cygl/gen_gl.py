@@ -29,19 +29,23 @@ ctypedef long int GLintptr
 ctypedef double GLdouble
 ctypedef char GLchar
 ctypedef unsigned int GLbitfield
-"""
 
-PXD_GL_REG_STRUCT_HEAD = """
+{funcptr_defs}
+
+cdef extern from *:
+	\"\"\"
+{gl_constant_c_defines}	\"\"\"
+{gl_constant_cython_extern_defs}
+
 ctypedef struct GLRegistry:
-"""
+{gl_registry_struct_def}
 
-PXD_TEMPLATE_END = """
 cdef GLRegistry *cygl_get_reg() except NULL
 cdef uint8_t cygl_errcheck() except 1
 """
 
 
-PYX_TEMPLATE_HEAD = """
+PYX_TEMPLATE = """
 import ctypes
 from pyday_night_funkin.core.graphics.cygl cimport gl
 
@@ -50,16 +54,12 @@ cdef bint _is_initialized = False
 cdef gl.GLRegistry _gl_reg
 
 ctypedef void (* SetGLFunc_f)(size_t addressof)
-"""
 
-
-PYX_TEMPLATE_COMMENT = """
-# Completely unsafe hacks that makes function addresses available to cython.
+# Completely unsafe hacks that make function addresses available to cython.
 # I love and hate C for this.
 # https://stackoverflow.com/questions/49635105/ctypes-get-the-actual-address-of-a-c-function
-"""
 
-PYX_TEMPLATE_TAIL = """
+{initializer_funcs}
 
 class OpenGLError(Exception):
 	pass
@@ -74,15 +74,15 @@ cdef uint8_t cygl_errcheck() except 1:
 		return 0
 
 	cdef str err_str = "Unkown error code. Something is seriously off."
-	if err == _gl_reg.INVALID_ENUM:
+	if err == GL_INVALID_ENUM:
 		err_str = "Invalid enum value (Oooh what could the cause for this one be?)"
-	elif err == _gl_reg.INVALID_VALUE:
+	elif err == GL_INVALID_VALUE:
 		err_str = "Invalid value (Most descriptive OpenGL error)"
-	elif err == _gl_reg.INVALID_OPERATION:
+	elif err == GL_INVALID_OPERATION:
 		err_str = "Invalid operation (Happy guessing!)"
-	elif err == _gl_reg.INVALID_FRAMEBUFFER_OPERATION:
+	elif err == GL_INVALID_FRAMEBUFFER_OPERATION:
 		err_str = "Invalid Framebuffer operation"
-	elif err == _gl_reg.OUT_OF_MEMORY:
+	elif err == GL_OUT_OF_MEMORY:
 		err_str = "Out of memory"
 	raise OpenGLError(err_str)
 
@@ -93,14 +93,12 @@ cdef GLRegistry *cygl_get_reg() except NULL:
 	return &_gl_reg
 
 
-NEEDS_INITIALIZATION = {}
+NEEDS_INITIALIZATION = {command_translation_dict}
 
 def initialize(module):
 	global _is_initialized
 	if _is_initialized:
 		return
-
-{}
 
 	cdef set uninitialized = set(NEEDS_INITIALIZATION)
 	for name in dir(module):
@@ -127,15 +125,15 @@ DEFINED_TYPES = {
 }
 
 REQUIRED_ENUMS = {
-	"GL_DYNAMIC_READ": "DYNAMIC_READ",
-	"GL_READ_ONLY": "READ_ONLY",
-	"GL_MAP_READ_BIT": "MAP_READ_BIT",
+	"GL_DYNAMIC_READ",
+	"GL_READ_ONLY",
+	"GL_MAP_READ_BIT",
 
-	"GL_INVALID_ENUM": "INVALID_ENUM",
-	"GL_INVALID_VALUE": "INVALID_VALUE",
-	"GL_INVALID_OPERATION": "INVALID_OPERATION",
-	"GL_INVALID_FRAMEBUFFER_OPERATION": "INVALID_FRAMEBUFFER_OPERATION",
-	"GL_OUT_OF_MEMORY": "OUT_OF_MEMORY",
+	"GL_INVALID_ENUM",
+	"GL_INVALID_VALUE",
+	"GL_INVALID_OPERATION",
+	"GL_INVALID_FRAMEBUFFER_OPERATION",
+	"GL_OUT_OF_MEMORY",
 }
 
 REQUIRED_COMMANDS = {
@@ -179,14 +177,14 @@ def main():
 	rr = RegistryReader.from_url()
 	# rr = RegistryReader.from_file("/tmp/gl.xml")
 
-	enum_defs = ""
-	pxd_trail = ""
+	enum_defines = ""
+	enum_cython_externs = ""
+	funcptr_defs = ""
 	# Add needed enums
 	for enum in rr.read_enums().values():
 		if enum.name in REQUIRED_ENUMS:
-			translated_enum_name = REQUIRED_ENUMS[enum.name]
-			enum_defs += f"\t_gl_reg.{translated_enum_name} = {enum.value}\n"
-			gl_reg_struct_members += f"\tGLenum {translated_enum_name}\n"
+			enum_defines += f"\t#define {enum.name} {enum.value}\n"
+			enum_cython_externs += f"\tGLenum {enum.name}\n"
 
 	# Add needed command declarations
 	for name, cmd in rr.read_commands().items():
@@ -216,7 +214,7 @@ def main():
 
 		translated_name = REQUIRED_COMMANDS[name]
 		fptr_name = _make_funcptr_name(translated_name)
-		pxd_trail += f"ctypedef {rtype}(* {fptr_name})({', '.join(args)})\n"
+		funcptr_defs += f"ctypedef {rtype}(* {fptr_name})({', '.join(args)})\n"
 		gl_reg_struct_members += f"\t{fptr_name} {translated_name}\n"
 
 
@@ -232,24 +230,18 @@ def main():
 	command_translation_dict += "}\n"
 
 	with (cygl_path / "gl.pxd").open("w", encoding="utf-8") as f:
-		f.write(
-			PXD_TEMPLATE +
-			pxd_trail +
-			"\n" +
-			PXD_GL_REG_STRUCT_HEAD +
-			gl_reg_struct_members +
-			PXD_TEMPLATE_END
-		)
+		f.write(PXD_TEMPLATE.format(
+			funcptr_defs = funcptr_defs,
+			gl_constant_c_defines = enum_defines,
+			gl_constant_cython_extern_defs = enum_cython_externs,
+			gl_registry_struct_def = gl_reg_struct_members,
+		))
 
 	with (cygl_path / "gl.pyx").open("w", encoding="utf-8") as f:
-		f.write(
-			PYX_TEMPLATE_HEAD +
-			"\n" +
-			PYX_TEMPLATE_COMMENT +
-			initializer_funcs +
-			"\n" +
-			PYX_TEMPLATE_TAIL.format(command_translation_dict, enum_defs)
-		)
+		f.write(PYX_TEMPLATE.format(
+			initializer_funcs = initializer_funcs,
+			command_translation_dict = command_translation_dict,
+		))
 
 	return 0
 

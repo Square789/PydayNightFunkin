@@ -28,7 +28,7 @@ cdef class BufferObject:
 			gl = cygl_get_reg()
 
 		if usage == 0:
-			usage = gl.DYNAMIC_READ
+			usage = GL_DYNAMIC_READ
 
 		self.buffer_exists = False
 		self.usage = usage
@@ -67,7 +67,7 @@ cdef class BufferObject:
 			self.id,
 			start,
 			fetched_size,
-			gl.MAP_READ_BIT,
+			GL_MAP_READ_BIT,
 		)
 		cygl_errcheck()
 

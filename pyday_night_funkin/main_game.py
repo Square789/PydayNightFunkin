@@ -23,7 +23,7 @@ from pyday_night_funkin.core.key_handler import KeyHandler
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 
-__version__ = "0.0.22"
+__version__ = "0.0.23"
 
 
 class _FPSData:
