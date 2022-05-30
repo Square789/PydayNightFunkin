@@ -20,8 +20,8 @@ class Tutorial(InGameScene):
 		super().__init__(*args, **kwargs)
 
 	@staticmethod
-	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return common.get_layer_names()
+	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
+		return common.get_default_layers()
 
 	@staticmethod
 	def get_opponent_icon() -> str:

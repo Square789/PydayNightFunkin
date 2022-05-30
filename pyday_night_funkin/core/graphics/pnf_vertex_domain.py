@@ -207,19 +207,13 @@ class PNFVertexDomain:
 		"""
 		Binds the VAO for the program using the given draw list's
 		index buffer.
-		Remember to call `unbind_vao` before calling **any** vertex
-		gl functions afterwards, otherwise it will be erroneously
-		affected.
+		Remember to call `gl.glBindVertexArray(0)` before calling
+		**any** vertex gl functions afterwards, otherwise it will be
+		erroneously affected.
 		Raises `KeyError` if `ensure_vao` was never called for the
 		given program.
 		"""
 		gl.glBindVertexArray(self._vaos[draw_list_name][program.id])
-
-	def unbind_vao(self) -> None:
-		"""
-		Unbinds the active VAO.
-		"""
-		gl.glBindVertexArray(0)
 
 	def allocate(self, size: int) -> int:
 		"""

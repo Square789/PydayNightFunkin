@@ -67,11 +67,11 @@ class TestScene(MusicBeatScene):
 		)
 
 	@staticmethod
-	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
+	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		return ("ye_olde_layer", "fore")
 
 	@staticmethod
-	def get_camera_names() -> t.Sequence[str]:
+	def get_default_cameras() -> t.Sequence[t.Union[str, t.Tuple[str, int, int]]]:
 		return ("main",)
 
 	def update(self, dt: float) -> None:

@@ -54,7 +54,7 @@ class MainMenuScene(BaseScene):
 		)
 
 	@staticmethod
-	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
+	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		return ("bg", "bg_mag", "fg")
 
 	def _on_select(self, i: int, state: bool) -> None:

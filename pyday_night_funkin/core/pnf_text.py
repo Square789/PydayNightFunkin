@@ -9,12 +9,9 @@ Known to fail with:
 	- "Zalgo" text
 """
 
-# Module is a dysfunctional hack as of now (17.03.2022),
-# but I'm confident there will be something in like 2 weeks
-
 # Module barely does its job as of 20.03, still lacking
-# features and can be optimized to the moon and back [although
-# for that use C-extensions and do it later.
+# features and can be improved and optimized to the moon
+# and back [although for that use C-extensions and do it later.
 # Remember: MAKE IT WORK. MAKE IT RIGHT. MAKE IT FAST]
 
 from enum import IntEnum
@@ -58,6 +55,7 @@ layout(std140) uniform CameraAttrs {
 	float zoom;
 	vec2  position;
 	vec2  GAME_DIMENSIONS;
+	vec2  dimensions;
 } camera;
 
 

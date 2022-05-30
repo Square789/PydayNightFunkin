@@ -21,6 +21,10 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.types import Numeric
 
 
+# NOTE: Scene definitely broken since 0.0.12-dev-? graphics rewrites,
+# can't really be bothered to fix it
+
+
 vertex_shader = """
 #version 450
 in vec2 position;
@@ -76,9 +80,6 @@ void main() {
 }
 
 """
-
-# NOTE: Scene definitely broken since 0.0.12-dev-? graphics rewrites,
-# can't really be bothered to fix it
 
 class Triangle(SceneObject):
 	shader_container = ShaderContainer(vertex_shader, fragment_shader)
@@ -155,7 +156,7 @@ class TriangleScene(BaseScene):
 		)
 
 	@staticmethod
-	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
+	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		return (("main", True),)
 
 	def update(self, dt: float) -> None:

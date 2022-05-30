@@ -11,7 +11,7 @@ from pyday_night_funkin.core.animation.frames import AnimationFrame, FrameCollec
 from pyday_night_funkin.core.constants import ERROR_TEXTURE, PIXEL_TEXTURE
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as s
-from pyday_night_funkin.core.animation import Animation, AnimationController
+from pyday_night_funkin.core.animation import AnimationController
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
@@ -60,6 +60,7 @@ layout(std140) uniform CameraAttrs {{
 	float zoom;
 	vec2  position;
 	vec2  GAME_DIMENSIONS;
+	vec2  dimensions;
 }} camera;
 
 

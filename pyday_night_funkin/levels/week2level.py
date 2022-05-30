@@ -35,7 +35,7 @@ class Week2Level(InGameScene):
 		return common.create_note_handler(self)
 
 	@staticmethod
-	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
+	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		return (
 			"background", "girlfriend", "stage",
 			("ui_combo", True), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"

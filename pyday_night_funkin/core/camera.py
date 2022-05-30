@@ -4,7 +4,7 @@ import typing as t
 
 from pyglet.gl import gl
 from pyglet.image import Framebuffer, Texture
-from pyglet.math import Mat4, Vec2
+from pyglet.math import Vec2
 
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
 from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
@@ -43,6 +43,7 @@ layout (std140) uniform CameraAttrs {
 	float zoom;
 	vec2  position;
 	vec2  GAME_DIMENSIONS;
+	vec2  dimensions;
 } camera;
 
 void main() {
@@ -246,7 +247,7 @@ class Camera:
 			ubo.zoom = self._zoom
 			ubo.position[:] = (self._x, self._y)
 			ubo.GAME_DIMENSIONS[:] = (GAME_WIDTH, GAME_HEIGHT)
-			#ubo.GAME_DIMENSIONS[:] = (self._width, self._height)
+			ubo.dimensions[:] = (self._width, self._height)
 
 	def _update_vbo(self) -> None:
 		x1 = self._screen_x

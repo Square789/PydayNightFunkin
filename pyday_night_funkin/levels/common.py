@@ -13,7 +13,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 	from pyday_night_funkin.scenes import InGameScene
 
-def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
+def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 	return (
 		"background0", "background1", "girlfriend", "stage", "curtains",
 		("ui_combo", True), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"

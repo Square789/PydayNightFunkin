@@ -33,11 +33,11 @@ class GameOverScene(scenes.MusicBeatScene):
 		self.sfx_ring.play(load_asset(ASSET.SOUND_LOSS))
 
 	@staticmethod
-	def get_camera_names() -> t.Sequence[str]:
+	def get_default_cameras() -> t.Sequence[t.Union[str, t.Tuple[str, int, int]]]:
 		return ("main",)
 
 	@staticmethod
-	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
+	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		return ("bg", "main")
 
 	def update(self, dt: float) -> None:

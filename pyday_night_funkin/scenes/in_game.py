@@ -98,7 +98,7 @@ class InGameScene(scenes.MusicBeatScene):
 
 	# Override from BaseScene
 	@staticmethod
-	def get_camera_names() -> t.Sequence[str]:
+	def get_default_cameras() -> t.Sequence[t.Union[str, t.Tuple[str, int, int]]]:
 		return ("main", "hud")
 
 	@staticmethod

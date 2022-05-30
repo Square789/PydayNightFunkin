@@ -150,7 +150,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		)
 
 	@staticmethod
-	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
+	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		return ("bg", "mid", "fg")
 
 	def _on_week_select(self, index: int, state: bool) -> None:

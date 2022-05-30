@@ -81,7 +81,7 @@ class BaseScene(Container):
 			(name, Layer(PNFGroup(order=i), force_order))
 			for i, (name, force_order) in enumerate(
 				(x, False) if not isinstance(x, tuple) else x
-				for x in self.get_layer_names()
+				for x in self.get_default_layers()
 			)
 		)
 		if not self.layers:
@@ -90,11 +90,14 @@ class BaseScene(Container):
 		self._passed_time = 0.0
 		self.clock = Clock(self._get_elapsed_time)
 
+		# self._default_camera = Camera(-100, -100, CNST.GAME_WIDTH + 200, CNST.GAME_HEIGHT + 200)
+		# self._default_camera.clear_color = (0.5, 0, 0, 1.0)
 		self._default_camera = Camera(0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
-		# TODO allow creation of different size cameras
 		self.cameras = OrderedDict(
-			(name, Camera(0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT))
-			for name in self.get_camera_names()
+			(name, Camera(0, 0, w, h)) for name, w, h in (
+				(x, CNST.GAME_WIDTH, CNST.GAME_HEIGHT) if not isinstance(x, tuple) else x
+				for x in self.get_default_cameras()
+			)
 		)
 
 		# Fails when nothing is added to a camera otherwise.
@@ -104,7 +107,7 @@ class BaseScene(Container):
 		self.sfx_ring = SFXRing()
 
 	@staticmethod
-	def get_camera_names() -> t.Sequence[str]:
+	def get_default_cameras() -> t.Sequence[t.Union[str, t.Tuple[str, int, int]]]:
 		"""
 		Gets a list of the names to be used for this scene's cameras.
 		Typically you'd use a main and a HUD/UI camera.
@@ -112,7 +115,7 @@ class BaseScene(Container):
 		return ()
 
 	@staticmethod
-	def get_layer_names() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
+	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		"""
 		Gets a list of layer names to be used for this scene.
 		The layers can later be referenced by name in `create_object`.
@@ -234,21 +237,40 @@ class BaseScene(Container):
 
 		for camera in (self._default_camera, *self.cameras.values()):
 			camera.framebuffer.bind()
-			# NOTE: While the viewport is nice to shrink the game, it also affects all draw
+			# While the viewport is nice to shrink the game, it also affects all draw
 			# operations on the cameras, which crams the sprites into their fb's corners.
 			# Need to set it to this for framebuffer rendering
-			# TODO: Gotta do more experimenting with haxeflixel cameras to accurately replicate
+			# TODO: Camera system does not work for cameras that are not the same dimensions
+			# as the game. Fix that at some point, probably.
+			# I have no idea what I am thinking with the math below and what is right and what
+			# I want out of life.
+
 			self.game.window.set_viewport((
+				# -camera._screen_x,
+				# -camera._screen_y,
+
 				0,
 				0,
-				CNST.GAME_WIDTH**2 // camera._width,
-				CNST.GAME_HEIGHT**2 // camera._height,
+
+				# === #
+
+				# CNST.GAME_WIDTH**2 // camera._width,
+				# CNST.GAME_HEIGHT**2 // camera._height,
+
+				# camera._width**2 // CNST.GAME_WIDTH,
+				# camera._height**2 // CNST.GAME_HEIGHT,
+
+				CNST.GAME_WIDTH,
+				CNST.GAME_HEIGHT,
+
+				# camera._width,
+				# camera._height,
 			))
-			#0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT
-			#0, 0, camera._width, camera._height
 			gl.glClearColor(*camera.clear_color)
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-			gl.glBlendFuncSeparate(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA, gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
+			gl.glBlendFuncSeparate(
+				gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA, gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA
+			)
 			self.batch.draw(camera) # Draw everything in the camera's draw list to the camera's FBO
 			camera.framebuffer.unbind() # Binds default fbo again
 

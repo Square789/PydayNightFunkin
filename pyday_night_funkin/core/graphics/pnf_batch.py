@@ -79,7 +79,6 @@ class DrawList:
 		needs to be drawn.
 		"""
 
-		# self._top_groups: t.Set["PNFGroup"] = set()
 		self._top_group = PNFGroup()
 		self._group_data: t.Dict["PNFGroup", "GroupData"] = defaultdict(GroupData)
 		self._group_data[self._top_group]
@@ -303,7 +302,7 @@ class DrawList:
 			s=cur_index_start*_INDEX_TYPE_SIZE, d=cur_vertex_layout[0]
 		):
 			gl.glDrawElements(m, c, t, s)
-			d.unbind_vao()
+			gl.glBindVertexArray(0)
 
 		draw_list.append(final_draw_elements)
 
@@ -352,8 +351,8 @@ class DrawList:
 			r += f"{' ' * indent}Group {g}"
 			if gd.interfacer is not None:
 				r += (
-					f", Interfacer {dump_id(gd.interfacer)}, "
-					f"state hash {hash(gd.state.part_set)}"
+					f", Interfacer {dump_id(gd.interfacer)}, state hash "
+					f"{hash(gd.state.part_set)}"
 				)
 			r += "\n"
 			if gd.children:
@@ -367,6 +366,7 @@ class DrawList:
 		r += "Generated group chains:\n"
 		r += "\n".join(map(repr, self._visit(self._top_group)[0]))
 		return r
+
 
 class PNFBatch:
 	"""
