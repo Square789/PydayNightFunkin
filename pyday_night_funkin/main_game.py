@@ -8,7 +8,7 @@ import pyglet
 # You really want to leave this set to `True` unless you haven't
 # touched the rendering backend AND not seen an OpenGL error for at
 # least 20 hours on at least three different systems.
-pyglet.options["debug_gl"] = False
+pyglet.options["debug_gl"] = True
 
 from pyglet.window.key import KeyStateHandler
 
@@ -23,7 +23,7 @@ from pyday_night_funkin.core.key_handler import KeyHandler
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 
-__version__ = "0.0.25"
+__version__ = "0.0.26"
 
 
 class _FPSData:

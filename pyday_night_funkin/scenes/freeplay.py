@@ -59,9 +59,7 @@ class FreeplayScene(BaseScene):
 		score_bg.make_rect(to_rgba_tuple(CNST.BLACK), CNST.GAME_WIDTH * .35, 66)
 		score_bg.opacity = 153
 
-		self.displayed_songs: t.List["scenes.InGameScene"] = []
-		for week in WEEKS:
-			self.displayed_songs.extend(week.levels)
+		self.displayed_songs = [lvl for week in WEEKS for lvl in week.levels]
 		if not self.displayed_songs:
 			raise RuntimeError("Panic at the FreeplayScene!")
 

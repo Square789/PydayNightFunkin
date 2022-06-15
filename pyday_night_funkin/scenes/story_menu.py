@@ -6,7 +6,7 @@ from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
-from pyday_night_funkin.core.utils import dump_sprite_info, lerp, to_rgb_tuple, to_rgba_tuple
+from pyday_night_funkin.core.utils import lerp, to_rgb_tuple, to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
 from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin.menu import Menu

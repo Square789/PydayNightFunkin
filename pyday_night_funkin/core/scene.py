@@ -10,7 +10,6 @@ from pyglet.window.key import B, R
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
-from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
 from pyday_night_funkin.core.pnf_player import SFXRing
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene_context import SceneContext
@@ -18,10 +17,9 @@ from pyday_night_funkin.core.scene_object import Container, SceneObject
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
-	SceneObjectBound = t.TypeVar("SceneObjectBound", bound=SceneObject)
 
+SceneObjectBound = t.TypeVar("SceneObjectBound", bound=SceneObject)
 
-PIXEL_AMOUNT = CNST.GAME_HEIGHT * CNST.GAME_WIDTH
 
 class Layer():
 	"""
@@ -133,14 +131,50 @@ class BaseScene(Container):
 	def _get_elapsed_time(self) -> float:
 		return self._passed_time
 
+	# object_class is given as a kwarg somewhere.
+	# layer and cameras may also appear either as arg or kwarg.
+	@t.overload
 	def create_object(
 		self,
 		layer: t.Optional[str] = None,
 		cameras: t.Optional[t.Union[str, t.Iterable[str]]] = None,
-		object_class: t.Type["SceneObjectBound"] = PNFSprite,
+		*,
+		object_class: t.Type[SceneObjectBound],
+		**kwargs,
+	) -> SceneObjectBound:
+		...
+
+	# Everything is listed positionally, object_class is arg 3
+	@t.overload
+	def create_object(
+		self,
+		layer: t.Optional[str],
+		cameras: t.Optional[t.Union[str, t.Iterable[str]]],
+		object_class: t.Type[SceneObjectBound],
 		*args,
 		**kwargs,
-	) -> "SceneObjectBound":
+	) -> SceneObjectBound:
+		...
+
+	# object_class is not given, return type is PNFSprite.
+	@t.overload
+	def create_object(
+		self,
+		layer: t.Optional[str] = None,
+		cameras: t.Optional[t.Union[str, t.Iterable[str]]] = None,
+		*args,
+		**kwargs,
+	) -> PNFSprite:
+		...
+
+	def create_object(
+		self,
+		layer: t.Optional[str] = None,
+		cameras: t.Optional[t.Union[str, t.Iterable[str]]] = None,
+		object_class: t.Type[SceneObjectBound] = PNFSprite,
+		*args,
+		**kwargs,
+	) -> t.Union[SceneObjectBound, PNFSprite]:
 		"""
 		Creates a scene object on the given layer belonging to one or
 		multiple cameras. If one or more camera names are specified
@@ -158,17 +192,19 @@ class BaseScene(Container):
 		Note that `self.create_object("lyr", "cam", Cls, 1, 2, n=3)`
 		is effectively equivalent to
 		`x = Cls(1, 2, n=3); self.add(x, "lyr", "cam")`, but a bit
-		faster as no migration from a virtual batch to the scene's batch
-		has to happen.
+		faster as no migration from a virtual batch to the scene's
+		batch has to happen.
 		"""
 		kwargs.setdefault("context", self.get_context(layer, cameras))
 		member = object_class(*args, **kwargs)
 		self._members.append(member)
 		return member
 
+	@t.final
 	def set_context(self, _: SceneContext) -> None:
 		raise RuntimeError("Can't set a scene's context, it's the scene hierarchy root!")
 
+	@t.final
 	def invalidate_context(self) -> None:
 		raise RuntimeError("Can't invalidate a scene's context; try `remove_scene` instead!")
 

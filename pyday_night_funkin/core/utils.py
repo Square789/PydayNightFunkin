@@ -43,7 +43,7 @@ def to_rgba_tuple(v: int) -> t.Tuple[int, int, int, int]:
 	"""
 	return tuple(i & 0xFF for i in (v >> 24, v >> 16, v >> 8, v))
 
-def to_rgb_tuple(v: int) -> t.Tuple[int, int, int, int]:
+def to_rgb_tuple(v: int) -> t.Tuple[int, int, int]:
 	"""
 	Converts an RGBA color int to an RGB tuple as pyglet expects it in
 	some other places.

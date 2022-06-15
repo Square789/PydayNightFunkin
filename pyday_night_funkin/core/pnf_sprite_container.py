@@ -2,7 +2,7 @@
 import typing as t
 
 from pyday_night_funkin.core.graphics import PNFGroup
-from pyday_night_funkin.core.pnf_sprite import EffectBound, Movement, PNFSprite
+from pyday_night_funkin.core.pnf_sprite import Effect, Movement, PNFSprite
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
@@ -48,7 +48,7 @@ class PNFSpriteContainer(PNFSprite):
 		# modifying this!
 		WorldObject.__init__(self, x, y)
 		self.movement: t.Optional[Movement] = None
-		self.effects: t.List["EffectBound"] = []
+		self.effects: t.List["Effect"] = []
 		self._origin = (0, 0)
 
 		self._opacity = 255

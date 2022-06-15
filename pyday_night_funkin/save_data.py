@@ -154,7 +154,7 @@ class SaveData:
 		cfgp = get_savedata_location() / CONFIG
 		if cfgp.exists():
 			with cfgp.open("r") as f:
-				cfg = Config(json.load(f))
+				cfg = Config.from_dict(json.load(f))
 		else:
 			logger.info("Config file does not exist, creating default.")
 			cfg = Config.get_default()

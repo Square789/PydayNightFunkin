@@ -1,5 +1,4 @@
 
-import ctypes
 from functools import partial
 import typing as t
 
@@ -13,8 +12,12 @@ if t.TYPE_CHECKING:
 class StatePart:
 	cost: int = -1
 	gl_func: t.Optional[t.Callable] = None
-	required: t.Sequence[t.Union["StatePart", t.Tuple["StatePart", t.Tuple]]] = ()
-	# conflicts: t.Sequence["StatePart"] = () # NOTE: Something to consider for glEnable / glDisable.
+	required: t.Sequence[t.Union[
+		t.Type["StatePart"],
+		t.Tuple[t.Type["StatePart"], t.Tuple],
+	]] = ()
+	# conflicts: t.Sequence["StatePart"] = ()
+	# # NOTE: Something to consider for glEnable / glDisable.
 	# Never using glDisable, so meh.
 	only_one: bool = True
 
@@ -47,6 +50,9 @@ class ProgramStatePart(StatePart):
 		self.args = (program.id,)
 
 
+# I was having pretty heavy misunderstandings of uniforms when writing this code.
+# The part is currently unused and may honestly just be removed as uniform values are
+# not the business of OpenGL rendering state.
 class UniformStatePart(StatePart):
 	cost = 5
 	required = (ProgramStatePart,)
@@ -90,26 +96,24 @@ class TextureStatePart(StatePart):
 		self.args = (texture.target, texture.id)
 
 
+# This thing sets up the binding from a uniform block buffer to the python UBO's
+# binding index, which is set in them beforehand as a hardcoded contract with all
+# the shaders in this beautiful spaghetti pile of a project.
+# Precisely: WindowBlock at 0. CameraAttrs at 1.
 class UBOBindingStatePart(StatePart):
 	cost = 20
-	gl_func = gl.glUniformBlockBinding
-	required = (ProgramStatePart,)
+	gl_func = gl.glBindBufferBase
 	only_one = False
 
 	def __init__(self, ubo: "UniformBufferObject") -> None:
-		self.ubo = ubo
+		self._binding_idx = ubo.index
+		self._buf_id = ubo.buffer.id
 
-	def concretize(self, prog_sp) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
-		prog_id = prog_sp.program.id
-		block_idx = self.ubo.block.index
-		binding_point = self.ubo.index
-		buf_id = self.ubo.buffer.id
-
+	def concretize(self) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
 		def f():
-			gl.glUniformBlockBinding(prog_id, block_idx, binding_point)
-			gl.glBindBufferBase(gl.GL_UNIFORM_BUFFER, binding_point, buf_id)
+			gl.glBindBufferBase(gl.GL_UNIFORM_BUFFER, self._binding_idx, self._buf_id)
 
-		return ((prog_id, block_idx, binding_point, buf_id), f)
+		return ((self._binding_idx, self._buf_id), f)
 
 
 class EnableStatePart(StatePart):
@@ -163,7 +167,7 @@ class GLState:
 		self.program = program
 
 	@classmethod
-	def from_state_parts(cls, *state_parts: StatePart) -> None:
+	def from_state_parts(cls, *state_parts: StatePart):
 		"""
 		Initializes a GLState from the given StateParts.
 		Note that a GLState must have a ProgramStatePart to be

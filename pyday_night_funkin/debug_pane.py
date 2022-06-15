@@ -1,7 +1,5 @@
 
-from queue import Queue
 import queue
-import typing as t
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
@@ -29,7 +27,7 @@ class DebugPane():
 		self.background = PNFGroup(order = 0)
 		self.foreground = PNFGroup(order = 1)
 		self.batch = PNFBatch()
-		self._queue = Queue()
+		self._queue = queue.Queue()
 		self.labels = [
 			PNFText(
 				x = 10,

@@ -3,7 +3,6 @@ from collections import defaultdict
 import typing as t
 from weakref import WeakSet
 
-from loguru import logger
 from pyglet.gl import gl
 
 from pyday_night_funkin.core.graphics.interfacer import PNFBatchInterfacer

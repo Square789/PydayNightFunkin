@@ -6,12 +6,12 @@ from loguru import logger
 from pyglet import gl
 from pyglet.image import AbstractImage, TextureArrayRegion
 from pyglet.math import Vec2
-from pyday_night_funkin.core.animation.frames import AnimationFrame, FrameCollection
 
+from pyday_night_funkin.core.animation import AnimationController
+from pyday_night_funkin.core.animation.frames import AnimationFrame, FrameCollection
 from pyday_night_funkin.core.constants import ERROR_TEXTURE, PIXEL_TEXTURE
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as s
-from pyday_night_funkin.core.animation import AnimationController
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
@@ -20,10 +20,7 @@ from pyday_night_funkin.core.utils import clamp
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import UniformBufferObject
-	from pyday_night_funkin.core.camera import Camera
 	from pyday_night_funkin.core.types import Numeric
-
-EffectBound = t.TypeVar("EffectBound", bound="Effect")
 
 
 _PNF_SPRITE_VERTEX_SHADER_SOURCE = """
@@ -351,7 +348,7 @@ class PNFSprite(WorldObject):
 		y: "Numeric" = 0,
 		blend_src = gl.GL_SRC_ALPHA,
 		blend_dest = gl.GL_ONE_MINUS_SRC_ALPHA,
-		context: SceneContext = None,
+		context: t.Optional[SceneContext] = None,
 		usage: t.Literal["dynamic", "stream", "static"] = "dynamic",
 		subpixel: bool = False,
 	) -> None:
@@ -364,7 +361,7 @@ class PNFSprite(WorldObject):
 		# NOTE: Copypaste of this exists at PNFSpriteContainer.__init__,
 		# modify it when modifying this!
 		self.movement: t.Optional[Movement] = None
-		self.effects: t.List["EffectBound"] = []
+		self.effects: t.List[Effect] = []
 
 		self._origin = (0, 0)
 		self._offset = (0, 0)
@@ -407,7 +404,8 @@ class PNFSprite(WorldObject):
 			s.UBOBindingStatePart(cam_ubo),
 			s.TextureUnitStatePart(gl.GL_TEXTURE0),
 			s.TextureStatePart(self._texture),
-			s.UniformStatePart("sprite_texture", 0),
+			# Insanely unneccessary as uniforms are initialized to 0 anyways
+			# s.UniformStatePart("sprite_texture", 0),
 			s.EnableStatePart(gl.GL_BLEND),
 			s.SeparateBlendFuncStatePart(
 				self._blend_src, self._blend_dest, gl.GL_ONE, self._blend_dest
@@ -475,7 +473,7 @@ class PNFSprite(WorldObject):
 		tween_func: t.Callable[[float], float],
 		attributes: t.Dict[TWEEN_ATTR, t.Any],
 		duration: float,
-		on_complete: t.Callable[[], t.Any] = None,
+		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
 	) -> _Tween:
 		"""
 		# TODO write some very cool doc
@@ -501,7 +499,7 @@ class PNFSprite(WorldObject):
 		duration: float,
 		interval: float,
 		end_visibility: bool = True,
-		on_complete: t.Callable[[], t.Any] = None,
+		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
 	) -> Flicker:
 		f = Flicker(
 			interval = interval,

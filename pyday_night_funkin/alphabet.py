@@ -2,7 +2,6 @@
 import typing as t
 
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
-from pyday_night_funkin.core.animation import Animation, AnimationFrame
 from pyday_night_funkin.core.pnf_sprite import (
 	PNFSprite, PNFSpriteFragmentShader, PNFSpriteVertexShader
 )
@@ -50,7 +49,7 @@ class AlphabetCharacter(PNFSprite):
 		"""
 		cls._FRAME_COLLECTION = load_asset(ASSET.XML_ALPHABET)
 
-	def _get_animation_prefix(self) -> t.Optional[str]:
+	def _get_animation_prefix(self) -> str:
 		char = self.char
 		_ALTS = self._ALTS
 		if char in _ALTS:
@@ -111,7 +110,7 @@ class TextLine(PNFSpriteContainer):
 	letter sprites on creation.
 	"""
 	def __init__(
-		cls,
+		self,
 		text: str,
 		bold: bool = False,
 		color: t.Optional[t.Tuple[int, int, int]] = None,

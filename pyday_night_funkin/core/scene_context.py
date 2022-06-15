@@ -12,9 +12,9 @@ class SceneContext():
 	for the things needed to interact with the graphics backend.
 
 	This thing is in a way passed down the entire hierarchy of a
-	scene. Each drawable/container requires its own group, (which)
+	scene. Each drawable/container requires its own group, (which)+
 	is usually just created as a child group to the group of the
-	received context, but the other two are references to the same
+	received context), but the other two are references to the same
 	object.
 	"""
 

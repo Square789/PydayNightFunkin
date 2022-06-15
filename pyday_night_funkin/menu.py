@@ -109,7 +109,7 @@ class Menu:
 		return from this method and ignore all input.
 		"""
 		if self.choice_made:
-			return False
+			return
 
 		kh = self.key_handler
 

@@ -1,17 +1,22 @@
 
-import typing as t
-
 from pyglet.gl import gl
 from pyglet.graphics.shader import Shader, ShaderProgram, UniformBufferObject
 
 
+# {"WindowBlock": 0, "CameraAttrs": 1}
 
 class ShaderContainer():
 	"""
 	Class to hold multiple shaders and compile them to a full
 	program only when requested for the first time.
-	Has some special support for cameras.
+	Has some special support for cameras and requirements to the
+	shaders:
+	- A `WindowBlock` uniform block must be contained which will be
+	  sourced from uniform buffer index 0.
+	- A `CameraAttrs` uniform block must be contained which will be
+	  sourced from uniform buffer index 1.
 	"""
+
 	def __init__(self, vertex_src: str, fragment_src: str) -> None:
 		self._prog = None
 		self.vertex_src = vertex_src

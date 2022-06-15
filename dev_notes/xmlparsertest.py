@@ -1,5 +1,4 @@
 
-import traceback
 from xml.etree.ElementTree import TreeBuilder, XMLParser
 from pyday_night_funkin.core.almost_xml_parser import AlmostXMLParser
 

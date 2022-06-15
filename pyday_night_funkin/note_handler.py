@@ -21,7 +21,7 @@ class AbstractNoteHandler:
 	Base class for a note handler. A class that receives input and is
 	responsible for spawning, moving and deleting notes.
 	"""
-	def __init__(game_scene: "InGameScene", note_layer: str, note_camera: str) -> None:
+	def __init__(self, game_scene: "InGameScene", note_layer: str, note_camera: str) -> None:
 		raise NotImplementedError("Abstract class.")
 
 	def feed_song_data(self, song_data) -> None:

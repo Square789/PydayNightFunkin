@@ -1,5 +1,4 @@
 
-from loguru import logger
 import typing as t
 
 from pyday_night_funkin.base_game_pack import Boyfriend, DaddyDearest, Girlfriend

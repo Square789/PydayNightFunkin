@@ -3,10 +3,6 @@ import typing as t
 
 from pyglet.math import Vec2
 
-if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.types import Numeric
-
-
 
 class Animation:
 	"""

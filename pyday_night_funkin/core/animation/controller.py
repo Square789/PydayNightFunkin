@@ -1,16 +1,13 @@
 
 import typing as t
 
-from loguru import logger
 from pyglet.math import Vec2
 
 from .animation import Animation
 from .frames import AnimationFrame
 
 if t.TYPE_CHECKING:
-	from pyglet.image import Texture
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
-	from pyday_night_funkin.core.types import Numeric
 
 
 def _try_int(v: object) -> int:

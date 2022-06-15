@@ -19,9 +19,9 @@ class Conductor():
 	# Very awesome tutorial, many thanks
 
 	def __init__(self) -> None:
-		self._bpm = None
-		self.beat_duration = None
-		self.step_duration = None
+		self._bpm: t.Optional[float] = None
+		self.beat_duration: t.Optional[float] = None
+		self.step_duration: t.Optional[float] = None
 		self.song_position = 0.0
 		self._bpm_changes: t.List[BPMChangeEvent] = []
 

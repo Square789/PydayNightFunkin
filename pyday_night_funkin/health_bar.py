@@ -1,12 +1,10 @@
 
 import typing as t
 
-from pyglet.image import ImageData, Texture
-
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.constants import PIXEL_TEXTURE
-from pyday_night_funkin.core.utils import clamp, to_rgb_tuple, to_rgba_bytes, to_rgba_tuple
+from pyday_night_funkin.core.utils import clamp, to_rgba_tuple
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGameScene

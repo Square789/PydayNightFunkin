@@ -10,7 +10,7 @@ class KeyHandler():
 	Class to manage key presses.
 	"""
 
-	def __init__(self, key_bindings: t.Dict[CONTROL, int]):
+	def __init__(self, key_bindings: t.Dict[CONTROL, t.Sequence[int]]):
 		"""
 		# TODO Le doc
 		"""

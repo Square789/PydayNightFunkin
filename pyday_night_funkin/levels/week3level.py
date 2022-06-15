@@ -1,5 +1,5 @@
 
-from random import choice, randint
+from random import randint
 import typing as t
 
 from pyday_night_funkin.base_game_pack import Boyfriend, Girlfriend, Pico as PicoChar

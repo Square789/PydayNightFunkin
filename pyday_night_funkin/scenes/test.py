@@ -3,12 +3,13 @@ from random import randint
 import typing as t
 
 from pyglet.math import Vec2
-from pyglet.window.key import B, C, E, F, O, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
-
+from pyglet.window.key import (
+	C, E, F, K, L, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
+)
 from pyday_night_funkin.base_game_pack import Boyfriend
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_text import PNFText
-from pyday_night_funkin.core.tweens import TWEEN_ATTR
+from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
 from pyday_night_funkin.core.utils import to_rgba_tuple
 from pyday_night_funkin.note import NOTE_TYPE
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
@@ -42,7 +43,7 @@ class TestScene(MusicBeatScene):
 		self.arrows = []
 		for i, note_type in enumerate(NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()
-			s = self.create_object("ye_olde_layer", "main", x = 300, y = 50 + i*200)
+			s = self.create_object("ye_olde_layer", "main", x=300, y=50 + i*200)
 			s.frames = note_sprites
 			for anim_name, atlas_name in zip(("static", "pressed", "confirm"), atlas_names):
 				s.animation.add_by_prefix(anim_name, atlas_name, 24, False)
@@ -92,7 +93,7 @@ class TestScene(MusicBeatScene):
 		if ksh[D]:
 			self.test_sprite.x += 1
 
-		if ksh[B]:
+		if ksh[P]:
 			if ksh[F]:
 				self.boyfriend.flip_x = not self.boyfriend.flip_x
 			if ksh[W]:
@@ -110,15 +111,16 @@ class TestScene(MusicBeatScene):
 
 		confirm = ksh[E]
 		for k, i in ((LEFT, 0), (DOWN, 1), (UP, 2), (RIGHT, 3)):
-			arr = self.arrows[i]
-			a = ("confirm" if confirm else "pressed") if ksh[k] else "static"
-			arr.animation.play(a)
+			self.arrows[i].animation.play(
+				("confirm" if confirm else "pressed")
+				if ksh[k] else "static"
+			)
 
 		if ksh[C]:
 			sprite = self.create_object("fore", x=randint(0, 100), y=randint(0, 100))
 			sprite.start_movement(Vec2(10, 5))
 			sprite.start_tween(
-				lambda x: x,
+				linear,
 				{TWEEN_ATTR.OPACITY: 0},
 				2.0,
 				on_complete = (lambda s=sprite: self.remove(s)),
@@ -137,9 +139,9 @@ class TestScene(MusicBeatScene):
 		if ksh[X]:
 			self.cameras["main"].zoom -= .01
 
-		if ksh[O]:
-			self.label.x += 1
-			# self.label.text += "!"
-		if ksh[P]:
+		if ksh[K]:
 			self.label.x -= 1
 			# self.label.text = self.label.text[:-1]
+		if ksh[L]:
+			self.label.x += 1
+			# self.label.text += "!"

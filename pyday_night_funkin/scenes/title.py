@@ -5,8 +5,6 @@ import typing as t
 from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.asset_system import ASSET, load_asset
-from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
-from pyday_night_funkin.core.utils import dump_sprite_info
 from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin import scenes
 

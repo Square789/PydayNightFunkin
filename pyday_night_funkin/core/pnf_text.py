@@ -26,7 +26,7 @@ from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 
 if t.TYPE_CHECKING:
-	from pyglet.font.base import Glyph
+	from pyglet.font.base import Font, Glyph
 	from pyglet.image import Texture
 	from pyday_night_funkin.core.camera import Camera
 	from pyday_night_funkin.core.types import Numeric
@@ -179,6 +179,12 @@ class PNFText(WorldObject):
 		"""
 
 		self.lines: t.List[_Line] = []
+		self._font_tex: t.Optional["Texture"] = None
+		"""
+		Holds an explicit reference to the used font texture as it may
+		be garbage collected during long load times (i don't know why
+		i am doing this at all anymore)
+		"""
 		self._layout_lines()
 
 		self._interfacer = None
@@ -203,10 +209,7 @@ class PNFText(WorldObject):
 		indices = []
 		vertices = []
 		tex_coords = []
-		owner = (
-			self.lines[0].glyphs[0].owner if self.lines and self.lines[0].glyphs
-			else load_font().get_glyphs("A")[0].owner
-		)
+		owner = self._font_tex
 		i = 0
 		for line in self.lines:
 			x_advance = 0
@@ -249,7 +252,7 @@ class PNFText(WorldObject):
 				i += 1
 
 				if owner is not glyph.owner:
-					raise RuntimeError("Booo!")
+					raise RuntimeError("Font texture changed between glyphs!")
 
 		vertex_amt = len(vertices) // 2
 		self._interfacer = self._context.batch.add_indexed(
@@ -272,7 +275,7 @@ class PNFText(WorldObject):
 		Lays out the PNFText's text in lines depending on whether it's
 		single-or multiline.
 		"""
-		font = load_font(self._font_name, self._font_size)
+		font: "Font" = load_font(self._font_name, self._font_size)
 		if self._multiline:
 			self.lines = []
 			baseline_offset = font.ascent
@@ -284,6 +287,10 @@ class PNFText(WorldObject):
 			glyphs: t.List["Glyph"] = font.get_glyphs(self._text)
 			self.lines = [_Line(font.ascent, glyphs, sum(g.advance for g in glyphs))]
 
+		self._font_tex = (
+			self.lines[0].glyphs[0].owner if self.lines and self.lines[0].glyphs
+			else load_font().get_glyphs("A")[0].owner
+		)
 		self.content_width = max(l.width for l in self.lines)
 
 	def set_context(self, parent_context: "SceneContext") -> None:
@@ -295,6 +302,7 @@ class PNFText(WorldObject):
 		super().delete()
 		self._interfacer.delete()
 		self._interfacer = None
+		self._font_tex = None
 
 	@property
 	def text(self) -> str:

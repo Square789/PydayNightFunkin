@@ -1,10 +1,7 @@
 
 import typing as t
 
-from pyglet.math import Vec2
-
 from pyday_night_funkin.base_game_pack import Boyfriend, Girlfriend, FlipIdleCharacter
-from pyday_night_funkin.core.constants import ERROR_TEXTURE
 from pyday_night_funkin.core.animation import Animation
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.levels import common
