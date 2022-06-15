@@ -23,7 +23,7 @@ from pyday_night_funkin.core.key_handler import KeyHandler
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 
-__version__ = "0.0.24"
+__version__ = "0.0.25"
 
 
 class _FPSData:
@@ -84,8 +84,8 @@ class Game():
 			from pyglet.gl import gl
 			cygl.initialize(gl)
 
-		if ogg_decoder not in pyglet.media.get_decoders():
-			pyglet.media.add_decoders(ogg_decoder)
+		if ogg_decoder not in pyglet.media.codecs.get_decoders():
+			pyglet.media.codecs.add_decoders(ogg_decoder)
 
 		self.pyglet_ksh = KeyStateHandler()
 		self.key_handler = KeyHandler(self.save_data.config.key_bindings)

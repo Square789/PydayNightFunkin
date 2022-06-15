@@ -15,6 +15,7 @@ class OggVorbisStreamingSource(StreamingSource):
 	"""
 	Streaming source over an ogg vorbis file.
 	"""
+
 	def __init__(self, filename: t.Union[str, "Path"]) -> None:
 		"""
 		Creates a new OggVorbisStreamingSource. The filename given
@@ -55,7 +56,7 @@ class OggVorbisDecoder(MediaDecoder):
 	def get_file_extensions(self) -> t.Tuple[str, ...]:
 		return (".ogg",)
 
-	def decode(self, file: t.BinaryIO, filename: str, streaming: bool) -> Source:
+	def decode(self, filename: str, file: t.BinaryIO, streaming: bool) -> Source:
 		if file is not None and not file.closed:
 			file.close()
 
