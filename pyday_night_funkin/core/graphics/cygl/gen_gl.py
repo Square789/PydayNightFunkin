@@ -42,6 +42,7 @@ ctypedef struct GLRegistry:
 
 cdef GLRegistry *cygl_get_reg() except NULL
 cdef uint8_t cygl_errcheck() except 1
+cdef size_t cygl_get_gl_type_size(GLenum type_)
 """
 
 
@@ -65,6 +66,11 @@ class OpenGLError(Exception):
 	pass
 
 
+cdef GLRegistry *cygl_get_reg() except NULL:
+	if not _is_initialized:
+		raise RuntimeError("cygl was not initialized!")
+	return &_gl_reg
+
 cdef uint8_t cygl_errcheck() except 1:
 	if not _is_initialized:
 		raise RuntimeError("cygl was not initialized!")
@@ -86,11 +92,20 @@ cdef uint8_t cygl_errcheck() except 1:
 		err_str = "Out of memory"
 	raise OpenGLError(err_str)
 
-
-cdef GLRegistry *cygl_get_reg() except NULL:
-	if not _is_initialized:
-		raise RuntimeError("cygl was not initialized!")
-	return &_gl_reg
+#########################################################################################
+# ! Check the entire codebase for "PNF_OPEN_GL_TYPE_DEFINITIONS" when modifiying this ! #
+#########################################################################################
+cdef size_t cygl_get_gl_type_size(GLenum type_):
+	if type_ in (GL_BYTE, GL_UNSIGNED_BYTE):
+		return 1
+	elif type_ in (GL_SHORT, GL_UNSIGNED_SHORT):
+		return 2
+	elif type_ in (GL_INT, GL_UNSIGNED_INT, GL_FLOAT):
+		return 4
+	elif type_ in (GL_DOUBLE,):
+		return 8
+	else:
+		return 0
 
 
 NEEDS_INITIALIZATION = {command_translation_dict}
@@ -134,6 +149,17 @@ REQUIRED_ENUMS = {
 	"GL_INVALID_OPERATION",
 	"GL_INVALID_FRAMEBUFFER_OPERATION",
 	"GL_OUT_OF_MEMORY",
+
+	# ! These should always be the same set of   ! #
+	# ! type names found in core.graphics.shared ! #
+	"GL_BYTE",
+	"GL_UNSIGNED_BYTE",
+	"GL_SHORT",
+	"GL_UNSIGNED_SHORT",
+	"GL_INT",
+	"GL_UNSIGNED_INT",
+	"GL_FLOAT",
+	"GL_DOUBLE",
 }
 
 REQUIRED_COMMANDS = {

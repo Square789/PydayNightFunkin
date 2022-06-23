@@ -148,6 +148,12 @@ class NoteHandler(AbstractNoteHandler):
 			self.notes[self.notes_visible.end].time - song_pos <= note_vis_window_time
 		):
 			cur_note = self.notes[self.notes_visible.end]
+			self.notes_visible.end += 1
+			if cur_note.rating is not None:
+				# Played before becoming visible?
+				# Hints at absurd scroll speed but i guess it's a possibility
+				continue
+
 			sprite = self.game_scene.create_object(
 				self.note_layer,
 				self.note_camera,
@@ -168,22 +174,19 @@ class NoteHandler(AbstractNoteHandler):
 						self.game_scene.conductor.step_duration * (1/30) * speed
 					)
 			cur_note.sprite = sprite
-			self.notes_visible.end += 1
 
-		# Updates and shrinks visible notes window, makes played notes invisible,
-		# deletes off-screen ones.
+		# Updates and shrinks visible notes window, moves notes, deletes off-screen ones.
 		deletion_bound = 0
 		for i, note in enumerate(self.notes_visible):
 			note_y = CNST.STATIC_ARROW_Y - (song_pos - note.time) * speed
 			if note_y < -note.sprite.height:
 				deletion_bound = max(deletion_bound, i + 1)
-			elif note.rating is not None:
-				note.sprite.visible = False
-			else:
+			elif note.rating is None:
 				note.sprite.y = note_y
 		for idx in range(self.notes_visible.start, self.notes_visible.start + deletion_bound):
-			self.game_scene.remove(self.notes[idx].sprite)
-			self.notes[idx].sprite = None
+			note = self.notes[idx]
+			self.game_scene.remove(note.sprite)
+			note.sprite = None
 			self.notes_visible.start += 1
 
 		# Finds new playable notes
@@ -202,6 +205,8 @@ class NoteHandler(AbstractNoteHandler):
 			note.check_playability(song_pos, self.safe_window)
 			if prev_hitstate != note.rating and note.singer == 0:
 				opponent_hit_notes.append(note)
+				if note.sprite is not None:
+					note.sprite.visible = False
 			if not note.is_playable(song_pos, self.safe_window):
 				deletion_bound = max(deletion_bound, i + 1)
 		for idx in range(self.notes_playable.start, self.notes_playable.start + deletion_bound):
@@ -225,5 +230,7 @@ class NoteHandler(AbstractNoteHandler):
 				# Congrats, note hit
 				res_hit_map[note.type] = note
 				note.on_hit(song_pos, self.safe_window)
+				if note.sprite is not None:
+					note.sprite.visible = False
 
 		return opponent_hit_notes, missed_notes, res_hit_map

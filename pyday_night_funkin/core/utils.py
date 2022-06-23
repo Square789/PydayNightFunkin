@@ -24,6 +24,17 @@ class ListWindow(t.Generic[T]):
 	def __iter__(self) -> t.Iterator[T]:
 		return islice(self.list, self.start, self.end)
 
+	def __len__(self) -> int:
+		return min(0, self.end - self.start)
+
+	def __getitem__(self, idx: int) -> T:
+		l = len(self)
+		if idx < 0:
+			idx += l
+		if idx < 0 or idx >= l:
+			raise IndexError("ListWindow index out of range")
+		return self.list[self.start + idx]
+
 
 def clamp(value, min_, max_):
 	return min_ if value < min_ else (max_ if value > max_ else value)

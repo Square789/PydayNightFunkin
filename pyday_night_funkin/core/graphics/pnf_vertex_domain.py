@@ -5,10 +5,10 @@ import typing as t
 from pyglet.gl import gl
 
 from pyday_night_funkin.core.graphics.shared import (
-	C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT, TYPE_MAP, USAGE_MAP
+	GL_TYPE_SIZES, RE_VERTEX_FORMAT, TYPECHAR_TO_GL_TYPE_MAP, USAGE_MAP
 )
 from pyday_night_funkin.core.graphics import allocation
-from pyday_night_funkin.core.graphics.vertexbuffer import MappedBufferObject
+from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject, RAMBackedBufferObject
 from pyday_night_funkin.core.utils import dump_id
 
 if t.TYPE_CHECKING:
@@ -29,10 +29,9 @@ def nearest_pow2(v):
 	return v + 1
 
 
-class PNFVertexDomainAttribute:
+class PNFVertexDomainAttribute(RAMBackedBufferObject):
 	"""
 	Class representing the vertex attribute of a domain.
-	Contains a buffer for the attribute's data.
 	"""
 
 	def __init__(
@@ -43,52 +42,40 @@ class PNFVertexDomainAttribute:
 		normalize: int,
 		usage: int,
 	) -> None:
-		self.count = count
-		"""Vertex attribute count. One of 1, 2, 3 or 4."""
-
 		self.binding_point = binding_point
 		"""
 		Binding point the attribute should be bound to. This is NOT the
 		shader location!
 		"""
 
-		self.type = type_
-		self.c_type = C_TYPE_MAP[type_]
-		self.element_size = GL_TYPE_SIZES[type_] * count
-		"""
-		Size of a single attribute in bytes, i. e. `2f` -> 8; `3B` -> 3
-		"""
-
 		self.normalize = normalize
-		self.usage = usage
-
-		self.gl_buffer = MappedBufferObject(
-			gl.GL_ARRAY_BUFFER,
-			self.element_size * PNFVertexDomain.INITIAL_VERTEX_CAPACITY,
-			usage
-		)
-
-	def set_data(self, start: int, size: int, data: t.Iterable) -> None:
-		self.set_raw_data(start, size, (self.c_type * (size * self.count))(*data))
-
-	def set_raw_data(self, start: int, size: int, data: ctypes.Array) -> None:
-		self.gl_buffer.set_data(self.element_size * start, self.element_size * size, data)
-
-	def get_data(self, start, size) -> ctypes.Array:
-		return self.gl_buffer.get_data(self.element_size * start, self.element_size * size)
-
-	def resize(self, new_capacity: int) -> None:
 		"""
-		Resizes the attribute's buffer to fit `new_capacity` vertex
-		attributes.
-		No checks of any kind are made, be sure to pass in an
-		acceptable `new_capacity`!
+		Whether to normalize the data in this vertex attribute to the
+		range between 0 and 1.
+		This will for example cause a value of 127 to become 0.5 in the
+		shader, with OpenGL being aware of the data type
+		`UNSIGNED_BYTE`. Otherwise it would end up being 127.0, quickly
+		breaking calculations.
 		"""
-		self.gl_buffer.resize(new_capacity * self.element_size)
+
+		# The vertexbuffer also calculates this, which is ugly but what can you do
+		ini_bytes = GL_TYPE_SIZES[type_] * count * PNFVertexDomain.INITIAL_VERTEX_CAPACITY
+		super().__init__(gl.GL_ARRAY_BUFFER, ini_bytes, usage, type_, count)
+
+	def __new__(
+		cls,
+		binding_point: int,
+		count: int,
+		type_: int,
+		normalize: int,
+		usage: int,
+	):
+		ini_bytes = GL_TYPE_SIZES[type_] * count * PNFVertexDomain.INITIAL_VERTEX_CAPACITY
+		return super().__new__(cls, gl.GL_ARRAY_BUFFER, ini_bytes, usage, type_, count)
 
 	def __repr__(self) -> str:
 		return (
-			f"<{self.__class__.__name__} (OpenGL buffer id {self.gl_buffer.id}) "
+			f"<{self.__class__.__name__} (OpenGL buffer id {self.id}) "
 			f"count={self.count} type={self.type} normalize={self.normalize} usage={self.usage} "
 			f"at {dump_id(self)}>"
 		)
@@ -149,7 +136,7 @@ class PNFVertexDomain:
 		name, count, type_, norm, usage = re_res.groups()
 
 		count = int(count)
-		type_ = TYPE_MAP[type_]
+		type_ = TYPECHAR_TO_GL_TYPE_MAP[type_]
 		normalize = gl.GL_TRUE if norm else gl.GL_FALSE
 		usage = USAGE_MAP[usage or "dynamic"]
 
@@ -195,7 +182,7 @@ class PNFVertexDomain:
 			# Specify vertex layout for the attribute at index `loc`
 			gl.glVertexArrayAttribFormat(vao_id, loc, attr.count, attr.type, attr.normalize, 0)
 			# Associate the binding point with the buffer vertices should be sourced from.
-			gl.glVertexArrayVertexBuffer(vao_id, bp, attr.gl_buffer.id, 0, attr.element_size)
+			gl.glVertexArrayVertexBuffer(vao_id, bp, attr.id, 0, attr.element_size)
 			# Link the shader attribute index with the binding point
 			gl.glVertexArrayAttribBinding(vao_id, loc, bp)
 
@@ -240,7 +227,7 @@ class PNFVertexDomain:
 		Deletes all vertex buffers and VAOs of this domain.
 		"""
 		for attr in self.attributes.values():
-			attr.gl_buffer.delete()
+			attr.delete()
 
 		vao_count = sum(len(d) for d in self._vaos.values())
 		vao_ids: t.List[gl.GLuint] = []
@@ -254,4 +241,4 @@ class PNFVertexDomain:
 		# vertices. Resize them if needed.
 		self._allocator.set_capacity(new_size)
 		for attr in self.attributes.values():
-			attr.resize(new_size)
+			attr.resize_elements(new_size)

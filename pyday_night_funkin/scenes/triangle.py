@@ -21,9 +21,6 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.types import Numeric
 
 
-# NOTE: Scene definitely broken since 0.0.12-dev-? graphics rewrites,
-# can't really be bothered to fix it
-
 
 vertex_shader = """
 #version 450
@@ -38,13 +35,11 @@ uniform WindowBlock {
 	mat4 view;
 } window;
 
-// Not really sure about having GAME_DIMENSIONS here
-// since it's by all means a constant
-
-layout (std140) uniform CameraAttrs {
+layout(std140) uniform CameraAttrs {
 	float zoom;
 	vec2  position;
 	vec2  GAME_DIMENSIONS;
+	vec2  dimensions;
 } camera;
 
 mat4 m_camera_trans_scale = mat4(1.0);
@@ -84,33 +79,27 @@ void main() {
 class Triangle(SceneObject):
 	shader_container = ShaderContainer(vertex_shader, fragment_shader)
 
-	def __init__(self, batch, group, cam_ubo, x, y) -> None:
+	def __init__(self, context, x, y) -> None:
 		self._x = x
 		self._y = y
-		self.cam_ubo = cam_ubo
 
-		self._context = SceneContext(
-			batch,
-			PNFGroup(group, 0),
-		)
+		self._context = context.inherit()
 
 		self._create_interfacer()
 
 	def set_context(self, parent_context: SceneContext) -> None:
-		self._context = SceneContext(
-			parent_context.batch,
-			PNFGroup(parent_context.group, 0),
-		)
+		self._context = parent_context.inherit()
 
-	def _build_gl_state(self):
+	def _build_gl_state(self, cubo):
 		return st.GLState.from_state_parts(
 			st.ProgramStatePart(self.shader_container.get_program()),
-			st.UBOBindingStatePart(self.cam_ubo),
+			st.UBOBindingStatePart(cubo),
 		)
 
 	def _create_interfacer(self) -> None:
 		self._interfacer = self._context.batch.add_indexed(
 			3, gl.GL_TRIANGLES, self._context.group, [0, 1, 2],
+			{camera: self._build_gl_state(camera.ubo) for camera in self._context.cameras},
 			("position2f/dynamic", (
 				self._x,         self._y,
 				self._x + 100.0, self._y,
@@ -147,13 +136,9 @@ class TriangleScene(BaseScene):
 		super().__init__(game)
 
 		ubo = self._default_camera.ubo
-		self.tri0 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, 0, 0.7)
-		#self.tri1 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, -20, 60)
-		#self.tri2 = Triangle(self.batch, self.get_layer("main").get_group(), ubo, 200, 100)
-
-		self.please_work = self.create_object(
-			"main", None, image=load_asset(ASSET.IMG_NEWGROUNDS_LOGO), x=50, y=50
-		)
+		self.tri0 = Triangle(self.get_context("main"), 0, 0.7)
+		self.tri1 = Triangle(self.get_context("main"), -20, 60)
+		self.tri2 = Triangle(self.get_context("main"), 200, 100)
 
 	@staticmethod
 	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
@@ -174,3 +159,5 @@ class TriangleScene(BaseScene):
 			self._default_camera.zoom += .01
 		if self.game.pyglet_ksh[X]:
 			self._default_camera.zoom -= .01
+
+		# self.tri0.x += .5

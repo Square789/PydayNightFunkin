@@ -1,5 +1,5 @@
 # PydayNightFunkin
- This is a rewrite of (accidentally half of HaxeFlixel) and Friday Night Funkin' in python and some Cython. Why? "Beep boop funny", camelCase looks ugly and as a proof to no-one that the `PlayState.hx` monolith is the worst, that would be why.  
+ This is a rewrite of (accidentally half of HaxeFlixel and) Friday Night Funkin' in python and some Cython. Why? "Beep boop funny", camelCase looks ugly and as a proof to no-one that the `PlayState.hx` monolith is the worst, that would be why.  
  Not a lot is done, but you can at least click through some menus and partake in a few non-recorded, non-penalized vowel-screaming contests.
 
 ## Used libraries:  
@@ -18,7 +18,7 @@
 ```bash
 # Clone the repo somewhere #
 cd somewhere/stuff
-git clone https://github.com/Square789/PydayNightFunkin
+git clone https://github.com/Square789/PydayNightFunkin.git
 cd PydayNightFunkin
 
 # (Optional, but recommended) Set up a virtual environment and activate it #

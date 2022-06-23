@@ -11,7 +11,8 @@ from Cython.Compiler import Options
 
 Options.fast_fail = True
 
-USE_EXPERIMENTAL_CYGL = False
+CYGL_USE = True
+CYGL_HYPER_UNSAFE = False
 
 
 if __name__ == "__main__":
@@ -38,11 +39,20 @@ if __name__ == "__main__":
 		),
 	]
 
-	if USE_EXPERIMENTAL_CYGL:
+	if CYGL_USE:
 		r = subprocess.run([sys.executable, "./pyday_night_funkin/core/graphics/cygl/gen_gl.py"])
 		if r.returncode != 0:
 			print("gen_gl script failed.")
 			sys.exit(1)
+
+		r = subprocess.run([
+			sys.executable,
+			"./pyday_night_funkin/core/graphics/vertexbuffer_gen_pyobj_extractors.py",
+		])
+		if r.returncode != 0:
+			print("pyobj extractor snippet generation script failed.")
+			sys.exit(1)
+
 
 		extensions.extend((
 			Extension(

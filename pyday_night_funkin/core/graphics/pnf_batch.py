@@ -8,9 +8,11 @@ from pyglet.gl import gl
 from pyday_night_funkin.core.graphics.interfacer import PNFBatchInterfacer
 from pyday_night_funkin.core.graphics.pnf_group import PNFGroup
 from pyday_night_funkin.core.graphics.pnf_vertex_domain import PNFVertexDomain
-from pyday_night_funkin.core.graphics.shared import C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT
+from pyday_night_funkin.core.graphics.shared import (
+	GL_TO_C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT
+)
 from pyday_night_funkin.core.graphics.state import GLState
-from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
+from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject, RAMBackedBufferObject
 from pyday_night_funkin.core.utils import dump_id
 
 if t.TYPE_CHECKING:
@@ -81,7 +83,9 @@ class DrawList:
 		self._top_group = PNFGroup()
 		self._group_data: t.Dict["PNFGroup", "GroupData"] = defaultdict(GroupData)
 		self._group_data[self._top_group]
-		self.index_buffer = BufferObject(gl.GL_ELEMENT_ARRAY_BUFFER, 0, gl.GL_DYNAMIC_DRAW)
+		self.index_buffer = RAMBackedBufferObject(
+			gl.GL_ELEMENT_ARRAY_BUFFER, 0, gl.GL_DYNAMIC_DRAW, _INDEX_TYPE
+		)
 
 	def _add_group_parent(self, group: "PNFGroup") -> None:
 		"""
@@ -281,7 +285,7 @@ class DrawList:
 							# slows down the freeplay scene, where a lot of vertex updates are
 							# made each frame.
 							for att in d.attributes.values():
-								att.gl_buffer.ensure()
+								att.ensure()
 							d.bind_vao(p, self.name)
 
 						draw_list.append(bind_vao)
@@ -295,15 +299,15 @@ class DrawList:
 				indices.extend(group_data.interfacer.indices)
 				cur_index_run += len(group_data.interfacer.indices)
 
-		# Final draw call
-		def final_draw_elements(
-			m=cur_draw_mode, c=cur_index_run, t=_INDEX_TYPE,
-			s=cur_index_start*_INDEX_TYPE_SIZE, d=cur_vertex_layout[0]
-		):
-			gl.glDrawElements(m, c, t, s)
-			gl.glBindVertexArray(0)
-
-		draw_list.append(final_draw_elements)
+		if cur_index_run > 0:
+			# Final draw call
+			def final_draw_elements(
+				m=cur_draw_mode, c=cur_index_run, t=_INDEX_TYPE,
+				s=cur_index_start*_INDEX_TYPE_SIZE, d=cur_vertex_layout[0]
+			):
+				gl.glDrawElements(m, c, t, s)
+				gl.glBindVertexArray(0)
+			draw_list.append(final_draw_elements)
 
 		return draw_list, indices
 
@@ -311,8 +315,8 @@ class DrawList:
 		"""
 		Sets the content of the index buffer to the given data.
 		"""
-		indices = (C_TYPE_MAP[_INDEX_TYPE] * len(data))(*data)
-		self.index_buffer.set_size_and_data(GL_TYPE_SIZES[_INDEX_TYPE] * len(indices), indices)
+		indices = (GL_TO_C_TYPE_MAP[_INDEX_TYPE] * len(data))(*data)
+		self.index_buffer.set_size_and_data_array(_INDEX_TYPE_SIZE * len(indices), indices)
 
 	def check_dirty(self) -> bool:
 		"""
@@ -513,6 +517,14 @@ class PNFBatch:
 		for dl_name, dl in self._draw_lists.items():
 			r += f"\nDraw list {dl_name}:\n"
 			r += dl.dump_debug_info()
+
+		r += "\nVertex Domain info:"
+		for key, vtxd in self._vertex_domains.items():
+			r += f"\n{sorted(key)}\n"
+			for name, att in vtxd.attributes.items():
+				r += f"  {name}: {att}\n"
+				arr = att.get_data_elements(0, 16)
+				r += f"  First 16 elements: {arr[:]}\n    [{arr}]\n"
 
 		return r
 

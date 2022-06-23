@@ -23,7 +23,7 @@ from pyday_night_funkin.core.key_handler import KeyHandler
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 
-__version__ = "0.0.26"
+__version__ = "0.0.27"
 
 
 class _FPSData:
@@ -58,7 +58,7 @@ class _FPSData:
 class Game():
 	def __init__(self) -> None:
 		self.debug = True
-		self.use_debug_pane = True
+		self.use_debug_pane = self.debug and True
 		# These have to be setup later, see `run`
 		self._update_time = 0
 		self._fps: t.Optional[_FPSData] = None

@@ -34,10 +34,8 @@
 
 
 import cython
-from cpython cimport array
 from libc.stdint cimport *
-
-import array
+from libc.stdlib cimport malloc, realloc, free
 
 # Common cases:
 # -regions will be the same size (instances of same object, e.g. sprites)
@@ -63,27 +61,97 @@ import array
 #  expensive
 
 
-# This is seriously not worth the effort, allocation takes
-# up extremely little time.
-# cdef class SizeTArrayList:
-# 	cdef size_t *ptr
-# 	cdef size_t length
-# 	cdef size_t capacity
+ctypedef struct Block:
+	int64_t start
+	int64_t size
 
-# 	def __cinit__(self, size_t ini_capacity):
-# 		pass
 
-# 	cdef uint8_t insert(self, size_t index, size_t value):
-# 		return 0
+cdef class BlockArrayList:
+	cdef Block *ptr
+	cdef size_t length
+	cdef size_t capacity
 
-# 	cdef void delete(self, size_t index):
-# 		pass
+	def __cinit__(self, size_t ini_capacity):
+		if ini_capacity == 0:
+			ini_capacity = 1 # piss off
 
-# 	cdef uint8_t append(self, size_t value):
-# 		return 0
+		self.ptr = <Block *>malloc(sizeof(Block) * ini_capacity)
+		if self.ptr == NULL:
+			raise MemoryError()
 
-# 	def __dealloc__(self):
-# 		pass
+		self.length = 0
+		self.capacity = ini_capacity
+
+	cdef uint8_t insert(self, size_t ins_index, Block block) except 1:
+		if ins_index > self.length:
+			return self.append(block)
+
+		self._capacity_check()
+
+		cdef size_t i
+		for i in range(self.length - 1, ins_index - 1, -1):
+			self.ptr[i + 1] = self.ptr[i]
+
+		self.ptr[ins_index] = block
+		self.length += 1
+		return 0
+
+	cdef Block pop(self, size_t del_index) except *:
+		if del_index >= self.length:
+			raise IndexError("Out of bounds")
+
+		cdef Block r = self.ptr[del_index]
+		cdef size_t i
+		for i in range(del_index, self.length - 1):
+			self.ptr[i] = self.ptr[i + 1]
+
+		self.length -= 1
+		return r
+
+	cdef uint8_t append(self, Block block) except 1:
+		self._capacity_check()
+		self.ptr[self.length] = block
+		self.length += 1
+		return 0
+
+	cdef uint8_t _resize(self, size_t new_cap) except 1:
+		cdef Block *new_ptr = <Block *>realloc(self.ptr, sizeof(Block) * new_cap)
+		if new_ptr == NULL:
+			raise MemoryError()
+		self.capacity = new_cap
+		self.ptr = new_ptr
+		return 0
+
+	cdef uint8_t _capacity_check(self) except 1:
+		if self.length == self.capacity:
+			return self._resize(self.capacity * 2)
+		return 0
+
+	# NOTE: except * sucks
+	cdef Block at(self, int64_t idx) except *:
+		cdef int64_t orig_idx = idx
+		if idx < 0:
+			idx += self.length
+		if idx < 0 or idx >= <int64_t>self.length:
+			raise IndexError(f"Index {orig_idx} out of bounds")
+		return self.ptr[idx]
+
+	cdef Block *atp(self, int64_t idx) except NULL:
+		cdef int64_t orig_idx = idx
+		if idx < 0:
+			idx += self.length
+		if idx < 0 or idx >= <int64_t>self.length:
+			raise IndexError(f"Index {orig_idx} out of bounds")
+		return self.ptr + idx
+
+	def __dealloc__(self):
+		free(self.ptr)
+
+	def __bool__(self) -> bool:
+		return self.length > 0
+
+	def __len__(self) -> int:
+		return self.length
 
 
 class AllocatorMemoryException(Exception):
@@ -103,8 +171,7 @@ cdef class Allocator:
 	"""Buffer space allocation implementation."""
 
 	cdef readonly int64_t capacity
-	cdef array.array starts
-	cdef array.array sizes
+	cdef BlockArrayList blocks
 
 	def __cinit__(self, int64_t capacity) -> None:
 		if capacity <= 0:
@@ -127,8 +194,7 @@ cdef class Allocator:
 		#   free_start[i] = starts[i] + sizes[i]
 		#   free_size[i] =  starts[i+1] - free_start[i]
 		# free_size[i+1] = self.capacity - free_start[-1]
-		self.starts = array.array('q')
-		self.sizes = array.array('q')
+		self.blocks = BlockArrayList(64)
 
 	def __init__(self, int64_t capacity) -> None:
 		"""Create an allocator for a buffer of the specified capacity.
@@ -173,22 +239,20 @@ cdef class Allocator:
 			return 0
 
 		# Return start, or raise AllocatorMemoryException
-		if not self.starts:
+		if not self.blocks:
 			if size <= self.capacity:
-				self.starts.append(0)
-				self.sizes.append(size)
+				self.blocks.append(Block(0, size))
 				return 0
 			else:
 				raise AllocatorMemoryException(size)
 
 		# Restart from zero if space exists
-		if self.starts[0] > size:
-			self.starts.insert(0, 0)
-			self.sizes.insert(0, size)
+		if self.blocks.at(0).start > size:
+			self.blocks.insert(0, Block(0, size))
 			return 0
 
 		# Allocate in a free space
-		cdef int64_t free_start = self.starts[0] + self.sizes[0]
+		cdef int64_t free_start = self.blocks.at(0).start + self.blocks.at(0).size
 		cdef int64_t free_size, alloc_start, alloc_size, i, j
 		# === Slicing removed because cython did NOT like that ===
 		# for i, (alloc_start, alloc_size) in enumerate(zip(self.starts[1:], self.sizes[1:])):
@@ -196,29 +260,29 @@ cdef class Allocator:
 			# i is actually index - 1 because of slicing above...
 			# starts[i]   points to the block before this free space
 			# starts[i+1] points to the block after this free space, and is always valid.
-		for j in range(1, len(self.starts)):
-			alloc_start = self.starts[j]
-			alloc_size = self.sizes[j]
+		# === Start zip replacement #
+		for j in range(1, <int64_t>self.blocks.length):
+			alloc_start = self.blocks.at(j).start
+			alloc_size = self.blocks.at(j).size
 			i = j - 1
-			# === #
+			# === End zip replacement #
 			free_size = alloc_start - free_start
 			if free_size == size:
 				# Merge previous block with this one (removing this free space)
-				self.sizes[i] += free_size + alloc_size
-				self.starts.pop(i + 1)
-				self.sizes.pop(i + 1)
+				self.blocks.atp(i).size += free_size + alloc_size
+				self.blocks.pop(i + 1)
 				return free_start
 			elif free_size > size:
 				# Increase size of previous block to intrude into this free
 				# space.
-				self.sizes[i] += size
+				self.blocks.atp(i).size += size
 				return free_start
 			free_start = alloc_start + alloc_size
 
 		# Allocate at end of capacity
 		free_size = self.capacity - free_start
 		if free_size >= size:
-			self.sizes[-1] += size
+			self.blocks.atp(-1).size += size
 			return free_start
 		
 		raise AllocatorMemoryException(self.capacity + size - free_size)
@@ -259,20 +323,22 @@ cdef class Allocator:
 			return start
 
 		# Find which block it lives in
-		cdef int64_t alloc_start, alloc_size, p
-		for i, (alloc_start, alloc_size) in enumerate(zip(self.starts, self.sizes)):
-			p = start - alloc_start
-			if p >= 0 and size <= alloc_size - p:
+		cdef int64_t i, p
+		cdef Block block
+		for i in range(<int64_t>self.blocks.length):
+			block = self.blocks.at(i)
+			p = start - block.start
+			if p >= 0 and size <= block.size - p:
 				break
 		else:
 			raise RuntimeError("Region not allocated.")
 
-		cdef bint is_final_block = (i == (len(self.starts) - 1))
+		cdef bint is_final_block = (i == (<int64_t>self.blocks.length - 1))
 		cdef int64_t free_size
-		if size == alloc_size - p:
+		if size == block.size - p:
 			# Region is at end of block. Find how much free space is after it.
 			if not is_final_block:
-				free_size = self.starts[i + 1] - (start + size)
+				free_size = self.blocks.at(i + 1).start - (start + size)
 			else:
 				free_size = self.capacity - (start + size)
 
@@ -282,13 +348,12 @@ cdef class Allocator:
 			if free_size == new_size - size and not is_final_block:
 				# Merge block with next (region is expanded in place to
 				# exactly fill the free space)
-				self.sizes[i] += free_size + self.sizes[i + 1]
-				self.starts.pop(i + 1)
-				self.sizes.pop(i + 1)
+				self.blocks.atp(i).size += free_size + self.blocks.at(i + 1).size
+				self.blocks.pop(i + 1)
 				return start
 			elif free_size > new_size - size:
 				# Expand region in place
-				self.sizes[i] += new_size - size
+				self.blocks.atp(i).size += new_size - size
 				return start
 
 		# The block must be repositioned.  Dealloc then alloc.
@@ -322,29 +387,30 @@ cdef class Allocator:
 		if size == 0:
 			return
 
-		if not self.starts:
+		if not self.blocks:
 			raise ValueError("Can't deallocate regions when none exist.")
 		
 		# Find which block needs to be split
-		cdef int64_t alloc_start, alloc_size, p
-		for i, (alloc_start, alloc_size) in enumerate(zip(self.starts, self.sizes)):
-			p = start - alloc_start
-			if p >= 0 and size <= alloc_size - p:
+		cdef int64_t i, p
+		cdef Block block
+		for i in range(<int64_t>self.blocks.length):
+			block = self.blocks.at(i)
+			p = start - block.start
+			if p >= 0 and size <= block.size - p:
 				break
 		else:
 			raise RuntimeError("Region not allocated!")
 
-		if p == 0 and size == alloc_size:
+		if p == 0 and size == block.size:
 			# Remove entire block
-			self.starts.pop(i)
-			self.sizes.pop(i)
+			self.blocks.pop(i)
 		elif p == 0:
 			# Truncate beginning of block
-			self.starts[i] += size
-			self.sizes[i] -= size
-		elif size == alloc_size - p:
+			self.blocks.atp(i).start += size
+			self.blocks.atp(i).size -= size
+		elif size == block.size - p:
 			# Truncate end of block
-			self.sizes[i] -= size
+			self.blocks.atp(i).size -= size
 		else:
 			# Reduce size of left side, insert block at right side
 			#   $ = dealloc'd block, # = alloc'd region from same block
@@ -363,9 +429,8 @@ cdef class Allocator:
 			#   7 = {8} - ({5} + {6}) = alloc_size - (p + size)
 			#   8 = alloc_size
 			#
-			self.sizes[i] = p
-			self.starts.insert(i + 1, start + size)
-			self.sizes.insert(i + 1, alloc_size - (p + size))
+			self.blocks.atp(i).size = p
+			self.blocks.insert(i + 1, Block(start + size, block.size - (p + size)))
 
 	cpdef tuple get_allocated_regions(self):
 		"""Get a list of (aggregate) allocated regions.
@@ -376,7 +441,12 @@ cdef class Allocator:
 
 		:rtype: (list, list)
 		"""
-		return (list(self.starts), list(self.sizes))
+		startl = []
+		sizel = []
+		for i in range(<int64_t>self.blocks.length):
+			startl.append(self.blocks.at(i).start)
+			sizel.append(self.blocks.at(i).size)
+		return (startl, sizel)
 
 	cpdef int64_t get_fragmented_free_size(self):
 		"""Returns the amount of space unused, not including the final
@@ -384,16 +454,15 @@ cdef class Allocator:
 
 		:rtype: int
 		"""
-		if not self.starts:
+		if not self.blocks:
 			return 0
 
 		# Variation of search for free block.
 		cdef int64_t total_free = 0
-		cdef int64_t free_start = self.starts[0] + self.sizes[0]
-		cdef int64_t i
-		for i in range(1, len(self.starts)):
-			total_free += self.starts[i] - free_start
-			free_start = self.starts[i] + self.sizes[i]
+		cdef int64_t free_start = self.blocks.at(0).start + self.blocks.at(0).size
+		for i in range(1, <int64_t>self.blocks.length):
+			total_free += self.blocks.at(i).start - free_start
+			free_start = self.blocks.at(i).start + self.blocks.at(i).size
 
 		return total_free
 
@@ -402,10 +471,13 @@ cdef class Allocator:
 		
 		:rtype: int
 		"""
-		if not self.starts:
+		if not self.blocks:
 			return self.capacity
 
-		cdef int64_t free_end = self.capacity - (self.starts[-1] + self.sizes[-1])
+		cdef int64_t free_end = self.capacity - (
+			self.blocks.at(-1).start +
+			self.blocks.at(-1).size
+		)
 		return self.get_fragmented_free_size() + free_end
 
 	def get_usage(self) -> float:
@@ -426,7 +498,13 @@ cdef class Allocator:
 		return self.get_fragmented_free_size() / float(self.get_free_size())
 
 	def __str__(self):
-		return 'allocs=' + repr(list(zip(self.starts, self.sizes)))
+		cdef Block blk
+		for i in range(<int64_t>self.blocks.length):
+			blk = self.blocks.at(i)
+			s += f"({blk.start}, {blk.size})"
+			if i != (<int64_t>self.blocks.length) - 1:
+				s += ", "
+		return 'allocs=[' + s + ']'
 
 	def __repr__(self):
 		return '<%s %s>' % (self.__class__.__name__, str(self))
