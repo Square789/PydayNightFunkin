@@ -18,7 +18,7 @@ cdef class STBVorbis:
 		self._stb_vorbis = stb_vorbis_open_filename(file_name.encode(), &open_error, NULL)
 		if open_error:
 			raise STBVorbisException("Failed opening file")
-		if self._stb_vorbis is NULL:
+		if self._stb_vorbis == NULL:
 			raise STBVorbisException("Failed allocating stb_vorbis struct")
 
 		cdef stb_vorbis_info info = stb_vorbis_get_info(self._stb_vorbis)
@@ -30,7 +30,7 @@ cdef class STBVorbis:
 			stb_vorbis_close(self._stb_vorbis)
 
 	def _get_error_string(self) -> str:
-		if self._stb_vorbis is NULL:
+		if self._stb_vorbis == NULL:
 			return "<No stb_vorbis struct>"
 
 		cdef int err = stb_vorbis_get_error(self._stb_vorbis)
@@ -101,7 +101,7 @@ cdef class STBVorbis:
 		if the data source is exhausted.
 		"""
 		cdef short *buf = <short *>malloc(sizeof(short) * num_samples)
-		if buf is NULL:
+		if buf == NULL:
 			raise MemoryError()
 
 		cdef int samples_per_channel

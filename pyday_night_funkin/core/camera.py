@@ -233,7 +233,7 @@ class Camera:
 		to `TEXTURE_2D` and the blend func.
 		"""
 		self.program.use()
-		self.program["camera_texture"] = 0
+		# self.program["camera_texture"] = 0
 		gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
 		gl.glActiveTexture(gl.GL_TEXTURE0)
 		gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture.id)

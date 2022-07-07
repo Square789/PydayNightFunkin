@@ -40,19 +40,23 @@ if __name__ == "__main__":
 	]
 
 	if CYGL_USE:
-		r = subprocess.run([sys.executable, "./pyday_night_funkin/core/graphics/cygl/gen_gl.py"])
+		r = subprocess.run([sys.executable, "-m", "pyday_night_funkin.core.graphics.cygl.gen_gl"])
 		if r.returncode != 0:
 			print("gen_gl script failed.")
 			sys.exit(1)
 
-		r = subprocess.run([
+		extractor_gen_script_args = [
 			sys.executable,
-			"./pyday_night_funkin/core/graphics/vertexbuffer_gen_pyobj_extractors.py",
-		])
+			"-m",
+			"pyday_night_funkin.core.graphics.vertexbuffer_gen_pyobj_extractors",
+		]
+		if CYGL_HYPER_UNSAFE:
+			extractor_gen_script_args.extend(["--", "--hyper-unsafe"])
+
+		r = subprocess.run(extractor_gen_script_args)
 		if r.returncode != 0:
 			print("pyobj extractor snippet generation script failed.")
 			sys.exit(1)
-
 
 		extensions.extend((
 			Extension(

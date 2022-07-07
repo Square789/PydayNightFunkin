@@ -9,6 +9,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.camera import Camera
 	from pyday_night_funkin.core.types import Numeric
 
+
 class SceneObject:
 	"""
 	Standard object that can be registered to a scene hierarchy.
@@ -47,6 +48,9 @@ class SceneObject:
 		"""
 		The one and only update function.
 		Put your game logic here.
+
+		:param dt: The time difference from the last update call, in
+			seconds.
 		"""
 
 

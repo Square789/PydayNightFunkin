@@ -1,7 +1,7 @@
 
 from libc.stdint cimport *
 from libc.stdio cimport printf
-from libc.stdlib cimport malloc, realloc, free
+from libc.stdlib cimport calloc, malloc, realloc, free
 from libc.string cimport memcpy, memmove, memset
 
 from pyday_night_funkin.core.graphics.cygl.gl cimport *
@@ -11,7 +11,7 @@ import ctypes
 from pyday_night_funkin.core.graphics.shared import GL_TYPE_SIZES, GL_TO_C_TYPE_MAP
 
 
-include "vertexbuffer_pyobj_extractors.pyi"
+include "vertexbuffer_pyobj_extractors.pxi"
 
 cdef GLRegistry *gl = NULL
 
@@ -31,8 +31,10 @@ cdef class BufferObject:
 	cdef FPTR_pyobj_extractor pyobj_extractor
 
 	def __init__(self, *_, **__):
-		# TODO cinit does everything.
-		# I don't think that's how you are meant to do it
+		# __cinit__ does everything.
+		# I don't think that's how you are meant to do it, but whatever it works.
+		# This __init__ method ignores all args and kwargs in order to make switching
+		# this thing for the pure python versions easy.
 		pass
 
 	def __cinit__(
@@ -44,7 +46,7 @@ cdef class BufferObject:
 		uint8_t count = 1,
 	):
 		global gl
-		if gl is NULL:
+		if gl == NULL:
 			gl = cygl_get_reg()
 
 		self.buffer_exists = False
@@ -96,7 +98,7 @@ cdef class BufferObject:
 			raise MemoryError()
 
 		try:
-			self.pyobj_extractor(size * self.count, data, converted_array)
+			self.pyobj_extractor(size * self.count, converted_array, data)
 		except:
 			free(converted_array)
 			raise
@@ -190,7 +192,7 @@ cdef class RAMBackedBufferObject(BufferObject):
 		*_args,
 		**_kwargs,
 	):
-		self._ram_buffer = <uint8_t *>malloc(sizeof(uint8_t) * size)
+		self._ram_buffer = <uint8_t *>calloc(sizeof(uint8_t), size)
 		if self._ram_buffer == NULL:
 			raise MemoryError()
 
@@ -200,17 +202,6 @@ cdef class RAMBackedBufferObject(BufferObject):
 
 	def __dealloc__(self):
 		free(self._ram_buffer)
-
-	# No clue what i was thinking with this commented code. was that meant to go in resize?
-	# TODO
-	# cpdef set_size_and_data_array(self, GLsizeiptr size, object data):
-		# self.set_size_and_data_raw
-		# cdef GLsizeiptr copy_size, tail_size
-		# copy_size = min(<GLsizeiptr>size, size)
-		# # Hopefully the signed cast is correct here
-		# tail_size = max(0, <GLintptr>size - <GLintptr>copy_size)
-		# memcpy(self._ram_buffer, _get_ctypes_data_ptr(data), size)
-		# memset(self._ram_buffer + copy_size, 0, tail_size)
 
 	cdef uint8_t set_size_and_data_raw(self, GLsizeiptr size, void *data) except 1:
 		free(self._ram_buffer)
@@ -252,6 +243,9 @@ cdef class RAMBackedBufferObject(BufferObject):
 		if new_ptr == NULL:
 			# self._ram_buffer is probably gonna be freed by __dealloc__
 			raise MemoryError()
+
+		if self.size < new_size:
+			memset(new_ptr + self.size, 0, self.size - new_size)
 
 		self._ram_buffer = new_ptr
 		gl.NamedBufferData(self.id, new_size, self._ram_buffer, self.usage)

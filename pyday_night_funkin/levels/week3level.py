@@ -101,19 +101,29 @@ class Week3Level(InGameScene):
 
 	def _update_train(self) -> None:
 		self.train_timer = .0
-		if not self.train_moving and self.train_sound_player.time > 4.7:
+		if not self.train_moving:
+			if self.train_sound_player.time <= 4.7:
+				return
 			self.train_moving = True
 			self.girlfriend.animation.play("hair_blow")
-		if self.train_moving:
-			self.train.x -= 400
-			if self.train.x < -2000 and self.train_cars_remaining > 0:
-				self.train.x = -1150
-				self.train_cars_remaining -= 1
-			if self.train.x < -4000 and self.train_cars_remaining <= 0:
-				self.girlfriend.animation.play("hair_fall")
-				self.train.x = GAME_WIDTH + 200
-				self.train_inbound = self.train_moving = False
-				self.train_cars_remaining = 8
+
+		self.train.x -= 400
+		if self.train.x < -2000 and self.train_cars_remaining > 0:
+			self.train.x = -1150
+			self.train_cars_remaining -= 1
+		if self.train.x < -4000 and self.train_cars_remaining <= 0:
+			self.girlfriend.animation.play("hair_fall")
+			self.train.x = GAME_WIDTH + 200
+			self.train_inbound = self.train_moving = False
+			self.train_cars_remaining = 8
+
+	def on_pause(self) -> None:
+		super().on_pause()
+		self.train_sound_player.pause()
+
+	def on_subscene_removal(self, *a, **kw) -> None:
+		super().on_subscene_removal(*a, **kw)
+		self.train_sound_player.play()
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
@@ -127,11 +137,12 @@ class Week3Level(InGameScene):
 			return
 
 		self.train_cooldown += 1
-		if self.cur_beat % 8 == 4 and randint(0, 99) < 30 and self.train_cooldown > 8:
+		# cooldown > 8 by original game but make it juust a bit less frequent
+		if self.cur_beat % 8 == 4 and randint(0, 99) < 30 and self.train_cooldown > 10:
 			self.train_cooldown = randint(-4, 0)
 			self.train_inbound = True
-			if not self.train_sound_player.playing:
-				self.train_sound_player.set(self.train_sound)
+			# if not self.train_sound_player.playing:
+			self.train_sound_player.set(self.train_sound)
 
 	def destroy(self) -> None:
 		super().destroy()
