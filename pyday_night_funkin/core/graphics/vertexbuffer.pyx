@@ -1,4 +1,6 @@
 
+cimport cython
+
 from libc.stdint cimport *
 from libc.stdio cimport printf
 from libc.stdlib cimport calloc, malloc, realloc, free
@@ -6,17 +8,23 @@ from libc.string cimport memcpy, memmove, memset
 
 from pyday_night_funkin.core.graphics.cygl.gl cimport *
 
+
+# No idea if the lookup on ctypes happens/hurts but I think this may be a good idea
 import ctypes
+from ctypes import Array as ctypes_Array, addressof as ctypes_addressof, sizeof as ctypes_sizeof
 
-from pyday_night_funkin.core.graphics.shared import GL_TYPE_SIZES, GL_TO_C_TYPE_MAP
+from pyday_night_funkin.core.graphics.shared import GL_TO_C_TYPE_MAP
 
 
-include "vertexbuffer_pyobj_extractors.pxi"
+# Include the generated pyobj extractor and verification functions #
+include "vertexbuffer.pxi"
 
 cdef GLRegistry *gl = NULL
 
+@cython.optimize.unpack_method_calls(False)
 cdef void *_get_ctypes_data_ptr(object arr) except NULL:
-	return <void *><size_t>ctypes.addressof(arr)
+	return <void *><size_t>ctypes_addressof(arr)
+
 
 cdef class BufferObject:
 	cdef uint8_t buffer_exists
@@ -82,8 +90,9 @@ cdef class BufferObject:
 			gl.DeleteBuffers(1, &self.id)
 			self.buffer_exists = False
 
-	cpdef set_size_and_data_array(self, GLsizeiptr size, object data):
-		self.set_size_and_data_raw(size, _get_ctypes_data_ptr(data))
+	cpdef set_size_and_data_array(self, object data):
+		_verify_is_ctypes_array(data)
+		self.set_size_and_data_raw(ctypes_sizeof(data), _get_ctypes_data_ptr(data))
 
 	cdef uint8_t set_size_and_data_raw(self, GLsizeiptr size, void *data) except 1:
 		gl.NamedBufferData(self.id, size, data, self.usage)
@@ -109,6 +118,7 @@ cdef class BufferObject:
 			free(converted_array)
 
 	cpdef set_data_elements(self, GLintptr start, GLsizeiptr size, object data):
+		_verify_is_ctypes_array(data)
 		self.set_data_raw(
 			self.element_size * start,
 			self.element_size * size,
@@ -116,9 +126,11 @@ cdef class BufferObject:
 		)
 
 	cpdef set_data_array(self, GLintptr start, GLsizeiptr size, object data):
+		_verify_is_ctypes_array(data)
 		self.set_data_raw(start, size, _get_ctypes_data_ptr(data))
 
 	cdef uint8_t set_data_raw(self, GLintptr start, GLsizeiptr size, void *data) except 1:
+		_verify_range_access(self.size, start, size)
 		gl.NamedBufferSubData(self.id, start, size, data)
 		cygl_errcheck()
 		return 0
@@ -137,18 +149,42 @@ cdef class BufferObject:
 		fetched_size = fetched_elcount * self.element_size
 
 		res = (self.c_type * (fetched_elcount * self.count))()
-		self._copy_data_into(start_byte, fetched_size, _get_ctypes_data_ptr(res))
+		self.copy_data_into_raw(start_byte, fetched_size, _get_ctypes_data_ptr(res))
 		return res
 
 	cpdef object get_data_array(self, GLintptr start, size_t size):
 		cdef GLsizeiptr fetched_size = min(size, self.size - start)
 		res_buffer = (ctypes.c_ubyte * fetched_size)()
-		self._copy_data_into(start, fetched_size, _get_ctypes_data_ptr(res_buffer))
+		self.copy_data_into_raw(start, fetched_size, _get_ctypes_data_ptr(res_buffer))
 		return res_buffer
 
-	cdef uint8_t _copy_data_into(self, GLintptr start, GLsizeiptr size, void *target) except 1:
+	cpdef copy_from_elements(
+		self, BufferObject src, size_t self_start, size_t src_start, size_t count
+	):
+		self.copy_from(
+			src,
+			self.element_size * self_start,
+			self.element_size * src_start,
+			self.element_size * count,
+		)
+
+	cpdef copy_from(self, BufferObject src, size_t self_start, size_t src_start, size_t size):
+		if src is None:
+			raise ValueError("Copy source was None")
+		_verify_range_access(self.size, self_start, size)
+
+		cdef void *ptr = gl.MapNamedBufferRange(self.id, self_start, size, GL_MAP_WRITE_BIT)
+		cygl_errcheck()
+		try:
+			src.copy_data_into_raw(src_start, size, ptr)
+		finally:
+			gl.UnmapNamedBuffer(self.id)
+			cygl_errcheck()
+
+	cdef uint8_t copy_data_into_raw(self, GLintptr start, GLsizeiptr size, void *target) except 1:
 		if size == 0:
 			return 0
+		_verify_range_access(self.size, start, size)
 
 		cdef void *ptr = gl.MapNamedBufferRange(self.id, start, size, GL_MAP_READ_BIT)
 		cygl_errcheck()
@@ -182,8 +218,8 @@ cdef class BufferObject:
 cdef class RAMBackedBufferObject(BufferObject):
 	cdef uint8_t *_ram_buffer
 	cdef uint8_t dirty
-	cdef GLintptr dirty_min
-	cdef GLintptr dirty_max
+	cdef size_t dirty_min
+	cdef size_t dirty_max
 
 	def __cinit__(
 		self,
@@ -216,21 +252,31 @@ cdef class RAMBackedBufferObject(BufferObject):
 		return 0
 
 	cdef uint8_t set_data_raw(self, GLintptr start, GLsizeiptr size, void *data) except 1:
-		memmove(
-			self._ram_buffer + start,
-			data,
-			min(<GLintptr>size, <GLintptr>self.size - start),
-		)
+		_verify_range_access(self.size, start, size)
+
+		memmove(self._ram_buffer + start, data, size)
+		self._set_dirty(start, size)
+		return 0
+
+	cpdef copy_from(self, BufferObject src, size_t self_start, size_t src_start, size_t size):
+		if src is None:
+			raise ValueError(f"Copy source was None")
+		_verify_range_access(self.size, self_start, size)
+		src.copy_data_into_raw(src_start, size, self._ram_buffer + self_start)
+		self._set_dirty(self_start, size)
+
+	@cython.final
+	cdef inline _set_dirty(self, size_t start, size_t size):
 		if not self.dirty:
 			self.dirty = True
 			self.dirty_min = start
 			self.dirty_max = start + size
 		else:
 			self.dirty_min = min(self.dirty_min, start)
-			self.dirty_max = max(self.dirty_max, <GLintptr>(start + size))
-		return 0
+			self.dirty_max = max(self.dirty_max, start + size)
 
-	cdef uint8_t _copy_data_into(self, GLintptr start, GLsizeiptr size, void *target) except 1:
+	cdef uint8_t copy_data_into_raw(self, GLintptr start, GLsizeiptr size, void *target) except 1:
+		_verify_range_access(self.size, start, size)
 		memcpy(target, self._ram_buffer + start, size)
 		return 0
 
@@ -244,8 +290,8 @@ cdef class RAMBackedBufferObject(BufferObject):
 			# self._ram_buffer is probably gonna be freed by __dealloc__
 			raise MemoryError()
 
-		if self.size < new_size:
-			memset(new_ptr + self.size, 0, self.size - new_size)
+		if new_size > self.size:
+			memset(new_ptr + self.size, 0, new_size - self.size)
 
 		self._ram_buffer = new_ptr
 		gl.NamedBufferData(self.id, new_size, self._ram_buffer, self.usage)
@@ -260,8 +306,9 @@ cdef class RAMBackedBufferObject(BufferObject):
 		gl.NamedBufferSubData(
 			self.id,
 			self.dirty_min,
-			self.dirty_max - self.dirty_min,
+			<GLintptr>self.dirty_max - <GLintptr>self.dirty_min,
 			self._ram_buffer + self.dirty_min,
 		)
 		cygl_errcheck()
 		self.dirty = False
+

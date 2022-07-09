@@ -5,7 +5,7 @@ the type of data they store.
 """
 
 #                              NOTE:                                  #
-# A few safety checks are commented out to scrape a few nanoseconds   #
+# Most safety checks are commented out to scrape a few nanoseconds    #
 # off, as this module is only being used (and supposed to be used) by #
 # internal graphics stuff and that behaves properly as far as I can   #
 # tell.                                                               #
@@ -63,17 +63,18 @@ class BufferObject:
 		gl.glCreateBuffers(1, self.id)
 		gl.glNamedBufferData(self.id, size, None, usage)
 
-	def set_size_and_data_array(self, size: int, data: ctypes.Array) -> None:
+	def set_size_and_data_array(self, array: ctypes.Array) -> None:
 		"""
-		Resizes the buffer to `size` bytes to accomodate the new data
-		in the given array.
+		Resizes the buffer to accomodate the new data in the given
+		array.
 		The array may be taken ownership of by the BufferObject, copy
 		it beforehand if needed.
 		"""
-		gl.glNamedBufferData(self.id, size, data, self.usage)
+		size = ctypes.sizeof(array)
+		gl.glNamedBufferData(self.id, size, array, self.usage)
 		self.size = size
 
-	def set_data_py(self, start: int, size: int, data: t.Iterable) -> None:
+	def set_data_py(self, start: int, size: int, data: t.Collection) -> None:
 		"""
 		Sets the next `size` elements in the buffer from `start` to the
 		data given in `data`, which is converted by passing it into a
@@ -88,6 +89,8 @@ class BufferObject:
 		"""
 		Sets the next `count` elements (not bytes) from `start` of the
 		underlying buffer to the data represented in the ctypes array.
+		The ctypes array type/layout must correspond to the buffer's
+		type.
 		"""
 		es = self.element_size
 		self.set_data_array(es * start, es * count, data)
@@ -102,7 +105,7 @@ class BufferObject:
 		# `size` may not overrun the buffer's size, otherwise an
 		# IndexError is raised.
 		# """
-		# if start < 0 or start + size > self.size:
+		# if start < 0 or size < 0 or start + size > self.size:
 		# 	raise IndexError(
 		# 		f"Can not write {size} bytes from {start} into buffer of size {self.size}!"
 		# 	)
@@ -123,7 +126,7 @@ class BufferObject:
 		fetched_size = fetched_elcount * el_size
 
 		res = (self.c_type * (fetched_elcount * self.count))()
-		self._copy_data_into(start_byte, fetched_size, ctypes.addressof(res))
+		self.copy_data_into_raw(start_byte, fetched_size, ctypes.addressof(res))
 		return res
 
 	def get_data_array(self, start: int, size: int) -> ctypes.Array:
@@ -134,16 +137,41 @@ class BufferObject:
 		"""
 		fetched_size = max(0, min(size, self.size - start))
 		res = (ctypes.c_ubyte * fetched_size)()
-		self._copy_data_into(start, fetched_size, ctypes.addressof(res))
+		self.copy_data_into_raw(start, fetched_size, ctypes.addressof(res))
 		return res
 
-	def _copy_data_into(self, start: int, size: int, target: int) -> None:
-		if size <= 0:
+	def copy_from_elements(
+		self, src: "BufferObject", self_start: int, src_start: int, count: int
+	) -> None:
+		"""
+		Copies the next `count` elements in `src` from `src_start` into
+		this buffer at `self_start`.
+		"""
+		es = self.element_size
+		self.copy_from(src, self_start * es, src_start * es, count * es)
+
+	def copy_from(self, src: "BufferObject", self_start: int, src_start: int, size: int) -> None:
+		"""
+		Copies the next `size` bytes in `src` from `src_start` into
+		this buffer at `self_start`.
+		"""
+		# [UNSAFETY]
+		# if self_start < 0 or size < 0 or self_start + size > self.size:
+		# 	raise ValueError("Invalid parameters for `copy_from`.")
+
+		ptr = gl.glMapNamedBufferRange(self.id, self_start, size, gl.GL_MAP_WRITE_BIT)
+		try:
+			src.copy_data_into_raw(src_start, size, ptr)
+		finally:
+			gl.glUnmapNamedBuffer(self.id)
+
+	def copy_data_into_raw(self, start: int, size: int, target: int) -> None:
+		if size == 0:
 			return
 
 		# [UNSAFETY]
 		# if start < 0 or size < 0 or start + size > self.size:
-		# 	raise ValueError("Invalid parameters for `_copy_data_into`.")
+		# 	raise ValueError("Invalid parameters for `copy_data_into_raw`.")
 
 		ptr = gl.glMapNamedBufferRange(self.id, start, size, gl.GL_MAP_READ_BIT)
 		ctypes.memmove(target, ptr, size)
@@ -195,12 +223,15 @@ class RAMBackedBufferObject(BufferObject):
 		super().__init__(target, size, usage, data_gl_type, data_count)
 
 		self._ram_buffer = (ctypes.c_ubyte * size)()
+		self._ram_buffer_ptr = ctypes.addressof(self._ram_buffer)
 		self._dirty = False
 		self._dirty_min = 0
 		self._dirty_max = 0
 
-	def set_size_and_data_array(self, size: int, array: ctypes.Array) -> None:
+	def set_size_and_data_array(self, array: ctypes.Array) -> None:
+		size = ctypes.sizeof(array)
 		self._ram_buffer = array
+		self._ram_buffer_ptr = ctypes.addressof(array)
 		gl.glNamedBufferData(self.id, size, array, self.usage)
 		self._dirty = False
 		self.size = size
@@ -210,11 +241,18 @@ class RAMBackedBufferObject(BufferObject):
 		# if start < 0 or start + size > self.size:
 		# 	return
 
-		ctypes.memmove(
-			ctypes.addressof(self._ram_buffer) + start,
-			data_ptr,
-			min(size, self.size - start),
-		)
+		ctypes.memmove(self._ram_buffer_ptr + start, data_ptr, size)
+		self._set_dirty(start, size)
+
+	def copy_from(self, src: "BufferObject", self_start: int, src_start: int, size: int) -> None:
+		# [UNSAFETY]
+		# if self_start < 0 or size < 0 or self_start + size > self.size:
+		# 	raise ValueError("Bad parameters for `copy_from`.")
+
+		src.copy_data_into_raw(src_start, size, self._ram_buffer_ptr + self_start)
+		self._set_dirty(self_start, size)
+
+	def _set_dirty(self, start: int, size: int) -> None:
 		if not self._dirty:
 			self._dirty = True
 			self._dirty_min = start
@@ -223,8 +261,12 @@ class RAMBackedBufferObject(BufferObject):
 			self._dirty_min = min(self._dirty_min, start)
 			self._dirty_max = max(self._dirty_max, start + size)
 
-	def _copy_data_into(self, start: int, size: int, target: int) -> None:
-		ctypes.memmove(target, ctypes.addressof(self._ram_buffer) + start, size)
+	def copy_data_into_raw(self, start: int, size: int, target: int) -> None:
+		# [UNSAFETY]
+		# if start < 0 or size < 0 or start + size > self.size:
+		# 	raise ValueError("Bad start and size for `copy_data_into_raw`.")
+
+		ctypes.memmove(target, self._ram_buffer_ptr + start, size)
 
 	def bind(self, target: t.Optional[int] = None) -> None:
 		"""
@@ -239,7 +281,8 @@ class RAMBackedBufferObject(BufferObject):
 		new = (ctypes.c_ubyte * new_size)()
 		ctypes.memmove(new, self._ram_buffer, min(new_size, self.size))
 		self._ram_buffer = new
-		gl.glNamedBufferData(self.id, new_size, ctypes.addressof(self._ram_buffer), self.usage)
+		self._ram_buffer_ptr = ctypes.addressof(new)
+		gl.glNamedBufferData(self.id, new_size, self._ram_buffer_ptr, self.usage)
 		self._dirty = False
 		self.size = new_size
 
@@ -251,7 +294,7 @@ class RAMBackedBufferObject(BufferObject):
 			self.id,
 			self._dirty_min,
 			self._dirty_max - self._dirty_min,
-			ctypes.addressof(self._ram_buffer) + self._dirty_min,
+			self._ram_buffer_ptr + self._dirty_min,
 		)
 
 		self._dirty = False

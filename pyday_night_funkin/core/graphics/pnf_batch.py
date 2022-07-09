@@ -21,6 +21,7 @@ if t.TYPE_CHECKING:
 
 _INDEX_TYPE = gl.GL_UNSIGNED_INT
 _INDEX_TYPE_SIZE = GL_TYPE_SIZES[_INDEX_TYPE]
+_INDEX_C_TYPE = GL_TO_C_TYPE_MAP[_INDEX_TYPE]
 
 
 # NOTE: This is just a class with a list. May be useful for further
@@ -315,8 +316,8 @@ class DrawList:
 		"""
 		Sets the content of the index buffer to the given data.
 		"""
-		indices = (GL_TO_C_TYPE_MAP[_INDEX_TYPE] * len(data))(*data)
-		self.index_buffer.set_size_and_data_array(_INDEX_TYPE_SIZE * len(indices), indices)
+		indices = (_INDEX_C_TYPE * len(data))(*data)
+		self.index_buffer.set_size_and_data_array(indices)
 
 	def check_dirty(self) -> bool:
 		"""

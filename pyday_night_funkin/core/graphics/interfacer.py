@@ -138,13 +138,7 @@ class PNFBatchInterfacer:
 		index_shift = new_start - self.domain_position
 		for k, cur_attr in self.domain.attributes.items():
 			new_attr = new_domain.attributes[k]
-			# TODO make some kind of copy_from method that allows buffers to
-			# have sex without any intermediate arrays
-			new_attr.set_data_elements(
-				new_start,
-				self.size,
-				cur_attr.get_data_elements(self.domain_position, self.size),
-			)
+			new_attr.copy_from_elements(cur_attr, new_start, self.domain_position, self.size)
 
 		self.domain.deallocate(self.domain_position, self.size)
 		self.domain = new_domain
@@ -185,7 +179,7 @@ class PNFBatchInterfacer:
 
 		self._visible = new_visibility
 
-	def set_data(self, name: str, value: t.Any) -> None:
+	def set_data(self, name: str, value: t.Collection) -> None:
 		"""
 		Sets vertex data of this interfacer for the given attribute.
 		"""

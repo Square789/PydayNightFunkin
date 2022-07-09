@@ -2,17 +2,36 @@
 
 import os
 import platform
+from setuptools import find_packages, setup, Extension
 import subprocess
 import sys
+import typing as t
 
-from setuptools import find_packages, setup, Extension
 from Cython.Build import cythonize
 from Cython.Compiler import Options
+try:
+	from dotenv import load_dotenv
+except ImportError:
+	load_dotenv = None
 
 Options.fast_fail = True
 
-CYGL_USE = True
-CYGL_HYPER_UNSAFE = False
+
+def _convert_bool_env_var(v: str) -> bool:
+	if v == "0":
+		return False
+	return bool(v)
+
+if load_dotenv is not None:
+	load_dotenv()
+
+CYGL_USE = _convert_bool_env_var(os.getenv("PNF_CYGL_USE", "1"))
+CYGL_HYPER_UNSAFE = _convert_bool_env_var(os.getenv("PNF_CYGL_HYPER_UNSAFE", "0"))
+CYGL_GL_XML_PATH = os.getenv("PNF_CYGL_GL_XML_PATH", None)
+
+
+def make_gen_script_args(module: str) -> t.List[str]:
+	return [sys.executable, "-m", module, "--"]
 
 
 if __name__ == "__main__":
@@ -40,22 +59,20 @@ if __name__ == "__main__":
 	]
 
 	if CYGL_USE:
-		r = subprocess.run([sys.executable, "-m", "pyday_night_funkin.core.graphics.cygl.gen_gl"])
+		gl_gen_args = make_gen_script_args("pyday_night_funkin.core.graphics.cygl.gl_gen")
+		if CYGL_GL_XML_PATH is not None:
+			gl_gen_args.extend(["--gl-xml-path", CYGL_GL_XML_PATH])
+		r = subprocess.run(gl_gen_args)
 		if r.returncode != 0:
-			print("gen_gl script failed.")
+			print("gl generation script failed.")
 			sys.exit(1)
 
-		extractor_gen_script_args = [
-			sys.executable,
-			"-m",
-			"pyday_night_funkin.core.graphics.vertexbuffer_gen_pyobj_extractors",
-		]
+		vtxbuf_gen_args = make_gen_script_args("pyday_night_funkin.core.graphics.vertexbuffer_gen")
 		if CYGL_HYPER_UNSAFE:
-			extractor_gen_script_args.extend(["--", "--hyper-unsafe"])
-
-		r = subprocess.run(extractor_gen_script_args)
+			vtxbuf_gen_args.append("--hyper-unsafe")
+		r = subprocess.run(vtxbuf_gen_args)
 		if r.returncode != 0:
-			print("pyobj extractor snippet generation script failed.")
+			print("vertexbuffer generation script failed.")
 			sys.exit(1)
 
 		extensions.extend((

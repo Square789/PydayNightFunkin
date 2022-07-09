@@ -229,11 +229,8 @@ class PNFVertexDomain:
 		for attr in self.attributes.values():
 			attr.delete()
 
-		vao_count = sum(len(d) for d in self._vaos.values())
-		vao_ids: t.List[gl.GLuint] = []
-		for d in self._vaos.values():
-			vao_ids.extend(d.values())
-
+		vao_ids: t.List[gl.GLuint] = [id_ for vaos in self._vaos.values() for id_ in vaos.values()]
+		vao_count = len(vao_ids)
 		gl.glDeleteVertexArrays(vao_count, (gl.GLuint * vao_count)(*vao_ids))
 
 	def _resize(self, new_size: int) -> None:
