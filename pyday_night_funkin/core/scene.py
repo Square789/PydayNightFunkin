@@ -90,6 +90,8 @@ class BaseScene(Container):
 
 		# self._default_camera = Camera(-100, -100, CNST.GAME_WIDTH + 200, CNST.GAME_HEIGHT + 200)
 		# self._default_camera.clear_color = (0.5, 0, 0, 1.0)
+		# self._default_camera.x = -100
+		# self._default_camera.y = -100
 		self._default_camera = Camera(0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
 		self.cameras = OrderedDict(
 			(name, Camera(0, 0, w, h)) for name, w, h in (
@@ -286,7 +288,8 @@ class BaseScene(Container):
 				# -camera._screen_y,
 
 				0,
-				0,
+				max(0, camera._height - CNST.GAME_HEIGHT), # glViewport is somehow lower-left
+				#                                            origin oriented
 
 				# === #
 
