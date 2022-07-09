@@ -7,7 +7,17 @@ from pyglet.gl import gl
 from pyday_night_funkin.core.graphics.shared import (
 	GL_TYPE_SIZES, RE_VERTEX_FORMAT, TYPECHAR_TO_GL_TYPE_MAP, USAGE_MAP
 )
-from pyday_night_funkin.core.graphics import allocation
+try:
+	from pyday_night_funkin.core.graphics import allocation
+except ImportError:
+	# This has to be done as a first-time build will import the graphics subpackage,
+	# which will try to import the then nonexistent allocation extension module here.
+	# TODO: Really clean some of this stuff up, like jesus.
+	class _Hack:
+		def __getattribute__(self, n: str) -> None:
+			raise RuntimeError("Allocation module import failed.")
+	allocation = _Hack()
+
 from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject, RAMBackedBufferObject
 from pyday_night_funkin.core.utils import dump_id
 
