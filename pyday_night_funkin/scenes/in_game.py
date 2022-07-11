@@ -370,15 +370,19 @@ class InGameScene(scenes.MusicBeatScene):
 		self.boyfriend.hold_timer = 0.0
 		self.boyfriend.animation.play(f"sing_note_{note.type.name.lower()}", True)
 
+		health = 0.004
 		if note.sustain_stage is SUSTAIN_STAGE.NONE:
 			self.combo += 1
 			self.hud.combo_popup(note.rating, self.combo)
+			health = 0.023
+
+		self.set_health(self.health + health)
 
 	def on_note_miss(self, note: Note) -> None:
 		"""
 		Called whenever a note is missed by it going offscreen.
 		"""
-		pass
+		self.set_health(self.health - 0.0475)
 
 	def on_misinput(self, type_: NOTE_TYPE) -> None: # CALM DOWN CALM DOWN
 		"""
@@ -387,6 +391,18 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		self.boyfriend.animation.play(f"miss_note_{type_.name.lower()}", True)
 		self.combo = 0
+		self.set_health(self.health - 0.04)
+
+	def set_health(self, new_health: float) -> None:
+		"""
+		Sets health of the player to the specified new health and
+		then calls everything that should necessarily update.
+		Also triggers game over if it drops below 0.
+		"""
+		self.health = min(new_health, 1.0)
+		self.hud.update_health(new_health)
+		if new_health < 0.0:
+			self.on_game_over()
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()

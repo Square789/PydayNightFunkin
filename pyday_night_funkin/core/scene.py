@@ -72,10 +72,19 @@ class BaseScene(Container):
 
 		self.batch = PNFBatch()
 
-		self.draw_passthrough = True
-		self.update_passthrough = False
+		self.draw_passthrough: bool = True
+		"""
+		Whether scenes in the scene stack after this scene will be
+		drawn.
+		"""
 
-		self.layers = OrderedDict(
+		self.update_passthrough: bool = False
+		"""
+		Whether scenes in the scene stack after this scene will be
+		updated.
+		"""
+
+		self.layers: t.Dict[str, Layer] = OrderedDict(
 			(name, Layer(PNFGroup(order=i), force_order))
 			for i, (name, force_order) in enumerate(
 				(x, False) if not isinstance(x, tuple) else x
