@@ -39,6 +39,7 @@ class PNFPlayer(Player):
 		self._set_playing(False)
 		super().delete()
 
+
 class SFXRingFullException(RuntimeError):
 	pass
 
@@ -55,22 +56,30 @@ class SFXRing():
 		self.players = [PNFPlayer() for _ in range(player_amount)]
 		self._busy = set()
 
-	def play(self, source: "Source", fail_loudly: bool = False) -> None:
-		free_player = self._get_free_player()
-		if free_player is None:
-			if fail_loudly:
-				raise SFXRingFullException("Couldn't queue sound, all players busy.")
-			return
+	def play(self, source: "Source") -> bool:
+		"""
+		Plays the given sound source in one of the available players.
+		If no player is available, does nothing.
+		Returns whether the sound was actually played.
+		"""
+		free_player_idx = self._get_free_player()
+		if free_player_idx is None:
+			return False
 
-		player = self.players[free_player]
+		player = self.players[free_player_idx]
 
-		def _unregister_busy():
-			self._busy.remove(free_player)
-			player.pop_handlers()
-		player.push_handlers(on_eos = _unregister_busy)
+		def _unregister_busy(player_self=player, player_idx=free_player_idx):
+			# I have seen a very elusive bug where this being `remove` causes a
+			# KeyError in very specific timing with scene destruction.
+			# Use discard to get around that error.
+			self._busy.discard(player_idx)
+			player_self.pop_handlers()
 
+		player.push_handlers(on_eos=_unregister_busy)
 		player.set(source)
-		self._busy.add(free_player)
+		self._busy.add(free_player_idx)
+
+		return True
 
 	def _get_free_player(self) -> t.Optional[int]:
 		for i, _ in enumerate(self.players):
@@ -79,8 +88,11 @@ class SFXRing():
 		return None
 
 	def delete(self) -> None:
+		"""
+		Deletes all players contained in the SFXRing and
+		renders it unusable.
+		"""
 		for player in self.players:
 			player.delete()
-		self.players = []
-		# Unnecessary but i like me some good cleanup
-		self._busy = set()
+		# Kinda unnecessary but i like me some good cleanup
+		del self.players

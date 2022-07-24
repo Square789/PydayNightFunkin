@@ -8,7 +8,7 @@ from loguru import logger
 import typing as t
 
 from pyglet.math import Vec2
-import schema
+from schema import Schema, SchemaError, And, Or, Optional
 
 from pyday_night_funkin.core.asset_system import (
 	ASSET, ASSET_ROUTER, AbstractAssetRouter, AssetSystem, AssetSystemEntry as ASE,
@@ -28,31 +28,44 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.types import Numeric
 
 
-SONG_SCHEMA = schema.Schema(
+class SeqValidator:
+	def __init__(self, *types: t.Any) -> None:
+		self.schemas = tuple(x if isinstance(x, Schema) else Schema(x) for x in types)
+
+	def validate(self, v: t.Any) -> t.Tuple:
+		if not isinstance(v, (list, tuple)):
+			raise SchemaError("Value is not a tuple or list.")
+		if len(v) != len(self.schemas):
+			raise SchemaError(f"Stored sequence of unexpected length: {len(v)}")
+
+		return tuple(s.validate(x) for s, x in zip(self.schemas, v))
+
+
+SONG_SCHEMA = Schema(
 	{
 		"song": {
 			"song": str,
-			"notes": [schema.And(
+			"notes": [And(
 				{
 					"lengthInSteps": int,
-					schema.Optional("bpm"): schema.Or(int, float),
-					schema.Optional("changeBPM"): bool,
+					Optional("bpm"): Or(int, float),
+					Optional("changeBPM"): bool,
 					"mustHitSection": bool,
-					"sectionNotes": [[float, int, float]],
+					"sectionNotes": [SeqValidator(Or(int, float), int, Or(int, float))],
 					# Keys I've seen that are ignored:
 					# altAnim, typeOfSection.
-					schema.Optional(str): object,
+					Optional(str): object,
 				},
-				lambda d: ("bpm" in d) or not ("changeBPM" in d),
+				lambda d: not ("changeBPM" in d) or ("bpm" in d),
 			)],
-			"bpm": schema.Or(int, float),
+			"bpm": Or(int, float),
 			"needsVoices": bool,
 			"player1": str,
 			"player2": str,
-			"speed": schema.Or(int, float),
+			"speed": Or(int, float),
 			# Keys I've seen that are ignored:
 			# sections, sectionLengths, validScore.
-			schema.Optional(str): object,
+			Optional(str): object,
 		},
 	},
 	# Sometimes a very scuffed version of ["song"] also exists at the
