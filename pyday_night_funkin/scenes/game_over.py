@@ -1,7 +1,7 @@
 
 import typing as t
 
-from pyday_night_funkin.core.asset_system import ASSET, load_asset
+from pyday_night_funkin.core.asset_system import load_sound
 from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin import scenes
 
@@ -19,8 +19,8 @@ class GameOverScene(scenes.MusicBeatScene):
 
 		self.conductor.bpm = 100
 
-		self.game_over_music = load_asset(ASSET.MUSIC_GAME_OVER)
-		self.game_over_end = load_asset(ASSET.MUSIC_GAME_OVER_END)
+		self.game_over_music = load_sound("shared/music/gameOver.ogg")
+		self.game_over_end = load_sound("shared/music/gameOverEnd.ogg")
 
 		self.is_ending = False
 
@@ -30,7 +30,7 @@ class GameOverScene(scenes.MusicBeatScene):
 		self.bf.animation.play("game_over_ini")
 		self._camera_locked_on = False
 
-		self.sfx_ring.play(load_asset(ASSET.SOUND_LOSS))
+		self.sfx_ring.play(load_sound("shared/sounds/fnf_loss_sfx.ogg"))
 
 	@staticmethod
 	def get_default_cameras() -> t.Sequence[t.Union[str, t.Tuple[str, int, int]]]:

@@ -9,14 +9,13 @@ from pyglet.math import Vec2
 
 from pyday_night_funkin.core.animation import AnimationController
 from pyday_night_funkin.core.animation.frames import AnimationFrame, FrameCollection
-from pyday_night_funkin.core.constants import ERROR_TEXTURE, PIXEL_TEXTURE
 from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 from pyday_night_funkin.core.tweens import TWEEN_ATTR
-from pyday_night_funkin.core.utils import clamp
+from pyday_night_funkin.core.utils import clamp, get_error_tex, get_pixel_tex
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import UniformBufferObject
@@ -354,7 +353,7 @@ class PNFSprite(WorldObject):
 	) -> None:
 		super().__init__(x, y)
 
-		image = ERROR_TEXTURE if image is None else image
+		image = get_error_tex() if image is None else image
 
 		self.animation = AnimationController(self)
 
@@ -570,7 +569,7 @@ class PNFSprite(WorldObject):
 		Will make a call to `recalculate_positioning`, set an extreme
 		offset and set scale_x as well as scale_y.
 		"""
-		self.image = PIXEL_TEXTURE
+		self.image = get_pixel_tex()
 		self.scale_x = w
 		self.scale_y = h
 		self.recalculate_positioning()

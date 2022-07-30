@@ -5,11 +5,11 @@ import typing as t
 
 from loguru import logger
 from pyglet.math import Vec2
+from pyday_night_funkin.base_game_pack import SongResourceOptions, load_song
 
 from pyday_night_funkin.enums import ANIMATION_TAG, CONTROL, DIFFICULTY, GAME_STATE
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.note import NOTE_TYPE, SUSTAIN_STAGE, Note
-from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.pnf_player import PNFPlayer
 from pyday_night_funkin.core.utils import lerp
 from pyday_night_funkin import scenes
@@ -86,6 +86,7 @@ class InGameScene(scenes.MusicBeatScene):
 		Returns this scene's song's identifying string.
 		A call to `load_asset(ASSET.SONG, x, ...)` will be made where
 		`x` is the value returned from this method.
+		# TODO FALSE DOC
 		"""
 		raise NotImplementedError("Subclass this!")
 
@@ -188,8 +189,8 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		# TODO doc
 		"""
-		inst, voices, song_data = load_asset(
-			ASSET.SONGS, self.get_song(), False, self.difficulty
+		inst, voices, song_data = load_song(
+			self.get_song(), True, SongResourceOptions(self.difficulty)
 		)
 
 		self.pause_players()

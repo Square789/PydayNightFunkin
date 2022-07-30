@@ -4,7 +4,7 @@ import typing as t
 
 from pyday_night_funkin.base_game_pack import Boyfriend, Girlfriend, Pico as PicoChar
 from pyday_night_funkin.constants import GAME_WIDTH
-from pyday_night_funkin.core.asset_system import ASSET, load_asset
+from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.pnf_player import PNFPlayer
 from pyday_night_funkin.scenes import InGameScene
 from pyday_night_funkin.levels import common
@@ -21,7 +21,7 @@ class Week3Level(InGameScene):
 		self.city_lights: t.List[PNFSprite] = []
 		self._active_city_light_idx: int = 0
 		self.train: t.Optional[PNFSprite] = None
-		self.train_sound = load_asset(ASSET.SOUND_TRAIN)
+		self.train_sound = load_sound("shared/sounds/train_passes.ogg")
 		# Fuck if i know, make a player specifically for this sound because there
 		# are things that depend on ITS AUDIO POSITION ARRGGHHG
 		# TODO: should probably look into a workaround that is pretty much identical
@@ -54,16 +54,20 @@ class Week3Level(InGameScene):
 
 	def setup(self) -> None:
 		super().setup()
-		bg = self.create_object("sky", "main", x=-100, image=load_asset(ASSET.IMG_PHILLY_SKY))
+		bg = self.create_object(
+			"sky", "main", x=-100, image=load_image("week3/images/philly/sky.png")
+		)
 		bg.scroll_factor = (.1, .1)
 
-		city = self.create_object("city", "main", x=-10, image=load_asset(ASSET.IMG_PHILLY_CITY))
+		city = self.create_object(
+			"city", "main", x=-10, image=load_image("week3/images/philly/city.png")
+		)
 		city.scroll_factor = (.3, .3)
 		city.set_scale_and_repos(.85)
 
 		for i in range(5):
 			light = self.create_object(
-				"lights", "main", x=city.x, image=load_asset(getattr(ASSET, f"IMG_PHILLY_WIN{i}"))
+				"lights", "main", x=city.x, image=load_image(f"week3/images/philly/win{i}.png")
 			)
 			light.scroll_factor = (.3, .3)
 			light.visible = False
@@ -71,13 +75,14 @@ class Week3Level(InGameScene):
 			self.city_lights.append(light)
 
 		sokagrafie = self.create_object(
-			"train", "main", x=-40, y=50, image=load_asset(ASSET.IMG_PHILLY_BEHIND_TRAIN)
+			"train", "main", x=-40, y=50, image=load_image("week3/images/philly/behindTrain.png")
 		)
 		self.train = self.create_object(
-			"train", "main", x=2000, y=360, image=load_asset(ASSET.IMG_PHILLY_TRAIN)
+			"train", "main", x=2000, y=360, image=load_image("week3/images/philly/train.png")
 		)
 		self.create_object(
-			"train", "main", x=-40, y=sokagrafie.y, image=load_asset(ASSET.IMG_PHILLY_STREET)
+			"train", "main",
+			x=-40, y=sokagrafie.y, image=load_image("week3/images/philly/street.png")
 		)
 
 	def create_boyfriend(self) -> "Boyfriend":

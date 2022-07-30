@@ -4,7 +4,8 @@ import typing as t
 
 from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.core.asset_system import ASSET, load_asset
+from pyday_night_funkin.base_game_pack import load_frames
+from pyday_night_funkin.core.asset_system import load_image, load_sound, load_text
 from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin import scenes
 
@@ -17,7 +18,7 @@ class TitleScene(scenes.MusicBeatScene):
 		super().__init__(*args, **kwargs)
 
 		self.gf = self.create_object("main", x=CNST.GAME_WIDTH * 0.4, y=CNST.GAME_HEIGHT * 0.07)
-		self.gf.frames = load_asset(ASSET.XML_TITLE_GIRLFRIEND)
+		self.gf.frames = load_frames("preload/images/gfDanceTitle.xml")
 		self.gf.animation.add_by_indices("dance_left", "gfDance", [*range(15)], 24, False)
 		self.gf.animation.add_by_indices("dance_right", "gfDance", [*range(15, 30)], 24, False)
 		self.gf.visible = False
@@ -25,32 +26,32 @@ class TitleScene(scenes.MusicBeatScene):
 		self.gf_dance_left = False
 
 		self.logo = self.create_object("main", x=-150, y=-100)
-		self.logo.frames = load_asset(ASSET.XML_GAME_LOGO)
+		self.logo.frames = load_frames("preload/images/logoBumpin.xml")
 		self.logo.animation.add_by_prefix("bump", "logo bumpin", 24)
 		self.logo.animation.play("bump")
 		self.logo.visible = False
 
 		self.title_text = self.create_object("title_text", x=100, y=CNST.GAME_HEIGHT * 0.8)
-		self.title_text.frames = load_asset(ASSET.XML_TITLE_ENTER)
+		self.title_text.frames = load_frames("preload/images/titleEnter.xml")
 		self.title_text.animation.add_by_prefix("idle", "Press Enter to Begin", 24)
 		self.title_text.animation.add_by_prefix("enter", "ENTER PRESSED", 24)
 		self.title_text.animation.play("idle")
 		self.title_text.visible = False
 
-		ng_logo = load_asset(ASSET.IMG_NEWGROUNDS_LOGO)
+		ng_logo = load_image("preload/images/newgrounds_logo.png")
 		self.ng_logo = self.create_object("main", image=ng_logo, y=CNST.GAME_HEIGHT * 0.52)
 		self.ng_logo.set_scale_and_repos(.8)
 		self.ng_logo.screen_center(CNST.GAME_DIMENSIONS, y=False)
 		self.ng_logo.visible = False
 
-		intro_texts = [*filter(None, load_asset(ASSET.TXT_INTRO_TEXT).split("\n"))]
+		intro_texts = [*filter(None, load_text("preload/data/introText.txt").split("\n"))]
 		chosen = random.choice(intro_texts).split("--")
 		self.intro_text = [chosen[0], ""] if len(chosen) < 2 else chosen
 
-		self.confirm_sound = load_asset(ASSET.SOUND_MENU_CONFIRM)
+		self.confirm_sound = load_sound("preload/sounds/confirmMenu.ogg")
 
 		self.conductor.bpm = 102
-		self.game.player.set(load_asset(ASSET.MUSIC_MENU))
+		self.game.player.set(load_sound("preload/music/freakyMenu.ogg"))
 
 		self._intro_ended = False
 		self._leaving_scene = False

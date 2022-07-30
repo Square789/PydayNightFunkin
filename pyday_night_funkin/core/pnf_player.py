@@ -3,8 +3,6 @@ import typing as t
 
 from pyglet.media import Player
 
-from pyday_night_funkin.core.constants import SFX_RING_SIZE
-
 if t.TYPE_CHECKING:
 	from pyglet.media import Source
 
@@ -50,7 +48,9 @@ class SFXRing():
 	simultaneously.
 	"""
 
-	def __init__(self, player_amount: int = SFX_RING_SIZE) -> None:
+	_DEFAULT_SIZE = 4
+
+	def __init__(self, player_amount: int = _DEFAULT_SIZE) -> None:
 		if player_amount <= 0:
 			raise ValueError("You must construct additional players! (Seriously, at least 1.)")
 		self.players = [PNFPlayer() for _ in range(player_amount)]

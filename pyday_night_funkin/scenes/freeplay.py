@@ -3,7 +3,8 @@ import typing as t
 
 from pyday_night_funkin.alphabet import MenuTextLine
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.core.asset_system import load_asset, ASSET
+from pyday_night_funkin.base_game_pack import load_health_icon
+from pyday_night_funkin.core.asset_system import load_font, load_image, load_sound
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.scene import BaseScene
@@ -31,11 +32,11 @@ class FreeplayScene(BaseScene):
 		super().__init__(*args, **kwargs)
 
 		if not self.game.player.playing:
-			self.game.player.set(load_asset(ASSET.MUSIC_MENU))
+			self.game.player.set(load_sound("preload/music/freakyMenu.ogg"))
 
-		self.bg = self.create_object("bg", image=load_asset(ASSET.IMG_MENU_BG_BLUE))
+		self.bg = self.create_object("bg", image=load_image("preload/images/menuBGBlue.png"))
 
-		load_asset(ASSET.FONT_VCR)
+		load_font("fonts/vcr.ttf")
 		self.score_text = self.create_object(
 			"textfg",
 			object_class = PNFText,
@@ -64,7 +65,7 @@ class FreeplayScene(BaseScene):
 			raise RuntimeError("Panic at the FreeplayScene!")
 
 		self._cur_selection = 0
-		self._scroll_sound = load_asset(ASSET.SOUND_MENU_SCROLL)
+		self._scroll_sound = load_sound("preload/sounds/scrollMenu.ogg")
 		self._text_lines: t.List[MenuTextLine] = []
 
 		for i, lvl in enumerate(self.displayed_songs):
@@ -83,7 +84,7 @@ class FreeplayScene(BaseScene):
 				"fg",
 				object_class = StickySprite,
 				stickee = m,
-				image = load_asset(ASSET.IMG_ICON_GRID, lvl.get_opponent_icon())[0],
+				image = load_health_icon(lvl.get_opponent_icon())[0],
 			)
 			# NOTE: should probably call `lvl.get_opponent().icon_name` or something,
 			# but creating opponent without an in game scene sorta sucks.

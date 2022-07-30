@@ -3,8 +3,10 @@
 from random import choice, randint
 import typing as t
 
-from pyday_night_funkin.base_game_pack import Boyfriend, Girlfriend, SkidNPump, Monster
-from pyday_night_funkin.core.asset_system import ASSET, load_asset
+from pyday_night_funkin.base_game_pack import (
+	Boyfriend, Girlfriend, SkidNPump, Monster, load_frames
+)
+from pyday_night_funkin.core.asset_system import load_sound
 from pyday_night_funkin.scenes import InGameScene
 from pyday_night_funkin.levels import common
 
@@ -23,8 +25,8 @@ class Week2Level(InGameScene):
 
 		self._next_lightning_thresh = 0
 		self._lightning_sounds = (
-			load_asset(ASSET.SOUND_THUNDER0),
-			load_asset(ASSET.SOUND_THUNDER1),
+			load_sound("shared/sounds/thunder_1.ogg"),
+			load_sound("shared/sounds/thunder_2.ogg"),
 		)
 
 	@staticmethod
@@ -48,7 +50,7 @@ class Week2Level(InGameScene):
 		super().setup()
 
 		self.background = self.create_object("background", "main", x=-200, y=-100)
-		self.background.frames = load_asset(ASSET.XML_HALLOWEEN_BG)
+		self.background.frames = load_frames("week2/images/halloween_bg.xml")
 		# The masculine urge to steal the toothbrush of whoever names animations like that
 		self.background.animation.add_by_prefix("idle", "halloweem bg0")
 		self.background.animation.add_by_prefix(

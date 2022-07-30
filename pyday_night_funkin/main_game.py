@@ -12,7 +12,6 @@ pyglet.options["debug_gl"] = True
 
 from pyglet.window.key import KeyStateHandler
 
-from pyday_night_funkin import base_game_pack
 from pyday_night_funkin.core import ogg_decoder
 from pyday_night_funkin.core.pnf_player import PNFPlayer, SFXRing
 from pyday_night_funkin.core.pnf_window import PNFWindow
@@ -23,7 +22,7 @@ from pyday_night_funkin.core.key_handler import KeyHandler
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 
-__version__ = "0.0.31"
+__version__ = "0.0.31-dev-A"
 
 
 class _FPSData:
@@ -74,7 +73,8 @@ class Game():
 			caption = f"PydayNightFunkin' v{__version__}",
 		)
 
-		# OpenGL context is probably good here
+		# OpenGL context is probably good here,
+		# initialize and set up a bunch of global stuff.
 		try:
 			from pyday_night_funkin.core.graphics.cygl import gl as cygl
 		except ImportError:
@@ -86,6 +86,12 @@ class Game():
 
 		if ogg_decoder not in pyglet.media.codecs.get_decoders():
 			pyglet.media.codecs.add_decoders(ogg_decoder)
+
+		from pyday_night_funkin import base_game_pack
+		base_game_pack.load()
+
+		from pyday_night_funkin.alphabet import AlphabetCharacter
+		AlphabetCharacter.init_animation_dict()
 
 		self.pyglet_ksh = KeyStateHandler()
 		self.key_handler = KeyHandler(self.save_data.config.key_bindings)
@@ -102,11 +108,6 @@ class Game():
 		self._scenes_to_update: t.List[BaseScene] = []
 		self._pending_scene_stack_removals = set()
 		self._pending_scene_stack_additions = []
-
-		# Asset system related setup
-		base_game_pack.load()
-		from pyday_night_funkin.alphabet import AlphabetCharacter
-		AlphabetCharacter.init_animation_dict()
 
 		# Push initial scene
 		self.push_scene(TitleScene)

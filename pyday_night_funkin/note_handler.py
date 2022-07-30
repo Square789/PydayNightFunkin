@@ -3,13 +3,14 @@ import math
 import typing as t
 
 from pyday_night_funkin import constants as CNST
+from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.animation import AnimationController
-from pyday_night_funkin.core.asset_system import ASSET, load_asset
 from pyday_night_funkin.core.utils import ListWindow
 from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin.note import Note, NOTE_TYPE, SUSTAIN_STAGE
 
 if t.TYPE_CHECKING:
+	from pyglet.image import Texture
 	from pyday_night_funkin.scenes import InGameScene
 
 # NOTE: Value extracted from width of first frame in the note spritesheet.
@@ -63,9 +64,10 @@ class NoteHandler(AbstractNoteHandler):
 		(These may actually have been played or - for absurd scroll
 		speeds - be invisible.)"""
 
-		note_assets = load_asset(ASSET.XML_NOTES)
-		AC = AnimationController
-		single_frame = lambda n: AC.get_frames_by_prefix(note_assets, n)[0].texture
+		note_assets = load_frames("shared/images/NOTE_assets.xml")
+		def single_frame(pref: str) -> "Texture":
+			return AnimationController.get_frames_by_prefix(note_assets, pref)[0].texture
+
 		self.note_sprites = {
 			SUSTAIN_STAGE.NONE: {
 				NOTE_TYPE.LEFT: single_frame("purple0"),

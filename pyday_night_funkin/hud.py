@@ -7,7 +7,8 @@ import typing as t
 from pyglet.math import Vec2
 
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.core.asset_system import load_asset, ASSET
+from pyday_night_funkin.base_game_pack import load_frames
+from pyday_night_funkin.core.asset_system import load_font, load_image, load_sound
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
 from pyday_night_funkin.enums import ANIMATION_TAG
@@ -43,32 +44,32 @@ class HUD():
 
 		self.countdown_textures = (
 			None,
-			load_asset(ASSET.IMG_READY),
-			load_asset(ASSET.IMG_SET),
-			load_asset(ASSET.IMG_GO),
+			load_image("shared/images/ready.png"),
+			load_image("shared/images/set.png"),
+			load_image("shared/images/go.png"),
 		)
 
 		self.countdown_sounds = (
-			load_asset(ASSET.SOUND_INTRO_3),
-			load_asset(ASSET.SOUND_INTRO_2),
-			load_asset(ASSET.SOUND_INTRO_1),
-			load_asset(ASSET.SOUND_INTRO_GO),
+			load_sound("shared/sounds/intro3.ogg"),
+			load_sound("shared/sounds/intro2.ogg"),
+			load_sound("shared/sounds/intro1.ogg"),
+			load_sound("shared/sounds/introGo.ogg"),
 		)
 
 		self.note_rating_textures = {
-			RATING.SICK: load_asset(ASSET.IMG_SICK),
-			RATING.GOOD: load_asset(ASSET.IMG_GOOD),
-			RATING.BAD: load_asset(ASSET.IMG_BAD),
-			RATING.SHIT: load_asset(ASSET.IMG_SHIT),
+			RATING.SICK: load_image("shared/images/sick.png"),
+			RATING.GOOD: load_image("shared/images/good.png"),
+			RATING.BAD: load_image("shared/images/bad.png"),
+			RATING.SHIT: load_image("shared/images/shit.png"),
 		}
 
-		self.number_textures = [load_asset(getattr(ASSET, f"IMG_NUM{i}")) for i in range(10)]
+		self.number_textures = [load_image(f"preload/images/num{i}.png") for i in range(10)]
 
 		# HACK: This manipulates the cached note asset frame collection, since notes have
 		# botched offsets that are fixed with a hardcoded center->subtract in the main loop.
 		# Nobody wants that, so we hack in some offsets right here.
 		# Both were probably found by trial-and-error, so good enough (TM)
-		note_sprites: "FrameCollection" = load_asset(ASSET.XML_NOTES)
+		note_sprites = load_frames("shared/images/NOTE_assets.xml")
 		for frame in note_sprites.frames:
 			if re.search(r"confirm\d+$", frame.name) is not None:
 				frame.offset -= Vec2(39, 39)
@@ -101,7 +102,7 @@ class HUD():
 			self.health_bar_layers,
 		)
 
-		load_asset(ASSET.FONT_VCR)
+		load_font("fonts/vcr.ttf")
 		self.score_text = scene.create_object(
 			self.health_bar_layers[0],
 			self.camera,

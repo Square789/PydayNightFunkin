@@ -2,7 +2,8 @@
 import typing as t
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.core.asset_system import ASSET, load_asset
+from pyday_night_funkin.base_game_pack import load_frames, load_week_header
+from pyday_night_funkin.core.asset_system import load_font, load_sound
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
@@ -35,12 +36,12 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 		self.conductor.bpm = 102
 		if not self.game.player.playing:
-			self.game.player.set(load_asset(ASSET.MUSIC_MENU))
+			self.game.player.set(load_sound("preload/music/freakyMenu.ogg"))
 
 		yellow_stripe = self.create_object("mid", x=0, y=56)
 		yellow_stripe.make_rect(to_rgba_tuple(0xF9CF51FF), CNST.GAME_WIDTH, 400)
 
-		_story_menu_char_anims = load_asset(ASSET.XML_STORY_MENU_CHARACTERS)
+		_story_menu_char_anims = load_frames("preload/images/campaign_menu_UI_characters.xml")
 
 		# Week character setup (these get modified later)
 		self.week_chars: t.List[_WeekChar] = []
@@ -60,7 +61,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			spr.recalculate_positioning()
 			self.week_chars.append(spr)
 
-		ui_tex = load_asset(ASSET.XML_STORY_MENU_UI)
+		ui_tex = load_frames("preload/images/campaign_menu_UI_assets.xml")
 
 		# Week headers
 		self.week_headers: t.List[_WeekHeader] = []
@@ -70,7 +71,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 				object_class = _WeekHeader,
 				target_y = i,
 				y = yellow_stripe.y + yellow_stripe.height + 10,
-				image = load_asset(ASSET.WEEK_HEADERS, week.header_filename),
+				image = load_week_header(week.header_filename),
 			)
 			header.y += (header.height + 20) * i
 			header.screen_center(CNST.GAME_DIMENSIONS, y=False)
@@ -111,7 +112,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.diff_arrow_right.animation.add_by_prefix("press", "arrow push right")
 		self.diff_arrow_right.animation.play("idle")
 
-		load_asset(ASSET.FONT_VCR)
+		load_font("fonts/vcr.ttf")
 		self.tracklist_txt = self.create_object(
 			"bg",
 			object_class = PNFText,
@@ -159,7 +160,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			return
 
 		self.week_headers[index].opacity = 255
-		self.sfx_ring.play(load_asset(ASSET.SOUND_MENU_SCROLL))
+		self.sfx_ring.play(load_sound("preload/sounds/scrollMenu.ogg"))
 		for i, header in enumerate(self.week_headers):
 			header.target_y = i - index
 
@@ -199,7 +200,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		if not state:
 			return
 
-		self.sfx_ring.play(load_asset(ASSET.SOUND_MENU_CONFIRM))
+		self.sfx_ring.play(load_sound("preload/sounds/confirmMenu.ogg"))
 		self.week_chars[1].animation.play("story_menu_confirm")
 		self.week_headers[index].start_toggle(
 			1.0,

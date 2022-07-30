@@ -6,8 +6,7 @@ from pyglet.math import Vec2
 from pyglet.window.key import (
 	C, E, F, K, L, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 )
-from pyday_night_funkin.base_game_pack import Boyfriend
-from pyday_night_funkin.core.asset_system import ASSET, load_asset
+from pyday_night_funkin.base_game_pack import Boyfriend, load_frames
 from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
 from pyday_night_funkin.core.utils import to_rgba_tuple
@@ -39,7 +38,7 @@ class TestScene(MusicBeatScene):
 
 		self.conductor.bpm = 123
 
-		note_sprites = load_asset(ASSET.XML_NOTES)
+		note_sprites = load_frames("shared/images/NOTE_assets.xml")
 		self.arrows = []
 		for i, note_type in enumerate(NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()

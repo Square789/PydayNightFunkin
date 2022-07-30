@@ -1,7 +1,7 @@
 
 import typing as t
 
-from pyday_night_funkin.core.asset_system import ASSET, load_asset
+from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.pnf_sprite import (
 	PNFSprite, PNFSpriteFragmentShader, PNFSpriteVertexShader
 )
@@ -47,7 +47,7 @@ class AlphabetCharacter(PNFSprite):
 		Defer animation dict init to this function as `ASSET` is not
 		filled when this module is first imported.
 		"""
-		cls._FRAME_COLLECTION = load_asset(ASSET.XML_ALPHABET)
+		cls._FRAME_COLLECTION = load_frames("preload/images/alphabet.xml")
 
 	def _get_animation_prefix(self) -> str:
 		char = self.char

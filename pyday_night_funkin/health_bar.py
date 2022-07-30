@@ -1,10 +1,10 @@
 
 import typing as t
 
+from pyday_night_funkin.base_game_pack import load_health_icon
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.core.asset_system import ASSET, load_asset
-from pyday_night_funkin.core.constants import PIXEL_TEXTURE
-from pyday_night_funkin.core.utils import clamp, to_rgba_tuple
+from pyday_night_funkin.core.asset_system import load_image
+from pyday_night_funkin.core.utils import clamp, to_rgba_tuple, get_pixel_tex
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGameScene
@@ -30,7 +30,7 @@ class HealthBar():
 
 		bg_layer, bar_layer, icon_layer = layers
 
-		bar_image = load_asset(ASSET.IMG_HEALTH_BAR)
+		bar_image = load_image("shared/images/healthBar.png")
 		self.background = scene.create_object(
 			bg_layer,
 			camera,
@@ -40,15 +40,15 @@ class HealthBar():
 		)
 
 		bar_y = self.background.y + 4
-		self.opponent_bar = scene.create_object(bar_layer, camera, y=bar_y, image=PIXEL_TEXTURE)
+		self.opponent_bar = scene.create_object(bar_layer, camera, y=bar_y, image=get_pixel_tex())
 		self.opponent_bar.rgba = to_rgba_tuple(opponent_color)
-		self.player_bar = scene.create_object(bar_layer, camera, y=bar_y, image=PIXEL_TEXTURE)
+		self.player_bar = scene.create_object(bar_layer, camera, y=bar_y, image=get_pixel_tex())
 		self.player_bar.rgba = to_rgba_tuple(player_color)
 		self.opponent_bar.origin = self.player_bar.origin = (0, 0)
 		self.opponent_bar.scale_y = self.player_bar.scale_y = bar_image.height - 8
 
-		self.opponent_icons = load_asset(ASSET.IMG_ICON_GRID, opponent_icon_name)
-		self.player_icons = load_asset(ASSET.IMG_ICON_GRID, player_icon_name)
+		self.opponent_icons = load_health_icon(opponent_icon_name)
+		self.player_icons = load_health_icon(player_icon_name)
 		# This assumes all opponent and player icons are of same height and width
 		# (Which they are, but hey)
 		icon_y = self.background.y + (bar_image.height - self.opponent_icons[0].height) // 2
