@@ -6,6 +6,7 @@ but uuh, those plans are far in the future.
 
 import os
 from pathlib import Path
+import re
 from loguru import logger
 import typing as t
 
@@ -13,12 +14,11 @@ from pyglet.math import Vec2
 from schema import Schema, SchemaError, And, Or, Optional
 
 from pyday_night_funkin.core.asset_system import (
-	AssetSystem,
+	AssetSystem, AssetSystemEntry as ASE,
 	ImageResourceOptions, ResourceOptions, SoundResourceOptions,
 	add_asset_system,
 	load_image, load_json, load_pyobj, load_sound, load_xml,
-	register_asset_type, register_optionless_asset_type,
-	register_complex_asset_type
+	register_complex_asset_type, register_optionless_asset_type,
 )
 from pyday_night_funkin.core.animation import FrameCollection
 from pyday_night_funkin.character import Character, FlipIdleCharacter
@@ -241,9 +241,19 @@ def load() -> None:
 	base game into the asset system.
 	"""
 
+	def arrow_post_load_hacker(fcol: FrameCollection) -> FrameCollection:
+		# HACK: This manipulates the cached note asset frame collection, since notes have
+		# botched offsets that are fixed with a hardcoded center->subtract in the main loop.
+		# Nobody wants that, so we hack in some offsets right here.
+		# Both were probably found by trial-and-error, so good enough (TM)
+		for frame in fcol.frames:
+			if re.search(r"confirm\d+$", frame.name) is not None:
+				frame.offset -= Vec2(39, 39)
+		return fcol
+
 	# Throw all of these into the same atlas, should improve combo sprite
 	# rendering somewhat
-	_iro = ImageResourceOptions(0)
+	_iro = ASE(ImageResourceOptions(0), None)
 	asset_system_map = {
 		"shared/images/sick.png":  _iro,
 		"shared/images/good.png":  _iro,
@@ -259,7 +269,9 @@ def load() -> None:
 		"preload/images/num7.png": _iro,
 		"preload/images/num8.png": _iro,
 		"preload/images/num9.png": _iro,
+		"shared/images/NOTE_assets.xml": ASE(None, arrow_post_load_hacker),
 	}
+
 
 	add_asset_system(AssetSystem(
 		asset_system_map,
@@ -267,7 +279,7 @@ def load() -> None:
 			"PATH_WEEK_HEADERS": "preload/images/storymenu/",
 			"PATH_DATA": "preload/data/",
 			"PATH_SONGS": "songs/",
-		}
+		},
 	))
 
 

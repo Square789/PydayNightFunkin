@@ -7,7 +7,6 @@ modding scene's lifetime.
 
 from collections import defaultdict
 import json
-import os
 from pathlib import Path
 import typing as t
 from xml.etree.ElementTree import ElementTree
@@ -26,20 +25,6 @@ if t.TYPE_CHECKING:
 	from pyglet.image import AbstractImage, Texture
 	from pyglet.media.codecs import MediaDecoder
 
-ResourceOptionsBound = t.TypeVar("ResourceOptionsBound", bound="ResourceOptions")
-T = t.TypeVar("T")
-U = t.TypeVar("U")
-
-class PlainLoaderFunc(t.Protocol[T, ResourceOptionsBound]):
-	def __call__(self, path: str) -> T:
-		...
-	def __call__(self, path: str, options: ResourceOptionsBound) -> T:
-		...
-
-class ASMLoaderFunc(t.Protocol[T, ResourceOptionsBound]):
-	def __call__(self, what) -> T:
-		...
-
 
 class AssetNotFoundError(KeyError):
 	pass
@@ -48,6 +33,22 @@ class AssetNotFoundError(KeyError):
 class ResourceOptions:
 	pass
 
+# typing stuff begin
+ResourceOptionsBound = t.TypeVar("ResourceOptionsBound", bound="ResourceOptions")
+# P = t.ParamSpec("P") if hasattr(t, "ParamSpec") else None
+T = t.TypeVar("T")
+U = t.TypeVar("U")
+
+class GenAssetLoaderFunc(t.Protocol[ResourceOptionsBound, T]):
+	def __call__(
+		self, path: str, options: t.Optional[ResourceOptionsBound] = None, cache: bool = False
+	) -> T:
+		...
+
+class GenOptionlessAssetLoaderFunc(t.Protocol[T]):
+	def __call__(self, path: str, cache: bool = False) -> T:
+		...
+# typing stuff end
 
 class DummyResourceOptions:
 	def __eq__(self, o: object) -> bool:
@@ -103,6 +104,18 @@ class JsonResourceOptions(TextResourceOptions):
 	pass
 
 
+class AssetSystemEntry:
+	__slots__ = ("options", "post_load_processor")
+
+	def __init__(
+		self,
+		options: t.Optional[ResourceOptions] = None,
+		post_load_processor: t.Optional[t.Callable[[T], T]] = None,
+	) -> None:
+		self.options = options
+		self.post_load_processor = post_load_processor
+
+
 class AssetSystem:
 	"""
 	# TODO
@@ -110,7 +123,7 @@ class AssetSystem:
 
 	def __init__(
 		self,
-		asset_map: t.Dict[str, ResourceOptions],
+		asset_map: t.Dict[str, AssetSystemEntry],
 		pyobj_map: t.Optional[t.Dict[t.Hashable, t.Any]] = None,
 		allow_unknown: bool = True,
 	) -> None:
@@ -122,22 +135,32 @@ class AssetSystem:
 		self,
 		path: str,
 		asset_type_name: str,
-		options: ResourceOptionsBound,
-	) -> t.Tuple[bool, t.Optional[str], t.Optional[ResourceOptionsBound]]:
+		options: t.Optional[ResourceOptions],
+	) -> t.Union[
+		t.Tuple[t.Literal[False], None, None, None],
+		t.Tuple[
+			t.Literal[True],
+			str,
+			t.Optional[ResourceOptions],
+			t.Optional[t.Callable[[T], T]],
+		]
+	]:
 		"""
-		Determines whether an asset exists in this AssetSystem.
-		The options can be given to hint at the asset type.
-		If the asset exists, the tuple element at [1] will be the true
-		path to it and [2] are the options the asset should be
-		processed with.
+		Determines whether an asset exists in this AssetSystem by its
+		path.
+		If the asset exists (bool at [0]), the tuple element at [1]
+		will be the true path to it, [2] may be overridden options the
+		asset should be loaded with and [3] may be an additional
+		function that modifies the asset after loading.
+		If the asset does not exist, all other entries will be `None`.
 		"""
-		if path in self._asset_map:
-			return (True, path, self._asset_map[path])
+		if (entry := self._asset_map.get(path)) is not None:
+			return (True, path, entry.options, entry.post_load_processor)
 
 		if self._allow_unknown:
-			return (True, path, options)
+			return (True, path, options, None)
 		else:
-			return (False, None, None)
+			return (False, None, None, None)
 
 	def has_pyobj(self, ident: t.Hashable) -> t.Tuple[bool, t.Any]:
 		if ident in self._pyobj_map:
@@ -228,21 +251,13 @@ class _AssetSystemManager:
 	def _get_full_path(self, tail: t.Union[Path, str]) -> str:
 		return str(self.asset_dir / tail)
 
-	@t.overload
-	def _process_asset(self, path: str, asset_type_name: str, options: None) -> t.Tuple[str, None]:
-		pass
-
-	@t.overload
 	def _process_asset(
-		self, path: str, asset_type_name: str, options: ResourceOptionsBound,
-	) -> t.Tuple[str, ResourceOptionsBound]:
-		pass
-
-	def _process_asset(self, path, asset_type_name, options):
+		self, path: str, asset_type_name: str, options: t.Optional[ResourceOptions]
+	) -> t.Tuple[str, t.Optional[ResourceOptions], t.Optional[t.Callable[[T], T]]]:
 		for as_ in reversed(self.asset_system_stack):
-			have, true_path, true_options = as_.has_asset(path, asset_type_name, options)
+			have, true_path, true_options, ppf = as_.has_asset(path, asset_type_name, options)
 			if have:
-				return true_path, (options if true_options is None else true_options)
+				return true_path, (options if true_options is None else true_options), ppf
 
 		raise AssetNotFoundError(f"Could not determine an asset system for asset {path}")
 
@@ -266,14 +281,16 @@ class _AssetSystemManager:
 			if cache_key in self._cache:
 				return self._cache[cache_key]
 
-			true_path_tail, opt = self._process_asset(path, "image", in_opt)
-			if not isinstance(opt, type(in_opt)):
+			true_path_tail, true_opt, post_load_processor = self._process_asset(
+				path, "image", in_opt
+			)
+			if not isinstance(true_opt, type(in_opt)):
 				raise RuntimeError("Asset system delivered incompatible options for asset.")
 
-			data = self.store_image(
-				image.load(self._get_full_path(true_path_tail)),
-				opt.atlas_hint,
-			)[0].get_texture()
+			data = image.load(self._get_full_path(true_path_tail))
+			if post_load_processor is not None:
+				data = post_load_processor(data)
+			data = self.store_image(data, true_opt.atlas_hint)[0].get_texture()
 
 			if cache:
 				self._cache[cache_key] = data
@@ -289,18 +306,22 @@ class _AssetSystemManager:
 	def remove_asset_type(self, name: str) -> None:
 		if name not in self.asset_type_registry:
 			raise KeyError(f"Cannot remove unknown asset type {name}")
-		self.asset_type_registry.pop(name)
+		self.asset_type_registry.remove(name)
 		self._cache.pop(name)
 
-	def register_optionless_asset_type(self, name: str, loader_function):
+	def register_optionless_asset_type(
+		self, name: str, loader_function: t.Callable[[str], T]
+	) -> GenOptionlessAssetLoaderFunc[T]:
 		cache_dict = self._check_and_make_asset_type_cache(name)
 
 		def gen_optionless_loader(path: str, cache: bool = True):
 			if path in cache_dict:
 				return cache_dict[path]
 
-			true_path_tail, _ = self._process_asset(path, name, None)
+			true_path_tail, _, post_load_processor_func = self._process_asset(path, name, None)
 			data = loader_function(self._get_full_path(true_path_tail))
+			if post_load_processor_func is not None:
+				data = post_load_processor_func(data)
 			if cache:
 				cache_dict[path] = data
 			return data
@@ -311,10 +332,10 @@ class _AssetSystemManager:
 	def register_asset_type(
 		self,
 		name: str,
-		loader_function: PlainLoaderFunc[T, ResourceOptionsBound],
+		loader_function: t.Callable[[str, ResourceOptionsBound], T],
 		options_factory: t.Callable[[], ResourceOptionsBound],
 		options_validator: t.Optional[t.Callable[[t.Any], t.Union[str, bool]]] = None,
-	) -> ASMLoaderFunc[T, ResourceOptionsBound]:
+	) -> GenAssetLoaderFunc[ResourceOptionsBound, T]:
 		cache_dict = self._check_and_make_asset_type_cache(name)
 
 		def gen_loader(
@@ -327,7 +348,9 @@ class _AssetSystemManager:
 			if cache_key in cache_dict:
 				return cache_dict[cache_key]
 
-			true_path_tail, true_options = self._process_asset(path, name, options)
+			true_path_tail, true_options, post_load_processor_func = self._process_asset(
+				path, name, options
+			)
 			if true_options is not options and options_validator is not None:
 				ovres = options_validator(true_options)
 				if ovres is not True:
@@ -337,6 +360,8 @@ class _AssetSystemManager:
 					)
 
 			data = loader_function(self._get_full_path(true_path_tail), true_options)
+			if post_load_processor_func is not None:
+				data = post_load_processor_func(data)
 			if cache:
 				cache_dict[cache_key] = data
 			return data
@@ -344,10 +369,23 @@ class _AssetSystemManager:
 		self.asset_type_registry.add(name)
 		return gen_loader
 
-	def register_complex_asset_type(self, name, cache_key_maker, loader_func) -> t.Callable:
+	# typing on this kinda sucks and is post-3.8 anyways;
+	# can't figure out nicer stuff rn, maybe a generic protocol?
+	# def register_complex_asset_type(
+	# 	self,
+	# 	name: str,
+	# 	cache_key_maker: "t.Callable[P, t.Hashable]",
+	# 	loader_func: "t.Callable[P, T]",
+	# ) -> "t.Callable[t.Concatenate[P.args, bool, P.kwargs, P], T]":
+	def register_complex_asset_type(
+		self,
+		name: str,
+		cache_key_maker: t.Callable[..., t.Hashable],
+		loader_func: t.Callable[..., T],
+	) -> t.Callable[..., T]:
 		cache_dict = self._check_and_make_asset_type_cache(name)
 
-		def gen_complex_loader(*args, cache: bool = True, **kwargs):
+		def gen_complex_loader(*args: t.Any, cache: bool = True, **kwargs: t.Any) -> T:
 			cache_key = cache_key_maker(*args, **kwargs)
 			if cache_key in cache_dict:
 				return cache_dict[cache_key]

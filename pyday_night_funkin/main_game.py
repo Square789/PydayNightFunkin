@@ -22,7 +22,7 @@ from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 
-__version__ = "0.0.31-dev-C"
+__version__ = "0.0.31-dev-D"
 
 
 class _FPSData:
