@@ -106,7 +106,7 @@ class DrawList:
 	def add_group(
 		self,
 		group: "PNFGroup",
-		interfacer: PNFBatchInterfacer = None,
+		interfacer: t.Optional[PNFBatchInterfacer] = None,
 		state: t.Optional[GLState] = None,
 	) -> None:
 		"""

@@ -13,16 +13,16 @@ pyglet.options["debug_gl"] = True
 from pyglet.window.key import KeyStateHandler
 
 from pyday_night_funkin.core import ogg_decoder
+from pyday_night_funkin.core.key_handler import KeyHandler
 from pyday_night_funkin.core.pnf_player import PNFPlayer, SFXRing
 from pyday_night_funkin.core.pnf_window import PNFWindow
 from pyday_night_funkin.core.scene import BaseScene
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
-from pyday_night_funkin.core.key_handler import KeyHandler
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 
-__version__ = "0.0.31-dev-A"
+__version__ = "0.0.31-dev-B"
 
 
 class _FPSData:

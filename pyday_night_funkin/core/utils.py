@@ -13,33 +13,33 @@ T = t.TypeVar("T")
 
 ADDRESS_PADDING = (sys.maxsize.bit_length() + 1) // 4
 
-ERROR_TEXTURE: t.Optional[Texture] = None
-PIXEL_TEXTURE: t.Optional[Texture] = None
+_ERROR_TEXTURE: t.Optional[Texture] = None
+_PIXEL_TEXTURE: t.Optional[Texture] = None
 
 def get_error_tex() -> Texture:
 	"""
 	Retrieves the global error texture, creating it if it does not
 	exist.
 	"""
-	global ERROR_TEXTURE
+	global _ERROR_TEXTURE
 
-	if ERROR_TEXTURE is None:
-		ERROR_TEXTURE = CheckerImagePattern(
+	if _ERROR_TEXTURE is None:
+		_ERROR_TEXTURE = CheckerImagePattern(
 			(0xFF, 0x00, 0xFF, 0xFF),
 			(0x00, 0x00, 0x00, 0xFF)
 		).create_image(16, 16).create_texture(Texture)
-	return ERROR_TEXTURE
+	return _ERROR_TEXTURE
 
 def get_pixel_tex() -> Texture:
 	"""
 	Retrieves the global pixel texture, creating it if it does not
 	exist.
 	"""
-	global PIXEL_TEXTURE
+	global _PIXEL_TEXTURE
 
-	if PIXEL_TEXTURE is None:
-		PIXEL_TEXTURE = ImageData(1, 1, "RGBA", b"\xFF\xFF\xFF\xFF").get_texture()
-	return PIXEL_TEXTURE
+	if _PIXEL_TEXTURE is None:
+		_PIXEL_TEXTURE = ImageData(1, 1, "RGBA", b"\xFF\xFF\xFF\xFF").get_texture()
+	return _PIXEL_TEXTURE
 
 
 class ListWindow(t.Generic[T]):

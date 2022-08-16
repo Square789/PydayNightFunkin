@@ -717,6 +717,9 @@ class PNFSprite(WorldObject):
 
 	@property
 	def frames(self) -> FrameCollection:
+		"""
+		# TODO put documentation here
+		"""
 		return self._frames
 
 	@frames.setter
