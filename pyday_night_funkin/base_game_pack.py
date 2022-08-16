@@ -17,7 +17,8 @@ from pyday_night_funkin.core.asset_system import (
 	ImageResourceOptions, ResourceOptions, SoundResourceOptions,
 	add_asset_system,
 	load_image, load_json, load_pyobj, load_sound, load_xml,
-	loaderify
+	register_asset_type, register_optionless_asset_type,
+	register_complex_asset_type
 )
 from pyday_night_funkin.core.animation import FrameCollection
 from pyday_night_funkin.character import Character, FlipIdleCharacter
@@ -59,7 +60,7 @@ SONG_SCHEMA = Schema(
 					# altAnim, typeOfSection.
 					Optional(str): object,
 				},
-				lambda d: not ("changeBPM" in d) or ("bpm" in d),
+				lambda d: ("changeBPM" in d) <= ("bpm" in d),
 			)],
 			"bpm": Or(int, float),
 			"needsVoices": bool,
@@ -139,8 +140,13 @@ class SongResourceOptions(ResourceOptions):
 		return hash((self.difficulty, self.inst_opt, self.voice_opt))
 
 
-@loaderify(SongResourceOptions)
-def load_song(
+def _load_song_build_cache_key(
+	song_name: str,
+	options: SongResourceOptions,
+):
+	return (song_name, options)
+
+def _load_song_plain(
 	song_name: str,
 	options: SongResourceOptions,
 ) -> t.Tuple["Source", t.Optional["Source"], t.Dict]:
@@ -149,30 +155,27 @@ def load_song(
 	Will load a three-tuple of (Source, Source | None, dict); being
 	the instrumental source, the voice source and the song data.
 	"""
-
-	# HACK have to work against the loader mechanism here. this was a bad idea.
-	asset_root = os.path.dirname(song_name)
-	song_name = os.path.splitext(os.path.basename(song_name))[0]
-
 	chart_file = f"{song_name}{options.difficulty.to_song_json_suffix()}.json"
-	raw_json = load_json(os.path.join(asset_root, load_pyobj("PATH_DATA"), song_name, chart_file))
-	chart = SONG_SCHEMA.validate(raw_json)["song"]
+	chart_path = os.path.join(load_pyobj("PATH_DATA"), song_name, chart_file)
+	raw_chart = load_json(chart_path, cache=False)
+	chart = SONG_SCHEMA.validate(raw_chart)["song"]
 
-	song_dir = os.path.join(asset_root, load_pyobj("PATH_SONGS"), song_name)
-	inst = load_sound(os.path.join(song_dir, "Inst.ogg"), True, options.inst_opt)
+	song_dir = os.path.join(load_pyobj("PATH_SONGS"), song_name)
+	inst = load_sound(os.path.join(song_dir, "Inst.ogg"), options.inst_opt, False)
 	voic = None
 	if chart["needsVoices"]:
-		voic = load_sound(os.path.join(song_dir, "Voices.ogg"), True, options.voice_opt)
+		voic = load_sound(os.path.join(song_dir, "Voices.ogg"), options.voice_opt, False)
 
 	return (inst, voic, chart)
+
+load_song = register_complex_asset_type("song", _load_song_build_cache_key, _load_song_plain)
 
 
 def load_week_header(name: str) -> "Texture":
 	return load_image(os.path.join(load_pyobj("PATH_WEEK_HEADERS"), name))
 
 
-@loaderify()
-def load_frames(path: str, _opt) -> FrameCollection:
+def _load_frames_plain(path: str) -> FrameCollection:
 	"""
 	Loads animation frames from path.
 
@@ -229,6 +232,8 @@ def load_frames(path: str, _opt) -> FrameCollection:
 		)
 
 	return frame_collection
+
+load_frames = register_optionless_asset_type("frames", _load_frames_plain)
 
 def load() -> None:
 	"""

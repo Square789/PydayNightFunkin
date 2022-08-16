@@ -190,7 +190,7 @@ class InGameScene(scenes.MusicBeatScene):
 		# TODO doc
 		"""
 		inst, voices, song_data = load_song(
-			self.get_song(), True, SongResourceOptions(self.difficulty)
+			self.get_song(), SongResourceOptions(self.difficulty), cache=True
 		)
 
 		self.pause_players()

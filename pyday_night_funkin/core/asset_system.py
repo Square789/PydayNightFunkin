@@ -28,9 +28,20 @@ if t.TYPE_CHECKING:
 
 ResourceOptionsBound = t.TypeVar("ResourceOptionsBound", bound="ResourceOptions")
 T = t.TypeVar("T")
+U = t.TypeVar("U")
+
+class PlainLoaderFunc(t.Protocol[T, ResourceOptionsBound]):
+	def __call__(self, path: str) -> T:
+		...
+	def __call__(self, path: str, options: ResourceOptionsBound) -> T:
+		...
+
+class ASMLoaderFunc(t.Protocol[T, ResourceOptionsBound]):
+	def __call__(self, what) -> T:
+		...
 
 
-class AssetNotFoundError(ValueError):
+class AssetNotFoundError(KeyError):
 	pass
 
 
@@ -110,6 +121,7 @@ class AssetSystem:
 	def has_asset(
 		self,
 		path: str,
+		asset_type_name: str,
 		options: ResourceOptionsBound,
 	) -> t.Tuple[bool, t.Optional[str], t.Optional[ResourceOptionsBound]]:
 		"""
@@ -133,22 +145,41 @@ class AssetSystem:
 		else:
 			return (False, None)
 
+# YAGNI
+# class AssetTypeRegistryEntry:
+# 	def __init__(
+# 		self,
+# 		name: str,
+# 		cache_key_maker,
+# 		options_factory,
+# 		options_validator,
+# 		generated_loader,
+# 	) -> None:
+# 		self.name = name
+# 		self.cache_key_maker = cache_key_maker
+# 		self.options_factory = options_factory
+# 		self.options_validator = options_validator
+# 		self.generated_loader = generated_loader
+# 		self.is_complex = cache_key_maker is not None
 
-class _AssetSystemManager():
+
+class _AssetSystemManager:
 	"""
-	Singleton class for holding the active asset systems.
 	# TODO
 	"""
 
 	def __init__(self) -> None:
 		self.asset_system_stack: t.List[AssetSystem] = []
 
+		# self.asset_type_registry: t.Dict[str, AssetTypeRegistryEntry] = {}
+		self.asset_type_registry: t.Set[str] = set()
+
 		self.asset_dir = Path.cwd() / "assets"
-		self._cache: t.Dict[str, t.Any] = {}
+		self._cache: t.Dict[t.Hashable, t.Any] = {}
+		self._pyobj_cache: t.Dict[t.Hashable, t.Any] = {}
 
 		_tbsize = min(4096, get_max_texture_size())
-		def make_tex_bin():
-			return TextureBin(_tbsize, _tbsize)
+		make_tex_bin = lambda: TextureBin(_tbsize, _tbsize)
 		self._hinted_tex_bin: t.Dict[t.Hashable, TextureBin] = defaultdict(make_tex_bin)
 		self._tex_bin = make_tex_bin()
 
@@ -194,91 +225,139 @@ class _AssetSystemManager():
 			# atlas, probably horribly slowly but whatever
 			return (img, False)
 
-	def _get_full_path(self, tail: os.PathLike) -> str:
+	def _get_full_path(self, tail: t.Union[Path, str]) -> str:
 		return str(self.asset_dir / tail)
 
+	@t.overload
+	def _process_asset(self, path: str, asset_type_name: str, options: None) -> t.Tuple[str, None]:
+		pass
+
+	@t.overload
 	def _process_asset(
-		self,
-		path: str,
-		options: ResourceOptionsBound,
+		self, path: str, asset_type_name: str, options: ResourceOptionsBound,
 	) -> t.Tuple[str, ResourceOptionsBound]:
-		for i in range(len(self.asset_system_stack) - 1, -1, -1):
-			have, true_path, true_options = self.asset_system_stack[i].has_asset(path, options)
+		pass
+
+	def _process_asset(self, path, asset_type_name, options):
+		for as_ in reversed(self.asset_system_stack):
+			have, true_path, true_options = as_.has_asset(path, asset_type_name, options)
 			if have:
 				return true_path, (options if true_options is None else true_options)
 
 		raise AssetNotFoundError(f"Could not determine an asset system for asset {path}")
 
 	def load_pyobj(self, ident: t.Hashable) -> t.Any:
-		for i in range(len(self.asset_system_stack) - 1, -1, -1):
-			have, o = self.asset_system_stack[i].has_pyobj(ident)
+		if ident in self._pyobj_cache:
+			return self._pyobj_cache[ident]
+
+		for as_ in reversed(self.asset_system_stack):
+			have, o = as_.has_pyobj(ident)
 			if have:
+				self._pyobj_cache[ident] = o
 				return o
 
 		raise AssetNotFoundError(f"Could not find pyobj {ident!r} in current asset system stack")
 
+	def load_image(
+		self, path: str, cache: bool = False, options: t.Optional[ImageResourceOptions] = None
+	) -> "Texture":
+			in_opt = ImageResourceOptions() if options is None else options
+			cache_key = (path, "image", in_opt)
+			if cache_key in self._cache:
+				return self._cache[cache_key]
 
-	def loaderify(
+			true_path_tail, opt = self._process_asset(path, "image", in_opt)
+			if not isinstance(opt, type(in_opt)):
+				raise RuntimeError("Asset system delivered incompatible options for asset.")
+
+			data = self.store_image(
+				image.load(self._get_full_path(true_path_tail)),
+				opt.atlas_hint,
+			)[0].get_texture()
+
+			if cache:
+				self._cache[cache_key] = data
+
+			return data
+
+	def _check_and_make_asset_type_cache(self, name: str) -> t.Dict:
+		if name in self.asset_type_registry:
+			raise ValueError(f"Asset of name {name} already exists")
+		self._cache[name] = {}
+		return self._cache[name]
+
+	def remove_asset_type(self, name: str) -> None:
+		if name not in self.asset_type_registry:
+			raise KeyError(f"Cannot remove unknown asset type {name}")
+		self.asset_type_registry.pop(name)
+		self._cache.pop(name)
+
+	def register_optionless_asset_type(self, name: str, loader_function):
+		cache_dict = self._check_and_make_asset_type_cache(name)
+
+		def gen_optionless_loader(path: str, cache: bool = True):
+			if path in cache_dict:
+				return cache_dict[path]
+
+			true_path_tail, _ = self._process_asset(path, name, None)
+			data = loader_function(self._get_full_path(true_path_tail))
+			if cache:
+				cache_dict[path] = data
+			return data
+
+		self.asset_type_registry.add(name)
+		return gen_optionless_loader
+
+	def register_asset_type(
 		self,
-		ro_factory: t.Callable[[], ResourceOptionsBound] = DummyResourceOptions,
-	) -> t.Callable[
-		[t.Callable[[str, ResourceOptionsBound], T]],
-		t.Callable[[str, bool, t.Optional[ResourceOptionsBound]], T]
-	]:
-		def loaderify_decorator(
-			orig_func: t.Callable[[str, ResourceOptionsBound], T]
-		) -> t.Callable[[str, bool, t.Optional[ResourceOptionsBound]], T]:
-			def loaderified(
-				path: str,
-				cache: bool = True,
-				override_opt: t.Optional[ResourceOptionsBound] = None,
-			) -> T:
-				in_opt = ro_factory() if override_opt is None else override_opt
-				cache_key = (path, in_opt)
-				if cache_key in self._cache:
-					return self._cache[cache_key]
+		name: str,
+		loader_function: PlainLoaderFunc[T, ResourceOptionsBound],
+		options_factory: t.Callable[[], ResourceOptionsBound],
+		options_validator: t.Optional[t.Callable[[t.Any], t.Union[str, bool]]] = None,
+	) -> ASMLoaderFunc[T, ResourceOptionsBound]:
+		cache_dict = self._check_and_make_asset_type_cache(name)
 
-				true_path, opt = self._process_asset(path, in_opt)
-				data = orig_func(self._get_full_path(true_path), opt)
+		def gen_loader(
+			path: str,
+			options: t.Optional[ResourceOptionsBound] = None,
+			cache: bool = True,
+		) -> T:
+			options = options_factory() if options is None else options
+			cache_key = (path, options)
+			if cache_key in cache_dict:
+				return cache_dict[cache_key]
 
-				if cache:
-					self._cache[path] = data
+			true_path_tail, true_options = self._process_asset(path, name, options)
+			if true_options is not options and options_validator is not None:
+				ovres = options_validator(true_options)
+				if ovres is not True:
+					raise RuntimeError(
+						f"Options validator for asset type {name} disagreed with options "
+						f"returned by an asset system{': ' + ovres if ovres else ''}."
+					)
 
-				return data
+			data = loader_function(self._get_full_path(true_path_tail), true_options)
+			if cache:
+				cache_dict[cache_key] = data
+			return data
 
-			return loaderified
-		return loaderify_decorator
+		self.asset_type_registry.add(name)
+		return gen_loader
 
-	def loaderify_asm_access(
-		self,
-		ro_factory: t.Callable[[], ResourceOptionsBound] = DummyResourceOptions,
-	) -> t.Callable[
-		[t.Callable[["_AssetSystemManager", str, ResourceOptionsBound], T]],
-		t.Callable[[str, bool, t.Optional[ResourceOptionsBound]], T]
-	]:
-		def loaderify_decorator(
-			orig_func: t.Callable[["_AssetSystemManager", str, ResourceOptionsBound], T]
-		) -> t.Callable[[str, bool, t.Optional[ResourceOptionsBound]], T]:
-			def loaderified(
-				path: str,
-				cache: bool = True,
-				override_opt: t.Optional[ResourceOptionsBound] = None,
-			) -> T:
-				in_opt = ro_factory() if override_opt is None else override_opt
-				cache_key = (path, in_opt)
-				if cache_key in self._cache:
-					return self._cache[cache_key]
+	def register_complex_asset_type(self, name, cache_key_maker, loader_func) -> t.Callable:
+		cache_dict = self._check_and_make_asset_type_cache(name)
 
-				true_path, opt = self._process_asset(path, in_opt)
-				data = orig_func(self, self._get_full_path(true_path), opt)
+		def gen_complex_loader(*args, cache: bool = True, **kwargs):
+			cache_key = cache_key_maker(*args, **kwargs)
+			if cache_key in cache_dict:
+				return cache_dict[cache_key]
+			data = loader_func(*args, **kwargs)
+			if cache:
+				cache_dict[cache_key] = data
+			return data
 
-				if cache:
-					self._cache[cache_key] = data
-
-				return data
-
-			return loaderified
-		return loaderify_decorator
+		self.asset_type_registry.add(name)
+		return gen_complex_loader
 
 	def invalidate_cache(self, entries: t.Optional[t.Iterable[str]] = None) -> None:
 		"""
@@ -287,6 +366,7 @@ class _AssetSystemManager():
 		be removed from the cache, otherwise the entire cache is
 		cleared.
 		"""
+		self._pyobj_cache.clear()
 		if entries:
 			for e in entries:
 				# print(f"POPPING {e} FROM CACHE")
@@ -298,26 +378,23 @@ class _AssetSystemManager():
 
 _asm = _AssetSystemManager()
 
-@_asm.loaderify()
-def load_bytes(path: str, _options) -> str:
+def _load_bytes_plain(path: str) -> bytes:
 	with open(path, "rb") as f:
 		return f.read()
+load_bytes = _asm.register_optionless_asset_type("bytes", _load_bytes_plain)
 
-@_asm.loaderify(TextResourceOptions)
-def load_text(path: str, options: TextResourceOptions) -> str:
+def _load_text_plain(path: str, options: TextResourceOptions) -> str:
 	with open(path, "r", encoding=options.encoding) as f:
 		return f.read()
+load_text = _asm.register_asset_type("text", _load_text_plain, TextResourceOptions)
 
-@_asm.loaderify_asm_access(ImageResourceOptions)
-def load_image(asm: _AssetSystemManager, path: str, options: ImageResourceOptions) -> "Texture":
-	return asm.store_image(image.load(path), options.atlas_hint)[0].get_texture()
+load_image = _asm.load_image
 
-@_asm.loaderify(SoundResourceOptions)
-def load_sound(path: str, options: SoundResourceOptions) -> media.Source:
+def _load_sound_plain(path: str, options: SoundResourceOptions) -> media.Source:
 	return media.load(path, streaming=options.stream, decoder=options.decoder)
+load_sound = _asm.register_asset_type("sound", _load_sound_plain, SoundResourceOptions)
 
-@_asm.loaderify()
-def load_xml(path: str, _options) -> ElementTree:
+def _load_xml_plain(path: str) -> ElementTree:
 	et = ElementTree()
 	# NOTE: The xml files contain the encoding inside them, which is mega stupid
 	# since you need the encoding to properly parse them, so like ????
@@ -327,21 +404,23 @@ def load_xml(path: str, _options) -> ElementTree:
 	with open(path, "r", encoding="utf-8") as f:
 		et.parse(f, AlmostXMLParser())
 	return et
+load_xml = _asm.register_optionless_asset_type("xml", _load_xml_plain)
 
-@_asm.loaderify(JsonResourceOptions)
-def load_json(path: str, options: JsonResourceOptions) -> t.Dict:
+def _load_json_plain(path: str, options: JsonResourceOptions) -> t.Dict:
 	with open(path, "r", encoding=options.encoding) as f:
 		return json.load(f)
+load_json = _asm.register_asset_type("json", _load_json_plain, JsonResourceOptions)
 
-@_asm.loaderify()
-def load_font(path: str, _options) -> None:
+def _load_font_plain(path: str) -> None:
 	font.add_file(path)
 	return None
+load_font = _asm.register_optionless_asset_type("font", _load_font_plain)
 
-	
+
 load_pyobj = _asm.load_pyobj
 add_asset_system = _asm.add_asset_system
 remove_asset_system = _asm.remove_asset_system
 invalidate_cache = _asm.invalidate_cache
-loaderify = _asm.loaderify
-loaderify_asm_access = _asm.loaderify_asm_access
+register_asset_type = _asm.register_asset_type
+register_optionless_asset_type = _asm.register_optionless_asset_type
+register_complex_asset_type = _asm.register_complex_asset_type
