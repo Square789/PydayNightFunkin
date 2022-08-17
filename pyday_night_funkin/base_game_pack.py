@@ -170,10 +170,8 @@ def _load_song_plain(
 
 load_song = register_complex_asset_type("song", _load_song_build_cache_key, _load_song_plain)
 
-
 def load_week_header(name: str) -> "Texture":
 	return load_image(os.path.join(load_pyobj("PATH_WEEK_HEADERS"), name))
-
 
 def _load_frames_plain(path: str) -> FrameCollection:
 	"""

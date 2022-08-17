@@ -48,6 +48,9 @@ class GenAssetLoaderFunc(t.Protocol[ResourceOptionsBound, T]):
 class GenOptionlessAssetLoaderFunc(t.Protocol[T]):
 	def __call__(self, path: str, cache: bool = False) -> T:
 		...
+
+PostLoadProcessor = t.Callable[[T], T]
+
 # typing stuff end
 
 class DummyResourceOptions:
@@ -110,7 +113,7 @@ class AssetSystemEntry:
 	def __init__(
 		self,
 		options: t.Optional[ResourceOptions] = None,
-		post_load_processor: t.Optional[t.Callable[[T], T]] = None,
+		post_load_processor: t.Optional[PostLoadProcessor] = None,
 	) -> None:
 		self.options = options
 		self.post_load_processor = post_load_processor
@@ -142,7 +145,7 @@ class AssetSystem:
 			t.Literal[True],
 			str,
 			t.Optional[ResourceOptions],
-			t.Optional[t.Callable[[T], T]],
+			t.Optional[PostLoadProcessor],
 		]
 	]:
 		"""
@@ -198,11 +201,11 @@ class _AssetSystemManager:
 		self.asset_type_registry: t.Set[str] = set()
 
 		self.asset_dir = Path.cwd() / "assets"
-		self._cache: t.Dict[t.Hashable, t.Any] = {}
+		self._cache: t.Dict[str, t.Dict[t.Hashable, t.Any]] = {"image": {}}
 		self._pyobj_cache: t.Dict[t.Hashable, t.Any] = {}
 
-		_tbsize = min(4096, get_max_texture_size())
-		make_tex_bin = lambda: TextureBin(_tbsize, _tbsize)
+		self.tex_bin_size = min(4096, get_max_texture_size())
+		make_tex_bin = lambda: TextureBin(self.tex_bin_size, self.tex_bin_size)
 		self._hinted_tex_bin: t.Dict[t.Hashable, TextureBin] = defaultdict(make_tex_bin)
 		self._tex_bin = make_tex_bin()
 
@@ -213,7 +216,7 @@ class _AssetSystemManager:
 		Invalidates the asset system manager's cache.
 		"""
 		self.asset_system_stack.append(asset_system)
-		self.invalidate_cache()
+		self.clear_cache()
 
 	def remove_asset_system(self, asset_system: AssetSystem) -> None:
 		"""
@@ -223,7 +226,7 @@ class _AssetSystemManager:
 			self.asset_system_stack.remove(asset_system)
 		except ValueError:
 			return
-		self.invalidate_cache()
+		self.clear_cache()
 
 	def store_image(
 		self,
@@ -240,12 +243,14 @@ class _AssetSystemManager:
 			self._tex_bin if atlas_hint is None else
 			self._hinted_tex_bin[atlas_hint]
 		)
+		should_store = img.width < self.tex_bin_size and img.height <= self.tex_bin_size
+		if not should_store:
+			return (img, False)
+
 		try:
 			return (target_bin.add(img), True)
-		except AllocatorException as e:
+		except Exception as e:
 			logger.warning(f"Failed storing image {img} in atlas {atlas_hint}: {e}")
-			# NOTE: idk how OpenGL handles textures it can't fit into an
-			# atlas, probably horribly slowly but whatever
 			return (img, False)
 
 	def _get_full_path(self, tail: t.Union[Path, str]) -> str:
@@ -253,7 +258,7 @@ class _AssetSystemManager:
 
 	def _process_asset(
 		self, path: str, asset_type_name: str, options: t.Optional[ResourceOptions]
-	) -> t.Tuple[str, t.Optional[ResourceOptions], t.Optional[t.Callable[[T], T]]]:
+	) -> t.Tuple[str, t.Optional[ResourceOptions], t.Optional[PostLoadProcessor]]:
 		for as_ in reversed(self.asset_system_stack):
 			have, true_path, true_options, ppf = as_.has_asset(path, asset_type_name, options)
 			if have:
@@ -262,6 +267,12 @@ class _AssetSystemManager:
 		raise AssetNotFoundError(f"Could not determine an asset system for asset {path}")
 
 	def load_pyobj(self, ident: t.Hashable) -> t.Any:
+		"""
+		Loads a pyobject by its identifier. While other assets are
+		loaded from file paths by loader functions, the pyobj asset
+		directory so-to-speak is built by the asset systems
+		exclusively.
+		"""
 		if ident in self._pyobj_cache:
 			return self._pyobj_cache[ident]
 
@@ -276,26 +287,27 @@ class _AssetSystemManager:
 	def load_image(
 		self, path: str, cache: bool = False, options: t.Optional[ImageResourceOptions] = None
 	) -> "Texture":
-			in_opt = ImageResourceOptions() if options is None else options
-			cache_key = (path, "image", in_opt)
-			if cache_key in self._cache:
-				return self._cache[cache_key]
+		img_cache = self._cache["image"]
+		in_opt = ImageResourceOptions() if options is None else options
+		cache_key = (path, in_opt)
+		if cache_key in img_cache:
+			return img_cache[cache_key]
 
-			true_path_tail, true_opt, post_load_processor = self._process_asset(
-				path, "image", in_opt
-			)
-			if not isinstance(true_opt, type(in_opt)):
-				raise RuntimeError("Asset system delivered incompatible options for asset.")
+		true_path_tail, true_opt, post_load_processor = self._process_asset(
+			path, "image", in_opt
+		)
+		if not isinstance(true_opt, type(in_opt)):
+			raise RuntimeError("Asset system delivered incompatible options for asset.")
 
-			data = image.load(self._get_full_path(true_path_tail))
-			if post_load_processor is not None:
-				data = post_load_processor(data)
-			data = self.store_image(data, true_opt.atlas_hint)[0].get_texture()
+		data = image.load(self._get_full_path(true_path_tail))
+		if post_load_processor is not None:
+			data = post_load_processor(data)
+		data = self.store_image(data, true_opt.atlas_hint)[0].get_texture()
 
-			if cache:
-				self._cache[cache_key] = data
+		if cache:
+			img_cache[cache_key] = data
 
-			return data
+		return data
 
 	def _check_and_make_asset_type_cache(self, name: str) -> t.Dict:
 		if name in self.asset_type_registry:
@@ -311,10 +323,14 @@ class _AssetSystemManager:
 
 	def register_optionless_asset_type(
 		self, name: str, loader_function: t.Callable[[str], T]
-	) -> GenOptionlessAssetLoaderFunc[T]:
+	):
+		"""
+		Registers an optionless asset type of name `name` with the
+		AssetSystemManager.
+		"""
 		cache_dict = self._check_and_make_asset_type_cache(name)
 
-		def gen_optionless_loader(path: str, cache: bool = True):
+		def gen_optionless_loader(path: str, cache: bool = True) -> T:
 			if path in cache_dict:
 				return cache_dict[path]
 
@@ -335,7 +351,26 @@ class _AssetSystemManager:
 		loader_function: t.Callable[[str, ResourceOptionsBound], T],
 		options_factory: t.Callable[[], ResourceOptionsBound],
 		options_validator: t.Optional[t.Callable[[t.Any], t.Union[str, bool]]] = None,
-	) -> GenAssetLoaderFunc[ResourceOptionsBound, T]:
+	):
+		"""
+		Registers the asset type `name` with the AssetSystemManager.
+		`loader_function` must turn a path and a specifically created
+		for this asset `ResourceOptions` subclass instance into a
+		concretely loaded asset.
+
+		`options_factory` must supply default options to the loader
+		function. In most cases, the type name of the custom
+		`ResourceOptions` should suffice.
+
+		The asset system stack might override any default and passed
+		in options. If that is expected, the `options_validator` can be
+		given as an extra sanity check to check the validity of options
+		given by the asset system stack.
+
+		Returns a loader function that can simply be used from your
+		game's code like `load_image("assets/img/player.png")` or
+		`load_sound("assets/snd/bg.ogg", options=None, cache=False)`.
+		"""
 		cache_dict = self._check_and_make_asset_type_cache(name)
 
 		def gen_loader(
@@ -382,7 +417,29 @@ class _AssetSystemManager:
 		name: str,
 		cache_key_maker: t.Callable[..., t.Hashable],
 		loader_func: t.Callable[..., T],
-	) -> t.Callable[..., T]:
+	):
+		"""
+		Registers the complex asset type `name` with the
+		AssetSystemManager.
+		These:
+		 - Completely ignore the asset system stack due to their
+		   disconnect from paths.
+		 - Largely leave proper behavior up to the user/the
+		   `loader_func` you pass in.
+		 - Can take any amount of arguments
+		 - Do not use options apart from what the passed in arbitrary
+		   arguments mean to them. `cache_key_maker` is expected to
+		   create a proper cache key for distinct arguments.
+
+		It is recommended that the `loader_func` loads other "atomic"
+		assets without caching and places them in a tuple or other kind
+		of collection that holds references to them. This way, on
+		caching the collection will be placed in the ASM and all
+		resources removed again when the cache entry is removed.
+
+		NOTE: The argument count indetermination makes `cache` in
+		the generated loader function a kwarg-only argument.
+		"""
 		cache_dict = self._check_and_make_asset_type_cache(name)
 
 		def gen_complex_loader(*args: t.Any, cache: bool = True, **kwargs: t.Any) -> T:
@@ -397,21 +454,14 @@ class _AssetSystemManager:
 		self.asset_type_registry.add(name)
 		return gen_complex_loader
 
-	def invalidate_cache(self, entries: t.Optional[t.Iterable[str]] = None) -> None:
+	def clear_cache(self) -> None:
 		"""
-		Invalidates the asset system's cache.
-		If an iterable of resources is specified, only those will
-		be removed from the cache, otherwise the entire cache is
-		cleared.
+		Clears the asset system's cache.
 		"""
 		self._pyobj_cache.clear()
-		if entries:
-			for e in entries:
-				# print(f"POPPING {e} FROM CACHE")
-				self._cache.pop(e, None) # don't error on nonexistent cache entries
-		else:
-			# print("PURGING CACHE")
-			self._cache.clear()
+		# print("PURGING CACHE")
+		for d in self._cache.values():
+			d.clear()
 
 
 _asm = _AssetSystemManager()
@@ -458,7 +508,7 @@ load_font = _asm.register_optionless_asset_type("font", _load_font_plain)
 load_pyobj = _asm.load_pyobj
 add_asset_system = _asm.add_asset_system
 remove_asset_system = _asm.remove_asset_system
-invalidate_cache = _asm.invalidate_cache
+invalidate_cache = _asm.clear_cache
 register_asset_type = _asm.register_asset_type
 register_optionless_asset_type = _asm.register_optionless_asset_type
 register_complex_asset_type = _asm.register_complex_asset_type
