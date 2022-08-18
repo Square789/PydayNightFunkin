@@ -2,7 +2,7 @@
 import typing as t
 
 
-class BPMChangeEvent():
+class BPMChangeEvent:
 	__slots__ = ("step", "song_time", "bpm")
 
 	def __init__(self, step: int, song_time: float, bpm: float) -> None:
@@ -12,7 +12,7 @@ class BPMChangeEvent():
 
 
 # The tiniest conductor
-class Conductor():
+class Conductor:
 	# https://ninjamuffin99.newgrounds.com/news/post/1124589
 	# -> https://old.reddit.com/r/gamedev/comments/2fxvk4/
 	#    heres_a_quick_and_dirty_guide_i_just_wrote_how_to/

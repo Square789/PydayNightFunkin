@@ -5,7 +5,7 @@ import typing as t
 from pyday_night_funkin.enums import CONTROL
 
 
-class KeyHandler():
+class KeyHandler:
 	"""
 	Class to manage key presses.
 	"""

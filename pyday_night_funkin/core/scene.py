@@ -21,7 +21,7 @@ if t.TYPE_CHECKING:
 SceneObjectBound = t.TypeVar("SceneObjectBound", bound=SceneObject)
 
 
-class Layer():
+class Layer:
 	"""
 	Layer class over the given group.
 	"""

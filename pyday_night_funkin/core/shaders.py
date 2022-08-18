@@ -5,7 +5,7 @@ from pyglet.graphics.shader import Shader, ShaderProgram, UniformBufferObject
 
 # {"WindowBlock": 0, "CameraAttrs": 1}
 
-class ShaderContainer():
+class ShaderContainer:
 	"""
 	Class to hold multiple shaders and compile them to a full
 	program only when requested for the first time.

@@ -44,7 +44,7 @@ class NOTE_TYPE(IntEnum):
 _NOTE_TYPE_ORDER = {NOTE_TYPE.LEFT: 0, NOTE_TYPE.DOWN: 1, NOTE_TYPE.UP: 2, NOTE_TYPE.RIGHT: 3}
 
 
-class Note():
+class Note:
 	__slots__ = (
 		"singer", "time", "type", "sustain", "sustain_stage", "sprite", "rating", "playable"
 	)

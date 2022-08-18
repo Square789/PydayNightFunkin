@@ -54,7 +54,7 @@ class _FPSData:
 			self._reset_measurements()
 
 
-class Game():
+class Game:
 	def __init__(self) -> None:
 		self.debug = True
 		self.use_debug_pane = self.debug and True

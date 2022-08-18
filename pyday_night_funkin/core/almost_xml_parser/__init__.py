@@ -4,7 +4,7 @@ from xml.etree.ElementTree import TreeBuilder
 from .almost_xml_parser import AlmostXMLParser as _AXP
 
 
-class AlmostXMLParser():
+class AlmostXMLParser:
 	def __init__(self, *, target = None) -> None:
 		self._parser = parser = _AXP()
 

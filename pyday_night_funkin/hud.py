@@ -17,7 +17,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGameScene
 
 
-class HUD():
+class HUD:
 	"""
 	HUD class containing a bunch of HUD sprites and functions
 	to modify them.

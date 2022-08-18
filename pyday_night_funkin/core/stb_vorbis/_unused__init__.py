@@ -382,7 +382,7 @@ class STBVorbisException(Exception):
 	pass
 
 
-class STBVorbis():
+class STBVorbis:
 	"""
 	Python class managing a stb_vorbis struct.
 	Only supports the specific subset of functions this project needs

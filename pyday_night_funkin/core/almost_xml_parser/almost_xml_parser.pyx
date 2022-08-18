@@ -71,7 +71,7 @@ cdef dict ESCAPES = {
 }
 
 
-cdef class AlmostXMLParser():
+cdef class AlmostXMLParser:
 	"""
 	Not fully compliant XML Parser.
 	It also cheats and will concat all calls to `feed`'s strings and

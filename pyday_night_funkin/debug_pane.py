@@ -10,7 +10,7 @@ from pyday_night_funkin.core.scene import SceneContext
 from pyday_night_funkin.core.utils import to_rgba_tuple
 
 
-class DebugPane():
+class DebugPane:
 	"""
 	Shoddy class to manage text lines on a rectangle, used to display
 	debug messages and fps.

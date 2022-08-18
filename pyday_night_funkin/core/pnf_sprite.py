@@ -145,7 +145,7 @@ void main() {{
 }}
 """
 
-class PNFSpriteVertexShader():
+class PNFSpriteVertexShader:
 	src = _PNF_SPRITE_VERTEX_SHADER_SOURCE
 
 	@classmethod
@@ -153,7 +153,7 @@ class PNFSpriteVertexShader():
 		return cls.src.format()
 
 
-class PNFSpriteFragmentShader():
+class PNFSpriteFragmentShader:
 	src = _PNF_SPRITE_FRAGMENT_SHADER_SOURCE
 
 	class COLOR:
@@ -165,7 +165,7 @@ class PNFSpriteFragmentShader():
 		return cls.src.format(color_behavior=color_behavior)
 
 
-class Movement():
+class Movement:
 	__slots__ = ("velocity", "acceleration")
 	
 	def __init__(self, velocity: Vec2, acceleration: Vec2) -> None:
@@ -193,7 +193,7 @@ class Movement():
 		return Vec2(posx_delta, posy_delta)
 
 
-class Effect():
+class Effect:
 	"""
 	"Abstract" effect class intertwined with the PNFSprite.
 	"""

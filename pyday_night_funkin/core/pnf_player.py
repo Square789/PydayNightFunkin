@@ -42,7 +42,7 @@ class SFXRingFullException(RuntimeError):
 	pass
 
 
-class SFXRing():
+class SFXRing:
 	"""
 	Ring of players to play a (limited) number of sounds
 	simultaneously.

@@ -10,7 +10,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import InGameScene
 
 
-class HealthBar():
+class HealthBar:
 	"""
 	Class that registers and contains a few sprites to render a game's
 	health bar with two icons to the screen.

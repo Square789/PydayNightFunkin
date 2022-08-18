@@ -5,7 +5,7 @@ from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup, get_default_batch
 
 
-class SceneContext():
+class SceneContext:
 	"""
 	A scene context, which is fancy talk for a batch, a group and
 	cameras in a slotted container class. Basically a bundling class
