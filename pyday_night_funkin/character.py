@@ -80,15 +80,6 @@ class Character(PNFSprite):
 		# a constant as Daddy Dearest will always be the character the story menu is created with.
 		spr.scale = 214.5 / spr.get_current_frame_dimensions()[0]
 
-	@staticmethod
-	def get_string() -> str:
-		"""
-		Each character has a string assigned to them used to gather
-		information for them, i. e. the health icon.
-		This method returns that string. Default is `''`.
-		"""
-		return ""
-
 
 class FlipIdleCharacter(Character):
 	"""

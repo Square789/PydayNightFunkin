@@ -373,10 +373,6 @@ class Boyfriend(Character):
 			tags = (ANIMATION_TAG.STORY_MENU, ANIMATION_TAG.SPECIAL)
 		)
 
-	@staticmethod
-	def get_string() -> str:
-		return "bf"
-
 
 class DaddyDearest(Character):
 
@@ -420,10 +416,6 @@ class DaddyDearest(Character):
 	def transform_story_menu_sprite(spr: "PNFSprite") -> None:
 		spr.offset = (120, 200)
 		spr.scale = 214.5 / spr.get_current_frame_dimensions()[0]
-
-	@staticmethod
-	def get_string() -> str:
-		return "dad"
 
 
 class Girlfriend(FlipIdleCharacter):
@@ -487,10 +479,6 @@ class Girlfriend(FlipIdleCharacter):
 			loop = True,
 			tags = (ANIMATION_TAG.STORY_MENU,),
 		)
-
-	@staticmethod
-	def get_string() -> str:
-		return "gf"
 
 
 class SkidNPump(FlipIdleCharacter):
