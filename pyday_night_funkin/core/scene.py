@@ -18,7 +18,7 @@ from pyday_night_funkin.core.scene_object import Container, SceneObject
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
 
-SceneObjectBound = t.TypeVar("SceneObjectBound", bound=SceneObject)
+SceneObjectT = t.TypeVar("SceneObjectT", bound=SceneObject)
 
 
 class Layer:
@@ -150,9 +150,9 @@ class BaseScene(Container):
 		layer: t.Optional[str] = None,
 		cameras: t.Optional[t.Union[str, t.Iterable[str]]] = None,
 		*,
-		object_class: t.Type[SceneObjectBound],
+		object_class: t.Type[SceneObjectT],
 		**kwargs,
-	) -> SceneObjectBound:
+	) -> SceneObjectT:
 		...
 
 	# Everything is listed positionally, object_class is arg 3
@@ -161,10 +161,10 @@ class BaseScene(Container):
 		self,
 		layer: t.Optional[str],
 		cameras: t.Optional[t.Union[str, t.Iterable[str]]],
-		object_class: t.Type[SceneObjectBound],
+		object_class: t.Type[SceneObjectT],
 		*args,
 		**kwargs,
-	) -> SceneObjectBound:
+	) -> SceneObjectT:
 		...
 
 	# object_class is not given, return type is PNFSprite.
@@ -182,10 +182,10 @@ class BaseScene(Container):
 		self,
 		layer: t.Optional[str] = None,
 		cameras: t.Optional[t.Union[str, t.Iterable[str]]] = None,
-		object_class: t.Type[SceneObjectBound] = PNFSprite,
+		object_class: t.Type[SceneObjectT] = PNFSprite,
 		*args,
 		**kwargs,
-	) -> t.Union[SceneObjectBound, PNFSprite]:
+	) -> t.Union[SceneObjectT, PNFSprite]:
 		"""
 		Creates a scene object on the given layer belonging to one or
 		multiple cameras. If one or more camera names are specified

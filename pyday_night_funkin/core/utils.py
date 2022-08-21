@@ -5,10 +5,14 @@ import typing as t
 
 from pyglet.image import CheckerImagePattern, ImageData, Texture
 
+
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
+	from pyday_night_funkin.core.types import Numeric
 
 T = t.TypeVar("T")
+U = t.TypeVar("U")
+V = t.TypeVar("V")
 
 
 ADDRESS_PADDING = (sys.maxsize.bit_length() + 1) // 4
@@ -68,10 +72,10 @@ class ListWindow(t.Generic[T]):
 		return self.list[self.start + idx]
 
 
-def clamp(value, min_, max_):
+def clamp(value: T, min_: U, max_: V) -> t.Union[T, U, V]:
 	return min_ if value < min_ else (max_ if value > max_ else value)
 
-def lerp(start, stop, ratio):
+def lerp(start: "Numeric", stop: "Numeric", ratio: "Numeric") -> "Numeric":
 	return start + (stop - start) * ratio
 
 def to_rgba_bytes(v: int) -> bytes:

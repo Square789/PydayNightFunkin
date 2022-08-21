@@ -6,6 +6,7 @@ modding scene's lifetime.
 # ^ if i ever get around to implementing a 2nd one, lol
 
 from collections import defaultdict
+import functools
 import json
 from pathlib import Path
 import typing as t
@@ -34,14 +35,14 @@ class ResourceOptions:
 	pass
 
 # typing stuff begin
-ResourceOptionsBound = t.TypeVar("ResourceOptionsBound", bound="ResourceOptions")
+ResourceOptionsT = t.TypeVar("ResourceOptionsT", bound="ResourceOptions")
 # P = t.ParamSpec("P") if hasattr(t, "ParamSpec") else None
 T = t.TypeVar("T")
 U = t.TypeVar("U")
 
-class GenAssetLoaderFunc(t.Protocol[ResourceOptionsBound, T]):
+class GenAssetLoaderFunc(t.Protocol[ResourceOptionsT, T]):
 	def __call__(
-		self, path: str, options: t.Optional[ResourceOptionsBound] = None, cache: bool = False
+		self, path: str, options: t.Optional[ResourceOptionsT] = None, cache: bool = False
 	) -> T:
 		...
 
@@ -330,6 +331,7 @@ class _AssetSystemManager:
 		"""
 		cache_dict = self._check_and_make_asset_type_cache(name)
 
+		@functools.wraps(loader_function)
 		def gen_optionless_loader(path: str, cache: bool = True) -> T:
 			if path in cache_dict:
 				return cache_dict[path]
@@ -348,8 +350,8 @@ class _AssetSystemManager:
 	def register_asset_type(
 		self,
 		name: str,
-		loader_function: t.Callable[[str, ResourceOptionsBound], T],
-		options_factory: t.Callable[[], ResourceOptionsBound],
+		loader_function: t.Callable[[str, ResourceOptionsT], T],
+		options_factory: t.Callable[[], ResourceOptionsT],
 		options_validator: t.Optional[t.Callable[[t.Any], t.Union[str, bool]]] = None,
 	):
 		"""
@@ -373,9 +375,10 @@ class _AssetSystemManager:
 		"""
 		cache_dict = self._check_and_make_asset_type_cache(name)
 
+		@functools.wraps(loader_function)
 		def gen_loader(
 			path: str,
-			options: t.Optional[ResourceOptionsBound] = None,
+			options: t.Optional[ResourceOptionsT] = None,
 			cache: bool = True,
 		) -> T:
 			options = options_factory() if options is None else options
@@ -442,6 +445,7 @@ class _AssetSystemManager:
 		"""
 		cache_dict = self._check_and_make_asset_type_cache(name)
 
+		@functools.wraps(loader_func)
 		def gen_complex_loader(*args: t.Any, cache: bool = True, **kwargs: t.Any) -> T:
 			cache_key = cache_key_maker(*args, **kwargs)
 			if cache_key in cache_dict:

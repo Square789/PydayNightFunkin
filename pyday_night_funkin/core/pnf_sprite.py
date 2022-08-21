@@ -231,7 +231,7 @@ class _Tween(Effect):
 
 	def update(self, dt: float, sprite: "PNFSprite") -> None:
 		self.cur_time += dt
-		progress = self.tween_func(clamp(self.cur_time, 0, self.duration) / self.duration)
+		progress = self.tween_func(clamp(self.cur_time, 0.0, self.duration) / self.duration)
 
 		for attr_name, (v_ini, v_diff) in self.attr_map.items():
 			setattr(sprite, attr_name, v_ini + v_diff*progress)
