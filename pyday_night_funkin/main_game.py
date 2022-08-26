@@ -22,7 +22,7 @@ from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 
-__version__ = "0.0.32"
+__version__ = "0.0.33"
 
 
 class _FPSData:
@@ -181,10 +181,10 @@ class Game:
 
 	def set_scene(self, new_scene_type: t.Type[BaseScene], *args, **kwargs):
 		"""
-		Clears the existing scene stack and then sets the given scene
-		passed in the same manner as in `push_scene` to be its only
-		member. Clears any possibly pending scene additions beforehand
-		as well.
+		Arranges for clearing of the existing scene stack and addition
+		of the given scene passed in the same manner as in `push_scene`
+		to be its only member. Clears any possibly pending scene
+		additions beforehand as well.
 		"""
 		for scene in self._scene_stack:
 			self._pending_scene_stack_removals.add(scene)
@@ -229,7 +229,6 @@ class Game:
 		then we would be looking at a mess of half-dead scenes still
 		running their update code and erroring out. Scary!
 		"""
-		stk_mod_t = perf_counter()
 		if self._pending_scene_stack_removals:
 			for scene in self._scene_stack[::-1]:
 				if scene not in self._pending_scene_stack_removals:
@@ -246,19 +245,14 @@ class Game:
 				self._scene_stack.append(new_scene)
 			self._on_scene_stack_change()
 
-		return perf_counter() - stk_mod_t
-
 	def update(self, dt: float) -> None:
 		stime = perf_counter()
 
-		# TODO: This feels really incorrect, but I can't seem to figure out a
-		# better way to prevent scene creation time leaking into the scene's first
-		# update call.
-		if self._pending_scene_stack_removals or self._pending_scene_stack_additions:
-			dt -= self._modify_scene_stack()
-
 		for scene in self._scenes_to_update:
 			scene.update(dt)
+
+		if self._pending_scene_stack_removals or self._pending_scene_stack_additions:
+			self._modify_scene_stack()
 
 		self.key_handler.post_update()
 		self._update_time = (perf_counter() - stime) * 1000

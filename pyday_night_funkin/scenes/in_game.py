@@ -288,6 +288,8 @@ class InGameScene(scenes.MusicBeatScene):
 					self.resync()
 
 		self.process_input(dt)
+		if self.health < 0.0:
+			self.on_game_over()
 
 		# Camera following
 		if (cur_section := self.get_current_section()) is not None:
@@ -398,12 +400,9 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		Sets health of the player to the specified new health and
 		then calls everything that should necessarily update.
-		Also triggers game over if it drops below 0.
 		"""
 		self.health = min(new_health, 1.0)
 		self.hud.update_health(new_health)
-		if new_health < 0.0:
-			self.on_game_over()
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()

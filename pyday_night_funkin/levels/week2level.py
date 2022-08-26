@@ -4,7 +4,7 @@ from random import choice, randint
 import typing as t
 
 from pyday_night_funkin.base_game_pack import (
-	Boyfriend, Girlfriend, SkidNPump, Monster, load_frames
+	Boyfriend, Girlfriend, SkidNPump, Monster as MonsterChar, load_frames
 )
 from pyday_night_funkin.core.asset_system import load_sound
 from pyday_night_funkin.scenes import InGameScene
@@ -14,9 +14,6 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.character import Character
 	from pyday_night_funkin.hud import HUD
 	from pyday_night_funkin.note_handler import AbstractNoteHandler
-
-
-MonsterChar = Monster # yikes
 
 
 class Week2Level(InGameScene):
