@@ -283,6 +283,8 @@ class PNFText(WorldObject):
 				glyphs: t.List["Glyph"] = font.get_glyphs(text_line)
 				self.lines.append(_Line(baseline_offset, glyphs, sum(g.advance for g in glyphs)))
 				baseline_offset += font.ascent
+			if not self.lines:
+				self.lines.append(_Line(font.ascent, (), 0))
 		else:
 			glyphs: t.List["Glyph"] = font.get_glyphs(self._text)
 			self.lines = [_Line(font.ascent, glyphs, sum(g.advance for g in glyphs))]

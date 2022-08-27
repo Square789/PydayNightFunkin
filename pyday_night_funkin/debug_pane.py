@@ -1,6 +1,8 @@
 
 import queue
 
+from pyglet import font
+
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
@@ -17,6 +19,7 @@ class DebugPane:
 	"""
 
 	FONT_SIZE = 8
+	FPS_FONT_SIZE = 12
 	LINE_DIST = 2
 	PADDING = 8
 
@@ -34,27 +37,40 @@ class DebugPane:
 				y = (self.FONT_SIZE * i + self.LINE_DIST * i),
 				font_name = "Consolas",
 				font_size = self.FONT_SIZE,
-				context = SceneContext(self.batch, self.foreground, None),
+				context = SceneContext(self.batch, self.foreground),
 			) for i in range(line_amount)
 		]
 		self.fps_label = PNFText(
-			x = 20,
+			x = 10,
 			y = ((self.FONT_SIZE * (line_amount + 1)) + 4 + self.LINE_DIST * line_amount),
 			font_name = "Consolas",
-			font_size = self.FONT_SIZE + 4,
-			context = SceneContext(self.batch, self.foreground, None),
+			font_size = self.FPS_FONT_SIZE,
+			multiline = True,
+			context = SceneContext(self.batch, self.foreground),
 		)
-		self.rect = PNFSprite(
+		self.debug_rect = PNFSprite(
 			x = self.PADDING,
 			y = 0,
-			context = SceneContext(self.batch, self.background, None),
+			context = SceneContext(self.batch, self.background),
 		)
-		self.rect.make_rect(
-			to_rgba_tuple(0x2020AAFF),
+		self.debug_rect.make_rect(
+			to_rgba_tuple(0x2020AA64),
 			CNST.GAME_WIDTH - 2 * self.PADDING,
 			(self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1)),
 		)
-		self.rect.opacity = 100
+
+		self.fps_rect = PNFSprite(
+			x = self.PADDING,
+			y = self.fps_label.y - self.LINE_DIST,
+			context = SceneContext(self.batch, self.background),
+		)
+		# HACK getting the ascent like this
+		bluegh = font.load("Consolas", self.FPS_FONT_SIZE).ascent
+		self.fps_rect.make_rect(
+			to_rgba_tuple(0x7F7F7F7F),
+			CNST.GAME_WIDTH // 3,
+			(bluegh * 4) + self.LINE_DIST * 2,
+		)
 
 	def add_message(self, log_message: str) -> None:
 		"""
@@ -65,7 +81,16 @@ class DebugPane:
 		self._queue.put(log_message)
 
 	def update(
-		self, fps: int, fts: float, pfts: float, draw_time: float, update_time: float
+		self,
+		fps: int,
+		frame_avg: float,
+		frame_max: float,
+		update_avg: float,
+		update_max: float,
+		draw_avg: float,
+		draw_max: float,
+		draw_time: float,
+		update_time: float,
 	) -> None:
 		"""
 		Updates the debug pane and writes all queued messages to
@@ -77,9 +102,11 @@ class DebugPane:
 		errors in the past.
 		"""
 		self.fps_label.text = (
-			f"FPS: {fps:>4}; FT: AVG {fts:>4.1f}ms, MAX {pfts:>4.1f}ms; Frame time: "
-			f"{draw_time + update_time:>5.1f}ms (Draw {draw_time:>5.1f}, "
-			f"Update {update_time:>5.1f}) "
+			f"FPS:    {fps:>3}\n"
+			f"FRAME:  avg {frame_avg:>4.1f}, max {frame_max:>5.1f}, "
+			f"cur {draw_time + update_time:>5.1f}\n"
+			f"UPDATE: avg {update_avg:>4.1f}, max {update_max:>5.1f}, cur {update_time:>5.1f}\n"
+			f"DRAW:   avg {draw_avg:>4.1f}, max {draw_max:>5.1f}, cur {draw_time:>5.1f}"
 		)
 
 		if self._queue.empty():

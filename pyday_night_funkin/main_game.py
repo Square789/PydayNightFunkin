@@ -22,7 +22,11 @@ from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 
-__version__ = "0.0.33"
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.types import Numeric
+
+
+__version__ = "0.0.34"
 
 
 class _FPSData:
@@ -30,28 +34,56 @@ class _FPSData:
 		self.last_second_timestamp = perf_counter() * 1000
 		self._reset_measurements()
 		self.fmt_fps = "?"
-		self.fmt_avg_frame_time = float("nan")
-		self.fmt_max_frame_time = float("nan")
+		self.fmt_avg_frame_time = \
+		self.fmt_max_frame_time = \
+		self.fmt_avg_draw_time = \
+		self.fmt_avg_update_time = \
+		self.fmt_max_draw_time = \
+		self.fmt_max_update_time = float("nan")
 
 	def _reset_measurements(self) -> None:
 		self.last_seconds_frames = 0
 		self.last_seconds_frame_time = 0
-		self.max_frame_time = -1
+		self.last_seconds_spent_draw_time = 0.0
+		self.last_seconds_max_draw_time = -1
+		self.last_seconds_spent_update_time = 0.0
+		self.last_seconds_max_update_time = -1
 
-	def bump(self, frame_time: float) -> None:
+	def bump(self, draw_time: "Numeric", update_time: "Numeric") -> None:
+		frame_time = draw_time + update_time
 		self.last_seconds_frames += 1
 		self.last_seconds_frame_time += frame_time
-		self.max_frame_time = max(self.max_frame_time, frame_time)
+		self.last_seconds_spent_draw_time += draw_time
+		self.last_seconds_spent_update_time += update_time
+		self.last_seconds_max_draw_time = max(self.last_seconds_max_draw_time, draw_time)
+		self.last_seconds_max_update_time = max(self.last_seconds_max_update_time, update_time)
+
 		t = perf_counter() * 1000
-		if t - self.last_second_timestamp >= 1000:
-			self.last_second_timestamp = t
-			self.fmt_fps = self.last_seconds_frames
-			self.fmt_avg_frame_time = (
-				self.last_seconds_frame_time / self.last_seconds_frames
-				if self.last_seconds_frames != 0 else float("nan")
-			)
-			self.fmt_max_frame_time = self.max_frame_time if self.max_frame_time >= 0 else "?"
-			self._reset_measurements()
+		if t - self.last_second_timestamp < 1000:
+			return
+
+		self.last_second_timestamp = t
+		self.fmt_fps = self.last_seconds_frames
+		self.fmt_avg_draw_time = (
+			self.last_seconds_spent_draw_time / self.last_seconds_frames
+			if self.last_seconds_frames != 0 else float("nan")
+		)
+		self.fmt_avg_update_time = (
+			self.last_seconds_spent_update_time / self.last_seconds_frames
+			if self.last_seconds_frames != 0 else float("nan")
+		)
+		self.fmt_max_draw_time = (
+			self.last_seconds_max_draw_time if self.last_seconds_max_draw_time >= 0
+			else "?"
+		)
+		self.fmt_max_update_time = (
+			self.last_seconds_max_update_time if self.last_seconds_max_update_time >= 0
+			else "?"
+		)
+		tmp = self.last_seconds_max_update_time + self.last_seconds_max_draw_time
+		self.fmt_max_frame_time = tmp if tmp >= 0 else "?"
+		self.fmt_avg_frame_time = (self.fmt_avg_update_time + self.fmt_avg_draw_time) / 2
+		self._reset_measurements()
 
 
 class Game:
@@ -59,8 +91,9 @@ class Game:
 		self.debug = True
 		self.use_debug_pane = self.debug and True
 		# These have to be setup later, see `run`
-		self._update_time = 0
+		self._last_update_time = 0
 		self._fps: t.Optional[_FPSData] = None
+		self._dt_limit = .35
 		self.debug_pane: t.Optional[DebugPane] = None
 
 		self.save_data = SaveData.load()
@@ -210,17 +243,21 @@ class Game:
 		draw_time = (perf_counter() - stime) * 1000
 		if self.use_debug_pane:
 			self.debug_pane.draw()
-			self._fps.bump(draw_time + self._update_time)
+			self._fps.bump(draw_time, self._last_update_time)
 			# Prints frame x-1's draw time in frame x, but who cares
 			self.debug_pane.update(
 				self._fps.fmt_fps,
 				self._fps.fmt_avg_frame_time,
 				self._fps.fmt_max_frame_time,
+				self._fps.fmt_avg_update_time,
+				self._fps.fmt_max_update_time,
+				self._fps.fmt_avg_draw_time,
+				self._fps.fmt_max_draw_time,
 				draw_time,
-				self._update_time,
+				self._last_update_time,
 			)
 		elif self.debug:
-			self._fps.bump(draw_time + self._update_time)
+			self._fps.bump(draw_time, self._last_update_time)
 
 	def _modify_scene_stack(self) -> float:
 		"""
@@ -248,6 +285,10 @@ class Game:
 	def update(self, dt: float) -> None:
 		stime = perf_counter()
 
+		if dt > self._dt_limit:
+			logger.warning(f"dt exceeding limit ({dt:.4f} > {self._dt_limit:.4f}), clamping.")
+			dt = self._dt_limit
+
 		for scene in self._scenes_to_update:
 			scene.update(dt)
 
@@ -255,4 +296,4 @@ class Game:
 			self._modify_scene_stack()
 
 		self.key_handler.post_update()
-		self._update_time = (perf_counter() - stime) * 1000
+		self._last_update_time = (perf_counter() - stime) * 1000
