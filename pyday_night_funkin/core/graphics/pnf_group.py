@@ -6,7 +6,8 @@ from pyday_night_funkin.core.utils import dump_id
 
 class PNFGroup:
 	"""
-	Groups define a tree which dictates element draw order.
+	Groups are extremely simple objects that define a tree which
+	dictates element draw order.
 	"""
 
 	__slots__ = ("parent", "order")

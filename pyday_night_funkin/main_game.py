@@ -26,7 +26,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.types import Numeric
 
 
-__version__ = "0.0.34"
+__version__ = "0.0.35"
 
 
 class _FPSData:
@@ -91,10 +91,10 @@ class Game:
 		self.debug = True
 		self.use_debug_pane = self.debug and True
 		# These have to be setup later, see `run`
+		self.debug_pane: t.Optional[DebugPane] = None
 		self._last_update_time = 0
 		self._fps: t.Optional[_FPSData] = None
 		self._dt_limit = .35
-		self.debug_pane: t.Optional[DebugPane] = None
 
 		self.save_data = SaveData.load()
 

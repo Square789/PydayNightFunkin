@@ -42,22 +42,46 @@ class GroupChain:
 		return r
 
 
+class DrawListSegment:
+	"""
+	A DrawListSegment is a part inside a batch's draw list that
+	contains the setup required for a single draw call.
+	Contains backreferences to the provoking groups, making
+	insertions and splitting them possible.
+	"""
+
+	def __init__(self) -> None:
+		self._index_buffer_start: int = 0
+		self._index_buffer_range: int = 0
+
+		# insert parent groups up to the top
+		# on hitting a known parent group, we can now identify the order
+		# of whatever we inserted
+		# 
+
+
 class GroupData:
 	"""
 	GroupData is used to build a group tree by storing an interfacer
 	and a group's children, which a group then maps to.
 	"""
-	__slots__ = ("interfacer", "state", "children")
+	__slots__ = ("interfacer", "state", "children", "group_chain")
 
 	def __init__(
 		self,
 		state: t.Optional[GLState] = None,
 		interfacer: t.Optional["PNFBatchInterfacer"] = None,
 		children: t.Iterable["PNFGroup"] = (),
+		group_chain: t.Optional[GroupChain] = None,
 	) -> None:
 		self.state = state
 		self.interfacer = interfacer
 		self.children = set(children)
+		self.group_chain = group_chain
+
+	@property
+	def is_drawable(self):
+		return self.interfacer is not None
 
 
 class DrawList:
@@ -81,27 +105,12 @@ class DrawList:
 		needs to be drawn.
 		"""
 
-		self._top_group = PNFGroup()
 		self._group_data: t.Dict["PNFGroup", "GroupData"] = defaultdict(GroupData)
-		self._group_data[self._top_group]
+		self._top_group = PNFGroup()
+		self._group_data[self._top_group] = GroupData()
 		self.index_buffer = RAMBackedBufferObject(
 			gl.GL_ELEMENT_ARRAY_BUFFER, 0, gl.GL_DYNAMIC_DRAW, _INDEX_TYPE
 		)
-
-	def _add_group_parent(self, group: "PNFGroup") -> None:
-		"""
-		Simpler case of `add_group` for when group parents are added
-		to the group tree. Should only be called by `add_group`.
-		"""
-		parent = group.parent
-		if parent is None:
-			self._group_data[self._top_group].children.add(group)
-		else:
-			if parent not in self._group_data:
-				self._add_group_parent(parent)
-			# elif self._group_data[parent].interfacer is not None:
-			# 	raise ValueError("Drawable groups can not have children!")
-			self._group_data[parent].children.add(group)
 
 	def add_group(
 		self,
@@ -117,16 +126,37 @@ class DrawList:
 		if group in self._group_data:
 			raise ValueError(f"Group {group!r} is already known in DrawList {self.name!r}.")
 
-		if group.parent is None:
-			self._group_data[self._top_group].children.add(group)
-		else:
-			if group.parent not in self._group_data:
-				self._add_group_parent(group.parent)
-			self._group_data[group.parent].children.add(group)
-
+		fresh_group = group
+		hook_group = None
+		while True:
+			tmp_parent = fresh_group.parent
+			if tmp_parent is None:
+				self._group_data[self._top_group].children.add(fresh_group)
+				hook_group = self._top_group
+				break
+			if tmp_parent in self._group_data:
+				self._group_data[tmp_parent].children.add(fresh_group)
+				hook_group = tmp_parent
+				break
+			self._group_data[tmp_parent].children.add(fresh_group)
+			fresh_group = tmp_parent
+	
 		self._group_data[group].interfacer = interfacer
 		self._group_data[group].state = state
 		self._dirty = True
+
+		# # Find adjacent DrawListSegments by walking down from the hook group
+		# left_group: t.Optional[GroupData] = None
+		# right_group: t.Optional[GroupData] = None
+		# # OPT make children a b-tree or something
+		# x = sorted(self._group_data[hook_group].children)
+		# new_idx = x.index(fresh_group)
+		# if new_idx < len(x) - 1:
+		# 	right_group = self._group_data[x[new_idx + 1]]
+		# if new_idx > 0:
+		# 	left_group = self._group_data[x[new_idx - 1]]
+
+		# right_group
 
 	def remove_group(self, group: "PNFGroup") -> None:
 		"""
@@ -343,6 +373,8 @@ class DrawList:
 		"""
 		self.index_buffer.delete()
 
+		for gd in self._group_data.values():
+			gd.children.clear() # probably makes cyclic reference breakup easier
 		self._group_data = None
 		# self._top_groups = None
 
