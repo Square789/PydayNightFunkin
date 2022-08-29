@@ -90,6 +90,34 @@ cdef class BufferObject:
 			gl.DeleteBuffers(1, &self.id)
 			self.buffer_exists = False
 
+	@cython.final
+	cdef void *_convert_py_sequence(
+		self, size_t size, object sequence, size_t *res_byte_size
+	) except NULL:
+		cdef size_t byte_size = size * self.element_size
+		cdef void *converted_array = malloc(byte_size)
+		if converted_array == NULL:
+			raise MemoryError()
+
+		try:
+			self.pyobj_extractor(size * self.count, converted_array, sequence)
+		except:
+			free(converted_array)
+			raise
+
+		if res_byte_size is not NULL:
+			res_byte_size[0] = byte_size
+		return converted_array
+
+	cpdef set_size_and_data_py(self, object sequence):
+		cdef size_t size = len(sequence)
+		cdef size_t byte_size
+		cdef void *converted_array = self._convert_py_sequence(size, sequence, &byte_size)
+		try:
+			self.set_size_and_data_raw(byte_size, converted_array)
+		finally:
+			free(converted_array)
+
 	cpdef set_size_and_data_array(self, object data):
 		_verify_is_ctypes_array(data)
 		self.set_size_and_data_raw(ctypes_sizeof(data), _get_ctypes_data_ptr(data))
@@ -101,16 +129,8 @@ cdef class BufferObject:
 		return 0
 
 	cpdef set_data_py(self, GLintptr start, GLsizeiptr size, object data):
-		cdef size_t byte_size = size * self.element_size
-		cdef void *converted_array = malloc(byte_size)
-		if converted_array == NULL:
-			raise MemoryError()
-
-		try:
-			self.pyobj_extractor(size * self.count, converted_array, data)
-		except:
-			free(converted_array)
-			raise
+		cdef size_t byte_size
+		cdef void *converted_array = self._convert_py_sequence(size, data, &byte_size)
 
 		try:
 			self.set_data_raw(start * self.element_size, byte_size, converted_array)

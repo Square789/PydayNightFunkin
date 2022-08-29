@@ -63,6 +63,15 @@ class BufferObject:
 		gl.glCreateBuffers(1, self.id)
 		gl.glNamedBufferData(self.id, size, None, usage)
 
+	def set_size_and_data_py(self, seq: t.Sequence) -> None:
+		"""
+		Resizes the buffer to contain the data in `seq`.
+		This will use the length of the sequence and try to convert
+		all of its elements into the buffer's `c_type`.
+		"""
+		arr = (self.c_type * len(seq))(*seq)
+		self.set_size_and_data_array(arr)
+
 	def set_size_and_data_array(self, array: ctypes.Array) -> None:
 		"""
 		Resizes the buffer to accomodate the new data in the given

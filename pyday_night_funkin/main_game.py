@@ -26,7 +26,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.types import Numeric
 
 
-__version__ = "0.0.35"
+__version__ = "0.0.36"
 
 
 class _FPSData:
@@ -175,6 +175,7 @@ class Game:
 					format = "{time:mm:ss.SSS} | {level:<8} | {name}:{function}@{line} - {message}",
 				)
 			logger.info(f"Game started (v{__version__}), pyglet version {pyglet.version}")
+
 		pyglet.clock.schedule_once(setup, 0.0)
 
 		if not self.debug:
@@ -286,7 +287,7 @@ class Game:
 		stime = perf_counter()
 
 		if dt > self._dt_limit:
-			logger.warning(f"dt exceeding limit ({dt:.4f} > {self._dt_limit:.4f}), clamping.")
+			logger.warning(f"dt exceeding limit ({dt:.4f} > {self._dt_limit:.4f}), capping.")
 			dt = self._dt_limit
 
 		for scene in self._scenes_to_update:

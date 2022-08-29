@@ -21,7 +21,6 @@ if t.TYPE_CHECKING:
 
 _INDEX_TYPE = gl.GL_UNSIGNED_INT
 _INDEX_TYPE_SIZE = GL_TYPE_SIZES[_INDEX_TYPE]
-_INDEX_C_TYPE = GL_TO_C_TYPE_MAP[_INDEX_TYPE]
 
 
 # NOTE: This is just a class with a list. May be useful for further
@@ -342,25 +341,18 @@ class DrawList:
 
 		return draw_list, indices
 
-	def _set_index_buffer(self, data: t.Sequence[int]) -> None:
-		"""
-		Sets the content of the index buffer to the given data.
-		"""
-		indices = (_INDEX_C_TYPE * len(data))(*data)
-		self.index_buffer.set_size_and_data_array(indices)
-
 	def check_dirty(self) -> bool:
 		"""
 		Checks whether this draw list is dirty. If it is, regenerates
 		it and returns `True`. Otherwise, returns `False`.
 		"""
-		if not self._dirty:
+		if not self._dirty_groups:
 			return False
 
 		funcs, indices = self.regenerate()
-		self._set_index_buffer(indices)
 		self.funcs = funcs
-		self._dirty = False
+		self.index_buffer.set_size_and_data_py(indices)
+		self._dirty_groups.clear()
 		return True
 
 	def draw(self) -> None:
