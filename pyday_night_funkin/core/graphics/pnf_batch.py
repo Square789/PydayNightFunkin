@@ -346,13 +346,13 @@ class DrawList:
 		Checks whether this draw list is dirty. If it is, regenerates
 		it and returns `True`. Otherwise, returns `False`.
 		"""
-		if not self._dirty_groups:
+		if not self._dirty:
 			return False
 
 		funcs, indices = self.regenerate()
 		self.funcs = funcs
 		self.index_buffer.set_size_and_data_py(indices)
-		self._dirty_groups.clear()
+		self._dirty = False
 		return True
 
 	def draw(self) -> None:
