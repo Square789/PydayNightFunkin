@@ -24,6 +24,12 @@ class PNFBatchInterfacer:
 	memory in the owning vertex domain.
 	"""
 
+	# idkfa
+	__slots__ = (
+		"domain", "domain_position", "size", "draw_mode", "indices", "deleted", "batch",
+		"_draw_lists", "_group", "_visible", "__weakref__"
+	)
+
 	def __init__(
 		self,
 		vertex_domain: "PNFVertexDomain",
@@ -95,7 +101,7 @@ class PNFBatchInterfacer:
 		self,
 		new_batch: "PNFBatch",
 		new_group: "PNFGroup",
-		states: t.Optional[t.Dict[t.Hashable, "GLState"]] = None,
+		states: t.Dict[t.Hashable, "GLState"],
 	) -> None:
 		"""
 		Migrates the interfacer into a new batch and a new domain,
@@ -153,12 +159,11 @@ class PNFBatchInterfacer:
 		pending_dls = set(self._draw_lists)
 		for dl_id, state in new_states.items():
 			if dl_id in pending_dls:
-				# self.batch.modify_group(dl_id, self._group, state)
-				self.batch.remove_group(dl_id, self._group)
+				self.batch.modify_group(dl_id, self._group, state)
 				pending_dls.remove(dl_id)
 			else:
 				self.domain.ensure_vao(state.program, self.batch._get_draw_list(dl_id))
-			self.batch.add_group(dl_id, self, self._group, state)
+				self.batch.add_group(dl_id, self, self._group, state)
 
 		for dl_id in pending_dls:
 			self.batch.remove_group(dl_id, self._group)
@@ -173,11 +178,9 @@ class PNFBatchInterfacer:
 		if self._visible == new_visibility:
 			return
 
-		# TODO this is kinda hackish, but works well enough
-		for dl_id in self._draw_lists:
-			self.batch._draw_lists[dl_id]._dirty = True
-
 		self._visible = new_visibility
+		for dl_id in self._draw_lists:
+			self.batch.modify_group(dl_id, self._group)
 
 	def set_data(self, name: str, value: t.Collection) -> None:
 		"""
