@@ -89,7 +89,7 @@ class AlphabetCharacter(PNFSprite):
 		self.char = char
 		self.bold = bold
 
-		should_color = color is not None and (not bold or not self.char.isalpha())
+		should_color = color is not None and (not bold or not char.isalpha())
 		if should_color:
 			self.shader_container = _COLOR_SET_SHADER_CONTAINER
 
@@ -130,7 +130,7 @@ class TextLine(PNFSpriteContainer):
 				last_was_space = True
 				continue
 
-			if last_sprite:
+			if last_sprite is not None:
 				sprite_x = last_sprite.x + last_sprite.width
 			if last_was_space:
 				sprite_x += 40

@@ -394,7 +394,7 @@ class _AssetSystemManager:
 				if ovres is not True:
 					raise RuntimeError(
 						f"Options validator for asset type {name} disagreed with options "
-						f"returned by an asset system{': ' + ovres if ovres else ''}."
+						f"returned by an asset system{': ' + str(ovres) if ovres else ''}."
 					)
 
 			data = loader_function(self._get_full_path(true_path_tail), true_options)

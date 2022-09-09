@@ -247,13 +247,13 @@ def main():
 					return 1
 				args.append(prm.value)
 
-		rtype = "void " + ('*' * cmd.proto.count('*'))
-		if cmd.ptype is not None:
-			rtype = cmd.ptype
-			if rtype not in DEFINED_TYPES:
-				print(f"type {rtype!r} is not defined")
+		if cmd.ptype is None:
+			rtype = "void " + ('*' * cmd.proto.count('*'))
+		else:
+			if cmd.ptype not in DEFINED_TYPES:
+				print(f"type {cmd.ptype!r} is not defined")
 				return 1
-			rtype += ' '
+			rtype = cmd.ptype + ' '
 
 		translated_name = REQUIRED_COMMANDS[name]
 		fptr_name = _make_funcptr_name(translated_name)

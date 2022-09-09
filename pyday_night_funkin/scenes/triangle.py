@@ -133,7 +133,6 @@ class TriangleScene(BaseScene):
 	def __init__(self, game: "Game") -> None:
 		super().__init__(game)
 
-		ubo = self._default_camera.ubo
 		self.tri0 = Triangle(self.get_context("main"), 0, 0.7)
 		self.tri1 = Triangle(self.get_context("main"), -20, 60)
 		self.tri2 = Triangle(self.get_context("main"), 200, 100)
@@ -157,5 +156,3 @@ class TriangleScene(BaseScene):
 			self._default_camera.zoom += .01
 		if self.game.pyglet_ksh[X]:
 			self._default_camera.zoom -= .01
-
-		# self.tri0.x += .5

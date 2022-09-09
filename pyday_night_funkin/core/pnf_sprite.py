@@ -637,7 +637,7 @@ class PNFSprite(WorldObject):
 		if not self.effects:
 			return
 
-		finished_effects = []
+		finished_effects: t.List[Effect] = []
 		for effect in self.effects:
 			effect.update(dt, self)
 			if effect.is_finished():

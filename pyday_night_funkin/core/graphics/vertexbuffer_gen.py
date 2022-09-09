@@ -120,7 +120,7 @@ def main():
 
 	for _, func_name, size, c_typedef, python_types in TYPES:
 		isinstance_arg = (
-			f"({python_types[0]},)" if len(python_types) == 1
+			python_types[0] if len(python_types) == 1
 			else '(' + ', '.join(python_types) + ')'
 		)
 		func = EXTRACTOR_SKELETON.format(
