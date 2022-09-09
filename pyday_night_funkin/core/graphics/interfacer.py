@@ -46,8 +46,8 @@ class PNFBatchInterfacer:
 		"""
 		Position inside the vertex domain. Consider:
 		```
-		pos2f   . . . .-. . . .|X X X X.X X X X|X X X X.X X ...
-		color3B .-.-.|X.X.X|X.X.X|.-.-.|.-.-.|.-.-.|.-.-.|. ...
+		pos2f   _ _ _ _._ _ _ _|X X X X.X X X X|X X X X.X X ...
+		color3B _._._|X.X.X|X.X.X|_._._|_._._|_._._|_._._|_ ...
 		```
 		An interfacer of `domain_position` 1 and `size` 2 would
 		span the region whose bytes are denoted with `X`.
@@ -104,11 +104,15 @@ class PNFBatchInterfacer:
 		states: t.Dict[t.Hashable, "GLState"],
 	) -> None:
 		"""
-		Migrates the interfacer into a new batch and a new domain,
-		deallocating its used space in the old one and occupying new
-		space in the new one.
+		If it changed, moves the interfacer into a new batch and a new
+		domain, deallocating its used space in the old one and
+		occupying new space in the new one using `new_group`.
 		Also changes some internal values of the interfacer to suit
 		its new owners.
+		`states` must be given if the batch is changed. Otherwise, the
+		argument is ignored.
+		If the group only is changed, the interfacer's vertices are re-
+		added under the new group in all their occupied draw lists.
 		"""
 		if new_batch != self.batch:
 			self.batch._remove_interfacer(self)
@@ -116,7 +120,7 @@ class PNFBatchInterfacer:
 			self._draw_lists.clear()
 			self.batch = new_batch
 			self._group = new_group
-			self.batch._introduce_interfacer(self, states) # calls set_states
+			new_batch._introduce_interfacer(self, states) # calls set_states
 		elif new_group != self._group:
 			for dl_id in self._draw_lists:
 				state = self.get_state(dl_id)
@@ -153,8 +157,8 @@ class PNFBatchInterfacer:
 
 	def set_states(self, new_states: t.Dict[t.Hashable, "GLState"]) -> None:
 		"""
-		Modifies the draw lists and the states
-		that the interfacer's vertices should be drawn in/with.
+		Modifies the draw lists and the states that the interfacer's
+		vertices should be drawn in/with.
 		"""
 		pending_dls = set(self._draw_lists)
 		for dl_id, state in new_states.items():

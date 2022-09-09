@@ -14,8 +14,12 @@ T = t.TypeVar("T")
 U = t.TypeVar("U")
 V = t.TypeVar("V")
 
+class _Has_next(t.Protocol):
+	_next: t.Optional["_Has_next"]
+
 
 ADDRESS_PADDING = (sys.maxsize.bit_length() + 1) // 4
+ADDRESS_FSTR = f"0x{{:0>{ADDRESS_PADDING}x}}"
 
 _ERROR_TEXTURE: t.Optional[Texture] = None
 _PIXEL_TEXTURE: t.Optional[Texture] = None
@@ -98,7 +102,7 @@ def to_rgb_tuple(v: int) -> t.Tuple[int, int, int]:
 	return tuple(i & 0xFF for i in (v >> 24, v >> 16, v >> 8))
 
 def dump_id(x: object) -> str:
-	return f"0x{id(x):0>{ADDRESS_PADDING}}"
+	return ADDRESS_FSTR.format(id(x))
 
 def dump_sprite_info(s: "PNFSprite") -> None:
 	print(f"x, y: {s.x}, {s.y}")
@@ -109,3 +113,11 @@ def dump_sprite_info(s: "PNFSprite") -> None:
 	print(f"w, h: {s._width}, {s._height}")
 	print(f"fw, fh: {s._frame.source_dimensions}")
 	print()
+
+_Has_nextT = t.TypeVar("_Has_nextT", bound=_Has_next)
+
+def linked_list_iter(t: _Has_nextT) -> t.Iterator[_Has_nextT]:
+	c = t
+	while c is not None:
+		yield c
+		c = c._next
