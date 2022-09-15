@@ -288,7 +288,8 @@ class InGameScene(scenes.MusicBeatScene):
 					self.resync()
 
 		self.process_input(dt)
-		if self.health < 0.0:
+		if self.health < 0.0 and self.state is not GAME_STATE.ENDED:
+			# Game over may have been triggered in process_input already
 			self.on_game_over()
 
 		# Camera following

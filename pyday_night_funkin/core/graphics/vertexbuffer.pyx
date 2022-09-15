@@ -105,7 +105,7 @@ cdef class BufferObject:
 			free(converted_array)
 			raise
 
-		if res_byte_size is not NULL:
+		if res_byte_size != NULL:
 			res_byte_size[0] = byte_size
 		return converted_array
 

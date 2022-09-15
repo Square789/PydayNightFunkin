@@ -110,7 +110,7 @@ class BaseScene(Container):
 		)
 
 		# Fails when nothing is added to a camera otherwise.
-		for cam in (self._default_camera, *self.cameras):
+		for cam in (self._default_camera, *self.cameras.values()):
 			self.batch._get_draw_list(cam)
 
 		self.sfx_ring = SFXRing()

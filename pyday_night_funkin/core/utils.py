@@ -14,9 +14,6 @@ T = t.TypeVar("T")
 U = t.TypeVar("U")
 V = t.TypeVar("V")
 
-class _Has_next(t.Protocol):
-	_next: t.Optional["_Has_next"]
-
 
 ADDRESS_PADDING = (sys.maxsize.bit_length() + 1) // 4
 ADDRESS_FSTR = f"0x{{:0>{ADDRESS_PADDING}x}}"
@@ -114,10 +111,14 @@ def dump_sprite_info(s: "PNFSprite") -> None:
 	print(f"fw, fh: {s._frame.source_dimensions}")
 	print()
 
-_Has_nextT = t.TypeVar("_Has_nextT", bound=_Has_next)
 
-def linked_list_iter(t: _Has_nextT) -> t.Iterator[_Has_nextT]:
-	c = t
+class _Has_next(t.Protocol[T]):
+	_next: t.Optional[T]
+
+_Has_nextT = t.TypeVar("_Has_nextT", bound="_Has_next")
+
+def linked_list_iter(head: t.Optional[_Has_nextT]) -> t.Iterator[_Has_nextT]:
+	c = head
 	while c is not None:
 		yield c
 		c = c._next

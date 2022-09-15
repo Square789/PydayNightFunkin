@@ -116,7 +116,7 @@ class TestScene(MusicBeatScene):
 			)
 
 		if ksh[C]:
-			sprite = self.create_object("fore", x=randint(0, 100), y=randint(0, 100))
+			sprite = self.create_object("fore", "main", x=randint(0, 100), y=randint(0, 100))
 			sprite.start_movement(Vec2(10, 5))
 			sprite.start_tween(
 				linear,
