@@ -12,10 +12,8 @@ logger.remove(0)
 # least 20 hours on at least three different systems.
 pyglet.options["debug_gl"] = True
 
-from pyglet.window.key import KeyStateHandler
-
 from pyday_night_funkin.core import ogg_decoder
-from pyday_night_funkin.core.key_handler import KeyHandler
+from pyday_night_funkin.core.key_handler import KeyHandler, RawKeyHandler
 from pyday_night_funkin.core.pnf_player import PNFPlayer, SFXRing
 from pyday_night_funkin.core.pnf_window import PNFWindow
 from pyday_night_funkin.core.scene import BaseScene
@@ -29,7 +27,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.types import Numeric
 
 
-__version__ = "0.0.36-dev-C"
+__version__ = "0.0.36-dev-D"
 
 
 class _FPSData:
@@ -129,14 +127,14 @@ class Game:
 		from pyday_night_funkin.alphabet import AlphabetCharacter
 		AlphabetCharacter.init_animation_dict()
 
-		self.pyglet_ksh = KeyStateHandler()
+		self.raw_key_handler = RawKeyHandler()
 		self.key_handler = KeyHandler(self.save_data.config.key_bindings)
 
 		self.player = PNFPlayer()
 		self.sfx_ring = SFXRing()
 
 		self.window.push_handlers(self.key_handler)
-		self.window.push_handlers(self.pyglet_ksh)
+		self.window.push_handlers(self.raw_key_handler)
 		self.window.push_handlers(on_draw = self.draw)
 
 		self._scene_stack: t.List[BaseScene] = []
@@ -316,4 +314,5 @@ class Game:
 			self._modify_scene_stack()
 
 		self.key_handler.post_update()
+		self.raw_key_handler.post_update()
 		self._last_update_time = (perf_counter() - stime) * 1000

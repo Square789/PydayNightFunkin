@@ -77,45 +77,45 @@ class TestScene(MusicBeatScene):
 	def update(self, dt: float) -> None:
 		super().update(dt)
 
-		ksh = self.game.pyglet_ksh
+		rkh = self.game.raw_key_handler
 
-		if ksh[PLUS]:
+		if rkh[PLUS]:
 			self.test_sprite.scale += 0.01
-		if ksh[MINUS]:
+		if rkh[MINUS]:
 			self.test_sprite.scale -= 0.01
-		if ksh[W]:
+		if rkh[W]:
 			self.test_sprite.y -= 1
-		if ksh[A]:
+		if rkh[A]:
 			self.test_sprite.x -= 1
-		if ksh[S]:
+		if rkh[S]:
 			self.test_sprite.y += 1
-		if ksh[D]:
+		if rkh[D]:
 			self.test_sprite.x += 1
 
-		if ksh[P]:
-			if ksh[F]:
+		if rkh[P]:
+			if rkh[F]:
 				self.boyfriend.flip_x = not self.boyfriend.flip_x
-			if ksh[W]:
+			if rkh[W]:
 				self.boyfriend.animation.play("sing_note_up")
-			if ksh[A]:
+			if rkh[A]:
 				self.boyfriend.animation.play("sing_note_left")
-			if ksh[S]:
+			if rkh[S]:
 				self.boyfriend.animation.play("sing_note_down")
-			if ksh[D]:
+			if rkh[D]:
 				self.boyfriend.animation.play("sing_note_right")
-			if ksh[M]:
+			if rkh[M]:
 				self.boyfriend.animation.play("miss_note_down")
-			if ksh[I]:
+			if rkh[I]:
 				self.boyfriend.animation.play("idle")
 
-		confirm = ksh[E]
+		confirm = rkh[E]
 		for k, i in ((LEFT, 0), (DOWN, 1), (UP, 2), (RIGHT, 3)):
 			self.arrows[i].animation.play(
 				("confirm" if confirm else "pressed")
-				if ksh[k] else "static"
+				if rkh[k] else "static"
 			)
 
-		if ksh[C]:
+		if rkh[C]:
 			sprite = self.create_object("fore", "main", x=randint(0, 100), y=randint(0, 100))
 			sprite.start_movement(Vec2(10, 5))
 			sprite.start_tween(
@@ -125,22 +125,22 @@ class TestScene(MusicBeatScene):
 				on_complete = (lambda s=sprite: self.remove(s)),
 			)
 
-		if ksh[LEFT]:
+		if rkh[LEFT]:
 			self.cameras["main"].x -= 10
-		if ksh[RIGHT]:
+		if rkh[RIGHT]:
 			self.cameras["main"].x += 10
-		if ksh[DOWN]:
+		if rkh[DOWN]:
 			self.cameras["main"].y += 10
-		if ksh[UP]:
+		if rkh[UP]:
 			self.cameras["main"].y -= 10
-		if ksh[Z]:
+		if rkh[Z]:
 			self.cameras["main"].zoom += .01
-		if ksh[X]:
+		if rkh[X]:
 			self.cameras["main"].zoom -= .01
 
-		if ksh[K]:
+		if rkh[K]:
 			self.label.x -= 1
 			# self.label.text = self.label.text[:-1]
-		if ksh[L]:
+		if rkh[L]:
 			self.label.x += 1
 			# self.label.text += "!"

@@ -144,15 +144,15 @@ class TriangleScene(BaseScene):
 	def update(self, dt: float) -> None:
 		super().update(dt)
 
-		if self.game.pyglet_ksh[LEFT]:
+		if self.game.raw_key_handler[LEFT]:
 			self._default_camera.x -= 10
-		if self.game.pyglet_ksh[RIGHT]:
+		if self.game.raw_key_handler[RIGHT]:
 			self._default_camera.x += 10
-		if self.game.pyglet_ksh[DOWN]:
+		if self.game.raw_key_handler[DOWN]:
 			self._default_camera.y += 10
-		if self.game.pyglet_ksh[UP]:
+		if self.game.raw_key_handler[UP]:
 			self._default_camera.y -= 10
-		if self.game.pyglet_ksh[Z]:
+		if self.game.raw_key_handler[Z]:
 			self._default_camera.zoom += .01
-		if self.game.pyglet_ksh[X]:
+		if self.game.raw_key_handler[X]:
 			self._default_camera.zoom -= .01

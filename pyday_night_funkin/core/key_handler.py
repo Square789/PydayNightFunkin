@@ -4,10 +4,37 @@ import typing as t
 
 from pyday_night_funkin.enums import CONTROL
 
+class RawKeyHandler:
+	def __init__(self) -> None:
+		self._just_pressed_keys: t.Set[int] = set()
+		self._pressed_keys: t.Set[int] = set()
+
+	def on_key_press(self, key_sym: int, modifiers: int) -> None:
+		self._just_pressed_keys.add(key_sym)
+		self._pressed_keys.add(key_sym)
+
+	def on_key_release(self, key_sym: int, modifiers: int) -> None:
+		self._just_pressed_keys.discard(key_sym)
+		self._pressed_keys.discard(key_sym)
+
+	def post_update(self) -> None:
+		self._just_pressed_keys.clear()
+
+	def just_pressed(self, key: int) -> bool:
+		return key in self._just_pressed_keys
+
+	def pressed(self, key: int) -> bool:
+		"""
+		Returns whether a key is pressed/being held down.
+		"""
+		return key in self._pressed_keys
+
+	__getitem__ = pressed
+
 
 class KeyHandler:
 	"""
-	Class to manage key presses.
+	Class to manage key presses by mapping them to controls.
 	"""
 
 	def __init__(self, key_bindings: t.Dict[CONTROL, t.Sequence[int]]):
@@ -15,7 +42,9 @@ class KeyHandler:
 		# TODO Le doc
 		"""
 		self.key_bindings = key_bindings
-		self.control_activators: t.Dict[CONTROL, t.Set[int]] = {k: set() for k in key_bindings.keys()}
+		self.control_activators: t.Dict[CONTROL, t.Set[int]] = {
+			k: set() for k in key_bindings.keys()
+		}
 		self._just_pressed_controls: t.Set[CONTROL] = set()
 
 		_key_to_control_map = defaultdict(list)

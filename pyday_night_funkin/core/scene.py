@@ -252,10 +252,10 @@ class BaseScene(Container):
 
 	def update(self, dt: float) -> None:
 		if self.game.debug:
-			if self.game.pyglet_ksh[R]:
+			if self.game.raw_key_handler.just_pressed(R):
 				logger.debug("hello")
 
-			if self.game.pyglet_ksh[B]:
+			if self.game.raw_key_handler.just_pressed(B):
 				print(self.batch.dump_debug_info())
 
 		self._passed_time += dt
