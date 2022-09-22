@@ -70,12 +70,31 @@ class DrawListSegment:
 		self._prev: t.Optional["DrawListSegment"] = None
 		self._next: t.Optional["DrawListSegment"] = None
 
-		self.transcends_order: bool = False
-		"""
-		Whether this draw list segment contains drawables that have to
-		be ordered, taking advantage of the fact that these all
-		shared the same state.
-		"""
+		# self.transcends_order: bool = False
+		# """
+		# Whether this draw list segment contains drawables that have to
+		# be ordered, taking advantage of the fact that these all
+		# shared the same state.
+		# """
+
+
+class ClusterInfo:
+	# __slots__ = ("root", "operations", "groups") #, "dirty_groups")
+
+	def __init__(self) -> None:
+		self.root: "PNFGroup" = None
+		self.operations: int = 0
+		self.groups: t.Set["PNFGroup"] = set()
+		self.r: str = ""
+		"""Reason: Debug. Remove once the grafix_v3 branch is good."""
+		# self.dirty_groups: t.Set["PNFGroup"] = set()
+
+	def __repr__(self) -> None:
+		return (
+			f"<{self.__class__.__name__}(root={self.root!r}, operations={self.operations!r}, "
+			f"~gc={len(self.groups)}, r={self.r}) at {dump_id(self)}>"
+		)
+
 
 class GroupData:
 	"""
@@ -124,22 +143,6 @@ GROUP_OPERATION_DEL = 2
 GROUP_OPERATION_MOD = 4
 
 
-class ClusterInfo:
-	# __slots__ = ("root", "operations", "groups") #, "dirty_groups")
-
-	def __init__(self) -> None:
-		self.root: "PNFGroup" = None
-		self.operations: int = 0
-		self.groups: t.Set["PNFGroup"] = set()
-		# self.dirty_groups: t.Set["PNFGroup"] = set()
-
-	def __repr__(self) -> None:
-		return (
-			f"<{self.__class__.__name__}(root={self.root!r}, operations={self.operations!r}) "
-			f"at {dump_id(self)}>"
-		)
-
-
 class DrawList:
 	"""
 	A DrawList encompasses a group tree and hosts functionality to
@@ -161,8 +164,8 @@ class DrawList:
 		Only groups whose group data's `pending_operation` attribute is
 		not zero must be in here.
 		This may contain undrawable intermediate groups if they have
-		just been introduced or marked for deletion via addition of a
-		drawable child.
+		just been introduced via addition of a drawable child or marked
+		for deletion.
 		"""
 
 		self._draw_list: t.Optional[DrawListSegment] = None
@@ -198,6 +201,7 @@ class DrawList:
 		hook_group = None
 		while True:
 			group_data[fresh_group].pending_operation = GROUP_OPERATION_ADD
+			self._dirty_groups.add(fresh_group)
 			tmp_parent = fresh_group.parent
 			if tmp_parent is None:
 				hook_group = self._top_group
@@ -205,7 +209,6 @@ class DrawList:
 			if tmp_parent in group_data:
 				hook_group = tmp_parent
 				break
-			self._dirty_groups.add(fresh_group)
 			group_data[tmp_parent].children.add(fresh_group)
 			fresh_group = tmp_parent
 
@@ -244,12 +247,9 @@ class DrawList:
 			self._group_data.pop(group)
 		else:
 			# TODO??? remove here???
-			self._group_data[pgr].children.remove(group)
+			# self._group_data[pgr].children.remove(group)
 			self._group_data[group].pending_operation = GROUP_OPERATION_DEL
-			# NOTE: If not commented out, fails.
-			# Still, we will need this for deletion-only runs. Figure out something in the
-			# regeneration methods.
-			#self._dirty_groups.add(group)
+			self._dirty_groups.add(group)
 
 	def modify_group(self, group: "PNFGroup", new_state: t.Optional[GLState] = None) -> None:
 		"""
@@ -269,22 +269,6 @@ class DrawList:
 			self._group_data[group].pending_operation = GROUP_OPERATION_MOD
 		if new_state is not None:
 			self._group_data[group].state = new_state
-
-	def _remove_dead_leaves(self, group: "PNFGroup") -> int:
-		c = 0
-		if self._group_data[group].interfacer is not None:
-			return c
-
-		for child in self._group_data[group].children:
-			c += self._remove_dead_leaves(child)
-
-		if not self._group_data[group].children and group is not self._top_group:
-			p = self._top_group if group.parent is None else group.parent
-			self._group_data.pop(group)
-			self._group_data[p].children.remove(group)
-			return c + 1
-
-		return c
 
 	def _visit(
 		self,
@@ -351,14 +335,14 @@ class DrawList:
 				chains.append(cur_group_chain)
 			chains.extend(withheld_group_chains)
 
-		if not group_intact and group is not self._top_group:
-			# This group is dangling, delete it.
-			if chains:
-				raise RuntimeError(
-					"This should not have happened: Group was considered dangling "
-					"but delivered chains!"
-				)
-			self._delete_group(group)
+		# if not group_intact and group is not self._top_group:
+		# 	# This group is dangling, delete it.
+		# 	if chains:
+		# 		raise RuntimeError(
+		# 			"This should not have happened: Group was considered dangling "
+		# 			"but delivered chains!"
+		# 		)
+		# 	self._delete_group(group)
 
 		return chains, group_intact
 
@@ -518,44 +502,62 @@ class DrawList:
 		# Identify changed clusters:
 		for dirty_group in self._dirty_groups:
 			if dirty_group in cluster_map:
-				print(f"Did not walk up {dirty_group}, it was known.")
 				# Group has already been passed and was properly assigned to a cluster. Skip.
 				continue
 
 			current_cluster_set = set()
 			current_cluster_ops = 0
 
+			_reason = "?"
 			# Walk up and update the current cluster data until a suitable parent is found.
 			group = dirty_group
-			parent = self._top_group if group.parent is None else group.parent
-			while (
-				group not in cluster_map and
-				group is not self._top_group and
-				gd[parent].draw_list_segment is None
-			):
+			# while (
+			# 	group not in cluster_map and
+			# 	group is not self._top_group and
+			# 	gd[parent].draw_list_segment is None
+			# ):
+			while True:
+				if group in cluster_map:
+					_reason = "Group known"
+					break
+				if group is self._top_group:
+					_reason = "Group is top"
+					break
+				# NOTE: Maybe the "intactness" is needed here, i.e. not scheduled for deletion,
+				# has children, or is drawable
+				if (
+					gd[group].draw_list_segment is not None and
+					group not in self._dirty_groups
+				):
+					_reason = "Has clean DLS"
+					break
 				current_cluster_set.add(group)
 				current_cluster_ops |= gd[group].pending_operation
-				group = parent
-				parent = self._top_group if group.parent is None else group.parent
+				group = self._top_group if group.parent is None else group.parent
 
-			# at this point, parent is either the top group or has been unaffected by recent
+			# at this point, group is either the top group or has been unaffected by recent
 			# group changes and a draw list segment associated with it.
+			hook_group = group
 
-			print(f"Walking up {dirty_group} resulted in operations {current_cluster_ops}, parent {parent}")
+			# print(
+			# 	f"Walking up {dirty_group} resulted in operations {current_cluster_ops}"
+			# 	f", hook {hook_group}"
+			# )
 
 			ci = None
-			if parent in modified_clusters:
-				ci = modified_clusters[parent]
-			elif parent in cluster_map:
-				ci = modified_clusters[cluster_map[parent]]
+			if hook_group in modified_clusters:
+				ci = modified_clusters[hook_group]
+			elif hook_group in cluster_map:
+				ci = modified_clusters[cluster_map[hook_group]]
 
 			if ci is None:
 				# Brand new cluster info
 				ci = ClusterInfo()
-				ci.root = parent
+				ci.root = hook_group
 				ci.groups = current_cluster_set
 				ci.operations = current_cluster_ops
-				modified_clusters[parent] = ci
+				ci.r = _reason
+				modified_clusters[hook_group] = ci
 			else:
 				# The same parent group has different child strands
 				# that have been updated. Merge the current cluster into
@@ -564,7 +566,7 @@ class DrawList:
 				ci.operations |= current_cluster_ops
 
 			for reg_group in current_cluster_set:
-				cluster_map[reg_group] = parent
+				cluster_map[reg_group] = hook_group
 
 		return modified_clusters
 
@@ -585,16 +587,27 @@ class DrawList:
 			self._draw_list = dl_head
 			self.index_buffer.set_size_and_data_py(idx)
 
+		# Clear segments cause im not doing partial updates of them yet :troll:
+		def _asdfdfd(g):
+			gd = self._group_data[g]
+			gd.draw_list_segment = None
+			if gd.children:
+				for c in gd.children:
+					_asdfdfd(c)
+		_asdfdfd(self._top_group)
+
 		# Paint group data with the segments
 		# This should cause the first draw list segment to always bubble to the top
 		for seg in linked_list_iter(dl_head):
 			for group in seg._provoking_groups:
 				cur_group = group
-				while self._group_data[cur_group].draw_list_segment is None:
+				while True:# while self._group_data[cur_group].draw_list_segment is None:
 					self._group_data[cur_group].draw_list_segment = seg
 					if cur_group is self._top_group:
 						break
 					cur_group = self._top_group if cur_group.parent is None else cur_group.parent
+
+		# /// WORK STARTS HERE /// #
 
 		# NOTE: The order of clusters is not given.
 		# This shouldn't matter too much.
@@ -605,7 +618,6 @@ class DrawList:
 				continue
 
 			# merge chains with the existing draw list segments here
-
 
 	def _tmp_clear_dirty(self, group: "PNFGroup") -> None:
 		"""
@@ -618,6 +630,25 @@ class DrawList:
 			for c in gd.children:
 				self._tmp_clear_dirty(c)
 
+	def _remove_dead_leaves(self, group: "PNFGroup") -> int:
+		c = 0
+		for child in tuple(self._group_data[group].children):
+			c += self._remove_dead_leaves(child)
+
+		if (
+			group is not self._top_group and
+			(not self._group_data[group].children) and (
+				self._group_data[group].pending_operation == GROUP_OPERATION_DEL or
+				self._group_data[group].interfacer is None
+			)
+		):
+			p = self._top_group if group.parent is None else group.parent
+			self._group_data[p].children.remove(group)
+			self._group_data.pop(group)
+			return c + 1
+
+		return c
+
 	def check_dirty(self) -> bool:
 		"""
 		Checks whether this draw list is dirty. If it is, regenerates
@@ -628,21 +659,28 @@ class DrawList:
 		if not self._dirty_groups:
 			return False
 
+		# Sanity check
+		if self._top_group in self._dirty_groups:
+			print("[!] Top group is dirty, this may not happen.")
 		self._regenerate2()
+		_rmd = self._remove_dead_leaves(self._top_group)
 		self._tmp_clear_dirty(self._top_group)
-		# Deletion is insanely unstable atm, some temporary code to warn here.
-		while True:
-			for g in self._dirty_groups:
-				if self._group_data[g].pending_operation == GROUP_OPERATION_DEL:
-					break
-			else:
-				break
-			print("[!] Unable to remove deletion pending nodes, expect failure soon")
-			break
+		# # Deletion is insanely unstable atm, some temporary code to warn here.
+		# while True:
+		# 	for g in self._dirty_groups:
+		# 		if self._group_data[g].pending_operation == GROUP_OPERATION_DEL:
+		# 			break
+		# 	else:
+		# 		break
+		# 	print("[!] Unable to remove deletion pending nodes, expect failure soon")
+		# 	break
+
+		if _rmd > 0:
+			print(f"Removed {_rmd} dead groups")
 
 		self._dirty_groups.clear()
 
-		print(f"draw list readjusted in {perf_counter() - x} secs.")
+		# print(f"draw list readjusted in {perf_counter() - x} secs.")
 		return True
 
 	def draw(self) -> None:
