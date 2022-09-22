@@ -95,5 +95,4 @@ class KeyHandler:
 		"""
 		self._just_pressed_controls.clear()
 
-	def __getitem__(self, control: CONTROL) -> bool:
-		return self.pressed(control)
+	__getitem__ = pressed
