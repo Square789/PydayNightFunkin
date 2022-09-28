@@ -251,6 +251,18 @@ class DrawList:
 			self._group_data[group].pending_operation = GROUP_OPERATION_DEL
 			self._dirty_groups.add(group)
 
+	def _remove_group_direct(self, group: "PNFGroup") -> None:
+		"""
+		Directly removes all of a group's possible presence in the
+		group data tree.
+		"""
+		pgr = self._top_group if group.parent is None else group.parent
+		self._group_data[pgr].children.remove(group)
+		if (dls := self._group_data[group].draw_list_segment) is not None:
+			dls._provoking_groups.remove(group)
+		self._dirty_groups.discard(group)
+		self._group_data.pop(group)
+
 	def modify_group(self, group: "PNFGroup", new_state: t.Optional[GLState] = None) -> None:
 		"""
 		Tells the draw list to 5whfnP4Vd3s an existing group,
@@ -346,16 +358,19 @@ class DrawList:
 
 		return chains, group_intact
 
-	def _regenerate(self) -> t.Tuple[t.Optional[DrawListSegment], t.List[int]]:
+	def _build_draw_list_segments(
+		self,
+		start_group: "PNFGroup",
+	) -> t.Tuple[t.Optional[DrawListSegment], t.List[int]]:
 		"""
-		Completely rebuilds the draw list from the group tree.
+		Completely rebuilds the draw list walking from the given group.
 		Returns ### TODO ### and a list
 		of indices the index buffer must contain at that point.
 		"""
 		lgd = self._group_data # Le nano-optimization
 		chains = [
 			[(lgd[g], g) for g in raw_chain]
-			for raw_chain in self._visit(self._top_group)[0]
+			for raw_chain in self._visit(start_group)[0]
 		]
 		del lgd
 
@@ -570,7 +585,7 @@ class DrawList:
 
 		return modified_clusters
 
-	def _regenerate2(self) -> None:
+	def _regenerate(self) -> None:
 		modified_clusters = self._identify_changed_clusters()
 		print("Clussy:", modified_clusters)
 
@@ -578,14 +593,14 @@ class DrawList:
 			# The entire draw tree is affected, probably just created.
 			assert len(modified_clusters) == 1
 			print("Completely rebuilding draw list.")
-			dl_head, idx = self._regenerate()
+			dl_head, indices = self._build_draw_list_segments(self._top_group)
 			self._draw_list = dl_head
-			self.index_buffer.set_size_and_data_py(idx)
+			self.index_buffer.set_size_and_data_py(indices)
 		else:
 			# TEMP rebuild anyways
-			dl_head, idx = self._regenerate()
+			dl_head, indices = self._build_draw_list_segments(self._top_group)
 			self._draw_list = dl_head
-			self.index_buffer.set_size_and_data_py(idx)
+			self.index_buffer.set_size_and_data_py(indices)
 
 		# Clear segments cause im not doing partial updates of them yet :troll:
 		def _asdfdfd(g):
@@ -612,12 +627,19 @@ class DrawList:
 		# NOTE: The order of clusters is not given.
 		# This shouldn't matter too much.
 		for cluster in modified_clusters.values():
-			# cluster_root is either top_group or has a draw list segment
+			# # TODO: Perform some optimized actions for common cases.
+			# if cluster.operations == GROUP_OPERATION_DEL:
+			# 	# Cluster's members are meant to be entirely deleted.
+			# 	pass
+
+			# cluster.root is either top_group or has a draw list segment
 			chains, intact = self._visit(cluster.root)
 			if not intact:
 				continue
 
 			# merge chains with the existing draw list segments here
+
+
 
 	def _tmp_clear_dirty(self, group: "PNFGroup") -> None:
 		"""
@@ -662,7 +684,7 @@ class DrawList:
 		# Sanity check
 		if self._top_group in self._dirty_groups:
 			print("[!] Top group is dirty, this may not happen.")
-		self._regenerate2()
+		self._regenerate()
 		_rmd = self._remove_dead_leaves(self._top_group)
 		self._tmp_clear_dirty(self._top_group)
 		# # Deletion is insanely unstable atm, some temporary code to warn here.
