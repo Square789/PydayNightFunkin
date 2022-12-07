@@ -14,7 +14,7 @@ from pyglet.math import Vec2
 from schema import Schema, SchemaError, And, Or, Optional
 
 from pyday_night_funkin.core.asset_system import (
-	AssetSystem, AssetSystemEntry as ASE,
+	AssetSystem, AssetSystemEntry,
 	ImageResourceOptions, ResourceOptions, SoundResourceOptions,
 	add_asset_system,
 	load_image, load_json, load_pyobj, load_sound, load_xml,
@@ -140,10 +140,7 @@ class SongResourceOptions(ResourceOptions):
 		return hash((self.difficulty, self.inst_opt, self.voice_opt))
 
 
-def _load_song_build_cache_key(
-	song_name: str,
-	options: SongResourceOptions,
-):
+def _load_song_build_cache_key(song_name: str, options: SongResourceOptions):
 	return (song_name, options)
 
 def _load_song_plain(
@@ -251,7 +248,7 @@ def load() -> None:
 
 	# Throw all of these into the same atlas, should improve combo sprite
 	# rendering somewhat
-	_iro = ASE(ImageResourceOptions(0), None)
+	_iro = AssetSystemEntry(ImageResourceOptions(0), None)
 	asset_system_map = {
 		"shared/images/sick.png":  _iro,
 		"shared/images/good.png":  _iro,
@@ -267,7 +264,7 @@ def load() -> None:
 		"preload/images/num7.png": _iro,
 		"preload/images/num8.png": _iro,
 		"preload/images/num9.png": _iro,
-		"shared/images/NOTE_assets.xml": ASE(None, arrow_post_load_hacker),
+		"shared/images/NOTE_assets.xml": AssetSystemEntry(None, arrow_post_load_hacker),
 	}
 
 

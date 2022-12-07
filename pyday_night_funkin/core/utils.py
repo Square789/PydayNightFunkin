@@ -101,17 +101,6 @@ def to_rgb_tuple(v: int) -> t.Tuple[int, int, int]:
 def dump_id(x: object) -> str:
 	return ADDRESS_FSTR.format(id(x))
 
-def dump_sprite_info(s: "PNFSprite") -> None:
-	print(f"x, y: {s.x}, {s.y}")
-	print(f"Offset: {s.offset}")
-	print(f"Origin: {s.origin}")
-	print(f"Frame offset: {s._frame.offset}")
-	print(f"Frame source size: {s._frame.source_dimensions}")
-	print(f"w, h: {s._width}, {s._height}")
-	print(f"fw, fh: {s._frame.source_dimensions}")
-	print()
-
-
 class _Has_next(t.Protocol[T]):
 	_next: t.Optional[T]
 

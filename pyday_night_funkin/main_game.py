@@ -1,4 +1,5 @@
 
+from platform import python_version
 import sys
 from time import perf_counter
 import typing as t
@@ -194,7 +195,10 @@ class Game:
 				self.debug_pane = DebugPane(8)
 				logger.add(self.debug_pane.add_message, format=_dbgp_fmt)
 
-			logger.info(f"Game started (v{__version__}), pyglet version {pyglet.version}")
+			logger.info(
+				f"Game started (v{__version__}), pyglet v{pyglet.version}, "
+				f"Python v{python_version()}"
+			)
 
 		pyglet.clock.schedule_once(setup, 0.0)
 

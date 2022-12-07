@@ -84,9 +84,10 @@ class InGameScene(scenes.MusicBeatScene):
 	def get_song() -> str:
 		"""
 		Returns this scene's song's identifying string.
-		A call to `load_asset(ASSET.SONG, x, ...)` will be made where
-		`x` is the value returned from this method.
-		# TODO FALSE DOC
+		A call to `load_song(x, ...)` will be made where `x` is the
+		value returned from this method.
+		The song will be cached and options are derived from the
+		current difficulty.
 		"""
 		raise NotImplementedError("Subclass this!")
 
