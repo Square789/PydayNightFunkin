@@ -1,6 +1,5 @@
 
 from collections import defaultdict
-from enum import IntEnum
 from time import perf_counter
 import typing as t
 from weakref import WeakSet
@@ -76,12 +75,20 @@ class DrawListSegment:
 		self._prev: t.Optional["DrawListSegment"] = None
 		self._next: t.Optional["DrawListSegment"] = None
 
-		# self.transcends_order: bool = False
-		# """
-		# Whether this draw list segment contains drawables that have to
-		# be ordered, taking advantage of the fact that these all
-		# share the same state.
-		# """
+		self.transcends_order: bool = False
+		"""
+		Whether this draw list segment contains drawables that have to
+		be ordered, taking advantage of the fact that these all
+		share the same state.
+		"""
+
+		self.end_of_unordered_chain: bool = False
+		"""
+		Whether this draw list segment marks the end of an order-
+		irrelevant chain including it and all its predecessors where
+		this attribute is `False`.
+		"""
+		# TODO doc relation between `transcends_order` and `end_of_unordered_chain`
 
 
 class ClusterInfo:
@@ -92,7 +99,7 @@ class ClusterInfo:
 		"""
 		The root of the cluster, that is: either the top group or the
 		first group that had a draw list segment associated with it.
-		Not included in `self.groups`.
+		It is not dirty and not included in `self.groups`.
 		"""
 
 		self.operations: int = 0
@@ -100,6 +107,8 @@ class ClusterInfo:
 		self.groups: t.Set["PNFGroup"] = set()
 		"""
 		Groups in this cluster. Excludes `self.root`.
+		All of these should be dirty, but this does not include all
+		children of `self.root` in the group data tree.
 		"""
 
 		self.r: str = ""
@@ -319,9 +328,9 @@ class DrawList:
 		0: A list of lists of drawable groups where all of the inner
 		list's order between groups is irrelevant, but the order of
 		outer lists must be kept.
-		1: Whether the group visited was considered dangling and has
-		been deleted from the group tree. (Alongside all of its
-		children, if any.). This being true implies [0] being empty.
+		1: Whether the group visited was considered dangling/ had no
+		bridges to a drawable group. This being `True` implies [0]
+		being empty.
 		"""
 		chains: t.List[t.List["PNFGroup"]] = []
 		group_data = self._group_data[group]
@@ -397,7 +406,6 @@ class DrawList:
 			[(lgd[g], g) for g in raw_chain]
 			for raw_chain in self._visit(start_group)[0]
 		]
-		del lgd
 
 		if not chains: # is in a pickle
 			return None, []
@@ -564,11 +572,6 @@ class DrawList:
 			# group changes and a draw list segment associated with it.
 			hook_group = group
 
-			# print(
-			# 	f"Walking up {dirty_group} resulted in operations {current_cluster_ops}"
-			# 	f", hook {hook_group}"
-			# )
-
 			ci = None
 			if hook_group in modified_clusters:
 				ci = modified_clusters[hook_group]
@@ -645,9 +648,47 @@ class DrawList:
 			# if cluster.operations == GROUP_OPERATION_DEL:
 			# 	# Cluster's members are meant to be entirely deleted.
 			# 	pass
+			# SPECIAL CASES LATER WHEN STUFF ACTUALLY WORKS!
+
+			# OPT make children a b-tree or something, doesn't matter too much i think.
+			# OR maybe just throw the leftmost and rightmost segments into the groupdata
+			# itself instead. I think currently the leftmost is in it already, which would
+			# mean it's suitable for getting the insertion point's right group instantly.
+			# ^^^ later.
+			# Get the first cluster layer's child span, then walk down the max/min child
+			# of the first 1st layer child not in the cluster (if these exist) until
+			# the DrawListSegment is found. These may not exist.
+			# It is then possible that an adjacent DLS *does* exist, but only connected
+			# above the cluster's first-layer-children, requiring a search upwards.
+			# Ultimately, a DLS can still be missing once it hits the top group, but only
+			# then it's certain.
+			# The cluster root will have a segment associated with it.
+			first_layer_sorted = sorted(self._group_data[cluster.root].children)
+			first_layer_child_indices = [
+				first_layer_sorted.index(g) for g in cluster.groups
+				if g in self._group_data[cluster.root].children
+			]
+			breaks_order_to_left_segment = False
+			first_left_noncluster_child_idx = min(first_layer_child_indices) - 1
+
+			left_chain: t.List[DrawListSegment] = []
+			if first_left_noncluster_child_idx >= 0:
+				# found something, walk down hugging edge until DLS is hit
+				haver = first_layer_sorted[first_left_noncluster_child_idx]
+				while self._group_data[haver].interfacer is None:
+					haver = max(self._group_data[haver].children)
+				segment = self._group_data[haver].draw_list_segment
+			else:
+				# look upwards
+				while True:
+					break
+
+			# TODO finish above, then do same for right
+
+			# merge chains with the existing draw list segments here
 
 			# Rebuild the cluster's draw list segments and reorder + merge the sides
-			# cluster.root is either top_group or has a draw list segment
+			# cluster.root is either top_group or not dirty
 			chains, intact = self._visit(cluster.root)
 			if not intact:
 				if cluster.operations != GROUP_OPERATION_DEL:
@@ -657,41 +698,6 @@ class DrawList:
 			for chain in chains:
 				chain.sort(key=lambda g: hash(self._group_data[g].state.part_set))
 
-			# Find adjacent DrawListSegments by walking down from the hook group
-			# The hook group will have a segment associated with it.
-			first_layer_sorted = sorted(self._group_data[cluster.root].children)
-			first_layer_child_indices = [
-				first_layer_sorted.index(g) for g in cluster.groups
-				if g in self._group_data[cluster.root].children
-			]
-
-			# OPT make children a b-tree or something, doesn't matter too much i think.
-			# OR maybe just throw the leftmost and rightmost segments into the groupdata
-			# itself instead. I think currently the leftmost is in it already, which would
-			# mean it's suitable for getting the insertion point's right group instantly.
-			# ^^^ later.
-			# Get the first cluster layer's child span, then walk down the max/min child
-			# of the first 1st layer child not in the cluster (if these exist) until
-			# the DrawListSegment is found.
-			first_left_noncluster_child_idx = min(first_layer_child_indices) - 1
-			left_segment: t.Optional[DrawListSegment] = None
-			if first_left_noncluster_child_idx >= 0:
-				haver = first_layer_sorted[first_left_noncluster_child_idx]
-				while self._group_data[haver].interfacer is None:
-					haver = max(self._group_data[haver].children)
-				left_segment = self._group_data[haver].draw_list_segment
-
-			first_right_noncluster_child_idx = max(first_layer_child_indices) + 1
-			right_segment: t.Optional[DrawListSegment] = None
-			if first_right_noncluster_child_idx < len(first_layer_sorted):
-				haver = first_layer_sorted[first_right_noncluster_child_idx]
-				while self._group_data[haver].interfacer is None:
-					haver = min(self._group_data[haver].children)
-				right_segment = self._group_data[haver].draw_list_segment
-
-			# merge chains with the existing draw list segments here
-			
-
 		self._regenerate_full()
 
 	def _regenerate_full(self) -> None:
@@ -699,7 +705,7 @@ class DrawList:
 		self._draw_list = dl_head
 		self.index_buffer.set_size_and_data_py(indices)
 
-	# uncomment to fully override grafix_v3 regeneration method
+	# [un]comment for [overriding] the grafix_v3 regeneration method
 	# _regenerate = _regenerate_full
 
 	def _tmp_clear_dirty(self, group: "PNFGroup") -> None:
