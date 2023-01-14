@@ -3,6 +3,7 @@ from itertools import islice
 import sys
 import typing as t
 
+import pyglet
 from pyglet.image import CheckerImagePattern, ImageData, Texture
 
 
@@ -18,33 +19,33 @@ V = t.TypeVar("V")
 ADDRESS_PADDING = (sys.maxsize.bit_length() + 1) // 4
 ADDRESS_FSTR = f"0x{{:0>{ADDRESS_PADDING}x}}"
 
-_ERROR_TEXTURE: t.Optional[Texture] = None
-_PIXEL_TEXTURE: t.Optional[Texture] = None
 
 def get_error_tex() -> Texture:
 	"""
 	Retrieves the global error texture, creating it if it does not
 	exist.
 	"""
-	global _ERROR_TEXTURE
-
-	if _ERROR_TEXTURE is None:
-		_ERROR_TEXTURE = CheckerImagePattern(
+	space = pyglet.gl.current_context.object_space
+	try:
+		return space.pnf_error_tex
+	except AttributeError:
+		space.pnf_error_tex = CheckerImagePattern(
 			(0xFF, 0x00, 0xFF, 0xFF),
-			(0x00, 0x00, 0x00, 0xFF)
+			(0x00, 0x00, 0x00, 0xFF),
 		).create_image(16, 16).create_texture(Texture)
-	return _ERROR_TEXTURE
+	return space.pnf_error_tex
 
 def get_pixel_tex() -> Texture:
 	"""
 	Retrieves the global pixel texture, creating it if it does not
 	exist.
 	"""
-	global _PIXEL_TEXTURE
-
-	if _PIXEL_TEXTURE is None:
-		_PIXEL_TEXTURE = ImageData(1, 1, "RGBA", b"\xFF\xFF\xFF\xFF").get_texture()
-	return _PIXEL_TEXTURE
+	space = pyglet.gl.current_context.object_space
+	try:
+		return space.pnf_pixel_tex
+	except AttributeError:
+		space.pnf_pixel_tex = ImageData(1, 1, "RGBA", b"\xFF\xFF\xFF\xFF").get_texture()
+	return space.pnf_pixel_tex
 
 
 class ListWindow(t.Generic[T]):
