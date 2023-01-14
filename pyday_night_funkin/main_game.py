@@ -28,7 +28,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.types import Numeric
 
 
-__version__ = "0.0.36-dev-D"
+__version__ = "0.0.36-dev-E"
 
 
 class _FPSData:
@@ -125,9 +125,6 @@ class Game:
 		from pyday_night_funkin import base_game_pack
 		base_game_pack.load()
 
-		from pyday_night_funkin.alphabet import AlphabetCharacter
-		AlphabetCharacter.init_animation_dict()
-
 		self.raw_key_handler = RawKeyHandler()
 		self.key_handler = KeyHandler(self.save_data.config.key_bindings)
 
@@ -150,14 +147,15 @@ class Game:
 		#self.push_scene(TriangleScene)
 
 	def _on_scene_stack_change(self) -> None:
-		for self_attr, scene_attr in (
-			("_scenes_to_draw", "draw_passthrough"),
-			("_scenes_to_update", "update_passthrough"),
-		):
-			start = len(self._scene_stack) - 1
-			while start >= 0 and getattr(self._scene_stack[start], scene_attr):
-				start -= 1
-			setattr(self, self_attr, self._scene_stack[start:])
+		i = len(self._scene_stack) - 1
+		while i > 0 and self._scene_stack[i].draw_passthrough:
+			i -= 1
+		self._scenes_to_draw = self._scene_stack[i:]
+
+		i = len(self._scene_stack) - 1
+		while i > 0 and self._scene_stack[i].update_passthrough:
+			i -= 1
+		self._scenes_to_update = self._scene_stack[i:]
 
 	def run(self) -> None:
 		"""
@@ -201,7 +199,6 @@ class Game:
 			)
 
 		pyglet.clock.schedule_once(setup, 0.0)
-
 		pyglet.clock.schedule_interval(self.update, 1 / 60.0)
 		pyglet.app.run()
 

@@ -39,16 +39,6 @@ class AlphabetCharacter(PNFSprite):
 		"?": "question mark",
 	}
 
-	_FRAME_COLLECTION = None
-
-	@classmethod
-	def init_animation_dict(cls) -> None:
-		"""
-		Defer animation dict init to this function as `ASSET` is not
-		filled when this module is first imported.
-		"""
-		cls._FRAME_COLLECTION = load_frames("preload/images/alphabet.xml")
-
 	def _get_animation_prefix(self) -> str:
 		char = self.char
 		_ALTS = self._ALTS
@@ -97,7 +87,7 @@ class AlphabetCharacter(PNFSprite):
 		if should_color:
 			self.color = color
 
-		self.frames = self._FRAME_COLLECTION
+		self.frames = load_frames("preload/images/alphabet.xml")
 
 		self.animation.add_by_prefix("main", self._get_animation_prefix())
 		self.animation.play("main")

@@ -125,18 +125,20 @@ class TestScene(MusicBeatScene):
 				on_complete = (lambda s=sprite: self.remove(s)),
 			)
 
+		main_cam = self.cameras["main"]
 		if rkh[LEFT]:
-			self.cameras["main"].x -= 10
+			main_cam.x -= 10
 		if rkh[RIGHT]:
-			self.cameras["main"].x += 10
+			main_cam.x += 10
 		if rkh[DOWN]:
-			self.cameras["main"].y += 10
+			main_cam.y += 10
 		if rkh[UP]:
-			self.cameras["main"].y -= 10
+			main_cam.y -= 10
 		if rkh[Z]:
-			self.cameras["main"].zoom += .01
+			main_cam.zoom += .01
+			print(main_cam.x, main_cam.y, main_cam.zoom)
 		if rkh[X]:
-			self.cameras["main"].zoom -= .01
+			main_cam.zoom -= .01
 
 		if rkh[K]:
 			self.label.x -= 1
