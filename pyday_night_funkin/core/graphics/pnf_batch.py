@@ -41,24 +41,6 @@ class GroupChain:
 		return r
 
 
-class DrawListSegment:
-	"""
-	A DrawListSegment is a part inside a batch's draw list that
-	contains the setup required for a single draw call.
-	Contains backreferences to the provoking groups, making
-	insertions and splitting them possible.
-	"""
-
-	def __init__(self) -> None:
-		self._index_buffer_start: int = 0
-		self._index_buffer_range: int = 0
-
-		# insert parent groups up to the top
-		# on hitting a known parent group, we can now identify the order
-		# of whatever we inserted
-		# 
-
-
 class GroupData:
 	"""
 	GroupData is used to build a group tree by storing an interfacer
@@ -126,16 +108,13 @@ class DrawList:
 			raise ValueError(f"Group {group!r} is already known in DrawList {self.name!r}.")
 
 		fresh_group = group
-		hook_group = None
 		while True:
 			tmp_parent = fresh_group.parent
 			if tmp_parent is None:
 				self._group_data[self._top_group].children.add(fresh_group)
-				hook_group = self._top_group
 				break
 			if tmp_parent in self._group_data:
 				self._group_data[tmp_parent].children.add(fresh_group)
-				hook_group = tmp_parent
 				break
 			self._group_data[tmp_parent].children.add(fresh_group)
 			fresh_group = tmp_parent
@@ -143,19 +122,6 @@ class DrawList:
 		self._group_data[group].interfacer = interfacer
 		self._group_data[group].state = state
 		self._dirty = True
-
-		# # Find adjacent DrawListSegments by walking down from the hook group
-		# left_group: t.Optional[GroupData] = None
-		# right_group: t.Optional[GroupData] = None
-		# # OPT make children a b-tree or something
-		# x = sorted(self._group_data[hook_group].children)
-		# new_idx = x.index(fresh_group)
-		# if new_idx < len(x) - 1:
-		# 	right_group = self._group_data[x[new_idx + 1]]
-		# if new_idx > 0:
-		# 	left_group = self._group_data[x[new_idx - 1]]
-
-		# right_group
 
 	def remove_group(self, group: "PNFGroup") -> None:
 		"""
@@ -183,11 +149,12 @@ class DrawList:
 		"""
 		Visits groups recursively.
 		Returns a tuple of:
-		0: A list of lists of Groups where all of the inner list's
-		order between groups is irrelevant, but the order of outer
-		lists must be kept.
-		1: Whether the group visited was considered dangling and has
-		been deleted from the group tree.
+		0: A list of lists of drawable groups where all of the inner
+		list's order between groups is irrelevant, but the order of
+		outer lists must be kept.
+		1: Whether the group visited was considered dangling/ had no
+		bridges to a drawable group. This being `True` implies [0]
+		being empty.
 		"""
 		chains = []
 		group_intact = self._group_data[group].interfacer is not None

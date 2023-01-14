@@ -173,7 +173,7 @@ class GLState:
 		Note that a GLState must have a ProgramStatePart to be
 		renderable.
 		"""
-		program: "ShaderProgram" = None
+		program: t.Optional["ShaderProgram"] = None
 		parts: t.List[t.Tuple[StateIdentifier, t.Callable[[], t.Any]]] = []
 		tmp_parts: t.Dict[t.Union[t.Type[StatePart], StateIdentifier], StatePart] = {}
 

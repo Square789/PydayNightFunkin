@@ -17,7 +17,7 @@ except ImportError:
 Options.fast_fail = True
 
 
-def _convert_bool_env_var(v: str) -> bool:
+def _convert_bool_env_var(v: t.Optional[str]) -> bool:
 	if v == "0":
 		return False
 	return bool(v)
@@ -31,7 +31,7 @@ CYGL_GL_XML_PATH = os.getenv("PNF_CYGL_GL_XML_PATH", None)
 
 
 def make_gen_script_args(module: str) -> t.List[str]:
-	return [sys.executable, "-m", module, "--"]
+	return [sys.executable, module + ".py", "--"]
 
 
 if __name__ == "__main__":
@@ -59,7 +59,7 @@ if __name__ == "__main__":
 	]
 
 	if CYGL_USE:
-		gl_gen_args = make_gen_script_args("pyday_night_funkin.core.graphics.cygl.gl_gen")
+		gl_gen_args = make_gen_script_args("pyday_night_funkin/core/graphics/cygl/gl_gen")
 		if CYGL_GL_XML_PATH is not None:
 			gl_gen_args.extend(["--gl-xml-path", CYGL_GL_XML_PATH])
 		r = subprocess.run(gl_gen_args)
@@ -67,7 +67,7 @@ if __name__ == "__main__":
 			print("gl generation script failed.")
 			sys.exit(1)
 
-		vtxbuf_gen_args = make_gen_script_args("pyday_night_funkin.core.graphics.vertexbuffer_gen")
+		vtxbuf_gen_args = make_gen_script_args("pyday_night_funkin/core/graphics/vertexbuffer_gen")
 		if CYGL_HYPER_UNSAFE:
 			vtxbuf_gen_args.append("--hyper-unsafe")
 		r = subprocess.run(vtxbuf_gen_args)
