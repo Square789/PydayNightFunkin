@@ -1,6 +1,5 @@
 
 from collections import defaultdict
-from time import perf_counter
 import typing as t
 from weakref import WeakSet
 
@@ -9,7 +8,9 @@ from pyglet.gl import gl
 from pyday_night_funkin.core.graphics.interfacer import PNFBatchInterfacer
 from pyday_night_funkin.core.graphics.pnf_group import PNFGroup
 from pyday_night_funkin.core.graphics.pnf_vertex_domain import PNFVertexDomain
-from pyday_night_funkin.core.graphics.shared import GL_TYPE_SIZES, RE_VERTEX_FORMAT
+from pyday_night_funkin.core.graphics.shared import (
+	GL_TO_C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT
+)
 from pyday_night_funkin.core.graphics.state import GLState
 from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject, RAMBackedBufferObject
 from pyday_night_funkin.core.utils import dump_id
@@ -42,32 +43,22 @@ class GroupChain:
 
 class GroupData:
 	"""
-	GroupData is used to build a group tree by storing an interfacer,
-	a group's children and many other things, which a group then maps
-	to.
+	GroupData is used to build a group tree by storing an interfacer
+	and a group's children, which a group then maps to.
 	"""
-	# NOTE: Groups may never have children if they are drawable.
+	__slots__ = ("interfacer", "state", "children", "group_chain")
 
-	__slots__ = (
-		"interfacer", "state", "children", "pending_add", "pending_del", "pending_mod",
-		"draw_list_segment"
-	)
-
-	def __init__(self) -> None:
-		self.state = None
-		self.interfacer = None
-		self.children = set()
-		self.pending_add = set()
-		self.pending_del = set()
-		self.pending_mod = set()
-		self.draw_list_segment = None
-		"""
-		The draw list segment that is responsible for drawing this
-		group or the first of this group's children (that is, if you
-		were to walk down keeping to the left/lowest order until
-		reaching a child group). May be none in case this group has
-		no drawable children.
-		"""
+	def __init__(
+		self,
+		state: t.Optional[GLState] = None,
+		interfacer: t.Optional["PNFBatchInterfacer"] = None,
+		children: t.Iterable["PNFGroup"] = (),
+		group_chain: t.Optional[GroupChain] = None,
+	) -> None:
+		self.state = state
+		self.interfacer = interfacer
+		self.children = set(children)
+		self.group_chain = group_chain
 
 	@property
 	def is_drawable(self):
@@ -88,21 +79,11 @@ class DrawList:
 
 		self.name = name
 
-		self._dirty_groups: t.Set["PNFGroup"] = set()
-		"""
-		Contains groups who have children that are to be added, removed
-		or updated in respect to the draw list.
-		"""
-
+		self._dirty = True
 		self.funcs: t.List[t.Callable[[], t.Any]] = []
 		"""
 		List of functions to call in-order to draw everything that
 		needs to be drawn.
-		"""
-
-		self._draw_list: t.Optional[DrawListSegment] = None
-		"""
-		Linked list containing group chains.
 		"""
 
 		self._group_data: t.Dict["PNFGroup", "GroupData"] = defaultdict(GroupData)
@@ -123,8 +104,7 @@ class DrawList:
 		registry and mark the draw list as dirty.
 		If the group is already known, has no effect.
 		"""
-		group_data = self._group_data
-		if group in group_data:
+		if group in self._group_data:
 			raise ValueError(f"Group {group!r} is already known in DrawList {self.name!r}.")
 
 		fresh_group = group
@@ -136,11 +116,12 @@ class DrawList:
 			if tmp_parent in self._group_data:
 				self._group_data[tmp_parent].children.add(fresh_group)
 				break
-			group_data[tmp_parent].children.add(fresh_group)
+			self._group_data[tmp_parent].children.add(fresh_group)
 			fresh_group = tmp_parent
 	
-		self._dirty_groups.add(hook_group)
-		group_data[hook_group].pending_add.add(fresh_group)
+		self._group_data[group].interfacer = interfacer
+		self._group_data[group].state = state
+		self._dirty = True
 
 	def remove_group(self, group: "PNFGroup") -> None:
 		"""
@@ -157,18 +138,12 @@ class DrawList:
 		list as dirty. If a non-leaf node is deleted, it will leave
 		a hole in the continuity of the group tree, so don't do that.
 		"""
-		pgr = self._top_group if group.parent is None else group.parent
-		self._group_data[pgr].children.remove(group)
+		if group.parent is not None and group.parent in self._group_data:
+			self._group_data[group.parent].children.remove(group)
+		self._group_data[self._top_group].children.discard(group)
 		self._group_data.pop(group)
-		self._dirty_groups.discard(group)
-		self._dirty_groups.add(pgr)
 
-	def modify_group(self, group: "PNFGroup", new_state: t.Optional[GLState]) -> None:
-		pgr = self._top_group if group.parent is None else group.parent
-
-		self._dirty_groups.add(pgr)
-		if new_state is not None:
-			self._group_data[group].state = new_state
+		self._dirty = True
 
 	def _visit(self, group: "PNFGroup") -> t.Tuple[t.List[t.List["PNFGroup"]], bool]:
 		"""
@@ -225,8 +200,8 @@ class DrawList:
 				chains.append(cur_group_chain)
 			chains.extend(withheld_group_chains)
 
+		# This group is dangling, delete it.
 		if not group_intact:
-			# This group is dangling, delete it.
 			if chains:
 				raise RuntimeError(
 					"This should not have happened: Group was considered dangling "
@@ -238,7 +213,7 @@ class DrawList:
 
 	def regenerate(self) -> t.Tuple[t.List[t.Callable[[], t.Any]], t.List[int]]:
 		"""
-		Completely rebuilds the draw list from the group tree.
+		Rebuilds the draw list from the group tree.
 		Returns a series of functions that - when called in order -
 		will run through all necessary state mutations and draw
 		calls to draw the scene which you want to draw and a list
@@ -324,10 +299,8 @@ class DrawList:
 		if cur_index_run > 0:
 			# Final draw call
 			def final_draw_elements(
-				m = cur_draw_mode,
-				c = cur_index_run,
-				t = _INDEX_TYPE,
-				s = cur_index_start*_INDEX_TYPE_SIZE,
+				m=cur_draw_mode, c=cur_index_run, t=_INDEX_TYPE,
+				s=cur_index_start*_INDEX_TYPE_SIZE, d=cur_vertex_layout[0]
 			):
 				gl.glDrawElements(m, c, t, s)
 				gl.glBindVertexArray(0)
@@ -335,72 +308,18 @@ class DrawList:
 
 		return draw_list, indices
 
-		# insert parent groups up to the top
-		# on hitting a known parent group, we can now identify the order
-		# of whatever we inserted
-
-		# # Find adjacent DrawListSegments by walking down from the hook group
-		# left_group: t.Optional[GroupData] = None
-		# right_group: t.Optional[GroupData] = None
-		# # OPT make children a b-tree or something
-		# x = sorted(self._group_data[hook_group].children)
-		# new_idx = x.index(fresh_group)
-		# if new_idx < len(x) - 1:
-		# 	right_group = self._group_data[x[new_idx + 1]]
-		# if new_idx > 0:
-		# 	left_group = self._group_data[x[new_idx - 1]]
-
-	def _new_regenerate(self) -> None:
-		gd = self._group_data
-		cluster_map: t.Dict["PNFGroup", "PNFGroup"] = {}
-		# Maps each dirty group and its ancestors to an indexing group
-		# in `modified_clusters`.
-		modified_clusters: t.Dict["PNFGroup", t.Set["PNFGroup"]] = {}
-		# Clusters are subtrees of the draw tree that have been affected
-		# by group changes.
-
-		# Identify changed clusters:
-		for dirty_group in self._dirty_groups:
-			if dirty_group in cluster_map:
-				continue
-
-			current_cluster_set = set()
-
-			group = dirty_group
-			parent = self._top_group if group.parent is None else group.parent
-			while parent is not self._top_group and gd[parent].draw_list_segment is None:
-				current_cluster_set.add(group)
-				group = parent
-				parent = self._top_group if group.parent is None else group.parent
-
-			if parent in modified_clusters:
-				print("Merging clusters")
-				current_cluster_set.update(modified_clusters[parent])
-			for reg_group in current_cluster_set:
-				cluster_map[reg_group] = parent
-			modified_clusters[parent] = current_cluster_set
-
-		print("Clusters identified:", modified_clusters)
-
-
-
-
 	def check_dirty(self) -> bool:
 		"""
 		Checks whether this draw list is dirty. If it is, regenerates
 		it and returns `True`. Otherwise, returns `False`.
 		"""
-		x = perf_counter()
-		if not self._dirty_groups:
+		if not self._dirty:
 			return False
-
-		self._new_regenerate()
 
 		funcs, indices = self.regenerate()
 		self.funcs = funcs
 		self.index_buffer.set_size_and_data_py(indices)
-		self._dirty_groups.clear()
-		print(f"draw list readjusted in {perf_counter() - x} secs.")
+		self._dirty = False
 		return True
 
 	def draw(self) -> None:
@@ -415,7 +334,6 @@ class DrawList:
 
 		for gd in self._group_data.values():
 			gd.children.clear() # probably makes cyclic reference breakup easier
-
 		self._group_data = None
 		# self._top_groups = None
 
@@ -572,18 +490,6 @@ class PNFBatch:
 		The draw list must exist.
 		"""
 		self._draw_lists[draw_list].remove_group(group)
-
-	def modify_group(
-		self, draw_list: t.Hashable, group: "PNFGroup", new_state: t.Optional[GLState] = None
-	) -> None:
-		"""
-		Informs the given draw list that the given group's rendering
-		circumstances have changed.
-		This may include a new state, but will definitely cause a
-		reprocessing of the group's draw calls.
-		The draw list must exist.
-		"""
-		self._draw_lists[draw_list].modify_group(group, new_state)
 
 	def delete(self) -> None:
 		"""
