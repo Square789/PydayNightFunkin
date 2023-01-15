@@ -116,14 +116,22 @@ class Camera:
 		"""Rotation of the camera's display quad."""
 
 		self._x = 0
+		"""
+		Top-left-most world x coordinate the camera would be showing at
+		zoom 1.0.
+		"""
 		self._y = 0
+		"""
+		Top-left-most world y coordinate the camera would be showing at
+		zoom 1.0.
+		"""
 
 		self._view_width = self._width
 		"""
 		Width of the world area displayed by the camera.
 		Affected by zoom.
 		"""
-		self._view_width = self._height
+		self._view_height = self._height
 		"""
 		Height of the world area displayed by the camera.
 		Affected by zoom.

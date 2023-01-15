@@ -82,16 +82,16 @@ void main() {{
 	res_mat *= work_mat; work_mat = mat4(1.0);      // 3RD
 
 	if (flip.x && flip.y) {{
-		work_mat[0][0] = -1;
-		work_mat[1][1] = -1;
+		work_mat[0][0] = -1.0;
+		work_mat[1][1] = -1.0;
 		work_mat[3].xy = frame_dimensions;
 		res_mat *= work_mat; work_mat = mat4(1.0);
 	}} else if (flip.x) {{
-		work_mat[0][0] = -1;
+		work_mat[0][0] = -1.0;
 		work_mat[3].x = frame_dimensions.x;
 		res_mat *= work_mat; work_mat = mat4(1.0);
 	}} else if (flip.y) {{
-		work_mat[1][1] = -1;
+		work_mat[1][1] = -1.0;
 		work_mat[3].y = frame_dimensions.y;
 		res_mat *= work_mat; work_mat = mat4(1.0);
 	}}                                              // 2ND
@@ -114,7 +114,7 @@ void main() {{
 	// - Matrix multiplication is not commutative: A*B != B*A
 	// The last matrix in a multiplication chain will be the first operation.
 	// So, to scale, rotate and THEN translate something (usual sane order):
-	// `gl_Position = m_trans * m_rot * m_scale * vec4(position, 0, 1);`
+	// `gl_Position = m_trans * m_rot * m_scale * vec4(position, 0.0, 1.0);`
 	// Makes sense, really.
 
 	gl_Position =
@@ -122,7 +122,7 @@ void main() {{
 		window.view *
 		m_camera_trans_scale *
 		res_mat *
-		vec4(position, 0, 1)
+		vec4(position, 0.0, 1.0)
 	;
 
 	vertex_colors = colors;
@@ -424,18 +424,21 @@ class PNFSprite(WorldObject):
 			self._context.group,
 			(0, 1, 2, 0, 2, 3),
 			{camera: self._build_gl_state(camera.ubo) for camera in self._context.cameras},
-			"position2f/" + usage,
-			("translate2f/" + usage, (self._x, self._y) * 4),
-			("offset2f/" + usage, self._offset * 4),
-			"frame_offset2f/" + usage,
-			"frame_dimensions2f/" + usage,
-			("flip2B/" + usage, (self._flip_x, self._flip_y) * 4),
-			("scroll_factor2f/" + usage, self._scroll_factor * 4),
-			("origin2f/" + usage, self._origin * 4),
-			("rotation1f/" + usage, (self._rotation,) * 4),
-			("scale2f/" + usage, (self._scale * self._scale_x, self._scale * self._scale_y) * 4),
-			("tex_coords3f/" + usage, self._texture.tex_coords),
-			("colors4Bn/" + usage, (*self._color, int(self._opacity)) * 4),
+			("position2f/" + usage,         None),
+			("translate2f/" + usage,        (self._x, self._y) * 4),
+			("offset2f/" + usage,           self._offset * 4),
+			("frame_offset2f/" + usage,     None),
+			("frame_dimensions2f/" + usage, None),
+			("flip2B/" + usage,             (self._flip_x, self._flip_y) * 4),
+			("scroll_factor2f/" + usage,    self._scroll_factor * 4),
+			("origin2f/" + usage,           self._origin * 4),
+			("rotation1f/" + usage,         (self._rotation,) * 4),
+			(
+				"scale2f/" + usage,
+				(self._scale * self._scale_x, self._scale * self._scale_y) * 4
+			),
+			("tex_coords3f/" + usage,       self._texture.tex_coords),
+			("colors4Bn/" + usage,          (*self._color, int(self._opacity)) * 4),
 		)
 		self._update_vertex_positions()
 
@@ -637,7 +640,7 @@ class PNFSprite(WorldObject):
 		if not self.effects:
 			return
 
-		finished_effects = []
+		finished_effects: t.List[Effect] = []
 		for effect in self.effects:
 			effect.update(dt, self)
 			if effect.is_finished():
@@ -868,6 +871,8 @@ class PNFSprite(WorldObject):
 		a lie.
 		From what I could tell, the offset is applied at the very end
 		of rendering, when rotation and scale have all taken place.
+		If animations specify offsets, this field will be set to those
+		with no respect to any user-given offset.
 		"""
 		# Also, in FnF's source, this value is misused. offset is set
 		# when frame data is set, depending on the first fucking frame in

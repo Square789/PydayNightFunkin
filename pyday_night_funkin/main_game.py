@@ -1,19 +1,20 @@
 
+from platform import python_version
+import sys
 from time import perf_counter
 import typing as t
 
 from loguru import logger
 import pyglet
 
+logger.remove(0)
 # You really want to leave this set to `True` unless you haven't
 # touched the rendering backend AND not seen an OpenGL error for at
 # least 20 hours on at least three different systems.
 pyglet.options["debug_gl"] = True
 
-from pyglet.window.key import KeyStateHandler
-
 from pyday_night_funkin.core import ogg_decoder
-from pyday_night_funkin.core.key_handler import KeyHandler
+from pyday_night_funkin.core.key_handler import KeyHandler, RawKeyHandler
 from pyday_night_funkin.core.pnf_player import PNFPlayer, SFXRing
 from pyday_night_funkin.core.pnf_window import PNFWindow
 from pyday_night_funkin.core.scene import BaseScene
@@ -23,6 +24,7 @@ from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 
 if t.TYPE_CHECKING:
+	from loguru import Record
 	from pyday_night_funkin.core.types import Numeric
 
 
@@ -89,7 +91,7 @@ class _FPSData:
 class Game:
 	def __init__(self) -> None:
 		self.debug = True
-		self.use_debug_pane = self.debug and True
+		self.use_debug_pane = self.debug and False
 		# These have to be setup later, see `run`
 		self.debug_pane: t.Optional[DebugPane] = None
 		self._last_update_time = 0
@@ -123,17 +125,14 @@ class Game:
 		from pyday_night_funkin import base_game_pack
 		base_game_pack.load()
 
-		from pyday_night_funkin.alphabet import AlphabetCharacter
-		AlphabetCharacter.init_animation_dict()
-
-		self.pyglet_ksh = KeyStateHandler()
+		self.raw_key_handler = RawKeyHandler()
 		self.key_handler = KeyHandler(self.save_data.config.key_bindings)
 
 		self.player = PNFPlayer()
 		self.sfx_ring = SFXRing()
 
 		self.window.push_handlers(self.key_handler)
-		self.window.push_handlers(self.pyglet_ksh)
+		self.window.push_handlers(self.raw_key_handler)
 		self.window.push_handlers(on_draw = self.draw)
 
 		self._scene_stack: t.List[BaseScene] = []
@@ -148,14 +147,15 @@ class Game:
 		#self.push_scene(TriangleScene)
 
 	def _on_scene_stack_change(self) -> None:
-		for self_attr, scene_attr in (
-			("_scenes_to_draw", "draw_passthrough"),
-			("_scenes_to_update", "update_passthrough"),
-		):
-			start = len(self._scene_stack) - 1
-			while start >= 0 and getattr(self._scene_stack[start], scene_attr):
-				start -= 1
-			setattr(self, self_attr, self._scene_stack[start:])
+		i = len(self._scene_stack) - 1
+		while i > 0 and self._scene_stack[i].draw_passthrough:
+			i -= 1
+		self._scenes_to_draw = self._scene_stack[i:]
+
+		i = len(self._scene_stack) - 1
+		while i > 0 and self._scene_stack[i].update_passthrough:
+			i -= 1
+		self._scenes_to_update = self._scene_stack[i:]
 
 	def run(self) -> None:
 		"""
@@ -168,19 +168,37 @@ class Game:
 				return
 
 			self._fps = _FPSData()
+
+			_stderr_fmt = (
+				"<green>{time:MMM DD HH:mm:ss.SSS}</green> | <level>{level:<8}</level> | "
+				"<cyan>{name}</cyan>:<cyan>{function}</cyan>@<cyan>{line}</cyan> - "
+				"<level>{message}</level>"
+			)
+			if sys.stderr:
+				logger.add(sys.stderr, format=_stderr_fmt)
+
+			def _dbgp_fmt(rec: "Record") -> str:
+				elapsed = rec["elapsed"]
+				# If you leave this running for more than a day, you're insane. Still:
+				days = elapsed.days % 11 # some sanity
+				secs = elapsed.seconds + days * 86400
+				# secs should not exceed a b10 rep of more than 6 places now
+				millisecs = elapsed.microseconds // 1000
+				return (
+					f"{secs:0>6}.{millisecs:0>3} | {rec['level']:<8} | "
+					f"{rec['name']}:{rec['function']}@{rec['line']} - {rec['message']}"
+				)
+
 			if self.use_debug_pane:
 				self.debug_pane = DebugPane(8)
-				logger.add(
-					self.debug_pane.add_message,
-					format = "{time:mm:ss.SSS} | {level:<8} | {name}:{function}@{line} - {message}",
-				)
-			logger.info(f"Game started (v{__version__}), pyglet version {pyglet.version}")
+				logger.add(self.debug_pane.add_message, format=_dbgp_fmt)
+
+			logger.info(
+				f"Game started (v{__version__}), pyglet v{pyglet.version}, "
+				f"Python v{python_version()}"
+			)
 
 		pyglet.clock.schedule_once(setup, 0.0)
-
-		if not self.debug:
-			logger.remove(0)
-
 		pyglet.clock.schedule_interval(self.update, 1 / 60.0)
 		pyglet.app.run()
 
@@ -297,4 +315,5 @@ class Game:
 			self._modify_scene_stack()
 
 		self.key_handler.post_update()
+		self.raw_key_handler.post_update()
 		self._last_update_time = (perf_counter() - stime) * 1000

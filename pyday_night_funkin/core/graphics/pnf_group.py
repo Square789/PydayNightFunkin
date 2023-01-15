@@ -6,8 +6,10 @@ from pyday_night_funkin.core.utils import dump_id
 
 class PNFGroup:
 	"""
-	Groups are extremely simple objects that define a tree which
-	dictates element draw order.
+	Groups are extremely simple ordered objects used in the batch to
+	define a tree which dictates element draw order.
+	Changing their parent or order while they are in a batch will cause
+	weirdness, so don't do it.
 	"""
 
 	__slots__ = ("parent", "order")
@@ -28,5 +30,5 @@ class PNFGroup:
 
 	def __repr__(self) -> str:
 		return (
-			f"<{self.__class__.__name__} order={self.order} at {dump_id(self)}>"
+			f"<{self.__class__.__name__}(order={self.order}) at {dump_id(self)}>"
 		)

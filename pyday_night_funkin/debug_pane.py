@@ -27,8 +27,8 @@ class DebugPane:
 		# NOTE: This uses PNF graphics, but is not a scene,
 		# so update, tweens and all other good stuff won't work.
 		self.insert_index = 0
-		self.background = PNFGroup(order = 0)
-		self.foreground = PNFGroup(order = 1)
+		self.background = PNFGroup(order=0)
+		self.foreground = PNFGroup(order=1)
 		self.batch = PNFBatch()
 		self._queue = queue.Queue()
 		self.labels = [
@@ -128,6 +128,6 @@ class DebugPane:
 
 	def draw(self):
 		"""
-		Draw the DebugPane.
+		Draws the DebugPane.
 		"""
 		self.batch.draw(Camera.get_dummy())

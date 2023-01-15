@@ -39,16 +39,6 @@ class AlphabetCharacter(PNFSprite):
 		"?": "question mark",
 	}
 
-	_FRAME_COLLECTION = None
-
-	@classmethod
-	def init_animation_dict(cls) -> None:
-		"""
-		Defer animation dict init to this function as `ASSET` is not
-		filled when this module is first imported.
-		"""
-		cls._FRAME_COLLECTION = load_frames("preload/images/alphabet.xml")
-
 	def _get_animation_prefix(self) -> str:
 		char = self.char
 		_ALTS = self._ALTS
@@ -89,7 +79,7 @@ class AlphabetCharacter(PNFSprite):
 		self.char = char
 		self.bold = bold
 
-		should_color = color is not None and (not bold or not self.char.isalpha())
+		should_color = color is not None and (not bold or not char.isalpha())
 		if should_color:
 			self.shader_container = _COLOR_SET_SHADER_CONTAINER
 
@@ -97,7 +87,7 @@ class AlphabetCharacter(PNFSprite):
 		if should_color:
 			self.color = color
 
-		self.frames = self._FRAME_COLLECTION
+		self.frames = load_frames("preload/images/alphabet.xml")
 
 		self.animation.add_by_prefix("main", self._get_animation_prefix())
 		self.animation.play("main")
@@ -130,7 +120,7 @@ class TextLine(PNFSpriteContainer):
 				last_was_space = True
 				continue
 
-			if last_sprite:
+			if last_sprite is not None:
 				sprite_x = last_sprite.x + last_sprite.width
 			if last_was_space:
 				sprite_x += 40

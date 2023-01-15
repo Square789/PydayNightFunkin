@@ -79,7 +79,7 @@ class DrawList:
 
 		self.name = name
 
-		self._dirty = True
+		self._dirty: bool = True
 		self.funcs: t.List[t.Callable[[], t.Any]] = []
 		"""
 		List of functions to call in-order to draw everything that
@@ -419,11 +419,9 @@ class PNFBatch:
 		group: "PNFGroup",
 		indices: t.Sequence[int],
 		states: t.Dict[t.Hashable, GLState],
-		*data: t.Union[str, t.Tuple[str, t.Any]],
+		*data: t.Tuple[str, t.Optional[t.Collection]],
 	) -> PNFBatchInterfacer:
-		attr_names = [x[0] if isinstance(x, tuple) else x for x in data]
-
-		domain = self._get_vertex_domain(attr_names)
+		domain = self._get_vertex_domain(x[0] for x in data)
 		start = domain.allocate(size)
 		interfacer = PNFBatchInterfacer(
 			domain, start, size, draw_mode, indices, self, group
@@ -431,10 +429,10 @@ class PNFBatch:
 		self._introduce_interfacer(interfacer, states)
 
 		# Set initial data
-		for x in data:
-			if not isinstance(x, tuple):
+		for att_str, ini_data in data:
+			if ini_data is None:
 				continue
-			interfacer.set_data(RE_VERTEX_FORMAT.match(x[0])[1], x[1])
+			interfacer.set_data(RE_VERTEX_FORMAT.match(att_str)[1], ini_data)
 
 		return interfacer
 

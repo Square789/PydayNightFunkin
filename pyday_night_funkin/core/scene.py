@@ -110,7 +110,7 @@ class BaseScene(Container):
 		)
 
 		# Fails when nothing is added to a camera otherwise.
-		for cam in (self._default_camera, *self.cameras):
+		for cam in (self._default_camera, *self.cameras.values()):
 			self.batch._get_draw_list(cam)
 
 		self.sfx_ring = SFXRing()
@@ -252,10 +252,10 @@ class BaseScene(Container):
 
 	def update(self, dt: float) -> None:
 		if self.game.debug:
-			if self.game.pyglet_ksh[R]:
+			if self.game.raw_key_handler.just_pressed(R):
 				logger.debug("hello")
 
-			if self.game.pyglet_ksh[B]:
+			if self.game.raw_key_handler.just_pressed(B):
 				print(self.batch.dump_debug_info())
 
 		self._passed_time += dt

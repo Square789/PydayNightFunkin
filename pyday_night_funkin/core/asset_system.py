@@ -286,7 +286,7 @@ class _AssetSystemManager:
 		raise AssetNotFoundError(f"Could not find pyobj {ident!r} in current asset system stack")
 
 	def load_image(
-		self, path: str, cache: bool = False, options: t.Optional[ImageResourceOptions] = None
+		self, path: str, cache: bool = True, options: t.Optional[ImageResourceOptions] = None
 	) -> "Texture":
 		img_cache = self._cache["image"]
 		in_opt = ImageResourceOptions() if options is None else options
@@ -367,7 +367,10 @@ class _AssetSystemManager:
 		The asset system stack might override any default and passed
 		in options. If that is expected, the `options_validator` can be
 		given as an extra sanity check to check the validity of options
-		given by the asset system stack.
+		given by the asset system stack. This function must return
+		`True` if the argument is valid, and may return anything else
+		to indicate failure. A string can be given as an explicit
+		reason for failure.
 
 		Returns a loader function that can simply be used from your
 		game's code like `load_image("assets/img/player.png")` or
@@ -394,7 +397,7 @@ class _AssetSystemManager:
 				if ovres is not True:
 					raise RuntimeError(
 						f"Options validator for asset type {name} disagreed with options "
-						f"returned by an asset system{': ' + ovres if ovres else ''}."
+						f"returned by an asset system{': ' + str(ovres) if ovres else ''}."
 					)
 
 			data = loader_function(self._get_full_path(true_path_tail), true_options)

@@ -1,0 +1,32 @@
+Cons of current impl:
+ - Entire tree is rebuilt, even for draw calls that have not changed.
+ - Sorting of every single tree layer occurs for each tree change.
+ - Rebuild and reupload of entire index buffer occurrs for each change.
+ - This leads to spikes in draw time that are around ~1.5ms.
+   Not really much, but... I gotta do it, man.
+
+For new impl:
+ - Give each draw chain its own index buffer so a new sprite won't cause relayout of text indices
+   somewhere else. (Undo this if a high amount of buffers proves inefficient for some reason)
+ - Test around whether using a linked list for the draw list segments vs an array that's gonna
+   contain all the draw commands will make a difference.
+   - Cons will theoretically be:
+     - Cache locality (but considering python jumps through memory like crazy for integer ops, literally irrelevant)
+   - Pros will be:
+     - No need to touch as much of the draw list when only one segment changes (Which happens often!).
+
+
+Make a decision:
+ Should the group data's children lag in front of what the draw list truly is or
+ should the children only ever be updated together with the draw list?
+ I think i'll go with the second option as tracking added/removed/changed groups in option A is
+  more of a fuss.
+ However, addition will need to have the groups written into group_data in case of a strand being
+ added. For that, checking whether the groups are being drawn in a draw list needs to be done to
+ determine whether they were just added.
+
+Deletion does not propagate automatically. Has to be done manually through multiple groups.
+Same with group dirtiness.
+
+Postpone as much cleanup work as possible e.g. cutting off dead leaves to the regeneration methods
+instead of the add_group/remove_group methods, as these are called more often.

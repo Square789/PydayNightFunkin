@@ -3,6 +3,7 @@ from itertools import islice
 import sys
 import typing as t
 
+import pyglet
 from pyglet.image import CheckerImagePattern, ImageData, Texture
 
 
@@ -16,34 +17,35 @@ V = t.TypeVar("V")
 
 
 ADDRESS_PADDING = (sys.maxsize.bit_length() + 1) // 4
+ADDRESS_FSTR = f"0x{{:0>{ADDRESS_PADDING}x}}"
 
-_ERROR_TEXTURE: t.Optional[Texture] = None
-_PIXEL_TEXTURE: t.Optional[Texture] = None
 
 def get_error_tex() -> Texture:
 	"""
 	Retrieves the global error texture, creating it if it does not
 	exist.
 	"""
-	global _ERROR_TEXTURE
-
-	if _ERROR_TEXTURE is None:
-		_ERROR_TEXTURE = CheckerImagePattern(
+	space = pyglet.gl.current_context.object_space
+	try:
+		return space.pnf_error_tex
+	except AttributeError:
+		space.pnf_error_tex = CheckerImagePattern(
 			(0xFF, 0x00, 0xFF, 0xFF),
-			(0x00, 0x00, 0x00, 0xFF)
+			(0x00, 0x00, 0x00, 0xFF),
 		).create_image(16, 16).create_texture(Texture)
-	return _ERROR_TEXTURE
+	return space.pnf_error_tex
 
 def get_pixel_tex() -> Texture:
 	"""
 	Retrieves the global pixel texture, creating it if it does not
 	exist.
 	"""
-	global _PIXEL_TEXTURE
-
-	if _PIXEL_TEXTURE is None:
-		_PIXEL_TEXTURE = ImageData(1, 1, "RGBA", b"\xFF\xFF\xFF\xFF").get_texture()
-	return _PIXEL_TEXTURE
+	space = pyglet.gl.current_context.object_space
+	try:
+		return space.pnf_pixel_tex
+	except AttributeError:
+		space.pnf_pixel_tex = ImageData(1, 1, "RGBA", b"\xFF\xFF\xFF\xFF").get_texture()
+	return space.pnf_pixel_tex
 
 
 class ListWindow(t.Generic[T]):
@@ -98,14 +100,15 @@ def to_rgb_tuple(v: int) -> t.Tuple[int, int, int]:
 	return tuple(i & 0xFF for i in (v >> 24, v >> 16, v >> 8))
 
 def dump_id(x: object) -> str:
-	return f"0x{id(x):0>{ADDRESS_PADDING}}"
+	return ADDRESS_FSTR.format(id(x))
 
-def dump_sprite_info(s: "PNFSprite") -> None:
-	print(f"x, y: {s.x}, {s.y}")
-	print(f"Offset: {s.offset}")
-	print(f"Origin: {s.origin}")
-	print(f"Frame offset: {s._frame.offset}")
-	print(f"Frame source size: {s._frame.source_dimensions}")
-	print(f"w, h: {s._width}, {s._height}")
-	print(f"fw, fh: {s._frame.source_dimensions}")
-	print()
+class _Has_next(t.Protocol[T]):
+	_next: t.Optional[T]
+
+_Has_nextT = t.TypeVar("_Has_nextT", bound="_Has_next")
+
+def linked_list_iter(head: t.Optional[_Has_nextT]) -> t.Iterator[_Has_nextT]:
+	c = head
+	while c is not None:
+		yield c
+		c = c._next
