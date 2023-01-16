@@ -5,7 +5,7 @@ import typing as t
 
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.base_game_pack import load_frames
-from pyday_night_funkin.core.asset_system import load_font, load_image, load_sound
+from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
 from pyday_night_funkin.enums import ANIMATION_TAG
@@ -90,7 +90,6 @@ class HUD:
 			self.health_bar_layers,
 		)
 
-		load_font("fonts/vcr.ttf")
 		self.score_text = scene.create_object(
 			self.health_bar_layers[0],
 			self.camera,

@@ -267,7 +267,6 @@ def load() -> None:
 		"shared/images/NOTE_assets.xml": AssetSystemEntry(None, arrow_post_load_hacker),
 	}
 
-
 	add_asset_system(AssetSystem(
 		asset_system_map,
 		{

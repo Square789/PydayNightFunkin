@@ -14,6 +14,7 @@ logger.remove(0)
 pyglet.options["debug_gl"] = True
 
 from pyday_night_funkin.core import ogg_decoder
+from pyday_night_funkin.core.asset_system import load_font
 from pyday_night_funkin.core.key_handler import KeyHandler, RawKeyHandler
 from pyday_night_funkin.core.pnf_player import PNFPlayer, SFXRing
 from pyday_night_funkin.core.pnf_window import PNFWindow
@@ -115,7 +116,6 @@ class Game:
 		except ImportError:
 			pass
 		else:
-			logger.info("Cygl module found, initializing it.")
 			from pyglet.gl import gl
 			cygl.initialize(gl)
 
@@ -124,6 +124,9 @@ class Game:
 
 		from pyday_night_funkin import base_game_pack
 		base_game_pack.load()
+		# Load VCR OSD Mono here, before any labels are drawn and stuff.
+		# Don't do it in the base game, cause it feels more important than that.
+		load_font("fonts/vcr.ttf")
 
 		self.raw_key_handler = RawKeyHandler()
 		self.key_handler = KeyHandler(self.save_data.config.key_bindings)
@@ -177,7 +180,7 @@ class Game:
 			if sys.stderr:
 				logger.add(sys.stderr, format=_stderr_fmt)
 
-			def _dbgp_fmt(rec: "Record") -> str:
+			def _debug_pane_record_formatter(rec: "Record") -> str:
 				elapsed = rec["elapsed"]
 				# If you leave this running for more than a day, you're insane. Still:
 				days = elapsed.days % 11 # some sanity
@@ -191,7 +194,7 @@ class Game:
 
 			if self.use_debug_pane:
 				self.debug_pane = DebugPane(8)
-				logger.add(self.debug_pane.add_message, format=_dbgp_fmt)
+				logger.add(self.debug_pane.add_message, format=_debug_pane_record_formatter)
 
 			logger.info(
 				f"Game started (v{__version__}), pyglet v{pyglet.version}, "

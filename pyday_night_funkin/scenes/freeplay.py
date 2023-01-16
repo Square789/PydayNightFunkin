@@ -4,7 +4,7 @@ import typing as t
 from pyday_night_funkin.alphabet import MenuTextLine
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.base_game_pack import load_health_icon
-from pyday_night_funkin.core.asset_system import load_font, load_image, load_sound
+from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.scene import BaseScene
@@ -36,7 +36,6 @@ class FreeplayScene(BaseScene):
 
 		self.bg = self.create_object("bg", image=load_image("preload/images/menuBGBlue.png"))
 
-		load_font("fonts/vcr.ttf")
 		self.score_text = self.create_object(
 			"textfg",
 			object_class = PNFText,

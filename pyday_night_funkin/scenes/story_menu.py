@@ -3,7 +3,7 @@ import typing as t
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.base_game_pack import load_frames, load_week_header
-from pyday_night_funkin.core.asset_system import load_font, load_sound
+from pyday_night_funkin.core.asset_system import load_sound
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
@@ -112,7 +112,6 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.diff_arrow_right.animation.add_by_prefix("press", "arrow push right")
 		self.diff_arrow_right.animation.play("idle")
 
-		load_font("fonts/vcr.ttf")
 		self.tracklist_txt = self.create_object(
 			"bg",
 			object_class = PNFText,
