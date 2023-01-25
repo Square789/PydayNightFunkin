@@ -127,9 +127,9 @@ def get_savedata_location() -> Path:
 			target = Path(os.environ["XDG_DATA_HOME"])
 		return target / ".local" / "share" / "PydayNightFunkin"
 	elif platform.system() == "Darwin":
-		raise UnsupportedPlatformError("No OSX savefile yet")
+		raise UnsupportedPlatformError("No OSX savefile due to no OSX support!")
 	else:
-		raise UnsupportedPlatformError(f"Unknown platform {platform.system()!r}")
+		raise UnsupportedPlatformError(f"Unknown platform: {platform.system()!r}")
 
 
 class SaveData:

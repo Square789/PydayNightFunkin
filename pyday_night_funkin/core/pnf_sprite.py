@@ -612,7 +612,7 @@ class PNFSprite(WorldObject):
 		)
 
 	def get_current_frame_dimensions(self) -> Vec2:
-		""""
+		"""
 		Returns the currently displayed frame's source dimensions.
 		No scaling, no nothing.
 		"""
@@ -866,14 +866,14 @@ class PNFSprite(WorldObject):
 	def offset(self) -> t.Tuple["Numeric", "Numeric"]:
 		"""
 		Sprite offset.
-		Going by Flixel, technically, this is supposed to only affect
-		the hitbox, but it's flat-out used in rendering code, so that's
-		a lie.
-		From what I could tell, the offset is applied at the very end
-		of rendering, when rotation and scale have all taken place.
+		The offset is applied at the very end of rendering, when
+		rotation and scaling have all taken place.
 		If animations specify offsets, this field will be set to those
 		with no respect to any user-given offset.
 		"""
+		# Going by Flixel, technically, this is supposed to only affect
+		# the hitbox, but it's flat-out used in rendering code, so that's
+		# a lie.
 		# Also, in FnF's source, this value is misused. offset is set
 		# when frame data is set, depending on the first fucking frame in
 		# a sprite sheet. this has then influenced manually set

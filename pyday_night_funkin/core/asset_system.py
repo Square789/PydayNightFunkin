@@ -40,16 +40,6 @@ ResourceOptionsT = t.TypeVar("ResourceOptionsT", bound="ResourceOptions")
 T = t.TypeVar("T")
 U = t.TypeVar("U")
 
-class GenAssetLoaderFunc(t.Protocol[ResourceOptionsT, T]):
-	def __call__(
-		self, path: str, options: t.Optional[ResourceOptionsT] = None, cache: bool = False
-	) -> T:
-		...
-
-class GenOptionlessAssetLoaderFunc(t.Protocol[T]):
-	def __call__(self, path: str, cache: bool = False) -> T:
-		...
-
 PostLoadProcessor = t.Callable[[T], T]
 
 # typing stuff end
