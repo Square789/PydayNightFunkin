@@ -1,6 +1,6 @@
 
-import typing as t
 from enum import IntEnum
+import typing as t
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
@@ -90,10 +90,19 @@ class Note:
 	def on_hit(self, current_time: float, safe_zone: float) -> None:
 		"""
 		Should be called when the note was hit. Will set its playability
-		to `False` and its rating depending on the hit timing (# TODO)
+		to `False` and its rating depending on the hit timing.
 		"""
 		self.playable = False
-		self.rating = RATING.SICK
+
+		discrepancy = abs(self.time - current_time)
+		if discrepancy > safe_zone * 0.9:
+			self.rating = RATING.SHIT
+		elif discrepancy > safe_zone * 0.75:
+			self.rating = RATING.BAD
+		elif discrepancy > safe_zone * 0.2:
+			self.rating = RATING.GOOD
+		else:
+			self.rating = RATING.SICK
 
 	def is_playable(self, current_time: float, safe_zone: float) -> bool:
 		"""
