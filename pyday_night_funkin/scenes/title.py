@@ -27,7 +27,7 @@ class TitleScene(scenes.MusicBeatScene):
 
 		self.logo = self.create_object("main", x=-150, y=-100)
 		self.logo.frames = load_frames("preload/images/logoBumpin.xml")
-		self.logo.animation.add_by_prefix("bump", "logo bumpin", 24)
+		self.logo.animation.add_by_prefix("bump", "logo bumpin", 24, False)
 		self.logo.animation.play("bump")
 		self.logo.visible = False
 

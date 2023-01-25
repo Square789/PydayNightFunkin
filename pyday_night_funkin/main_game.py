@@ -11,6 +11,10 @@ logger.remove(0)
 # You really want to leave this set to `True` unless you haven't
 # touched the rendering backend AND not seen an OpenGL error for at
 # least 20 hours on at least three different systems.
+# This bool enables/disables pyglet's GL error checking, causing PNF
+# to silently drown in errors should something go wrong if this is
+# `False`. As it does run some python code each GL call (of which there's
+# dozens per frame), it should give some speedup when disabled however.
 pyglet.options["debug_gl"] = True
 
 from pyday_night_funkin.core import ogg_decoder
@@ -21,15 +25,17 @@ from pyday_night_funkin.core.pnf_window import PNFWindow
 from pyday_night_funkin.core.scene import BaseScene
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
+from pyday_night_funkin.registry import Registry
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 
 if t.TYPE_CHECKING:
 	from loguru import Record
+	from pyday_night_funkin.character import Character
 	from pyday_night_funkin.core.types import Numeric
 
 
-__version__ = "0.0.37"
+__version__ = "0.0.38"
 
 
 class _FPSData:
@@ -92,7 +98,7 @@ class _FPSData:
 class Game:
 	def __init__(self) -> None:
 		self.debug = True
-		self.use_debug_pane = self.debug and False
+		self.use_debug_pane = self.debug and True
 		# These have to be setup later, see `run`
 		self.debug_pane: t.Optional[DebugPane] = None
 		self._last_update_time = 0
@@ -122,12 +128,6 @@ class Game:
 		if ogg_decoder not in pyglet.media.codecs.get_decoders():
 			pyglet.media.codecs.add_decoders(ogg_decoder)
 
-		from pyday_night_funkin import base_game_pack
-		base_game_pack.load()
-		# Load VCR OSD Mono here, before any labels are drawn and stuff.
-		# Don't do it in the base game, cause it feels more important than that.
-		load_font("fonts/vcr.ttf")
-
 		self.raw_key_handler = RawKeyHandler()
 		self.key_handler = KeyHandler(self.save_data.config.key_bindings)
 
@@ -143,6 +143,14 @@ class Game:
 		self._scenes_to_update: t.List[BaseScene] = []
 		self._pending_scene_stack_removals = set()
 		self._pending_scene_stack_additions = []
+
+		self.character_registry: Registry[t.Type["Character"]] = Registry()
+
+		from pyday_night_funkin import base_game_pack
+		base_game_pack.load(self)
+		# Load VCR OSD Mono here, before any labels are drawn and stuff.
+		# Don't do it in the base game, cause it feels more important than that.
+		load_font("fonts/vcr.ttf")
 
 		# Push initial scene
 		self.push_scene(TitleScene)

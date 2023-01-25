@@ -25,11 +25,12 @@ from pyday_night_funkin.character import Character, FlipIdleCharacter
 from pyday_night_funkin.enums import ANIMATION_TAG, DIFFICULTY
 
 if t.TYPE_CHECKING:
-	from xml.etree.ElementTree import ElementTree
 	from pyglet.image import Texture
 	from pyglet.media import Source
+	from pyday_night_funkin.character import CharacterData
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 	from pyday_night_funkin.core.types import Numeric
+	from pyday_night_funkin.main_game import Game
 
 
 class SeqValidator:
@@ -230,53 +231,6 @@ def _load_frames_plain(path: str) -> FrameCollection:
 
 load_frames = register_optionless_asset_type("frames", _load_frames_plain)
 
-def load() -> None:
-	"""
-	Registers and loads everything required to run the
-	base game into the asset system.
-	"""
-
-	def arrow_post_load_hacker(fcol: FrameCollection) -> FrameCollection:
-		# HACK: This manipulates the cached note asset frame collection, since notes have
-		# botched offsets that are fixed with a hardcoded center->subtract in the main loop.
-		# Nobody wants that, so we hack in some offsets right here.
-		# Both were probably found by trial-and-error, so good enough (TM)
-		for frame in fcol.frames:
-			if re.search(r"confirm\d+$", frame.name) is not None:
-				frame.offset -= Vec2(39, 39)
-		return fcol
-
-	# Throw all of these into the same atlas, should improve combo sprite
-	# rendering somewhat
-	_iro = AssetSystemEntry(ImageResourceOptions(0), None)
-	asset_system_map = {
-		"shared/images/sick.png":  _iro,
-		"shared/images/good.png":  _iro,
-		"shared/images/bad.png":   _iro,
-		"shared/images/shit.png":  _iro,
-		"preload/images/num0.png": _iro,
-		"preload/images/num1.png": _iro,
-		"preload/images/num2.png": _iro,
-		"preload/images/num3.png": _iro,
-		"preload/images/num4.png": _iro,
-		"preload/images/num5.png": _iro,
-		"preload/images/num6.png": _iro,
-		"preload/images/num7.png": _iro,
-		"preload/images/num8.png": _iro,
-		"preload/images/num9.png": _iro,
-		"shared/images/NOTE_assets.xml": AssetSystemEntry(None, arrow_post_load_hacker),
-	}
-
-	add_asset_system(AssetSystem(
-		asset_system_map,
-		{
-			"PATH_WEEK_HEADERS": "preload/images/storymenu/",
-			"PATH_DATA": "preload/data/",
-			"PATH_SONGS": "songs/",
-		},
-	))
-
-
 class Boyfriend(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
@@ -371,7 +325,6 @@ class Boyfriend(Character):
 
 
 class DaddyDearest(Character):
-
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
@@ -393,10 +346,12 @@ class DaddyDearest(Character):
 			"sing_note_right", "Dad Sing Note RIGHT", 24, False, (0, 27), (ANIMATION_TAG.SING,)
 		)
 
-	# Idk why but if the original game says so
-	@staticmethod
-	def get_hold_timeout() -> "Numeric":
-		return 6.1
+	@classmethod
+	def get_character_data(cls) -> "CharacterData":
+		x = super().get_character_data()
+		x.hold_timeout = 6.1
+		x.story_menu_offset = (120.0, 200.0)
+		return x
 
 	@staticmethod
 	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
@@ -407,11 +362,6 @@ class DaddyDearest(Character):
 			loop = True,
 			tags = (ANIMATION_TAG.STORY_MENU,),
 		)
-
-	@staticmethod
-	def transform_story_menu_sprite(spr: "PNFSprite") -> None:
-		spr.offset = (120, 200)
-		spr.scale = 214.5 / spr.get_current_frame_dimensions()[0]
 
 
 class Girlfriend(FlipIdleCharacter):
@@ -574,3 +524,57 @@ class Pico(Character):
 			"story_menu", "Pico Idle Dance", 24, True,
 			tags = (ANIMATION_TAG.STORY_MENU,)
 		)
+
+
+def load(game: "Game") -> None:
+	"""
+	Registers and loads everything required to run the
+	base game into the asset system and game.
+	"""
+
+	def arrow_post_load_hacker(fcol: FrameCollection) -> FrameCollection:
+		# HACK: This manipulates the cached note asset frame collection, since notes have
+		# botched offsets that are fixed with a hardcoded center->subtract in the main loop.
+		# Nobody wants that, so we hack in some offsets right here.
+		# Both were probably found by trial-and-error, so good enough (TM)
+		for frame in fcol.frames:
+			if re.search(r"confirm\d+$", frame.name) is not None:
+				frame.offset -= Vec2(39, 39)
+		return fcol
+
+	# Throw all of these into the same atlas, should improve combo sprite
+	# rendering somewhat
+	_iro = AssetSystemEntry(ImageResourceOptions(0), None)
+	asset_system_map = {
+		"shared/images/sick.png":  _iro,
+		"shared/images/good.png":  _iro,
+		"shared/images/bad.png":   _iro,
+		"shared/images/shit.png":  _iro,
+		"preload/images/num0.png": _iro,
+		"preload/images/num1.png": _iro,
+		"preload/images/num2.png": _iro,
+		"preload/images/num3.png": _iro,
+		"preload/images/num4.png": _iro,
+		"preload/images/num5.png": _iro,
+		"preload/images/num6.png": _iro,
+		"preload/images/num7.png": _iro,
+		"preload/images/num8.png": _iro,
+		"preload/images/num9.png": _iro,
+		"shared/images/NOTE_assets.xml": AssetSystemEntry(None, arrow_post_load_hacker),
+	}
+
+	add_asset_system(AssetSystem(
+		asset_system_map,
+		{
+			"PATH_WEEK_HEADERS": "preload/images/storymenu/",
+			"PATH_DATA": "preload/data/",
+			"PATH_SONGS": "songs/",
+		},
+	))
+
+	game.character_registry.add("_pnf_base", "boyfriend", Boyfriend)
+	game.character_registry.add("_pnf_base", "girlfriend", Girlfriend)
+	game.character_registry.add("_pnf_base", "daddy_dearest", DaddyDearest)
+	game.character_registry.add("_pnf_base", "skid_n_pump", SkidNPump)
+	game.character_registry.add("_pnf_base", "monster", Monster)
+	game.character_registry.add("_pnf_base", "pico", Pico)

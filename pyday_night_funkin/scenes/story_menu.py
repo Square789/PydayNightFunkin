@@ -178,9 +178,17 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			week_char_display_sprite.animation.remove("story_menu")
 			if week_char_display_sprite.animation.exists("story_menu_confirm"):
 				week_char_display_sprite.animation.remove("story_menu_confirm")
+
 			target_char_type.initialize_story_menu_sprite(week_char_display_sprite)
 			week_char_display_sprite.animation.play("story_menu")
-			target_char_type.transform_story_menu_sprite(week_char_display_sprite)
+			# 214.5 is extracted as the default `width` of sprite 0, which is truth is kind of
+			# a constant as Daddy Dearest will always be the character the story menu is created with.
+			week_char_display_sprite.scale = (
+				214.5 / week_char_display_sprite.get_current_frame_dimensions()[0]
+			)
+			week_char_display_sprite.offset = (
+				target_char_type.get_character_data().story_menu_offset
+			)
 			week_char_display_sprite.displayed_char_type = target_char_type
 
 	def _on_diff_select(self, index: int, state: bool) -> None:

@@ -1,28 +1,46 @@
 
+from dataclasses import dataclass
 import typing as t
 
 from pyday_night_funkin.enums import ANIMATION_TAG
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.types import Numeric
 	from pyday_night_funkin.scenes import MusicBeatScene
+
+
+@dataclass
+class CharacterData:
+	hold_timeout: str
+	"""
+	Hold timeout. Default is `4.0`.
+	"""
+
+	story_menu_offset: t.Tuple[float, float]
+	"""
+	Offset of the sprite in the story menu.
+	Default is `(100.0, 100.0)`.
+	"""
 
 
 class Character(PNFSprite):
 	"""
 	A beloved character that moves, sings and... well I guess that's
 	about it. Holds some more information than a generic sprite which
-	is related to the character via static `get_` methods.
+	is related to the character via `get_character_data`.
 	"""
 
 	def __init__(self, scene: "MusicBeatScene", *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
 		self.scene = scene
-		self._hold_timeout = self.get_hold_timeout()
 		self.hold_timer = 0.0
-		self.dont_idle = False
+		self._hold_timeout = self.get_character_data().hold_timeout
+		self.dont_idle: bool = False
+		"""
+		If set to `True`, the character won't idle/dance after their
+		sing or miss animation is complete.
+		"""
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
@@ -47,13 +65,12 @@ class Character(PNFSprite):
 		"""
 		self.animation.play("idle")
 
-	@staticmethod
-	def get_hold_timeout() -> "Numeric":
-		"""
-		Returns how many steps the character should remain in their
-		sing animation for after singing a note. Default is 4.
-		"""
-		return 4
+	@classmethod
+	def get_character_data(cls) -> CharacterData:
+		return CharacterData(
+			hold_timeout = 4.0,
+			story_menu_offset = (100.0, 100.0),
+		)
 
 	@staticmethod
 	def initialize_story_menu_sprite(spr: PNFSprite) -> None:
@@ -64,21 +81,6 @@ class Character(PNFSprite):
 		character appearing in the center (usually just bf.)
 		"""
 		raise NotImplementedError("Subclass this.")
-
-	@staticmethod
-	def transform_story_menu_sprite(spr: PNFSprite) -> None:
-		"""
-		Applies a transformation to the story menu sprite that makes it
-		look acceptable enough.
-		By default, sets the sprite offset to (100, 100), the scale
-		to 214.5 / current frame width. [Parameters like that are
-		probably an indicator i should loosen up how closely I want to
-		be following the OG game's spaghetti.]
-		"""
-		spr.offset = (100, 100)
-		# 214.5 is extracted as the default `width` of sprite 0, which is truth is kind of
-		# a constant as Daddy Dearest will always be the character the story menu is created with.
-		spr.scale = 214.5 / spr.get_current_frame_dimensions()[0]
 
 
 class FlipIdleCharacter(Character):
@@ -93,4 +95,3 @@ class FlipIdleCharacter(Character):
 	def dance(self) -> None:
 		self._dance_right = not self._dance_right
 		self.animation.play("idle_right" if self._dance_right else "idle_left")
-
