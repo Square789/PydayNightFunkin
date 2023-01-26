@@ -1,6 +1,6 @@
 # PydayNightFunkin
  This is a rewrite of (accidentally half of HaxeFlixel and) Friday Night Funkin' in python and some Cython. Why? "Beep boop funny", camelCase looks ugly and as a proof to no-one that the `PlayState.hx` monolith is the worst, that would be why.  
- Not a lot is done, but you can at least click through some menus and partake in a few non-recorded, non-penalized vowel-screaming contests.
+ Not a lot is done, but you can at least click through some menus and partake in a few non-recorded vowel-screaming contests.
 
 ## Used libraries:  
   - pyglet ([Github](https://www.github.com/pyglet/pyglet))
@@ -13,9 +13,10 @@
 ## How to run?
  I'm honored you want to try this out, because there's really nothing revolutionary in here. Anyways:
 
- **\*** You will need OpenGL 4.5 support, cause DSA was just too sweet to not use.  
- **\*** Ensure that python can build C extensions/you have a C compiler set up.  
- **\*** Then, run these commands (which I didn't test and which may look different; e.g. `python3` or `py` instead of `python`):
+ - You will need OpenGL 4.5 support on your system, cause DSA was just too sweet to not use.
+ - You will need python (3.11 is recommended due to its speed advantages, but anything starting from 3.8 should work).
+ - Ensure that python can build C extensions/you have a C compiler set up.
+ - Then, run these commands (which I didn't test and which may look different; e.g. `python3` or `py` instead of `python`):
 ```bash
 # Clone the repo somewhere (could also be done by downloading the repo as #
 #    .zip via the Code > Download ZIP button and then extracting that.)   #
