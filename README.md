@@ -31,7 +31,7 @@ pnfvenv/Scripts/activate
 
 # Get the build dependencies and build the needed extensions #
 python3 -m pip install -r requirements_build.txt
-python setup.py build_ext -i
+python3 setup.py build_ext -i
 
 # Get the other dependencies #
 python3 -m pip install -r requirements.txt
