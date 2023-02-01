@@ -26,16 +26,16 @@ cd PydayNightFunkin
 
 #     (Optional, but strongly recommended)     #
 # Set up a virtual environment and activate it #
-python -m venv pnfvenv
+python3 -m venv pnfvenv
 pnfvenv/Scripts/activate
 
 # Get the build dependencies and build the needed extensions #
-python -m pip install -r requirements_build.txt
+python3 -m pip install -r requirements_build.txt
 python setup.py build_ext -i
 
 # Get the other dependencies #
-python -m pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 
 # Run #
-python run.py
+python3 run.py
 ```
