@@ -16,7 +16,8 @@
  - You will need OpenGL 4.5 support on your system, cause DSA was just too sweet to not use.
  - You will need python (3.11 is recommended due to its speed advantages, but anything starting from 3.8 should work).
  - Ensure that python can build C extensions/you have a C compiler set up.
- - Then, run these commands (which I didn't test and which may look different; e.g. `python3` or `py` instead of `python`):
+ - Then, run the commands below.  
+   (**NOTE**: If `python3` fails, try `python` or `py` instead, the name may differ depending on your system and python variants.)
 ```bash
 # Clone the repo somewhere (could also be done by downloading the repo as #
 #    .zip via the Code > Download ZIP button and then extracting that.)   #
@@ -26,16 +27,16 @@ cd PydayNightFunkin
 
 #     (Optional, but strongly recommended)     #
 # Set up a virtual environment and activate it #
-python -m venv pnfvenv
+python3 -m venv pnfvenv
 pnfvenv/Scripts/activate
 
 # Get the build dependencies and build the needed extensions #
-python -m pip install -r requirements_build.txt
-python setup.py build_ext -i
+python3 -m pip install -r requirements_build.txt
+python3 setup.py build_ext -i
 
 # Get the other dependencies #
-python -m pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 
 # Run #
-python run.py
+python3 run.py
 ```
