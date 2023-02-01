@@ -16,7 +16,8 @@
  - You will need OpenGL 4.5 support on your system, cause DSA was just too sweet to not use.
  - You will need python (3.11 is recommended due to its speed advantages, but anything starting from 3.8 should work).
  - Ensure that python can build C extensions/you have a C compiler set up.
- - Then, run these commands (which I didn't test and which may look different; e.g. `python3` or `py` instead of `python`):
+ - Then, run the commands below.  
+   (**NOTE**: If `python3` fails, try `python` or `py` instead, the name may differ depending on your system and python variants.)
 ```bash
 # Clone the repo somewhere (could also be done by downloading the repo as #
 #    .zip via the Code > Download ZIP button and then extracting that.)   #
