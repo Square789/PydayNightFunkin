@@ -43,3 +43,11 @@ class Registry(t.Generic[T]):
 
 		for name in self._sources.pop(source_name):
 			self.remove(name)
+
+	def get(self, name: t.Hashable) -> T:
+		"""
+		Retrieves an entry from the registry.
+		"""
+		return self._dict[name]
+
+	__getitem__ = get

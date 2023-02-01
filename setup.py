@@ -9,21 +9,21 @@ import typing as t
 
 from Cython.Build import cythonize
 from Cython.Compiler import Options
-try:
-	from dotenv import load_dotenv
-except ImportError:
-	load_dotenv = None
-
 Options.fast_fail = True
 
+load_dotenv: t.Optional[t.Callable] = None
+try:
+	from dotenv import load_dotenv # type: ignore
+except ImportError:
+	pass
+
+if load_dotenv is not None:
+	load_dotenv()
 
 def _convert_bool_env_var(v: t.Optional[str]) -> bool:
 	if v == "0":
 		return False
 	return bool(v)
-
-if load_dotenv is not None:
-	load_dotenv()
 
 CYGL_USE = _convert_bool_env_var(os.getenv("PNF_CYGL_USE", "1"))
 CYGL_HYPER_UNSAFE = _convert_bool_env_var(os.getenv("PNF_CYGL_HYPER_UNSAFE", "0"))

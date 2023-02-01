@@ -1,24 +1,46 @@
 
+from enum import IntEnum
 from math import floor
 import random
 import typing as t
 
 from loguru import logger
 from pyglet.math import Vec2
-from pyday_night_funkin.base_game_pack import SongResourceOptions, load_song
 
-from pyday_night_funkin.enums import ANIMATION_TAG, CONTROL, DIFFICULTY, GAME_STATE
-from pyday_night_funkin.hud import HUD
-from pyday_night_funkin.note import NOTE_TYPE, SUSTAIN_STAGE, Note
+from pyday_night_funkin.base_game_pack import SongResourceOptions, load_song
+from pyday_night_funkin.character import Character
 from pyday_night_funkin.core.pnf_player import PNFPlayer
 from pyday_night_funkin.core.utils import lerp
+from pyday_night_funkin.enums import ANIMATION_TAG, CONTROL, DIFFICULTY
+from pyday_night_funkin.hud import HUD
+from pyday_night_funkin.note import NOTE_TYPE, SUSTAIN_STAGE, Note
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.base_game_pack import Character, Boyfriend, Girlfriend
+	from pyday_night_funkin.content_pack import LevelData
 	from pyday_night_funkin.core.scene import BaseScene
 	from pyday_night_funkin.main_game import Game
 	from pyday_night_funkin.note_handler import AbstractNoteHandler
+
+
+class _ThrowawayGf(Character):
+	"""
+	A hidden character with no sprite that does nothing when `dance`
+	is called. Used to hide girlfriend in levels where there is none.
+	"""
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+		self.visible = False
+
+	def dance(self) -> None:
+		pass
+
+
+class GAME_STATE(IntEnum):
+	LOADING = 0
+	COUNTDOWN = 1
+	PLAYING = 2
+	ENDED = 3
 
 
 class InGameScene(scenes.MusicBeatScene):
@@ -30,14 +52,33 @@ class InGameScene(scenes.MusicBeatScene):
 	functionality, for it to be playable it needs to be expanded
 	by subclassing it (see existing weeks for examples).
 	"""
+
 	def __init__(
 		self,
 		game: "Game",
+		level_data: "LevelData",
 		difficulty: DIFFICULTY,
 		follow_scene: t.Type["BaseScene"],
-		remaining_week: t.Optional[t.Sequence[t.Type["InGameScene"]]] = (),
+		remaining_week: t.Sequence["LevelData"] = (),
 	) -> None:
+		"""
+		Initializes the InGame scene.
+
+		:param game: The game the scene runs under.
+		:param level_data: The level to be loaded. Heavily influences
+		how the scene will play out.
+		:param difficulty: Difficulty the scene plays in.
+		:param follow_scene: Which scene type to push once the scene
+		is over and `remaining_week` is exhausted or when the game is
+		stopped otherwise by the user.
+		:param remaining_week: A sequence of more `LevelData` to be
+		turned into scenes that follow if the user wins this level.
+		This runs the story mode.
+		"""
+
 		super().__init__(game)
+
+		self.level_data = level_data
 
 		if self.game.player.playing:
 			self.game.player.pause()
@@ -81,17 +122,6 @@ class InGameScene(scenes.MusicBeatScene):
 		self.ready()
 
 	@staticmethod
-	def get_song() -> str:
-		"""
-		Returns this scene's song's identifying string.
-		A call to `load_song(x, ...)` will be made where `x` is the
-		value returned from this method.
-		The song will be cached and options are derived from the
-		current difficulty.
-		"""
-		raise NotImplementedError("Subclass this!")
-
-	@staticmethod
 	def get_default_cam_zoom() -> float:
 		"""
 		Returns the default camera zoom.
@@ -103,55 +133,40 @@ class InGameScene(scenes.MusicBeatScene):
 	def get_default_cameras() -> t.Sequence[t.Union[str, t.Tuple[str, int, int]]]:
 		return ("main", "hud")
 
-	@staticmethod
-	def get_player_icon() -> str:
-		"""
-		Returns the player's health bar icon.
-		"""
-		return "bf"
-
-	@staticmethod
-	def get_opponent_icon() -> str:
-		"""
-		Returns the opponent's health bar icon string.
-		"""
-		raise NotImplementedError("Subclass this!")
-
-	@classmethod
-	def get_display_name(cls) -> str:
-		"""
-		Returns the display name for this level.
-		Should be free of any special characters that the default
-		alphabet can't handle. By default, returns the class's name.
-		"""
-		return cls.__name__
-
 	def create_note_handler(self) -> "AbstractNoteHandler":
 		raise NotImplementedError("Subclass this!")
 
 	def create_hud(self) -> "HUD":
 		raise NotImplementedError("Subclass this!")
 
-	def create_boyfriend(self) -> "Boyfriend":
+	def create_player(self, char_cls: t.Type["Character"]) -> "Character":
 		"""
-		Creates bf, or any sort of player sprite for that matter.
+		This function should create the player character on stage already
+		given the character type.
 		By default, the sprite is expected to have the following
 		animations:
 		`[x]_note_[y]` for x in (`sing`, `miss`)
-		and y in (`left`, `down`, `right`, `up`).
+		and y in (`left`, `down`, `right`, `up`), as well as
+		`game_over_[x]` for x in (`ini`, `loop`, `confirm`).
 		"""
 		raise NotImplementedError("Subclass this!")
 
-	def create_girlfriend(self) -> "Girlfriend":
+	def create_girlfriend(self, char_cls: t.Type["Character"]) -> "Character":
 		"""
-		Creates gf.
+		This function should create gf, or some kind of replacement
+		background decoration bopper already given the character
+		type.
+		This function is not always called, as level data is allowed
+		to set this entry to `None`.
 		"""
 		raise NotImplementedError("Subclass this!")
 
-	def create_opponent(self) -> "Character":
+	def create_opponent(self, char_cls: t.Type["Character"]) -> "Character":
 		"""
-		Creates the opponent sprite.
-		It's expected to have the following animations:
+		This function should create the level's opponent, already given
+		the character type.
+		The opponent sprite is expected to have the following
+		animations:
 		`sing_note_[x]` for x in (`left`, `down`, `right`, `up`).
 		"""
 		raise NotImplementedError("Subclass this!")
@@ -166,9 +181,19 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		self.note_handler = self.create_note_handler()
 
-		self.boyfriend = self.create_boyfriend()
-		self.girlfriend = self.create_girlfriend()
-		self.opponent = self.create_opponent()
+		char_reg = self.game.character_registry
+		level_data = self.level_data
+
+		self.boyfriend = self.create_player(char_reg[level_data.player_character])
+
+		if level_data.girlfriend_character is None:
+			self.girlfriend = self.create_object(
+				"girlfriend", "main", object_class=_ThrowawayGf, scene=self, x=-100, y=-100
+			)
+		else:
+			self.girlfriend = self.create_girlfriend(char_reg[level_data.girlfriend_character])
+
+		self.opponent = self.create_opponent(char_reg[level_data.opponent_character])
 
 		self.main_cam = self.cameras["main"]
 		self.hud_cam = self.cameras["hud"]
@@ -191,7 +216,9 @@ class InGameScene(scenes.MusicBeatScene):
 		# TODO doc
 		"""
 		inst, voices, song_data = load_song(
-			self.get_song(), SongResourceOptions(self.difficulty), cache=True
+			self.level_data.song_name,
+			SongResourceOptions(self.difficulty),
+			cache = True,
 		)
 
 		self.pause_players()
@@ -371,6 +398,8 @@ class InGameScene(scenes.MusicBeatScene):
 	def on_note_hit(self, note: Note) -> None:
 		"""
 		Called whenever a note is hit.
+		By default, causes BF to play an appropiate animation, causes
+		combo popups and adjusts health.
 		"""
 		self.boyfriend.hold_timer = 0.0
 		self.boyfriend.animation.play(f"sing_note_{note.type.name.lower()}", True)
@@ -386,6 +415,7 @@ class InGameScene(scenes.MusicBeatScene):
 	def on_note_miss(self, note: Note) -> None:
 		"""
 		Called whenever a note is missed by it going offscreen.
+		By default, reduces health.
 		"""
 		self.set_health(self.health - 0.0475)
 
@@ -393,6 +423,8 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		Called whenever an arrow is pressed and no note for it was
 		playable.
+		By default, plays a miss animation on bf, breaks the combo and
+		reduces health.
 		"""
 		self.boyfriend.animation.play(f"miss_note_{type_.name.lower()}", True)
 		self.combo = 0
@@ -443,23 +475,28 @@ class InGameScene(scenes.MusicBeatScene):
 		self.pause_players()
 		self.state = GAME_STATE.ENDED
 		if self.remaining_week:
-			next_scene, *rest = self.remaining_week
-			self.game.set_scene(next_scene, self.difficulty, self.follow_scene, rest)
+			next_level, *week_rest = self.remaining_week
+			self.game.set_scene(
+				next_level.stage_class,
+				next_level,
+				self.difficulty,
+				self.follow_scene,
+				week_rest,
+			)
 		else:
 			self.game.set_scene(self.follow_scene)
 
 	def on_game_over(self) -> None:
 		"""
-		Called when the player failed and causes the game to end,
+		Called when the player failed and caused the game to end,
 		probably by running out of health.
 		Sets the game state to `ENDED` and pushes a `GameOverScene`.
 		"""
 		self.pause_players()
 		self.state = GAME_STATE.ENDED
-		game_over_bf = self.create_boyfriend()
+		game_over_bf = self.create_player(type(self.boyfriend))
 		scx, scy = self.boyfriend.get_screen_position(self.main_cam)
-		game_over_bf.x = scx
-		game_over_bf.y = scy
+		game_over_bf.position = (scx, scy)
 		# In case bf is created with `create_object`, which will add him to 2
 		# scenes at the same time, which you definitely do not want
 		self.remove(game_over_bf, keep=True)
@@ -489,7 +526,11 @@ class InGameScene(scenes.MusicBeatScene):
 					self.resync()
 			else:
 				self.game.set_scene(
-					type(self), self.difficulty, self.follow_scene, self.remaining_week
+					self.level_data.stage_class,
+					self.level_data,
+					self.difficulty,
+					self.follow_scene,
+					self.remaining_week,
 				)
 
 	def destroy(self) -> None:

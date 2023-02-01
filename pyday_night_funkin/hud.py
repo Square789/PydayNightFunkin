@@ -82,11 +82,12 @@ class HUD:
 			arrow_sprite.animation.play("static")
 			self.static_arrows[i][note_type] = arrow_sprite
 
+		char_reg = self._scene.game.character_registry
 		self.health_bar = HealthBar(
 			scene,
 			self.camera,
-			self._scene.get_opponent_icon(),
-			self._scene.get_player_icon(),
+			char_reg[self._scene.level_data.opponent_character].get_character_data().icon_name,
+			char_reg[self._scene.level_data.player_character].get_character_data().icon_name,
 			self.health_bar_layers,
 		)
 

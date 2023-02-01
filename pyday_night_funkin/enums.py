@@ -41,13 +41,6 @@ class CONTROL(IntEnum):
 	DEBUG_LOSE = 102
 
 
-class GAME_STATE(IntEnum):
-	LOADING = 0
-	COUNTDOWN = 1
-	PLAYING = 2
-	ENDED = 3
-
-
 class ANIMATION_TAG(IntEnum):
 	IDLE = 0
 	SING = 1

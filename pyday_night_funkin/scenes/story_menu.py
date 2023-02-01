@@ -9,13 +9,12 @@ from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
 from pyday_night_funkin.core.utils import lerp, to_rgb_tuple, to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
-from pyday_night_funkin.levels import WEEKS
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.character import Character
-	from pyday_night_funkin.levels import Week
+	from pyday_night_funkin.content_pack import WeekData
 
 
 class _WeekHeader(PNFSprite):
@@ -25,14 +24,34 @@ class _WeekHeader(PNFSprite):
 
 
 class _WeekChar(PNFSprite):
-	def __init__(self, initializing_char_type: t.Type["Character"], *args, **kwargs) -> None:
+	def __init__(self, displayed_char: t.Hashable, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
-		self.displayed_char_type = initializing_char_type
+		self.displayed_char = displayed_char
+
+	def display_new_char(self, char_id: t.Hashable, char_cls: t.Type["Character"]) -> None:
+		if self.displayed_char == char_id:
+			return
+
+		self.animation.remove("story_menu")
+		if self.animation.exists("story_menu_confirm"):
+			self.animation.remove("story_menu_confirm")
+
+		char_cls.initialize_story_menu_sprite(self)
+		self.animation.play("story_menu")
+		# 214.5 is extracted as the default `width` of sprite 0, which is truth is kind of
+		# a constant as Daddy Dearest will always be the character the story menu is created with.
+		self.scale = 214.5 / self.get_current_frame_dimensions()[0]
+		self.offset = char_cls.get_character_data().story_menu_offset
+		self.displayed_char = char_id
 
 
 class StoryMenuScene(scenes.MusicBeatScene):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
+
+		self._weeks = self.game.weeks # same list, who cares, we're only reading it.
+		if not self._weeks:
+			raise RuntimeError("No weeks available!")
 
 		self.conductor.bpm = 102
 		if not self.game.player.playing:
@@ -46,16 +65,17 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		# Week character setup (these get modified later)
 		self.week_chars: t.List[_WeekChar] = []
 		for i in range(3):
-			ty = WEEKS[0].story_menu_chars[i]
+			char_id = self._weeks[0].story_menu_chars[i]
+			char_type = self.game.character_registry[char_id]
 			spr = self.create_object(
 				"fg",
 				object_class = _WeekChar,
-				initializing_char_type = None if ty is WEEKS[0].story_menu_chars[0] else ty,
+				displayed_char = None if char_id == self._weeks[0].story_menu_chars[0] else char_id,
 				x = (CNST.GAME_WIDTH * 0.25 * (i + 1)) - 150 - (80 * (i == 1)),
 				y = 70,
 			)
 			spr.frames = _story_menu_char_anims
-			ty.initialize_story_menu_sprite(spr)
+			char_type.initialize_story_menu_sprite(spr)
 			spr.animation.play("story_menu")
 			spr.scale = 0.9 if i == 1 else 0.5
 			spr.recalculate_positioning()
@@ -65,7 +85,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 		# Week headers
 		self.week_headers: t.List[_WeekHeader] = []
-		for i, week in enumerate(WEEKS):
+		for i, week in enumerate(self._weeks):
 			header = self.create_object(
 				"bg",
 				object_class = _WeekHeader,
@@ -138,7 +158,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 		# Menus
 		self.week_menu = Menu(
-			self.game.key_handler, len(WEEKS), self._on_week_select, self._on_confirm
+			self.game.key_handler, len(self._weeks), self._on_week_select, self._on_confirm
 		)
 		self.diff_menu = Menu(
 			self.game.key_handler,
@@ -163,33 +183,17 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		for i, header in enumerate(self.week_headers):
 			header.target_y = i - index
 
-		self.week_title_txt.text = WEEKS[index].display_name
+		self.week_title_txt.text = self._weeks[index].display_name
 		self.week_title_txt.x = CNST.GAME_WIDTH - (self.week_title_txt.content_width + 10)
 
 		self.tracklist_txt.text = "TRACKS\n\n" + "\n".join(
-			scene.get_display_name().upper() for scene in WEEKS[index].levels
+			level.display_name.upper() for level in self._weeks[index].levels
 		)
 
 		for i, week_char_display_sprite in enumerate(self.week_chars):
-			target_char_type = WEEKS[index].story_menu_chars[i]
-			if week_char_display_sprite.displayed_char_type is target_char_type:
-				continue
-
-			week_char_display_sprite.animation.remove("story_menu")
-			if week_char_display_sprite.animation.exists("story_menu_confirm"):
-				week_char_display_sprite.animation.remove("story_menu_confirm")
-
-			target_char_type.initialize_story_menu_sprite(week_char_display_sprite)
-			week_char_display_sprite.animation.play("story_menu")
-			# 214.5 is extracted as the default `width` of sprite 0, which is truth is kind of
-			# a constant as Daddy Dearest will always be the character the story menu is created with.
-			week_char_display_sprite.scale = (
-				214.5 / week_char_display_sprite.get_current_frame_dimensions()[0]
-			)
-			week_char_display_sprite.offset = (
-				target_char_type.get_character_data().story_menu_offset
-			)
-			week_char_display_sprite.displayed_char_type = target_char_type
+			new_char_id = self._weeks[index].story_menu_chars[i]
+			new_char_type = self.game.character_registry[new_char_id]
+			week_char_display_sprite.display_new_char(new_char_id, new_char_type)
 
 	def _on_diff_select(self, index: int, state: bool) -> None:
 		if not state:
@@ -214,12 +218,14 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			0.1,
 			on_toggle_on =  lambda s: setattr(s, "color", to_rgb_tuple(0x33FFFFFF)),
 			on_toggle_off = lambda s: setattr(s, "color", to_rgb_tuple(CNST.WHITE)),
-			on_complete =   lambda w=WEEKS[index]: self._set_ingame_scene(w),
+			on_complete =   lambda w=self._weeks[index]: self._set_ingame_scene(w),
 		)
 
-	def _set_ingame_scene(self, week: "Week") -> None:
+	def _set_ingame_scene(self, week: "WeekData") -> None:
+		level = week.levels[0]
 		self.game.set_scene(
-			week.levels[0],
+			level.stage_class,
+			level_data = level,
 			difficulty = DIFFICULTY(self.diff_menu.selection_index),
 			follow_scene = StoryMenuScene,
 			remaining_week = week.levels[1:],

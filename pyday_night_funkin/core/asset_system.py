@@ -117,11 +117,11 @@ class AssetSystem:
 
 	def __init__(
 		self,
-		asset_map: t.Dict[str, AssetSystemEntry],
+		asset_map: t.Optional[t.Dict[str, AssetSystemEntry]] = None,
 		pyobj_map: t.Optional[t.Dict[t.Hashable, t.Any]] = None,
 		allow_unknown: bool = True,
 	) -> None:
-		self._asset_map = asset_map
+		self._asset_map = {} if asset_map is None else asset_map
 		self._pyobj_map = {} if pyobj_map is None else pyobj_map
 		self._allow_unknown = allow_unknown
 
@@ -162,23 +162,6 @@ class AssetSystem:
 		else:
 			return (False, None)
 
-# YAGNI
-# class AssetTypeRegistryEntry:
-# 	def __init__(
-# 		self,
-# 		name: str,
-# 		cache_key_maker,
-# 		options_factory,
-# 		options_validator,
-# 		generated_loader,
-# 	) -> None:
-# 		self.name = name
-# 		self.cache_key_maker = cache_key_maker
-# 		self.options_factory = options_factory
-# 		self.options_validator = options_validator
-# 		self.generated_loader = generated_loader
-# 		self.is_complex = cache_key_maker is not None
-
 
 class _AssetSystemManager:
 	"""
@@ -188,7 +171,6 @@ class _AssetSystemManager:
 	def __init__(self) -> None:
 		self.asset_system_stack: t.List[AssetSystem] = []
 
-		# self.asset_type_registry: t.Dict[str, AssetTypeRegistryEntry] = {}
 		self.asset_type_registry: t.Set[str] = set()
 
 		self.asset_dir = Path.cwd() / "assets"
@@ -250,12 +232,18 @@ class _AssetSystemManager:
 	def _process_asset(
 		self, path: str, asset_type_name: str, options: t.Optional[ResourceOptions]
 	) -> t.Tuple[str, t.Optional[ResourceOptions], t.Optional[PostLoadProcessor]]:
+		"""
+		Possibly figures out a different path, different options or a
+		post-load processor for the given asset based on the asset
+		system stack. Will always fall back to returning the input
+		without a post-load processor if none applied.
+		"""
 		for as_ in reversed(self.asset_system_stack):
-			have, true_path, true_options, ppf = as_.has_asset(path, asset_type_name, options)
+			have, true_path, true_options, plpf = as_.has_asset(path, asset_type_name, options)
 			if have:
-				return true_path, (options if true_options is None else true_options), ppf
+				return true_path, (options if true_options is None else true_options), plpf
 
-		raise AssetNotFoundError(f"Could not determine an asset system for asset {path}")
+		return path, options, None
 
 	def load_pyobj(self, ident: t.Hashable) -> t.Any:
 		"""

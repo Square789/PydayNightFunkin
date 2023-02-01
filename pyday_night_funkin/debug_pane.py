@@ -16,6 +16,7 @@ class DebugPane:
 	"""
 	Shoddy class to manage text lines on a rectangle, used to display
 	debug messages and fps.
+	NOTE: The class
 	"""
 
 	FONT_SIZE = 8
@@ -23,14 +24,21 @@ class DebugPane:
 	LINE_DIST = 2
 	PADDING = 8
 
-	def __init__(self, line_amount: int) -> None:
-		# NOTE: This uses PNF graphics, but is not a scene,
-		# so update, tweens and all other good stuff won't work.
+	def __init__(self, line_amount: int, message_queue: queue.Queue = None) -> None:
 		self.insert_index = 0
+		self._line_amount = line_amount
+		self._queue = queue.Queue()
+
+	def init_graphical(self) -> None:
+		"""
+		Initializes graphical resources of the DebugPane.
+		Needs to be called before any calls to `update` and `draw`.
+		"""
+		line_amount = self._line_amount
+
 		self.background = PNFGroup(order=0)
 		self.foreground = PNFGroup(order=1)
 		self.batch = PNFBatch()
-		self._queue = queue.Queue()
 		self.labels = [
 			PNFText(
 				x = 10,
@@ -40,7 +48,7 @@ class DebugPane:
 				context = SceneContext(self.batch, self.foreground),
 			) for i in range(line_amount)
 		]
-		self.fps_label = PNFText(
+		self.timing_label = PNFText(
 			x = 10,
 			y = ((self.FONT_SIZE * (line_amount + 1)) + 4 + self.LINE_DIST * line_amount),
 			font_name = "Consolas",
@@ -61,7 +69,7 @@ class DebugPane:
 
 		self.fps_rect = PNFSprite(
 			x = self.PADDING,
-			y = self.fps_label.y - self.LINE_DIST,
+			y = self.timing_label.y - self.LINE_DIST,
 			context = SceneContext(self.batch, self.background),
 		)
 		# HACK getting the ascent like this
@@ -75,39 +83,22 @@ class DebugPane:
 	def add_message(self, log_message: str) -> None:
 		"""
 		Adds the given log message to the debug pane's queue.
-		This should be thread-safe, but the change will only appear
+		This should be thread-safe, the change will only appear
 		once `update` is called.
+		This method is safe to use before `init_graphical` is called.
 		"""
 		self._queue.put(log_message)
 
-	def update(
-		self,
-		fps: int,
-		frame_avg: float,
-		frame_max: float,
-		update_avg: float,
-		update_max: float,
-		draw_avg: float,
-		draw_max: float,
-		draw_time: float,
-		update_time: float,
-	) -> None:
+	def update(self, timing_label_string: str = "") -> None:
 		"""
 		Updates the debug pane and writes all queued messages to
 		the labels, causing a possibly overflowing label's text to be
 		deleted and bumping up all other labels.
-		Additionally, sets the fps label's text to a readable string
-		built from the supplied fps, draw time and update time.
 		Call this when GL allows it, there have been weird threading
 		errors in the past.
 		"""
-		self.fps_label.text = (
-			f"FPS:    {fps:>3}\n"
-			f"FRAME:  avg {frame_avg:>4.1f}, max {frame_max:>5.1f}, "
-			f"cur {draw_time + update_time:>5.1f}\n"
-			f"UPDATE: avg {update_avg:>4.1f}, max {update_max:>5.1f}, cur {update_time:>5.1f}\n"
-			f"DRAW:   avg {draw_avg:>4.1f}, max {draw_max:>5.1f}, cur {draw_time:>5.1f}"
-		)
+		if timing_label_string:
+			self.timing_label.text = timing_label_string
 
 		if self._queue.empty():
 			return

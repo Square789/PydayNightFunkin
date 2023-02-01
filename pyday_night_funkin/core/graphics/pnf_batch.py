@@ -382,7 +382,7 @@ class PNFBatch:
 
 	def _get_draw_list(self, name: t.Hashable) -> DrawList:
 		"""
-		Gets an existing or new draw list.
+		Gets a draw list, creating it if it did not exist.
 		"""
 		if name not in self._draw_lists:
 			self._draw_lists[name] = DrawList(name)

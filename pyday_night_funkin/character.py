@@ -9,9 +9,18 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import MusicBeatScene
 
 
+class CharacterDataDict(t.TypedDict, total=False):
+	hold_timeout: float
+	story_menu_offset: t.Tuple[float, float]
+	icon_name: t.Optional[str]
+
+
+# This could be replaced with `Self`, but that's a 3.11 thing
+CharacterDataT = t.TypeVar("CharacterDataT", bound="CharacterData")
+
 @dataclass
 class CharacterData:
-	hold_timeout: str
+	hold_timeout: float
 	"""
 	Hold timeout. Default is `4.0`.
 	"""
@@ -21,6 +30,21 @@ class CharacterData:
 	Offset of the sprite in the story menu.
 	Default is `(100.0, 100.0)`.
 	"""
+
+	icon_name: t.Optional[str]
+	"""
+	Name of this character's health icon.
+	"""
+
+	def update(self: CharacterDataT, updater: CharacterDataDict) -> CharacterDataT:
+		"""
+		Updates the CharacterData from the given dict and then
+		returns itself.
+		"""
+		self.hold_timeout = updater.get("hold_timeout", self.hold_timeout)
+		self.story_menu_offset = updater.get("story_menu_offset", self.story_menu_offset)
+		self.icon_name = updater.get("icon_name", self.icon_name)
+		return self
 
 
 class Character(PNFSprite):
@@ -70,6 +94,7 @@ class Character(PNFSprite):
 		return CharacterData(
 			hold_timeout = 4.0,
 			story_menu_offset = (100.0, 100.0),
+			icon_name = "face",
 		)
 
 	@staticmethod

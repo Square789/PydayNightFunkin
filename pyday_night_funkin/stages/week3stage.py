@@ -2,21 +2,17 @@
 from random import randint
 import typing as t
 
-from pyday_night_funkin.base_game_pack import Boyfriend, Girlfriend, Pico as PicoChar
 from pyday_night_funkin.constants import GAME_WIDTH
 from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.pnf_player import PNFPlayer
-from pyday_night_funkin.scenes import InGameScene
-from pyday_night_funkin.levels import common
+from pyday_night_funkin.stages.common import BaseGameBaseStage
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.character import Character
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
-	from pyday_night_funkin.hud import HUD
-	from pyday_night_funkin.note_handler import AbstractNoteHandler
 
 
-class Week3Level(InGameScene):
+class Week3Stage(BaseGameBaseStage):
 	def __init__(self, *args, **kwargs) -> None:
 		self.city_lights: t.List[PNFSprite] = []
 		self._active_city_light_idx: int = 0
@@ -39,18 +35,12 @@ class Week3Level(InGameScene):
 	def get_opponent_icon() -> str:
 		return "pico"
 
-	def create_note_handler(self) -> "AbstractNoteHandler":
-		return common.create_note_handler(self)
-
 	@staticmethod
 	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
 		return (
 			"sky", "city", "lights", ("train", True), "girlfriend", "stage",
 			("ui_combo", True), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
 		)
-
-	def create_hud(self) -> "HUD":
-		return common.create_hud(self)
 
 	def setup(self) -> None:
 		super().setup()
@@ -85,16 +75,8 @@ class Week3Level(InGameScene):
 			x=-40, y=sokagrafie.y, image=load_image("week3/images/philly/street.png")
 		)
 
-	def create_boyfriend(self) -> "Boyfriend":
-		return self.create_object("stage", "main", Boyfriend, scene=self, x=770, y=450)
-
-	def create_girlfriend(self) -> "Girlfriend":
-		gf = self.create_object("girlfriend", "main", Girlfriend, scene=self, x=400, y=130)
-		gf.scroll_factor = (.95, .95)
-		return gf
-
-	def create_opponent(self) -> "Character":
-		return self.create_object("stage", "main", PicoChar, scene=self, x=100, y=400)
+	def create_opponent(self, char_cls: t.Type["Character"]) -> "Character":
+		return self.create_object("stage", "main", char_cls, scene=self, x=100, y=400)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
@@ -152,19 +134,3 @@ class Week3Level(InGameScene):
 	def destroy(self) -> None:
 		super().destroy()
 		self.train_sound_player.delete()
-
-
-class Pico(Week3Level):
-	@staticmethod
-	def get_song() -> str:
-		return "pico"
-
-class Philly(Week3Level):
-	@staticmethod
-	def get_song() -> str:
-		return "philly"
-
-class Blammed(Week3Level):
-	@staticmethod
-	def get_song() -> str:
-		return "blammed"

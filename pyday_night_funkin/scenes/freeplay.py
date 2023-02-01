@@ -27,8 +27,6 @@ class StickySprite(PNFSprite):
 
 class FreeplayScene(BaseScene):
 	def __init__(self, *args, **kwargs) -> None:
-		from pyday_night_funkin.levels import WEEKS
-
 		super().__init__(*args, **kwargs)
 
 		if not self.game.player.playing:
@@ -59,9 +57,9 @@ class FreeplayScene(BaseScene):
 		score_bg.make_rect(to_rgba_tuple(CNST.BLACK), CNST.GAME_WIDTH * .35, 66)
 		score_bg.opacity = 153
 
-		self.displayed_songs = [lvl for week in WEEKS for lvl in week.levels]
+		self.displayed_songs = [lvl for week in self.game.weeks for lvl in week.levels]
 		if not self.displayed_songs:
-			raise RuntimeError("Panic at the FreeplayScene!")
+			raise RuntimeError("Panic at the FreeplayScene: No songs available!")
 
 		self._cur_selection = 0
 		self._scroll_sound = load_sound("preload/sounds/scrollMenu.ogg")
@@ -71,7 +69,7 @@ class FreeplayScene(BaseScene):
 			m = MenuTextLine(
 				i,
 				CNST.GAME_DIMENSIONS,
-				text = lvl.get_display_name(),
+				text = lvl.display_name,
 				bold = True,
 				x = 0,
 				y = 70*i + 30,
@@ -79,11 +77,13 @@ class FreeplayScene(BaseScene):
 			m.opacity = 153
 			self._text_lines.append(m)
 			self.add(m, "fg")
+
+			opp_dat = self.game.character_registry[lvl.opponent_character].get_character_data()
 			self.create_object(
 				"fg",
 				object_class = StickySprite,
 				stickee = m,
-				image = load_health_icon(lvl.get_opponent_icon())[0],
+				image = load_health_icon(opp_dat.icon_name)[0],
 			)
 			# NOTE: should probably call `lvl.get_opponent().icon_name` or something,
 			# but creating opponent without an in game scene sorta sucks.
@@ -129,6 +129,7 @@ class FreeplayScene(BaseScene):
 	def _on_confirm(self, i: int, selected: bool) -> None:
 		if selected:
 			self.game.set_scene(
+				self.displayed_songs[i].stage_class,
 				self.displayed_songs[i],
 				DIFFICULTY(self.diff_menu.selection_index),
 				FreeplayScene,

@@ -20,6 +20,7 @@ from pyday_night_funkin.core.asset_system import (
 	load_image, load_json, load_pyobj, load_sound, load_xml,
 	register_complex_asset_type, register_optionless_asset_type,
 )
+from pyday_night_funkin.content_pack import ContentPack, LevelData, WeekData
 from pyday_night_funkin.core.animation import FrameCollection
 from pyday_night_funkin.character import Character, FlipIdleCharacter
 from pyday_night_funkin.enums import ANIMATION_TAG, DIFFICULTY
@@ -80,23 +81,22 @@ SONG_SCHEMA = Schema(
 )
 
 
-_HEALTH_ICON_MAP = dict((
-	("bf",                ((   0,   0), ( 150,   0))),
-	("spooky",            (( 300,   0), ( 450,   0))),
-	("pico",              (( 600,   0), ( 750,   0))),
-	("mom",               (( 900,   0), (1050,   0))),
-	("tankman",           ((1200,   0), (1350,   0))),
-	("face",              ((   0, 150), ( 150, 150))),
-	("dad",               (( 300, 150), ( 450, 150))),
-	("bf-old",            (( 600, 150), ( 750, 150))),
-	("gf",                (( 900, 150), ( 900, 150))),
-	("parents-christmas", ((1050, 150), (1200, 150))),
-	("monster",           ((1350, 150), (   0, 300))),
-	("bf-pixel",          (( 150, 300), ( 150, 300))),
-	("senpai",            (( 300, 300), ( 300, 300))),
-	("spirit",            (( 450, 300), ( 450, 300))),
-))
-
+_HEALTH_ICON_MAP = {
+	"bf":                ((   0,   0), ( 150,   0)),
+	"spooky":            (( 300,   0), ( 450,   0)),
+	"pico":              (( 600,   0), ( 750,   0)),
+	"mom":               (( 900,   0), (1050,   0)),
+	"tankman":           ((1200,   0), (1350,   0)),
+	"face":              ((   0, 150), ( 150, 150)),
+	"dad":               (( 300, 150), ( 450, 150)),
+	"bf-old":            (( 600, 150), ( 750, 150)),
+	"gf":                (( 900, 150), ( 900, 150)),
+	"parents-christmas": ((1050, 150), (1200, 150)),
+	"monster":           ((1350, 150), (   0, 300)),
+	"bf-pixel":          (( 150, 300), ( 150, 300)),
+	"senpai":            (( 300, 300), ( 300, 300)),
+	"spirit":            (( 450, 300), ( 450, 300)),
+}
 
 def load_health_icon(character: str) -> t.Tuple["Texture", "Texture"]:
 	"""
@@ -312,6 +312,10 @@ class Boyfriend(Character):
 		# Admittedly this also ruins everything but you can blame the original code for that.
 		super(Character, self).update(dt)
 
+	@classmethod
+	def get_character_data(cls) -> "CharacterData":
+		return super().get_character_data().update({"icon_name": "bf"})
+
 	@staticmethod
 	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
 		spr.animation.add_by_prefix(
@@ -348,10 +352,11 @@ class DaddyDearest(Character):
 
 	@classmethod
 	def get_character_data(cls) -> "CharacterData":
-		x = super().get_character_data()
-		x.hold_timeout = 6.1
-		x.story_menu_offset = (120.0, 200.0)
-		return x
+		return super().get_character_data().update({
+			"hold_timeout": 6.1,
+			"story_menu_offset": (120.0, 200.0),
+			"icon_name": "dad",
+		})
 
 	@staticmethod
 	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
@@ -403,6 +408,10 @@ class Girlfriend(FlipIdleCharacter):
 			"hair_fall", "GF Dancing Beat Hair Landing", [*range(12)], 24, False,
 			(0, -9), (ANIMATION_TAG.HAIR,)
 		)
+
+	@classmethod
+	def get_character_data(cls) -> "CharacterData":
+		return super().get_character_data().update({"icon_name": "gf"})
 
 	def dance(self) -> None:
 		if not self.animation.has_tag(ANIMATION_TAG.HAIR):
@@ -458,6 +467,10 @@ class SkidNPump(FlipIdleCharacter):
 			(ANIMATION_TAG.IDLE,)
 		)
 
+	@classmethod
+	def get_character_data(cls) -> "CharacterData":
+		return super().get_character_data().update({"icon_name": "spooky"})
+
 	@staticmethod
 	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
 		spr.animation.add_by_prefix(
@@ -492,6 +505,10 @@ class Monster(Character):
 			"sing_note_right", "Monster Right note", 24, False, (-51, 0), (ANIMATION_TAG.SING,)
 		)
 
+	@classmethod
+	def get_character_data(cls) -> "CharacterData":
+		return super().get_character_data().update({"icon_name": "monster"})
+
 
 class Pico(Character):
 	def __init__(self, *args, **kwargs) -> None:
@@ -518,6 +535,10 @@ class Pico(Character):
 
 		self.flip_x = True
 
+	@classmethod
+	def get_character_data(cls) -> "CharacterData":
+		return super().get_character_data().update({"icon_name": "pico"})
+
 	@staticmethod
 	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
 		spr.animation.add_by_prefix(
@@ -526,10 +547,10 @@ class Pico(Character):
 		)
 
 
-def load(game: "Game") -> None:
+def load() -> ContentPack:
 	"""
-	Registers and loads everything required to run the
-	base game into the asset system and game.
+	Loads everything required to run the base game into the asset
+	systems and returns the base game's content pack.
 	"""
 
 	def arrow_post_load_hacker(fcol: FrameCollection) -> FrameCollection:
@@ -572,9 +593,103 @@ def load(game: "Game") -> None:
 		},
 	))
 
-	game.character_registry.add("_pnf_base", "boyfriend", Boyfriend)
-	game.character_registry.add("_pnf_base", "girlfriend", Girlfriend)
-	game.character_registry.add("_pnf_base", "daddy_dearest", DaddyDearest)
-	game.character_registry.add("_pnf_base", "skid_n_pump", SkidNPump)
-	game.character_registry.add("_pnf_base", "monster", Monster)
-	game.character_registry.add("_pnf_base", "pico", Pico)
+	# NOTE: This overrides the main menu track with a way shorter sound for loop testing.
+	# class TmpMenuTrackRerouter(AssetSystem):
+	# 	def has_asset(
+	# 		self,
+	# 		path: str,
+	# 		asset_type_name: str,
+	# 		options: t.Optional[ResourceOptions]
+	# 	) -> t.Union[
+	# 		t.Tuple[t.Literal[False], None, None, None],
+	# 		t.Tuple[
+	# 			t.Literal[True],
+	# 			str,
+	# 			t.Optional[ResourceOptions],
+	# 			t.Optional["PostLoadProcessor"],
+	# 		]
+	# 	]:
+	# 		if path == "preload/music/freakyMenu.ogg":
+	# 			return (True, "preload/sounds/confirmMenu.ogg", options, None)
+
+	# 		return (False, None, None, None)
+
+	# add_asset_system(TmpMenuTrackRerouter(allow_unknown=False))
+
+	# Deferred import, yuck! Quickest way to fix the circular import rn,
+	# could possibly split the levels and characters into a basegame submodule later.
+	from pyday_night_funkin.stages import (
+		TutorialStage, Week1Stage, BopeeboStage, Week2Stage, MonsterStage, Week3Stage
+	)
+
+	return ContentPack(
+		pack_id = "_pnf_base",
+		characters = {
+			"boyfriend":     Boyfriend,
+			"girlfriend":    Girlfriend,
+			"daddy_dearest": DaddyDearest,
+			"skid_n_pump":   SkidNPump,
+			"monster":       Monster,
+			"pico":          Pico,
+		},
+		weeks = (
+			WeekData(
+				"",
+				("daddy_dearest", "boyfriend", "girlfriend"),
+				(
+					LevelData(
+						"tutorial", "Tutorial", TutorialStage, "boyfriend", None, "girlfriend"
+					),
+				),
+				"week0.png",
+			),
+			WeekData(
+				"DADDY DEAREST",
+				("daddy_dearest", "boyfriend", "girlfriend"),
+				(
+					LevelData(
+						"bopeebo", "Bopeebo", BopeeboStage, "boyfriend", "girlfriend", "daddy_dearest"
+					),
+					LevelData(
+						"fresh", "Fresh", Week1Stage, "boyfriend", "girlfriend", "daddy_dearest"
+					),
+					LevelData(
+						"dadbattle", "Dadbattle", Week1Stage, "boyfriend", "girlfriend", "daddy_dearest"
+					),
+				),
+				"week1.png",
+			),
+			WeekData(
+				"SPOOKY MONTH",
+				("skid_n_pump", "boyfriend", "girlfriend"),
+				(
+					LevelData(
+						"spookeez", "Spookeez", Week2Stage, "boyfriend", "girlfriend", "skid_n_pump"
+					),
+					LevelData(
+						"south", "South", Week2Stage, "boyfriend", "girlfriend", "skid_n_pump"
+					),
+					LevelData(
+						"monster", "Monster", MonsterStage, "boyfriend", "girlfriend", "monster"
+					),
+				),
+				"week2.png",
+			),
+			WeekData(
+				"PICO",
+				("pico", "boyfriend", "girlfriend"),
+				(
+					LevelData(
+						"pico", "Pico", Week3Stage, "boyfriend", "girlfriend", "pico"
+					),
+					LevelData(
+						"philly", "Philly", Week3Stage, "boyfriend", "girlfriend", "pico"
+					),
+					LevelData(
+						"blammed", "Blammed", Week3Stage, "boyfriend", "girlfriend", "pico"
+					),
+				),
+				"week3.png",
+			),
+		),
+	)
