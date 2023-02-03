@@ -17,13 +17,11 @@
  - You will need python (3.11 is recommended due to its speed advantages, but anything starting from 3.8 should work).
  - Ensure that python can build C extensions/you have a C compiler set up.
  - Then, run the commands below.  
-   (**NOTE**: If `python3` fails, try `python` or `py` instead, the name may differ depending on your system and python variants.) 
-   
+ 
 # Windows 
 ```bash
 # Clone the repo somewhere (could also be done by downloading the repo as #
 #    .zip via the Code > Download ZIP button and then extracting that.)   #
-cd somewhere/stuff
 git clone https://github.com/Square789/PydayNightFunkin.git
 cd PydayNightFunkin
 
@@ -48,7 +46,6 @@ python run.py
 ```bash
 # Clone the repo somewhere (could also be done by downloading the repo as #
 #    .zip via the Code > Download ZIP button and then extracting that.)   #
-cd somewhere/stuff
 git clone https://github.com/Square789/PydayNightFunkin.git
 cd PydayNightFunkin
 
