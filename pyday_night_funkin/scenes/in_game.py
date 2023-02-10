@@ -89,8 +89,6 @@ class InGameScene(scenes.MusicBeatScene):
 		self.follow_scene = follow_scene
 		self.remaining_week = remaining_week
 
-		self.key_handler = game.key_handler
-
 		self.state = GAME_STATE.LOADING
 
 		self.inst_player = PNFPlayer()
@@ -114,8 +112,6 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		Causes `self.girlfriend.dance` to be called on each xth beat.
 		"""
-
-		self._conductor_resync_threshold: float = 20.0
 
 		self.setup()
 		self.load_song()
@@ -205,9 +201,11 @@ class InGameScene(scenes.MusicBeatScene):
 	def resync(self) -> None:
 		logger.info("Resyncing...")
 		self.voice_player.pause()
-		# NOTE: Conductor may be rewound here which has potential to screw things up
-		# real bad. Logger set up to catch that.
-		self.conductor.song_position = self.inst_player.time * 1000
+		# NOTE: Conductor may be rewound here which has potential to screw things up real bad.
+		new_pos = self.inst_player.time * 1000.0
+		if new_pos < self.conductor.song_position:
+			logger.warning(f"Rewound conductor by {self.conductor.song_position - new_pos}, oops.")
+		self.conductor.song_position = new_pos
 		self.voice_player.seek(self.conductor.song_position * 0.001)
 		self.voice_player.play()
 
@@ -257,7 +255,8 @@ class InGameScene(scenes.MusicBeatScene):
 		This will also attach `self.on_song_end` to the inst player.
 		"""
 		self.conductor.song_position = 0
-		self.inst_player.on_eos = self.on_song_end
+		self.sync_conductor_from_player(self.inst_player, True, False, False)
+		self.inst_player.push_handlers(on_eos=self.on_song_end)
 		self.play_players()
 		self.state = GAME_STATE.PLAYING
 
@@ -280,6 +279,7 @@ class InGameScene(scenes.MusicBeatScene):
 		self._countdown_stage = 0
 		self.state = GAME_STATE.COUNTDOWN
 		self.conductor.song_position = self.conductor.beat_duration * -5
+		self.sync_conductor_from_dt()
 		self.clock.schedule_interval(
 			self.countdown, self.conductor.beat_duration * 0.001
 		)
@@ -293,7 +293,7 @@ class InGameScene(scenes.MusicBeatScene):
 		if self.song_data is None:
 			return None
 
-		sec = floor(self.cur_step / 16)
+		sec = self.cur_step // 16
 		if sec < 0 or sec >= len(self.song_data["notes"]):
 			return None
 
@@ -301,19 +301,6 @@ class InGameScene(scenes.MusicBeatScene):
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
-
-		if (
-			self.state is GAME_STATE.COUNTDOWN or
-			self.state is GAME_STATE.PLAYING
-		):
-			self.conductor.song_position += dt * 1000
-			self._conductor_resync_threshold = lerp(self._conductor_resync_threshold, 20, .4 * dt)
-			if self.state is GAME_STATE.PLAYING:
-				discrepancy = self.inst_player.time * 1000 - self.conductor.song_position
-				if abs(discrepancy) > self._conductor_resync_threshold:
-					self._conductor_resync_threshold *= 1.5
-					logger.warning(f"Player ahead of conductor by {discrepancy:.4f} ms.")
-					self.resync()
 
 		self.process_input(dt)
 		if self.health < 0.0 and self.state is not GAME_STATE.ENDED:
@@ -340,10 +327,11 @@ class InGameScene(scenes.MusicBeatScene):
 		Called with `update` every time.
 		Keyboard input should be handled here.
 		"""
+		key_handler = self.game.key_handler
 		pressed = {
-			type_: self.key_handler.just_pressed(control)
+			type_: key_handler.just_pressed(control)
 			for type_, control in self.note_handler.NOTE_TO_CONTROL_MAP.items()
-			if self.key_handler[control]
+			if key_handler[control]
 		}
 		opponent_hit, player_missed, player_res = self.note_handler.update(pressed)
 
@@ -360,16 +348,16 @@ class InGameScene(scenes.MusicBeatScene):
 			self.boyfriend.animation.play(f"miss_note_{fail_note.type.name.lower()}", True)
 
 		for type_ in NOTE_TYPE:
-			# Note not being held, make the arrow static
 			if type_ not in player_res:
+				# Note not being held, make the arrow static
 				self.hud.arrow_static(type_)
-			# Note was pressed but player missed
 			elif player_res[type_] is None:
+				# Note was pressed but player missed
 				self.hud.arrow_pressed(type_)
 				if pressed[type_]: # Just pressed
 					self.on_misinput(type_)
-			# Note was pressed and player hit
 			else:
+				# Note was pressed and player hit
 				self.hud.arrow_confirm(type_)
 				self.on_note_hit(player_res[type_])
 				# TODO extract to on_note_hit etc, rework this yada yada
@@ -380,18 +368,18 @@ class InGameScene(scenes.MusicBeatScene):
 
 		handler_called = False
 		if self.game.debug:
-			if self.game.key_handler.just_pressed(CONTROL.DEBUG_DESYNC):
+			if key_handler.just_pressed(CONTROL.DEBUG_DESYNC):
 				desync = random.randint(-400, 400)
 				logger.debug(f"Desyncing conductor by {desync}ms")
 				self.conductor.song_position += desync
-			if self.game.key_handler.just_pressed(CONTROL.DEBUG_WIN):
+			if key_handler.just_pressed(CONTROL.DEBUG_WIN):
 				handler_called = True
 				self.on_song_end()
-			if self.game.key_handler.just_pressed(CONTROL.DEBUG_LOSE) and not handler_called:
+			if key_handler.just_pressed(CONTROL.DEBUG_LOSE) and not handler_called:
 				handler_called = True
 				self.on_game_over()
 
-		if self.key_handler.just_pressed(CONTROL.ENTER) and not handler_called:
+		if key_handler.just_pressed(CONTROL.ENTER) and not handler_called:
 			handler_called = True
 			self.on_pause()
 

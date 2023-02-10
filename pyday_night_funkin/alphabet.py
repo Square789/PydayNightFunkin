@@ -151,6 +151,6 @@ class MenuTextLine(TextLine):
 		self.game_height = game_dims[1]
 
 	def update(self, dt: float) -> None:
+		super().update(dt)
 		self.x = lerp(self._x, self.target_y * 20 + 90, .16)
 		self.y = lerp(self._y, self.target_y * 1.3 * 120 + self.game_height * 0.48, .16)
-		super().update(dt)

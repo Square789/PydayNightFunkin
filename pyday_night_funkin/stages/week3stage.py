@@ -32,8 +32,8 @@ class Week3Stage(BaseGameBaseStage):
 		super().__init__(*args, **kwargs)
 
 	@staticmethod
-	def get_opponent_icon() -> str:
-		return "pico"
+	def get_default_cam_zoom() -> float:
+		return 1.05
 
 	@staticmethod
 	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:

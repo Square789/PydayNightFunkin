@@ -50,9 +50,10 @@ class TitleScene(scenes.MusicBeatScene):
 
 		self.confirm_sound = load_sound("preload/sounds/confirmMenu.ogg")
 
-		self.conductor.bpm = 102
+		self.conductor.bpm = 102 #420
 		self.game.player.set(load_sound("preload/music/freakyMenu.ogg"))
 		self.game.player.loop = True
+		self.sync_conductor_from_player(self.game.player)
 
 		self._intro_ended = False
 		self._leaving_scene = False
@@ -141,9 +142,6 @@ class TitleScene(scenes.MusicBeatScene):
 				self._BEAT_FUNCS[self.cur_beat]()
 
 	def update(self, dt: float) -> None:
-		# TODO: 5 IQ song tracking
-		self.conductor.song_position = self.game.player.time * 1000
-
 		if self.game.key_handler.just_pressed(CONTROL.ENTER):
 			if not self._intro_ended:
 				self._intro_end()

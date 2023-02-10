@@ -12,7 +12,7 @@ from pyday_night_funkin.scenes import InGameScene
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.character import Character
-	from pyday_night_funkin.core.pnf_sprite import PNFSprite
+
 
 class BaseGameBaseStage(InGameScene):
 	"""

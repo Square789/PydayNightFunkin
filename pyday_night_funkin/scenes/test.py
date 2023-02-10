@@ -136,7 +136,6 @@ class TestScene(MusicBeatScene):
 			main_cam.y -= 10
 		if rkh[Z]:
 			main_cam.zoom += .01
-			print(main_cam.x, main_cam.y, main_cam.zoom)
 		if rkh[X]:
 			main_cam.zoom -= .01
 

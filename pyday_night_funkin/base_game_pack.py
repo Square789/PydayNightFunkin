@@ -30,9 +30,6 @@ if t.TYPE_CHECKING:
 	from pyglet.media import Source
 	from pyday_night_funkin.character import CharacterData
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
-	from pyday_night_funkin.core.types import Numeric
-	from pyday_night_funkin.main_game import Game
-
 
 class SeqValidator:
 	def __init__(self, *types: t.Any) -> None:
@@ -593,7 +590,7 @@ def load() -> ContentPack:
 		},
 	))
 
-	# NOTE: This overrides the main menu track with a way shorter sound for loop testing.
+	# # NOTE: This overrides the main menu track with a way shorter sound for loop testing.
 	# class TmpMenuTrackRerouter(AssetSystem):
 	# 	def has_asset(
 	# 		self,

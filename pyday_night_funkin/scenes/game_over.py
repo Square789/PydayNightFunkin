@@ -31,6 +31,7 @@ class GameOverScene(scenes.MusicBeatScene):
 		self._camera_locked_on = False
 
 		self.sfx_ring.play(load_sound("shared/sounds/fnf_loss_sfx.ogg"))
+		self.sync_conductor_from_player(self.game.player)
 
 	@staticmethod
 	def get_default_cameras() -> t.Sequence[t.Union[str, t.Tuple[str, int, int]]]:
@@ -64,10 +65,6 @@ class GameOverScene(scenes.MusicBeatScene):
 		):
 			self.game.player.set(self.game_over_music)
 			self.bf.animation.play("game_over_loop")
-
-		if self.game.player.playing:
-			# TODO 5 IQ song tracking once again
-			self.conductor.song_position = self.game.player.time
 
 	def retry(self) -> None:
 		if self.is_ending:

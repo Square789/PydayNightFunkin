@@ -1,4 +1,5 @@
 
+from math import floor
 import typing as t
 
 
@@ -11,6 +12,10 @@ class BPMChangeEvent:
 		self.bpm = bpm
 
 
+# The conductor logic does not perform the smoothing outlined in `dev_notes/quality_post.png`.
+# Base FNF also doesn't, from what i can tell; looks like both OpenFL/HF and pyglet are handling
+# time well.
+
 # The tiniest conductor
 class Conductor:
 	# https://ninjamuffin99.newgrounds.com/news/post/1124589
@@ -20,8 +25,17 @@ class Conductor:
 
 	def __init__(self) -> None:
 		self._bpm: t.Optional[float] = None
+
 		self.beat_duration: t.Optional[float] = None
+		"""
+		The duration of a beat, in milliseconds.
+		"""
+
 		self.step_duration: t.Optional[float] = None
+		"""
+		The duration of a step (quarter-beat), in milliseconds.
+		"""
+
 		self.song_position = 0.0
 		self._bpm_changes: t.List[BPMChangeEvent] = []
 
@@ -33,29 +47,38 @@ class Conductor:
 	def bpm(self, new_bpm: float) -> None:
 		if new_bpm <= 0:
 			raise ValueError("Bpm can't be lower than or equal to zero!")
-		if new_bpm >= 300:
+		if new_bpm > 420:
 			# Scared of flooding with calls to `beat_hit`
 			raise ValueError("Bpm too extreme!")
 		self._bpm = new_bpm
 		self.beat_duration = 60000.0 / new_bpm
-		# step is just a quarter beat duration
-		# idk about music this probably has a reason
-		# ha, now i know 5% more about music, FNF hardcodes
-		# everything to a 4/4 time sig. Too bad!
+		# step is just a quarter beat duration; idk about music this probably has a reason.
+		# - ha, now i know 5% more about music, FNF hardcodes everything to a 4/4 time sig.
+		# Too bad!
 		self.step_duration = self.beat_duration / 4.0
 
 	def get_last_bpm_change(self) -> BPMChangeEvent:
 		"""
 		Retrieves the last BPM change event.
-		May be filled with zero values if no BPM data was loaded.
+		If no BPM changes were loaded, will be of the standard BPM at
+		step `0` and time `0.0`.
 		"""
-		r = BPMChangeEvent(0, 0.0, 0.0)
+		r = BPMChangeEvent(0, 0.0, self._bpm)
 		for change in self._bpm_changes:
 			if self.song_position >= change.song_time:
 				r = change
 			else:
 				break
 		return r
+
+	def get_current_step(self) -> int:
+		"""
+		Returns the step the conductor is in, according to the bpm
+		changes registered with it and song time.
+		"""
+		lc = self.get_last_bpm_change()
+		new_step = lc.step + floor((self.song_position - lc.song_time) / self.step_duration)
+		return new_step
 
 	def load_bpm_changes(self, song_data: t.Dict) -> None:
 		"""

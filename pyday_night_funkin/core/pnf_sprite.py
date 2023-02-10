@@ -65,49 +65,48 @@ void main() {{
 	mat4 res_mat = mat4(1.0);
 	mat4 work_mat = mat4(1.0);
 
-	bvec2 flip = bvec2(bool(uint(flip.x) & 1), bool(uint(flip.y) & 1));
+	// vec2 flip = vec2(flip.x == 0.0 ? 0.0 : 1.0, flip.y == 0.0 ? 0.0 : 1.0);
 
+	// Readds the origin and finally translates the sprite to its intended
+	// position using both `translate` and `offset`.
 	work_mat[3].xy = origin + translate - offset;
 	res_mat *= work_mat; work_mat = mat4(1.0);      // 5TH
 
+	// Rotates the scaled sprite around its origin.
 	work_mat[0][0] =  cos(radians(rotation));
 	work_mat[0][1] =  sin(radians(rotation));
 	work_mat[1][0] = -sin(radians(rotation));
 	work_mat[1][1] =  cos(radians(rotation));
 	res_mat *= work_mat; work_mat = mat4(1.0);      // 4TH
 
+	// Scales the sprite and subtracts the origin for next step's rotation.
 	work_mat[3].xy = -origin * scale;
 	work_mat[0][0] = scale.x;
 	work_mat[1][1] = scale.y;
 	res_mat *= work_mat; work_mat = mat4(1.0);      // 3RD
 
-	if (flip.x && flip.y) {{
-		work_mat[0][0] = -1.0;
-		work_mat[1][1] = -1.0;
-		work_mat[3].xy = frame_dimensions;
-		res_mat *= work_mat; work_mat = mat4(1.0);
-	}} else if (flip.x) {{
-		work_mat[0][0] = -1.0;
-		work_mat[3].x = frame_dimensions.x;
-		res_mat *= work_mat; work_mat = mat4(1.0);
-	}} else if (flip.y) {{
-		work_mat[1][1] = -1.0;
-		work_mat[3].y = frame_dimensions.y;
-		res_mat *= work_mat; work_mat = mat4(1.0);
-	}}                                              // 2ND
+	// Applies the flipping operations, scaling the sprite by 1 or -1 and
+	// translating it appropiately.
+	// Turns the scaling 1.0s along the diagonal into -1.0 if applicable.
+	work_mat[0][0] -= flip.x * 2.0;
+	work_mat[1][1] -= flip.y * 2.0;
+	work_mat[3].xy = flip * frame_dimensions;
+	res_mat *= work_mat; work_mat = mat4(1.0);      // 2ND
 
+	// Applies a simple additional frame offset.
 	work_mat[3].xy = frame_offset;
 	// res_mat *= work_mat; work_mat = mat4(1.0);   // 1ST
 	res_mat *= work_mat;
 
-	// Camera transform and zoom scale
+	// Applies the translation caused by the camera and the sprite's
+	// scroll factor as well as the scaling caused by the camera's zoom.
 	m_camera_trans_scale[3].xy = (
 		(camera.zoom * -camera.GAME_DIMENSIONS / 2) +
 		(camera.zoom * scroll_factor * -camera.position) +
 		(camera.GAME_DIMENSIONS / 2)
 	);
 	m_camera_trans_scale[0][0] = camera.zoom;
-	m_camera_trans_scale[1][1] = camera.zoom;
+	m_camera_trans_scale[1][1] = camera.zoom;       // 6TH
 
 	// Notes for my dumbass cause simple things like matrices will never get into my head:
 	// - Matrix multiplication is associative: A*(B*C) == (A*B)*C
@@ -117,6 +116,8 @@ void main() {{
 	// `gl_Position = m_trans * m_rot * m_scale * vec4(position, 0.0, 1.0);`
 	// Makes sense, really.
 
+	// The view matrix is technically not as required anymore / unused by PNF.
+	// Leaving it in anyways.
 	gl_Position =
 		window.projection *
 		window.view *
@@ -188,7 +189,8 @@ class Movement:
 		posy_delta = vel_y * dt
 		vel_y += vel_delta
 
-		self.velocity = Vec2(vel_x, vel_y)
+		self.velocity.x = vel_x
+		self.velocity.y = vel_y
 
 		return Vec2(posx_delta, posy_delta)
 

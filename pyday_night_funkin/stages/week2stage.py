@@ -28,6 +28,10 @@ class Week2Stage(BaseGameBaseStage):
 			("ui_combo", True), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
 		)
 
+	@staticmethod
+	def get_default_cam_zoom() -> float:
+		return 1.05
+
 	def setup(self) -> None:
 		super().setup()
 

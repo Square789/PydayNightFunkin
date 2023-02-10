@@ -16,7 +16,6 @@ class DebugPane:
 	"""
 	Shoddy class to manage text lines on a rectangle, used to display
 	debug messages and fps.
-	NOTE: The class
 	"""
 
 	FONT_SIZE = 8
