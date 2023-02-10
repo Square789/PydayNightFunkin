@@ -119,7 +119,6 @@ class Game(SceneManager):
 		self._last_update_time = 0
 		self._fps = _FPSData()
 		self._dt_limit = .35
-		self._in_update = False
 
 		logger.remove(0)
 
@@ -245,7 +244,6 @@ class Game(SceneManager):
 		pyglet.app.run()
 
 	def update(self, dt: float) -> None:
-		self._in_update = True
 		stime = perf_counter()
 
 		if dt > self._dt_limit:
@@ -261,11 +259,6 @@ class Game(SceneManager):
 		self.key_handler.post_update()
 		self.raw_key_handler.post_update()
 		self._last_update_time = (perf_counter() - stime) * 1000
-		self._in_update = False
-
-	def _tmp_eos_fired(self) -> None:
-		if self._in_update:
-			print("fuckj")
 
 	def draw(self) -> None:
 		stime = perf_counter()
