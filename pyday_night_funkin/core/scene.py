@@ -94,24 +94,37 @@ class BaseScene(Container):
 		if not self.layers:
 			raise ValueError("Scenes must at least have one layer!")
 
-		self._passed_time = 0.0
-		self.clock = Clock(self._get_elapsed_time)
+		self.default_layer = next(iter(self.layers.values()))
+		"""
+		The first layer which will be used in case no layer is given to
+		methods requiring one.
+		This is the layer created from the first value of
+		`get_default_layers()`.
+		"""
 
-		# self._default_camera = Camera(-100, -100, CNST.GAME_WIDTH + 200, CNST.GAME_HEIGHT + 200)
-		# self._default_camera.clear_color = (0.5, 0, 0, 1.0)
-		# self._default_camera.x = -100
-		# self._default_camera.y = -100
-		self._default_camera = Camera(0, 0, CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
 		self.cameras = OrderedDict(
 			(name, Camera(0, 0, w, h)) for name, w, h in (
 				(x, CNST.GAME_WIDTH, CNST.GAME_HEIGHT) if not isinstance(x, tuple) else x
 				for x in self.get_default_cameras()
 			)
 		)
+		if not self.cameras:
+			raise ValueError("Scenes must have at least one camera!")
 
-		# Fails when nothing is added to a camera otherwise.
-		for cam in (self._default_camera, *self.cameras.values()):
+		self.default_camera = next(iter(self.cameras.values()))
+		"""
+		The scene's default camera which will be used if an operation
+		needs one but none was given.
+		This is the camera created from the first value of
+		`get_default_cameras()`.
+		"""
+
+		# Draw call will fail when nothing is added to a camera otherwise.
+		for cam in self.cameras.values():
 			self.batch._get_draw_list(cam)
+
+		self._passed_time = 0.0
+		self.clock = Clock(self._get_elapsed_time)
 
 		self.sfx_ring = SFXRing()
 
@@ -119,9 +132,10 @@ class BaseScene(Container):
 	def get_default_cameras() -> t.Sequence[t.Union[str, t.Tuple[str, int, int]]]:
 		"""
 		Gets a list of the names to be used for this scene's cameras.
-		Typically you'd use a main and a HUD/UI camera.
+		By default, a single camera by the name of `_default` is
+		created.
 		"""
-		return ()
+		return ("default_",)
 
 	@staticmethod
 	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
@@ -136,8 +150,10 @@ class BaseScene(Container):
 		`"my_layer"`, which (probably) comes at a performance
 		cost and prevents optimizations. This should be used
 		only when necessary.
+		By default, a single layer by the name of `_default` is
+		created.
 		"""
-		return ()
+		return ("_default",)
 
 	def _get_elapsed_time(self) -> float:
 		return self._passed_time
@@ -261,7 +277,6 @@ class BaseScene(Container):
 		self._passed_time += dt
 		self.clock.tick()
 
-		self._default_camera.update(dt)
 		for c in self.cameras.values():
 			c.update(dt)
 
@@ -282,7 +297,7 @@ class BaseScene(Container):
 		# https://stackoverflow.com/questions/2171085/
 		# opengl-blending-with-previous-contents-of-framebuffer
 
-		for camera in (self._default_camera, *self.cameras.values()):
+		for camera in self.cameras.values():
 			camera.framebuffer.bind()
 			# While the viewport is nice to shrink the game, it also affects all draw
 			# operations on the cameras, which crams the sprites into their fb's corners.
@@ -335,13 +350,17 @@ class BaseScene(Container):
 		"""
 		Returns a context for the given layer and camera names.
 		Both may also be `None`, in which case the first layer or the
-		default camera will be returned.
+		first camera will be returned.
 		"""
 		if isinstance(camera_names, str):
 			camera_names = (camera_names,)
-		layer = next(iter(self.layers.values())) if layer_name is None else self.layers[layer_name]
+
+		layer = (
+			next(iter(self.layers.values())) if layer_name is None
+			else self.layers[layer_name]
+		)
 		cameras = (
-			(self._default_camera,) if camera_names is None
+			(next(iter(self.cameras.values())),) if camera_names is None
 			else tuple(self.cameras[cam] for cam in camera_names)
 		)
 		return SceneContext(self.batch, layer.get_group(), cameras)
@@ -386,7 +405,6 @@ class BaseScene(Container):
 
 		for cam in self.cameras.values():
 			cam.delete()
-		self._default_camera.delete()
 
 		self.sfx_ring.delete()
 

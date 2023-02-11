@@ -67,7 +67,7 @@ class MainMenuScene(BaseScene):
 		s.screen_center(CNST.GAME_DIMENSIONS, y=False)
 		if state:
 			self.sfx_ring.play(self.scroll_sound)
-			self._default_camera.set_follow_target(s.get_midpoint(), 0.06)
+			self.default_camera.set_follow_target(s.get_midpoint(), 0.06)
 
 	def _on_confirm(self, i: int, selected: bool) -> None:
 		_, callback, sprite = self._menu_items[i]

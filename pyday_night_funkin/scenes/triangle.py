@@ -145,14 +145,14 @@ class TriangleScene(BaseScene):
 		super().update(dt)
 
 		if self.game.raw_key_handler[LEFT]:
-			self._default_camera.x -= 10
+			self.default_camera.x -= 10
 		if self.game.raw_key_handler[RIGHT]:
-			self._default_camera.x += 10
+			self.default_camera.x += 10
 		if self.game.raw_key_handler[DOWN]:
-			self._default_camera.y += 10
+			self.default_camera.y += 10
 		if self.game.raw_key_handler[UP]:
-			self._default_camera.y -= 10
+			self.default_camera.y -= 10
 		if self.game.raw_key_handler[Z]:
-			self._default_camera.zoom += .01
+			self.default_camera.zoom += .01
 		if self.game.raw_key_handler[X]:
-			self._default_camera.zoom -= .01
+			self.default_camera.zoom -= .01
