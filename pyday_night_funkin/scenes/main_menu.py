@@ -7,7 +7,7 @@ from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.scene import BaseScene
-from pyday_night_funkin.core.tweens import TWEEN_ATTR, out_quad
+from pyday_night_funkin.core.tweens import out_quad
 from pyday_night_funkin.core.utils import to_rgb_tuple
 from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin.menu import Menu
@@ -78,7 +78,7 @@ class MainMenuScene(BaseScene):
 		else:
 			sprite.start_tween(
 				out_quad,
-				{TWEEN_ATTR.OPACITY: 0},
+				{"opacity": 0},
 				0.4,
 				lambda sprite=sprite: setattr(sprite, "visible", False),
 			)
@@ -103,3 +103,4 @@ class MainMenuScene(BaseScene):
 	def _sel_options(self) -> None:
 		logger.info("No options yet")
 		self.game.set_scene(scenes.TitleScene)
+		# self.game.set_scene(scenes.SettingsScene)

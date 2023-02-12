@@ -6,7 +6,7 @@ from pyday_night_funkin.base_game_pack import load_frames, load_week_header
 from pyday_night_funkin.core.asset_system import load_sound
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.core.tweens import TWEEN_ATTR, linear
+from pyday_night_funkin.core.tweens import linear
 from pyday_night_funkin.core.utils import lerp, to_rgb_tuple, to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
 from pyday_night_funkin.menu import Menu
@@ -204,7 +204,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.difficulty_indicator.opacity = 0
 		self.difficulty_indicator.remove_effect()
 		self.difficulty_indicator.start_tween(
-			linear, {TWEEN_ATTR.Y: self.diff_arrow_left.y + 15, TWEEN_ATTR.OPACITY: 255}, 0.07
+			linear, {"y": self.diff_arrow_left.y + 15, "opacity": 255}, 0.07
 		)
 
 	def _on_confirm(self, index: int, state: bool) -> None:

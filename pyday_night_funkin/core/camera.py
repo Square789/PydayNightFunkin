@@ -76,12 +76,17 @@ uniform sampler2D camera_texture;
 
 void main() {{
 	vec4 out_color = texture(camera_texture, texture_coords);
-	final_color = vec4(
-		fill_color.r * 0.0 + out_color.r * 1.0,
-		fill_color.g * 0.0 + out_color.g * 1.0,
-		fill_color.b * 0.0 + out_color.b * 1.0,
-		fill_color.a * 0.0 + out_color.a * 1.0
-	);
+
+	// float fill_alpha = fill_color.a;
+	// // This is your standard SRC_ALPHA, ONE_MINUS_SRC_ALPHA, ONE, ONE_MINUS_SRC_ALPHA
+	// // blending calculation.
+	// final_color = vec4(
+	// 	fill_color.r * fill_alpha + out_color.r * (1.0 - fill_alpha),
+	// 	fill_color.g * fill_alpha + out_color.g * (1.0 - fill_alpha),
+	// 	fill_color.b * fill_alpha + out_color.b * (1.0 - fill_alpha),
+	// 	fill_color.a * 1.0        + out_color.a * (1.0 - fill_alpha)
+	// );
+	final_color = out_color;
 }}
 """
 

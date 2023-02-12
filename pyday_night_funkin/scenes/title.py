@@ -6,6 +6,8 @@ from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.asset_system import load_image, load_sound, load_text
+from pyday_night_funkin.core.tweens import linear
+from pyday_night_funkin.core.utils import to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin import scenes
 
@@ -85,7 +87,7 @@ class TitleScene(scenes.MusicBeatScene):
 
 	@staticmethod
 	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return ("main", "title_text")
+		return ("main", "title_text", "flash")
 
 	def _create_text(self, *lines: str) -> None:
 		for line in lines:
@@ -126,9 +128,13 @@ class TitleScene(scenes.MusicBeatScene):
 
 		def _cb(_):
 			self.game.set_scene(scenes.MainMenuScene)
-
-		delay = .5 if self.game.debug else 2.0
+		delay = 0.5 if self.game.debug else 2.0
 		self.clock.schedule_once(_cb, delay)
+
+		# flash = self.create_object("flash")
+		# flash.make_rect(to_rgba_tuple(0xFFFFFFFF), CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
+		# flash.opacity = 255
+		# flash.start_tween(linear, {"opacity": 0.0}, 1.0)
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()

@@ -7,6 +7,7 @@ from .freeplay import FreeplayScene
 from .game_over import GameOverScene
 from .main_menu import MainMenuScene
 from .pause import PauseScene
+from .settings import SettingsScene
 from .story_menu import StoryMenuScene
 from .test import TestScene
 from .title import TitleScene
@@ -14,5 +15,5 @@ from .triangle import TriangleScene
 
 __all__ = [
 	"FreeplayScene", "InGameScene", "GameOverScene", "MusicBeatScene", "PauseScene",
-	"StoryMenuScene", "TestScene", "TitleScene", "TriangleScene", "MainMenuScene"
+	"SettingsScene", "StoryMenuScene", "TestScene", "TitleScene", "TriangleScene", "MainMenuScene"
 ]

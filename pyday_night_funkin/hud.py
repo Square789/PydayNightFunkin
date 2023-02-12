@@ -7,7 +7,7 @@ from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
-from pyday_night_funkin.core.tweens import TWEEN_ATTR, in_out_cubic, linear, out_cubic
+from pyday_night_funkin.core.tweens import in_out_cubic, linear, out_cubic
 from pyday_night_funkin.enums import ANIMATION_TAG
 from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.note import NOTE_TYPE, RATING
@@ -131,7 +131,7 @@ class HUD:
 		scene.clock.schedule_once(
 			lambda _, combo_sprite=combo_sprite: combo_sprite.start_tween(
 				tween_func = out_cubic,
-				attributes = {TWEEN_ATTR.OPACITY: 0},
+				attributes = {"opacity": 0},
 				duration = 0.2,
 				on_complete = lambda: scene.remove(combo_sprite),
 			),
@@ -155,7 +155,7 @@ class HUD:
 			scene.clock.schedule_once(
 				lambda _, sprite=sprite: sprite.start_tween(
 					tween_func = linear,
-					attributes = {TWEEN_ATTR.OPACITY: 0},
+					attributes = {"opacity": 0},
 					duration = 0.2,
 					on_complete = lambda: scene.remove(sprite),
 				),
@@ -173,7 +173,7 @@ class HUD:
 			sprite.screen_center(CNST.GAME_DIMENSIONS)
 			sprite.start_tween(
 				in_out_cubic,
-				{TWEEN_ATTR.OPACITY: 0},
+				{"opacity": 0},
 				scene.conductor.beat_duration * 0.001,
 				lambda sprite = sprite: scene.remove(sprite),
 			)

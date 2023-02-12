@@ -23,8 +23,10 @@ SceneObjectT = t.TypeVar("SceneObjectT", bound=SceneObject)
 
 class Layer:
 	"""
-	Layer class over the given group.
+	A layer is the scene's last intermediate step to the group system.
+	Its only point really is the `get_group` function; see its doc.
 	"""
+
 	__slots__ = ("group", "force_order", "latest_order")
 
 	def __init__(self, group: PNFGroup, force_order: bool) -> None:
@@ -32,7 +34,7 @@ class Layer:
 		self.force_order = force_order
 		self.latest_order = 0
 
-	def get_group(self, group_cls: t.Type[PNFGroup] = PNFGroup, *args, **kwargs) -> PNFGroup:
+	def get_group(self) -> PNFGroup:
 		"""
 		Returns a group to attach an object to on this layer.
 
@@ -44,11 +46,9 @@ class Layer:
 		# TODO: Not really relevant in practice, but the order will
 		# keep increasing ad infinitum, I don't like that a lot
 		if self.force_order:
-			kwargs["order"] = self.latest_order
-			kwargs["parent"] = self.group
+			new_groups_order = self.latest_order
 			self.latest_order += 1
-
-			return group_cls(*args, **kwargs)
+			return PNFGroup(self.group, new_groups_order)
 		else:
 			return self.group
 
@@ -355,12 +355,9 @@ class BaseScene(Container):
 		if isinstance(camera_names, str):
 			camera_names = (camera_names,)
 
-		layer = (
-			next(iter(self.layers.values())) if layer_name is None
-			else self.layers[layer_name]
-		)
+		layer = self.default_layer if layer_name is None else self.layers[layer_name]
 		cameras = (
-			(next(iter(self.cameras.values())),) if camera_names is None
+			(self.default_camera,) if camera_names is None
 			else tuple(self.cameras[cam] for cam in camera_names)
 		)
 		return SceneContext(self.batch, layer.get_group(), cameras)

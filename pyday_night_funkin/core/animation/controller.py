@@ -29,6 +29,12 @@ def _collect_prefixed_animation_frames(
 
 	prefix_len = len(prefix)
 	suffix_start_idx = prefix_candidates[0].name.find('.', prefix_len)
+	# If a dot is present, try converting to an integer behind the prefix and
+	# in front of the dot.
+	# Otherwise, try converting whatever is behind the prefix to an integer.
+	# Point of this is to deal with frames like `x-000.png`, `x-001.png`;
+	# assumes the length of `.png` will never change and just cuts these off.
+	# Not really relevant in FNF, no animation name contains dots i believe
 	slc = slice(prefix_len, None if suffix_start_idx == -1 else suffix_start_idx)
 	return [(f, _try_int(f.name[slc])) for f in prefix_candidates]
 
@@ -121,7 +127,15 @@ class AnimationController:
 		tags: t.Sequence[t.Hashable] = (),
 	) -> None:
 		"""
-		TODO docstring
+		Adds an animation built from the sprite's frames sharing the
+		prefix `prefix`. The animation frames will be sorted given by
+		numbers in the frame names, so that frames `run0`, `run1` and
+		`run3` will play in that order for a prefix of `run`. If a dot
+		is present in the names (`x0000.png`, `x0001.png`), it serves
+		as a cutoff point for the numbers, **but assumes the dot to be
+		in the same position as the first encountered frame for each
+		frame.**
+		The rest of the options is passed into the animation.
 		"""
 		if fps <= 0:
 			raise ValueError("FPS can't be equal to or less than 0!")
@@ -146,7 +160,11 @@ class AnimationController:
 		tags: t.Sequence[t.Hashable] = (),
 	) -> None:
 		"""
-		# TODO doc
+		Finds all the sprite's frames whose names sharing the prefix
+		`prefix` and then adds an animation composed from the frame
+		indices as they're found in the frame names. See
+		`add_by_prefix` for prefix oddities.
+		The rest of the options is passed into the animation.
 		"""
 		if fps <= 0:
 			raise ValueError("FPS can't be equal to or less than 0!")
@@ -190,6 +208,12 @@ class AnimationController:
 		self._animations.pop(name)
 
 	def play(self, name: str, force: bool = False, frame: int = 0) -> None:
+		"""
+		Plays the animation given by `name` starting from frame
+		`frame`.
+		This will not have an effect if the animation is already
+		playing, unless the `force` parameter is set to `True`.
+		"""
 		# Remove old animation
 		if self.current is not None and self.current_name != name:
 			self._detach_animation()

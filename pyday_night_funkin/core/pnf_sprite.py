@@ -14,7 +14,6 @@ import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
-from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.core.utils import clamp, get_error_tex, get_pixel_tex
 
 if t.TYPE_CHECKING:
@@ -327,16 +326,6 @@ class PNFSprite(WorldObject):
 	Closely copies the behavior of FlxSprite.
 	"""
 
-	_TWEEN_ATTR_NAME_MAP = {
-		TWEEN_ATTR.X: "x",
-		TWEEN_ATTR.Y: "y",
-		TWEEN_ATTR.ROTATION: "rotation",
-		TWEEN_ATTR.OPACITY: "opacity",
-		TWEEN_ATTR.SCALE: "scale",
-		TWEEN_ATTR.SCALE_X: "scale_x",
-		TWEEN_ATTR.SCALE_Y: "scale_y",
-	}
-
 	shader_container = ShaderContainer(
 		PNFSpriteVertexShader.generate(),
 		PNFSpriteFragmentShader.generate(),
@@ -475,7 +464,7 @@ class PNFSprite(WorldObject):
 	def start_tween(
 		self,
 		tween_func: t.Callable[[float], float],
-		attributes: t.Dict[TWEEN_ATTR, t.Any],
+		attributes: t.Dict[str, t.Any],
 		duration: float,
 		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
 	) -> _Tween:
@@ -484,8 +473,7 @@ class PNFSprite(WorldObject):
 		"""
 		# 0: initial value; 1: difference
 		attr_map = {}
-		for attribute, target_value in attributes.items():
-			attribute_name = self._TWEEN_ATTR_NAME_MAP[attribute]
+		for attribute_name, target_value in attributes.items():
 			initial_value = getattr(self, attribute_name)
 			attr_map[attribute_name] = (initial_value, target_value - initial_value)
 

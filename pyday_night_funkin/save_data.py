@@ -7,7 +7,7 @@ import typing as t
 
 from loguru import logger
 from pyglet.window import key
-from schema import Schema
+from schema import Or, Schema
 
 from pyday_night_funkin.enums import CONTROL
 
@@ -61,9 +61,9 @@ class Config:
 		saved file.
 
 		:raises SchemaError: When the schema library fails validating
-			the dict.
+		the dict.
 		:raises AttributeError: On failure converting the saved
-			bindings back to their enum members.
+		bindings back to their enum members.
 		"""
 		data = cls.SCHEMA.validate(data)
 
@@ -72,7 +72,7 @@ class Config:
 			data["safe_window"],
 			{
 				getattr(CONTROL, ctrl_name): [getattr(key, k) for k in key_names]
-				for ctrl_name, key_names in data["key_bindings"]
+				for ctrl_name, key_names in data["key_bindings"].items()
 			},
 		)
 
@@ -111,27 +111,6 @@ class Config:
 		)
 
 
-def get_savedata_location() -> Path:
-	""""
-	Returns the platform-dependant save data directory, or raises an
-	`UnsupportedPlatformError` if this is running on a smart fridge
-	or other obscure environments.
-	"""
-	# TODO Rest of the owl
-	if platform.system() == "Windows":
-		return Path(os.environ["APPDATA"]) / "PydayNightFunkin"
-	elif platform.system() == "Linux":
-		# XDG_DATA_HOME or XDG_CONFIG_HOME? Read into that
-		target = Path("~").expanduser()
-		if "XDG_DATA_HOME" in os.environ:
-			target = Path(os.environ["XDG_DATA_HOME"])
-		return target / ".local" / "share" / "PydayNightFunkin"
-	elif platform.system() == "Darwin":
-		raise UnsupportedPlatformError("No OSX savefile due to no OSX support!")
-	else:
-		raise UnsupportedPlatformError(f"Unknown platform: {platform.system()!r}")
-
-
 class SaveData:
 	"""
 	Save data holder class. Contains the config as a Config object and
@@ -140,28 +119,28 @@ class SaveData:
 	"modification == cheating"
 	"""
 
-	HIGHSCORE_SCHEMA = Schema({str: int})
+	HIGHSCORE_SCHEMA = Schema(Or({str: int}, {}))
 
 	def __init__(self, config: Config, highscores: t.Dict[str, int]) -> None:
 		self.config = config
 		self.highscores = highscores
+		self._save_data_location = self.get_savedata_location()
 
 	@classmethod
 	def load(cls):
 		"""
 		Loads savedata from disk.
 		"""
-		cfgp = get_savedata_location() / CONFIG
-		if cfgp.exists():
-			with cfgp.open("r") as f:
+		location = cls.get_savedata_location()
+		if (cfg_path := location / CONFIG).exists():
+			with cfg_path.open("r") as f:
 				cfg = Config.from_dict(json.load(f))
 		else:
 			logger.info("Config file does not exist, creating default.")
 			cfg = Config.get_default()
 
-		hsp = get_savedata_location() / HIGHSCORES
-		if hsp.exists():
-			with hsp.open("r") as f:
+		if (highscore_path := location / HIGHSCORES).exists():
+			with highscore_path.open("r") as f:
 				hs = cls.HIGHSCORE_SCHEMA.validate(json.load(f))
 		else:
 			logger.info("Highscore file does not exist, creating empty.")
@@ -172,9 +151,52 @@ class SaveData:
 	def save(self) -> None:
 		"""
 		Saves the savedata to disk.
+		Will attempt to create the save directory as well.
+
+		:raises OSError: on any file system-related failure when
+		creating directories, checking for their existence, or
+		opening, writing and closing the save data files.
 		"""
-		with (get_savedata_location() / CONFIG).open("w") as f:
+		# Not using os.makedirs here as the creation mode isn't applied to
+		# all the directories. It's likely only one dir will be created at
+		# most anyways, but they don't call me Oliver the Overengineer for
+		# nothing.
+		creation_start_path = self._save_data_location
+		leaves: t.List[str] = []
+		while not creation_start_path.exists():
+			leaves.append(creation_start_path.name)
+			creation_start_path = creation_start_path.parent
+		to_create = creation_start_path
+		for name in reversed(leaves):
+			to_create = to_create / name
+			to_create.mkdir(0o775)
+
+		with (self._save_data_location / CONFIG).open("w") as f:
 			json.dump(self.config.to_dict(), f)
 
-		with (get_savedata_location() / HIGHSCORES).open("w") as f:
+		with (self._save_data_location / HIGHSCORES).open("w") as f:
 			json.dump(self.highscores, f)
+
+	@staticmethod
+	def get_savedata_location() -> Path:
+		""""
+		Returns the platform-dependant save data directory, or raises an
+		`UnsupportedPlatformError` if this is running on a smart fridge
+		or other obscure environments.
+		"""
+		if platform.system() == "Windows":
+			return Path(os.environ["APPDATA"]) / "PydayNightFunkin"
+
+		elif platform.system() == "Linux":
+			# XDG_CONFIG_HOME will write highscores into the config, which is kinda
+			# incorrect, but i don't care tbh, it's such a tiny file.
+			target = Path("~").expanduser()
+			if "XDG_CONFIG_HOME" in os.environ:
+				target = Path(os.environ["XDG_CONFIG_HOME"])
+			return target / ".config" / "PydayNightFunkin"
+
+		elif platform.system() == "Darwin":
+			raise UnsupportedPlatformError("No OSX savefile due to no OSX support!")
+
+		else:
+			raise UnsupportedPlatformError(f"Unknown platform: {platform.system()!r}")

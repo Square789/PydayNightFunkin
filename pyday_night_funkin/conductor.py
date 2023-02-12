@@ -24,17 +24,23 @@ class Conductor:
 	# Very awesome tutorial, many thanks
 
 	def __init__(self) -> None:
-		self._bpm: t.Optional[float] = None
+		self._bpm: float = 1.0
 
-		self.beat_duration: t.Optional[float] = None
+		self.beat_duration: float
 		"""
 		The duration of a beat, in milliseconds.
 		"""
 
-		self.step_duration: t.Optional[float] = None
+		self.step_duration: float
 		"""
 		The duration of a step (quarter-beat), in milliseconds.
 		"""
+
+		# set it to 1, which no song ever has, so it's hopefully an obvious
+		# enough default value. This prevents errors when scene code doesn't
+		# set `self.conductor.bpm`, which i don't want to force as it'd be a
+		# horrifyingly gross way of required initialization.
+		self.bpm = 1.0
 
 		self.song_position = 0.0
 		self._bpm_changes: t.List[BPMChangeEvent] = []

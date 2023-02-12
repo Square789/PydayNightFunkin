@@ -5,7 +5,6 @@ from pyday_night_funkin.core.graphics import PNFGroup
 from pyday_night_funkin.core.pnf_sprite import Effect, Movement, PNFSprite
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
-from pyday_night_funkin.core.tweens import TWEEN_ATTR
 from pyday_night_funkin.core.utils import clamp
 
 if t.TYPE_CHECKING:
@@ -25,12 +24,6 @@ class PNFSpriteContainer(PNFSprite):
 	interfacer and any sort of attempt to interact with one will
 	result in AttributeErrors.
 	"""
-
-	_TWEEN_ATTR_NAME_MAP = {
-		TWEEN_ATTR.X: "x",
-		TWEEN_ATTR.Y: "y",
-		TWEEN_ATTR.OPACITY: "opacity",
-	}
 
 	def __init__(
 		self,

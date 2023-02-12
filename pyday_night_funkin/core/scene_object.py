@@ -56,8 +56,8 @@ class SceneObject:
 
 class WorldObject(SceneObject):
 	"""
-	A scene object occupying space and a camera array,
-	intended to be drawn.
+	A scene object occupying two-dimensional geometry, intended to be
+	drawn.
 	"""
 
 	def __init__(self, x: "Numeric" = 0, y: "Numeric" = 0) -> None:
@@ -70,7 +70,6 @@ class WorldObject(SceneObject):
 		self._scale_x = 1.0
 		self._scale_y = 1.0
 		self._scroll_factor = (1.0, 1.0)
-		self._cameras: t.List["Camera"] = []
 
 	# NOTE: I would add a bunch of x, y, position, rotation etc. properties
 	# here. Unfortunately, when it comes to inheriting properties is where

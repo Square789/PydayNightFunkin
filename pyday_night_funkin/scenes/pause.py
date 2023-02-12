@@ -4,7 +4,7 @@ import typing as t
 from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.scene import BaseScene
-from pyday_night_funkin.core.tweens import TWEEN_ATTR, in_out_quart
+from pyday_night_funkin.core.tweens import in_out_quart
 from pyday_night_funkin.core.utils import to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL
 
@@ -20,7 +20,7 @@ class PauseScene(BaseScene):
 		self.background = self.create_object("bg")
 		self.background.make_rect(to_rgba_tuple(CNST.BLACK), CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
 		self.background.opacity = 0
-		self.background.start_tween(in_out_quart, {TWEEN_ATTR.OPACITY: 153}, 0.4)
+		self.background.start_tween(in_out_quart, {"opacity": 153}, 0.4)
 
 		self.add(TextLine("<PAUSED>", bold=True, x=910, y=650), "fg")
 

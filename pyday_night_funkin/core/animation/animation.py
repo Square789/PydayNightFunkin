@@ -44,9 +44,17 @@ class Animation:
 		"""
 
 	def stop(self) -> None:
+		"""
+		Simply sets the animation's `playing` attribute to `False`.
+		"""
 		self.playing = False
 
 	def play(self, force: bool, frame: int) -> None:
+		"""
+		Plays this animation. starting from the given frame.
+		If it should already be playing, has no effect unless `force`
+		is specified.
+		"""
 		if not force and self.playing:
 			return
 
@@ -59,8 +67,12 @@ class Animation:
 		self.cur_index = self._frame_indices[frame]
 
 	def update(self, dt: float) -> bool:
+		"""
+		Advances the animation by the given time delta, possibly updating
+		its frame. Returns whether the frame changed.
+		"""
 		if not self.playing:
-			return
+			return False
 
 		self.playtime += dt
 		frame_changed = False
