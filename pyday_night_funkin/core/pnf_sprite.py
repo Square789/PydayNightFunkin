@@ -22,7 +22,7 @@ if t.TYPE_CHECKING:
 
 
 _PNF_SPRITE_VERTEX_SHADER_SOURCE = """
-#version 450
+#version 410
 
 // 12 vtx attrs is totally not a sign of me doing anything wrong
 // Plus, these are realistically going to be calculated 3 times more
@@ -131,7 +131,7 @@ void main() {{
 """
 
 _PNF_SPRITE_FRAGMENT_SHADER_SOURCE = """
-#version 450
+#version 410
 
 in vec4 vertex_colors;
 in vec3 texture_coords;

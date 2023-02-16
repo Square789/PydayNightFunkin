@@ -60,8 +60,9 @@ class BufferObject:
 		Default case is technically `1B` -> 1.
 		"""
 
-		gl.glCreateBuffers(1, self.id)
-		gl.glNamedBufferData(self.id, size, None, usage)
+		gl.glGenBuffers(1, self.id)
+		gl.glBindBuffer(target, self.id)
+		gl.glBufferData(target, size, None, usage)
 
 	def set_size_and_data_py(self, seq: t.Sequence) -> None:
 		"""
@@ -80,7 +81,8 @@ class BufferObject:
 		it beforehand if needed.
 		"""
 		size = ctypes.sizeof(array)
-		gl.glNamedBufferData(self.id, size, array, self.usage)
+		gl.glBindBuffer(self.target, self.id)
+		gl.glBufferData(self.target, size, array, self.usage)
 		self.size = size
 
 	def set_data_py(self, start: int, size: int, data: t.Collection) -> None:
@@ -119,7 +121,8 @@ class BufferObject:
 		# 		f"Can not write {size} bytes from {start} into buffer of size {self.size}!"
 		# 	)
 
-		gl.glNamedBufferSubData(self.id, start, size, array)
+		gl.glBindBuffer(self.target, self.id)
+		gl.glBufferSubData(self.target, start, size, array)
 
 	def get_data_elements(self, start: int, count: int) -> ctypes.Array:
 		"""
@@ -168,11 +171,13 @@ class BufferObject:
 		# if self_start < 0 or size < 0 or self_start + size > self.size:
 		# 	raise ValueError("Invalid parameters for `copy_from`.")
 
-		ptr = gl.glMapNamedBufferRange(self.id, self_start, size, gl.GL_MAP_WRITE_BIT)
+		gl.glBindBuffer(self.target, self.id)
+		ptr = gl.glMapBufferRange(self.target, self_start, size, gl.GL_MAP_WRITE_BIT)
 		try:
 			src.copy_data_into_raw(src_start, size, ptr)
 		finally:
-			gl.glUnmapNamedBuffer(self.id)
+			gl.glBindBuffer(self.target, self.id)
+			gl.glUnmapBuffer(self.target)
 
 	def copy_data_into_raw(self, start: int, size: int, target: int) -> None:
 		if size == 0:
@@ -182,9 +187,10 @@ class BufferObject:
 		# if start < 0 or size < 0 or start + size > self.size:
 		# 	raise ValueError("Invalid parameters for `copy_data_into_raw`.")
 
-		ptr = gl.glMapNamedBufferRange(self.id, start, size, gl.GL_MAP_READ_BIT)
+		gl.glBindBuffer(self.target, self.id)
+		ptr = gl.glMapBufferRange(self.target, start, size, gl.GL_MAP_READ_BIT)
 		ctypes.memmove(target, ptr, size)
-		gl.glUnmapNamedBuffer(self.id)
+		gl.glUnmapBuffer(self.target)
 
 	def bind(self, target: t.Optional[int] = None) -> None:
 		"""
@@ -201,8 +207,9 @@ class BufferObject:
 		Resizes the buffer to take `new_size` bytes. Will truncate
 		existing data if the buffer shrunk.
 		"""
-		gl.glNamedBufferData(
-			self.id,
+		gl.glBindBuffer(self.target, self.id)
+		gl.glBufferData(
+			self.target,
 			new_size,
 			self.get_data_array(0, min(new_size, self.size)),
 			self.usage,
@@ -241,7 +248,8 @@ class RAMBackedBufferObject(BufferObject):
 		size = ctypes.sizeof(array)
 		self._ram_buffer = array
 		self._ram_buffer_ptr = ctypes.addressof(array)
-		gl.glNamedBufferData(self.id, size, array, self.usage)
+		gl.glBindBuffer(self.target, self.id)
+		gl.glBufferData(self.target, size, array, self.usage)
 		self._dirty = False
 		self.size = size
 
@@ -291,7 +299,8 @@ class RAMBackedBufferObject(BufferObject):
 		ctypes.memmove(new, self._ram_buffer, min(new_size, self.size))
 		self._ram_buffer = new
 		self._ram_buffer_ptr = ctypes.addressof(new)
-		gl.glNamedBufferData(self.id, new_size, self._ram_buffer_ptr, self.usage)
+		gl.glBindBuffer(self.target, self.id)
+		gl.glBufferData(self.target, new_size, self._ram_buffer_ptr, self.usage)
 		self._dirty = False
 		self.size = new_size
 
@@ -299,8 +308,9 @@ class RAMBackedBufferObject(BufferObject):
 		if not self._dirty:
 			return
 
-		gl.glNamedBufferSubData(
-			self.id,
+		gl.glBindBuffer(self.target, self.id)
+		gl.glBufferSubData(
+			self.target,
 			self._dirty_min,
 			self._dirty_max - self._dirty_min,
 			self._ram_buffer_ptr + self._dirty_min,

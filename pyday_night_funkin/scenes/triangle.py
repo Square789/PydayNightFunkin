@@ -21,7 +21,7 @@ if t.TYPE_CHECKING:
 
 
 vertex_shader = """
-#version 450
+#version 410
 in vec2 position;
 in vec3 color;
 
@@ -64,7 +64,7 @@ void main() {
 """
 
 fragment_shader = """
-#version 450
+#version 410
 in vec3 color_vo;
 out vec4 color_fo;
 

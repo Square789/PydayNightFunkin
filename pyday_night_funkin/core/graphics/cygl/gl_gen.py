@@ -178,17 +178,15 @@ REQUIRED_COMMANDS = {
 	"glGetError": "GetError",
 
 	# Buffer stuff
-	"glCreateBuffers": "CreateBuffers",
+	"glGenBuffers": "GenBuffers",
 	"glDeleteBuffers": "DeleteBuffers",
 
 	"glBufferData": "BufferData",
-	"glNamedBufferData": "NamedBufferData",
 	"glBufferSubData": "BufferSubData",
-	"glNamedBufferSubData": "NamedBufferSubData",
 
-	"glMapNamedBuffer": "MapNamedBuffer",
-	"glMapNamedBufferRange": "MapNamedBufferRange",
-	"glUnmapNamedBuffer": "UnmapNamedBuffer",
+	"glMapBuffer": "MapBuffer",
+	"glMapBufferRange": "MapBufferRange",
+	"glUnmapBuffer": "UnmapBuffer",
 
 	"glBindBuffer": "BindBuffer",
 }

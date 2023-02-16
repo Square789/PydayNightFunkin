@@ -79,9 +79,12 @@ cdef class BufferObject:
 		if self.pyobj_extractor == NULL:
 			raise ValueError("Could not find extractor function for gl type {gl_type}!")
 
-		gl.CreateBuffers(1, &self.id); cygl_errcheck()
+		gl.GenBuffers(1, &self.id)
+		cygl_errcheck()
 		self.buffer_exists = True
-		gl.NamedBufferData(self.id, size, NULL, usage); cygl_errcheck()
+		gl.BindBuffer(self.target, self.id)
+		gl.BufferData(self.target, size, NULL, usage)
+		cygl_errcheck()
 
 	def __dealloc__(self):
 		# Would call `delete`, but cython says to not do that from __dealloc__.
@@ -123,7 +126,8 @@ cdef class BufferObject:
 		self.set_size_and_data_raw(ctypes_sizeof(data), _get_ctypes_data_ptr(data))
 
 	cdef uint8_t set_size_and_data_raw(self, GLsizeiptr size, void *data) except 1:
-		gl.NamedBufferData(self.id, size, data, self.usage)
+		gl.BindBuffer(self.target, self.id)
+		gl.BufferData(self.target, size, data, self.usage)
 		cygl_errcheck()
 		self.size = size
 		return 0
@@ -151,7 +155,8 @@ cdef class BufferObject:
 
 	cdef uint8_t set_data_raw(self, GLintptr start, GLsizeiptr size, void *data) except 1:
 		_verify_range_access(self.size, start, size)
-		gl.NamedBufferSubData(self.id, start, size, data)
+		gl.BindBuffer(self.target, self.id)
+		gl.BufferSubData(self.target, start, size, data)
 		cygl_errcheck()
 		return 0
 
@@ -193,12 +198,14 @@ cdef class BufferObject:
 			raise ValueError("Copy source was None")
 		_verify_range_access(self.size, self_start, size)
 
-		cdef void *ptr = gl.MapNamedBufferRange(self.id, self_start, size, GL_MAP_WRITE_BIT)
+		gl.BindBuffer(self.target, self.id)
+		cdef void *ptr = gl.MapBufferRange(self.target, self_start, size, GL_MAP_WRITE_BIT)
 		cygl_errcheck()
 		try:
 			src.copy_data_into_raw(src_start, size, ptr)
 		finally:
-			gl.UnmapNamedBuffer(self.id)
+			gl.BindBuffer(self.target, self.id)
+			gl.UnmapBuffer(self.target)
 			cygl_errcheck()
 
 	cdef uint8_t copy_data_into_raw(self, GLintptr start, GLsizeiptr size, void *target) except 1:
@@ -206,10 +213,11 @@ cdef class BufferObject:
 			return 0
 		_verify_range_access(self.size, start, size)
 
-		cdef void *ptr = gl.MapNamedBufferRange(self.id, start, size, GL_MAP_READ_BIT)
+		gl.BindBuffer(self.target, self.id)
+		cdef void *ptr = gl.MapBufferRange(self.target, start, size, GL_MAP_READ_BIT)
 		cygl_errcheck()
 		memcpy(target, ptr, size)
-		gl.UnmapNamedBuffer(self.id)
+		gl.UnmapBuffer(self.target)
 		cygl_errcheck()
 		return 0
 
@@ -222,7 +230,8 @@ cdef class BufferObject:
 
 	cpdef resize(self, GLsizeiptr new_size):
 		my_data = self.get_data_array(0, min(new_size, self.size))
-		gl.NamedBufferData(self.id, new_size, _get_ctypes_data_ptr(my_data), self.usage)
+		gl.BindBuffer(self.target, self.id)
+		gl.BufferData(self.target, new_size, _get_ctypes_data_ptr(my_data), self.usage)
 		del my_data
 		cygl_errcheck()
 
@@ -314,7 +323,8 @@ cdef class RAMBackedBufferObject(BufferObject):
 			memset(new_ptr + self.size, 0, new_size - self.size)
 
 		self._ram_buffer = new_ptr
-		gl.NamedBufferData(self.id, new_size, self._ram_buffer, self.usage)
+		gl.BindBuffer(self.target, self.id)
+		gl.BufferData(self.target, new_size, self._ram_buffer, self.usage)
 		cygl_errcheck()
 		self.dirty = False
 		self.size = new_size
@@ -323,8 +333,9 @@ cdef class RAMBackedBufferObject(BufferObject):
 		if not self.dirty:
 			return
 
-		gl.NamedBufferSubData(
-			self.id,
+		gl.BindBuffer(self.target, self.id)
+		gl.BufferSubData(
+			self.target,
 			self.dirty_min,
 			<GLintptr>self.dirty_max - <GLintptr>self.dirty_min,
 			self._ram_buffer + self.dirty_min,

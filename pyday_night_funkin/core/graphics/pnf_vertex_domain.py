@@ -171,7 +171,8 @@ class PNFVertexDomain:
 			return
 
 		vao_id = gl.GLuint()
-		gl.glCreateVertexArrays(1, ctypes.byref(vao_id))
+		gl.glGenVertexArrays(1, ctypes.byref(vao_id))
+		gl.glBindVertexArray(vao_id)
 
 		for shader_attr_name, shader_attr_dict in shader.attributes.items():
 			# Attributes are linked with shaders by their name as passed
@@ -185,16 +186,12 @@ class PNFVertexDomain:
 			attr = self.attributes[shader_attr_name]
 			bp = attr.binding_point
 			loc = shader_attr_dict["location"]
-			# Set index/element buffer
-			gl.glVertexArrayElementBuffer(vao_id, draw_list.index_buffer.id)
-			# Enable the shader location / attribute index
-			gl.glEnableVertexArrayAttrib(vao_id, loc)
-			# Specify vertex layout for the attribute at index `loc`
-			gl.glVertexArrayAttribFormat(vao_id, loc, attr.count, attr.type, attr.normalize, 0)
-			# Associate the binding point with the buffer vertices should be sourced from.
-			gl.glVertexArrayVertexBuffer(vao_id, bp, attr.id, 0, attr.element_size)
-			# Link the shader attribute index with the binding point
-			gl.glVertexArrayAttribBinding(vao_id, loc, bp)
+
+			gl.glEnableVertexAttribArray(loc)
+			gl.glBindBuffer(gl.GL_ARRAY_BUFFER, attr.id)
+			gl.glVertexAttribPointer(loc, attr.count, attr.type, attr.normalize, 0, 0)
+
+		gl.glBindVertexArray(0)
 
 		# WARNING: Should shaders be deleted and their ids reassigned,
 		# this may fail in disgusting ways

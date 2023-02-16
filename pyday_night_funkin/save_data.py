@@ -196,7 +196,8 @@ class SaveData:
 			return target / ".config" / "PydayNightFunkin"
 
 		elif platform.system() == "Darwin":
-			raise UnsupportedPlatformError("No OSX savefile due to no OSX support!")
+			target = Path("~").expanduser()
+			return target / "Library" / "Application Support" / "PydayNightFunkin"
 
 		else:
 			raise UnsupportedPlatformError(f"Unknown platform: {platform.system()!r}")

@@ -278,12 +278,14 @@ class DrawList:
 					if cur_vertex_layout != new_vertex_layout:
 						def bind_vao(d=group_data.interfacer.domain, p=group_data.state.program):
 							# Buffers store their data locally and need to be told to upload it.
-							# Using a buffer that does direct glNamedBufferSubData calls noticeably
+							# Using a buffer that does direct glBufferSubData calls noticeably
 							# slows down the freeplay scene, where a lot of vertex updates are
 							# made each frame.
 							for att in d.attributes.values():
 								att.ensure()
 							d.bind_vao(p, self.name)
+							# This is the 4.1 compat branch, ibufs are not a part of VAOs.
+							self.index_buffer.bind()
 
 						draw_list.append(bind_vao)
 						cur_vertex_layout = new_vertex_layout

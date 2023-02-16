@@ -35,7 +35,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.types import Numeric
 
 
-__version__ = "0.0.41"
+__version__ = "0.0.41+gl41-compat"
 
 
 class _FPSData:

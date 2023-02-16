@@ -34,10 +34,10 @@ _QUAD_VBO_SIZE = (
 )
 
 CAMERA_QUAD_VERTEX_SHADER = """
-#version 450
-layout (location = 0) in vec2 position;
-layout (location = 1) in vec2 in_texture_coords;
-layout (location = 2) in vec4 in_fill_color;
+#version 410
+in vec2 position;
+in vec2 in_texture_coords;
+// in vec4 in_fill_color;
 
 out vec2 texture_coords;
 out vec4 fill_color;
@@ -61,14 +61,14 @@ void main() {
 		vec4(position, 0.0, 1.0);
 
 	texture_coords = in_texture_coords;
-	fill_color = in_fill_color;
+	// fill_color = in_fill_color;
 }
 """
 
 CAMERA_QUAD_FRAGMENT_SHADER = f"""
-#version 450
+#version 410
 in vec2 texture_coords;
-in vec4 fill_color;
+// in vec4 fill_color;
 
 out vec4 final_color;
 
@@ -200,41 +200,23 @@ class Camera:
 			(ctypes.c_ubyte * 24)(),
 		)
 
-		gl.glCreateVertexArrays(1, ctypes.byref(self.quad_vao))
+		gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.quad_vbo.id)
+
+		ipos = self.program.attributes["position"]["location"]
+		itxc = self.program.attributes["in_texture_coords"]["location"]
+		# ifcl = self.program.attributes["in_fill_color"]["location"]
+
+		gl.glGenVertexArrays(1, ctypes.byref(self.quad_vao))
+		gl.glBindVertexArray(self.quad_vao)
 		# Enable vertex attribute indices
-		gl.glEnableVertexArrayAttrib(self.quad_vao, 0)
-		gl.glEnableVertexArrayAttrib(self.quad_vao, 1)
-		gl.glEnableVertexArrayAttrib(self.quad_vao, 2)
+		gl.glEnableVertexAttribArray(ipos)
+		gl.glEnableVertexAttribArray(itxc)
+		# gl.glEnableVertexAttribArray(ifcl)
 		# Specify vertex layout for the attributes
-		gl.glVertexArrayAttribFormat(self.quad_vao, 0, 2, gl.GL_FLOAT, gl.GL_FALSE, 0)
-		gl.glVertexArrayAttribFormat(self.quad_vao, 1, 2, gl.GL_FLOAT, gl.GL_FALSE, 0)
-		gl.glVertexArrayAttribFormat(self.quad_vao, 2, 4, gl.GL_UNSIGNED_BYTE, gl.GL_TRUE, 0)
-		# Associate the binding points with the buffer the vertices should be sourced from
-		gl.glVertexArrayVertexBuffer(
-			self.quad_vao,
-			0,
-			self.quad_vbo.id,
-			_QUAD_VBO_POSITION_SEGMENT_START,
-			2 * GL_TYPE_SIZES[gl.GL_FLOAT]
-		)
-		gl.glVertexArrayVertexBuffer(
-			self.quad_vao,
-			1,
-			self.quad_vbo.id,
-			_QUAD_VBO_TEX_COORD_SEGMENT_START,
-			2 * GL_TYPE_SIZES[gl.GL_FLOAT],
-		)
-		gl.glVertexArrayVertexBuffer(
-			self.quad_vao,
-			2,
-			self.quad_vbo.id,
-			_QUAD_VBO_FILL_COLOR_SEGMENT_START,
-			4 * GL_TYPE_SIZES[gl.GL_UNSIGNED_BYTE],
-		)
-		# Link the shader attribute index with the binding point
-		gl.glVertexArrayAttribBinding(self.quad_vao, 0, 0)
-		gl.glVertexArrayAttribBinding(self.quad_vao, 1, 1)
-		gl.glVertexArrayAttribBinding(self.quad_vao, 2, 2)
+		gl.glVertexAttribPointer(ipos, 2, gl.GL_FLOAT, gl.GL_FALSE, 0, _QUAD_VBO_POSITION_SEGMENT_START)
+		gl.glVertexAttribPointer(itxc, 2, gl.GL_FLOAT, gl.GL_FALSE, 0, _QUAD_VBO_TEX_COORD_SEGMENT_START)
+		# gl.glVertexAttribPointer(ifcl, 4, gl.GL_UNSIGNED_BYTE, gl.GL_TRUE, 0, _QUAD_VBO_FILL_COLOR_SEGMENT_START)
+		gl.glBindVertexArray(0)
 
 		self._update_ubo()
 		self._update_vbo()

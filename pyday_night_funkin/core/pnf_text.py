@@ -33,7 +33,7 @@ if t.TYPE_CHECKING:
 
 
 _PNF_TEXT_VERTEX_SOURCE = """
-#version 450
+#version 410
 
 in vec2 position;
 in vec2 translate;
@@ -101,7 +101,7 @@ void main() {
 """
 
 _PNF_TEXT_FRAGMENT_SOURCE = f"""
-#version 450
+#version 410
 
 in vec4 frag_color;
 in vec3 frag_tex_coords;
