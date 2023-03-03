@@ -198,16 +198,11 @@ def _make_funcptr_name(name: str) -> str:
 
 
 def main():
-	_path = Path("PydayNightFunkin/pyday_night_funkin/core/graphics/cygl")
-	cygl_path = Path.cwd()
-	while _path.parts:
-		head, *tail = _path.parts
-		if cygl_path.name == head:
-			cygl_path /= Path(*tail)
-			break
-		_path = Path(*tail)
-	else:
-		print("Could not correct cwd to cygl subdirectory.")
+	# Should be launched from the project root.
+	cygl_path = Path.cwd() / "pyday_night_funkin" / "core" / "graphics" / "cygl"
+	# Quick sanity check whether we (this script) is here
+	if not (cygl_path / "gl_gen.py").exists():
+		print("Weird; gl_gen sanity check failed!")
 		return 1
 
 	gl_reg_struct_members = ""
