@@ -7,15 +7,6 @@ import typing as t
 from loguru import logger
 import pyglet
 
-# You really want to leave this set to `True` unless you haven't
-# touched the rendering backend AND not seen an OpenGL error for at
-# least 20 hours on at least three different systems.
-# This bool enables/disables pyglet's GL error checking, causing PNF
-# to silently drown in errors should something go wrong if this is
-# `False`. As it does run some python code each GL call (of which there's
-# dozens per frame), it should give some speedup when disabled however.
-# pyglet.options["debug_gl"] = True
-
 from pyday_night_funkin.core import ogg_decoder
 from pyday_night_funkin.core.asset_system import load_font
 from pyday_night_funkin.core.key_handler import KeyHandler, RawKeyHandler
@@ -163,18 +154,14 @@ class Game(SceneManager):
 			resizable = True,
 			vsync = False,
 			caption = f"PydayNightFunkin' v{__version__}",
+			config = pyglet.gl.Config(major_version=4, minor_version=5),
 		)
 
-		# OpenGL context is probably good here,
-		# initialize and set up a bunch of global stuff.
-		try:
-			from pyday_night_funkin.core.graphics.cygl import gl as cygl
-		except ImportError:
-			pass
-		else:
-			from pyglet.gl import gl
-			cygl.initialize(gl)
-			logger.info("cygl module found and initialized.")
+		# OpenGL context is probably good here, initialize and set up this global horribleness.
+		from pyday_night_funkin.core.graphics.cygl import gl as cygl
+		from pyglet.gl import gl
+		cygl.initialize(gl)
+		logger.info("cygl module initialized.")
 
 		if self.use_debug_pane:
 			self.debug_pane.init_graphical()
