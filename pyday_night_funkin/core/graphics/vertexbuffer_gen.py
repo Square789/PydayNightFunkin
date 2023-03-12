@@ -103,15 +103,11 @@ VERIFIERS = (
 
 
 def main():
-	_path = Path("PydayNightFunkin/pyday_night_funkin/core/graphics")
-	generator_path = Path.cwd()
-	while _path.parts:
-		head, *tail = _path.parts
-		if generator_path.name == head:
-			generator_path /= Path(*tail)
-			break
-		_path = Path(*tail)
-	else:
+	# Should be launched from the project root.
+	generator_path = Path.cwd() / "pyday_night_funkin" / "core" / "graphics"
+	# Quick sanity check whether we (this script) is here
+	if not (generator_path / "vertexbuffer_gen.py").exists():
+		print("Weird; vertexbuffer_gen sanity check failed!")
 		return 1
 
 	funcdefs = []

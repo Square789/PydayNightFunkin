@@ -16,6 +16,14 @@ def main():
 			"If specified more often than that, will disable debug mode and the debug pane."
 		),
 	)
+
+	# You really want to keep this defaulting to `True` unless you haven't
+	# touched the rendering backend AND not seen an OpenGL error for at
+	# least 20 hours on at least three different systems.
+	# This bool enables/disables pyglet's GL error checking, causing PNF
+	# to silently drown in errors should something go wrong if this is
+	# `False`. As it does run some python code each GL call (of which there's
+	# dozens per frame), it should give some speedup when disabled however.
 	argparser.add_argument(
 		"--no-gl-errcheck",
 		"-g",
