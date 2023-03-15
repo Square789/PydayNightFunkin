@@ -64,7 +64,7 @@ cdef bint _is_initialized = False
 
 cdef gl.GLRegistry _gl_reg
 
-ctypedef void (* SetGLFunc_f)(size_t addressof)
+ctypedef void (* SetGLFunc_f)(uintptr_t addressof)
 
 # Completely unsafe hacks that make function addresses available to cython.
 # I love and hate C for this.
@@ -118,20 +118,57 @@ cdef size_t cygl_get_gl_type_size(GLenum type_):
 		return 0
 
 
-NEEDS_INITIALIZATION = {command_translation_dict}
+NAME_TO_INITIALIZER_DICT = {name_to_initializer_dict}
 
 def initialize(module):
 	global _is_initialized
 	if _is_initialized:
 		return
 
-	cdef set uninitialized = set(NEEDS_INITIALIZATION)
-	for name in dir(module):
-		if name in NEEDS_INITIALIZATION:
-			# print("initing", name)
-			f = NEEDS_INITIALIZATION[name]
-			f(<size_t>ctypes.addressof(getattr(module, name)))
-			uninitialized.remove(name)
+	cdef set uninitialized = set(NAME_TO_INITIALIZER_DICT)
+	cdef uintptr_t address
+	for name in NAME_TO_INITIALIZER_DICT:
+		address = 0
+		try:
+			thing = getattr(module, name)
+		except AttributeError:
+			raise RuntimeError(
+				f"GL module did not possess required attribute {{name!r}}"
+			) from None
+
+		if hasattr(thing, "func") and thing.func is None:
+			# HACK Not gonna run an isinstance check here
+			# This is likely a WGLFunctionProxy.
+			# This branch should only run if we are on windows, so importing wglGetProcAddress
+			# shooooould succeed.
+			# It furthermore shooooould be returning function pointers.
+			# Do not bother resolving the proxy, it can go do that on its own.
+			# We just need to get the function address.
+
+			from pyglet.gl.lib_wgl import wglGetProcAddress
+			name_buf = ctypes.create_string_buffer(thing.name.encode("utf-8"))
+			address = <uintptr_t>ctypes.addressof(wglGetProcAddress(name_buf))
+			del name_buf
+			if address == 0:
+				raise RuntimeError(f"wglGetProcAddress returned NULL; {{name!r}} unavailable")
+		else:
+			address_haver = thing
+			if hasattr(thing, "func"):
+				# Likely a WGLFunction (formerly WGLFunctionProxy but with its __class__ attribute
+				# replaced like wtf); its func should already be setup and good to go by giving it
+				# to addressof.
+				address_haver = thing.func
+
+			try:
+				address = <uintptr_t>ctypes.addressof(address_haver)
+			except TypeError:
+				raise TypeError(
+					f"ctypes.addressof raised TypeError when trying to register {{name!r}}, "
+					f"type was {{address_haver.__class__.__name__!r}}"
+				) from None
+
+		NAME_TO_INITIALIZER_DICT[name](address)
+		uninitialized.remove(name)
 
 	if uninitialized:
 		raise RuntimeError(
@@ -139,7 +176,6 @@ def initialize(module):
 			f"First missing value: {{next(iter(uninitialized))!r}}"
 		)
 
-	# print("in'nit")
 	_is_initialized = True
 """
 
@@ -256,16 +292,16 @@ def main():
 		gl_reg_struct_members += f"\t{fptr_name} {translated_name}\n"
 
 
-	command_translation_dict = "{\n"
+	name_to_initializer_dict = "{\n"
 	initializer_funcs = ""
 	for orig_name, cy_name in REQUIRED_COMMANDS.items():
 		fptr_name = _make_funcptr_name(cy_name)
 		regfunc_name = f"_register_{orig_name}"
-		initializer_funcs += f"cdef void {regfunc_name}(size_t func_ptr):\n"
+		initializer_funcs += f"cdef void {regfunc_name}(uintptr_t func_ptr):\n"
 		initializer_funcs += f"\t_gl_reg.{cy_name} = (<{fptr_name} *>func_ptr)[0]\n\n"
-		command_translation_dict += f"\t\"{orig_name}\": {regfunc_name},\n"
+		name_to_initializer_dict += f"\t\"{orig_name}\": {regfunc_name},\n"
 
-	command_translation_dict += "}\n"
+	name_to_initializer_dict += "}\n"
 
 	with (cygl_path / "gl.pxd").open("w", encoding="utf-8") as f:
 		f.write(PXD_TEMPLATE.format(
@@ -278,7 +314,7 @@ def main():
 	with (cygl_path / "gl.pyx").open("w", encoding="utf-8") as f:
 		f.write(PYX_TEMPLATE.format(
 			initializer_funcs = initializer_funcs,
-			command_translation_dict = command_translation_dict,
+			name_to_initializer_dict = name_to_initializer_dict,
 		))
 
 	return 0

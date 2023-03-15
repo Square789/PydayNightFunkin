@@ -154,7 +154,7 @@ class Game(SceneManager):
 			resizable = True,
 			vsync = False,
 			caption = f"PydayNightFunkin' v{__version__}",
-			config = pyglet.gl.Config(major_version=4, minor_version=5),
+			config = pyglet.gl.Config(double_buffer=True, major_version=4, minor_version=5),
 		)
 
 		# OpenGL context is probably good here, initialize and set up this global horribleness.
