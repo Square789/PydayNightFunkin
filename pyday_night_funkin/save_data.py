@@ -188,15 +188,14 @@ class SaveData:
 			return Path(os.environ["APPDATA"]) / "PydayNightFunkin"
 
 		elif platform.system() == "Linux":
-			# XDG_CONFIG_HOME will write highscores into the config, which is kinda
-			# incorrect, but i don't care tbh, it's such a tiny file.
 			target = Path("~").expanduser()
-			if "XDG_CONFIG_HOME" in os.environ:
-				target = Path(os.environ["XDG_CONFIG_HOME"])
-			return target / ".config" / "PydayNightFunkin"
+			if "XDG_DATA_HOME" in os.environ:
+				target = Path(os.environ["XDG_DATA_HOME"])
+			return target / ".local" / "share" / "PydayNightFunkin"
 
 		elif platform.system() == "Darwin":
-			raise UnsupportedPlatformError("No OSX savefile due to no OSX support!")
+			target = Path("~").expanduser()
+			return target / "Library" / "Application Support" / "PydayNightFunkin"
 
 		else:
 			raise UnsupportedPlatformError(f"Unknown platform: {platform.system()!r}")
