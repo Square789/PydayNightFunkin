@@ -66,7 +66,8 @@ class OggVorbisDecoder(MediaDecoder):
 		else:
 			return StaticSource(src)
 
-_ogg_decoder = OggVorbisDecoder()
+
+_decoders = [OggVorbisDecoder()]
 
 def get_decoders():
-	return [_ogg_decoder]
+	return _decoders
