@@ -55,9 +55,8 @@ class Layer:
 
 class BaseScene(Container):
 	"""
-	A scene holds a number of scene objects and cameras, functions to
-	manipulate these in a way appropiate to the scene's nature and
-	event handlers to call these functions.
+	A scene holds a number of scene objects and cameras, a batch and
+	is the general setting of a chunk of game logic.
 	"""
 
 	def __init__(self, game: "Game") -> None:
@@ -75,13 +74,13 @@ class BaseScene(Container):
 		self.draw_passthrough: bool = True
 		"""
 		Whether scenes in the scene stack after this scene will be
-		drawn.
+		drawn. `True` by default.
 		"""
 
 		self.update_passthrough: bool = False
 		"""
 		Whether scenes in the scene stack after this scene will be
-		updated.
+		updated. `False` by default.
 		"""
 
 		self.layers: t.Dict[str, Layer] = OrderedDict(
@@ -377,13 +376,24 @@ class BaseScene(Container):
 		else:
 			remover.on_subscene_removal(self, *args, **kwargs)
 
-	def on_subscene_removal(self, subscene, *args, **kwargs):
+	def on_subscene_removal(self, subscene: "BaseScene", *args, **kwargs) -> None:
 		"""
-		Called whenever a direct subscene of this scene has
-		`remove_scene` called on it.
-		Offers a possibility for scenes to react to subscene removal.
+		Called as soon as a direct subscene of this scene has been
+		scheduled for removal.
+		Offers a possibility for scenes to react to subscene removal
+		via overriding.
 		"""
 		self.game.remove_scene(subscene)
+
+	def on_imminent_replacement(self, new_scene: t.Type["BaseScene"], *args, **kwargs) -> bool:
+		"""
+		Called on the top scene as soon as the game receives a request
+		to replace it via `set_scene`.
+		This function receives the scene type and parameters and has
+		the ability to deny the switch by returning `False`, which is
+		useful for delaying and transitioning out of a scene.
+		"""
+		return True
 
 	@t.final
 	def delete(self) -> None:
@@ -391,7 +401,7 @@ class BaseScene(Container):
 
 	def destroy(self) -> None:
 		"""
-		Destroy the scene by deleting its members and graphics batch.
+		Destroys the scene by deleting its members and graphics batch.
 		**!** This does not remove the scene from the game's scene
 		stack and will cause errors if used improperly.
 		Chances are you want to use `remove_scene` instead.

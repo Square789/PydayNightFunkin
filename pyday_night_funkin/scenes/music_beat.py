@@ -6,6 +6,11 @@ import typing as t
 from pyday_night_funkin.conductor import Conductor
 from pyday_night_funkin.core.pnf_player import PNFPlayer
 from pyday_night_funkin.core.scene import BaseScene
+from pyday_night_funkin import scenes
+
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.scene_manager import SceneSetupTrio
+
 
 
 class ConductorSyncMode(IntEnum):
@@ -32,9 +37,39 @@ class MusicBeatScene(BaseScene):
 		self._stop_conductor_sync_on_eos: bool = False
 		self._reset_step_on_conductor_sync_eos: bool = True
 
+		self._out_transition_started: bool = False
+		self._out_transition_complete: bool = False
+		self._out_transition_next: t.Optional["SceneSetupTrio"] = None
+
 		self._last_step: int = -1
 		self.cur_step: int = -1
 		self.cur_beat: int = -1
+
+		# self.game.push_scene(scenes.TransitionScene, True)
+
+	def on_imminent_replacement(self, new_scene: t.Type["BaseScene"], *args, **kwargs) -> bool:
+		return True
+		if self._out_transition_complete:
+			return True
+
+		if not self._out_transition_started:
+			self.game.push_scene(scenes.TransitionScene, False, self.on_out_transition_complete)
+			self._out_transition_next = (new_scene, args, kwargs)
+			self._out_transition_started = True
+		else:
+			logger.info("Running transition already, ignoring incoming replacement")
+
+		return False
+
+	def on_out_transition_complete(self) -> None:
+		self._out_transition_complete = True
+		if self._out_transition_next:
+			t, a, k = self._out_transition_next
+			# Should call into `on_imminent_replacement`.
+			# If it doesn't, who knows! This scene system is chaos!
+			self.game.set_scene(t, *a, **k)
+		else:
+			self.remove_scene()
 
 	def sync_conductor_from_player(
 		self,

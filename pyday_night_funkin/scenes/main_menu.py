@@ -17,7 +17,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 
-class MainMenuScene(BaseScene):
+class MainMenuScene(scenes.MusicBeatScene):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 

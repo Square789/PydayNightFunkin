@@ -25,7 +25,7 @@ class StickySprite(PNFSprite):
 		self.y = self.stickee.y - 30
 
 
-class FreeplayScene(BaseScene):
+class FreeplayScene(scenes.MusicBeatScene):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 

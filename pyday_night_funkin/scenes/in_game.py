@@ -500,8 +500,11 @@ class InGameScene(scenes.MusicBeatScene):
 			self.hud.countdown_popup(self._countdown_stage)
 			self._countdown_stage += 1
 
-	def on_subscene_removal(self, subscene, end_self, reset=False):
+	def on_subscene_removal(self, subscene, end_self=None, reset=False):
 		super().on_subscene_removal(subscene)
+		if end_self is None:
+			return
+
 		if end_self:
 			self.game.set_scene(self.follow_scene)
 		else:

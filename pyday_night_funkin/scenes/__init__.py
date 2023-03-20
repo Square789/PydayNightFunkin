@@ -11,9 +11,11 @@ from .settings import SettingsScene
 from .story_menu import StoryMenuScene
 from .test import TestScene
 from .title import TitleScene
+from .transition import TransitionScene
 from .triangle import TriangleScene
 
 __all__ = [
-	"FreeplayScene", "InGameScene", "GameOverScene", "MusicBeatScene", "PauseScene",
-	"SettingsScene", "StoryMenuScene", "TestScene", "TitleScene", "TriangleScene", "MainMenuScene"
+	"FreeplayScene", "InGameScene", "GameOverScene", "MainMenuScene", "MusicBeatScene",
+	"PauseScene", "SettingsScene", "StoryMenuScene", "TestScene", "TitleScene", "TransitionScene",
+	"TriangleScene"
 ]
