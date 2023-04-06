@@ -10,7 +10,6 @@ from pyglet.window.key import B, R
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
-from pyday_night_funkin.core.pnf_player import SFXRing
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import Container, SceneObject
@@ -125,7 +124,7 @@ class BaseScene(Container):
 		self._passed_time = 0.0
 		self.clock = Clock(self._get_elapsed_time)
 
-		self.sfx_ring = SFXRing()
+		self.sfx_ring = self.game.sound.create_sfx_ring()
 
 	@staticmethod
 	def get_default_cameras() -> t.Sequence[t.Union[str, t.Tuple[str, int, int]]]:
@@ -413,7 +412,7 @@ class BaseScene(Container):
 		for cam in self.cameras.values():
 			cam.delete()
 
-		self.sfx_ring.delete()
+		self.sfx_ring.destroy()
 
 		self.batch.delete()
 		self.batch = None

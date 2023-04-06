@@ -91,22 +91,122 @@ void main() {{
 """
 
 
-class Camera:
+class SimpleCamera:
 	"""
 	Camera class to provide a UBO (which needs to be reflected in the
 	shader code of shaders that want to use it) that transforms
 	drawables as if they were viewed translated/zoomed with a camera.
-	Also posesses a framebuffer that can be drawn to in an attempt at
-	cloning the HaxeFlixel camera system:
-	https://github.com/HaxeFlixel/flixel/blob/dev/flixel/FlxCamera.hx
 	"""
 
-	_dummy: t.Optional["Camera"] = None
 	_shader_container = ShaderContainer(
 		CAMERA_QUAD_VERTEX_SHADER, CAMERA_QUAD_FRAGMENT_SHADER
 	)
 
-	def __init__(self, x: int, y: int, w: int, h: int):
+	def __init__(self, w: int, h: int):
+		self._x = 0
+		"""
+		Top-left-most world x coordinate the camera would be showing at
+		zoom 1.0.
+		"""
+		self._y = 0
+		"""
+		Top-left-most world y coordinate the camera would be showing at
+		zoom 1.0.
+		"""
+
+		self._width = w
+		self._height = h
+
+		self._zoom = 1.0
+
+		self._follow_target = None
+		self._follow_lerp = 1.0
+
+		self.ubo = self._shader_container.get_camera_ubo()
+		self._update_ubo()
+
+	def _update_ubo(self) -> None:
+		with self.ubo as ubo:
+			ubo.zoom = self._zoom
+			ubo.position[:] = (self._x, self._y)
+			ubo.GAME_DIMENSIONS[:] = (GAME_WIDTH, GAME_HEIGHT)
+			ubo.dimensions[:] = (self._width, self._height)
+
+	def update(self, dt: float) -> None:
+		if self._follow_target is not None:
+			self._update_follow_target(dt)
+
+	def look_at(self, where: Vec2) -> None:
+		"""
+		Immediatedly sets the camera's target position to look at the
+		given point.
+		"""
+		# This may not respect zoom. Or, it may, and I am completely
+		# forgetting something.
+		self._x = where[0] - (self._width / 2)
+		self._y = where[1] - (self._height / 2)
+		self._update_ubo()
+
+	def set_follow_target(self, tgt: t.Optional[Vec2], lerp: float = 1.0):
+		self._follow_target = tgt
+		self._follow_lerp = lerp
+
+	def _update_follow_target(self, dt: float) -> None:
+		# There used to be a deadzone in the FlxCamera, but all uses
+		# within the fnf source (follow target is a point) have its
+		# width and height set to 0, so the deadzone is effectively
+		# reduced to a point. Take advantage of that and reduce it
+		# to the halved display width here.
+
+		tgt_x = self._follow_target[0] - (self._width / 2)
+		tgt_y = self._follow_target[1] - (self._height / 2)
+
+		self._x += (tgt_x - self._x) * self._follow_lerp
+		self._y += (tgt_y - self._y) * self._follow_lerp
+		self._update_ubo()
+
+	@property
+	def x(self) -> int:
+		return self._x
+
+	@x.setter
+	def x(self, new_x: int) -> None:
+		self._x = new_x
+		self._update_ubo()
+
+	@property
+	def y(self) -> int:
+		return self._y
+
+	@y.setter
+	def y(self, new_y: int) -> None:
+		self._y = new_y
+		self._update_ubo()
+
+	@property
+	def zoom(self) -> float:
+		return self._zoom
+
+	@zoom.setter
+	def zoom(self, new_zoom: float) -> None:
+		self._zoom = new_zoom
+		self._update_ubo()
+
+	def delete(self) -> None:
+		pass
+
+
+class Camera(SimpleCamera):
+	"""
+	Inherits the SimpleCamera to transform drawables through a UBO and
+	also posesses a framebuffer that can be drawn to in an attempt at
+	cloning the HaxeFlixel camera system:
+	https://github.com/HaxeFlixel/flixel/blob/dev/flixel/FlxCamera.hx
+	"""
+
+	def __init__(self, x: int, y: int, w: int, h: int) -> None:
+		super().__init__(w, h)
+
 		self._screen_x = x
 		"""Absolute x position of the camera's display quad."""
 		self._screen_y = y
@@ -120,32 +220,16 @@ class Camera:
 		self._rotation = 0
 		"""Rotation of the camera's display quad."""
 
-		self._x = 0
-		"""
-		Top-left-most world x coordinate the camera would be showing at
-		zoom 1.0.
-		"""
-		self._y = 0
-		"""
-		Top-left-most world y coordinate the camera would be showing at
-		zoom 1.0.
-		"""
-
-		self._view_width = self._width
-		"""
-		Width of the world area displayed by the camera.
-		Affected by zoom.
-		"""
-		self._view_height = self._height
-		"""
-		Height of the world area displayed by the camera.
-		Affected by zoom.
-		"""
-
-		self._zoom = 1.0
-
-		self._follow_target = None
-		self._follow_lerp = 1.0
+		# self._view_width = self._width
+		# """
+		# Width of the world area displayed by the camera.
+		# Affected by zoom.
+		# """
+		# self._view_height = self._height
+		# """
+		# Height of the world area displayed by the camera.
+		# Affected by zoom.
+		# """
 
 		self._effect_shaders: t.List["ShaderProgram"] = []
 		"""
@@ -162,7 +246,6 @@ class Camera:
 		self.framebuffer.attach_texture(self.texture)
 
 		self.program = self._shader_container.get_program()
-		self.ubo = self._shader_container.get_camera_ubo()
 
 		self.quad_vao = gl.GLuint()
 		"""
@@ -236,7 +319,6 @@ class Camera:
 		gl.glVertexArrayAttribBinding(self.quad_vao, 1, 1)
 		gl.glVertexArrayAttribBinding(self.quad_vao, 2, 2)
 
-		self._update_ubo()
 		self._update_vbo()
 
 	def draw_framebuffer(self) -> None:
@@ -254,22 +336,6 @@ class Camera:
 		gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 		gl.glBindVertexArray(0)
 
-	@classmethod
-	def get_dummy(cls) -> "Camera":
-		"""
-		Returns the global dummy camera.
-		"""
-		if cls._dummy is None:
-			cls._dummy = cls(0, 0, GAME_WIDTH, GAME_HEIGHT)
-		return cls._dummy
-
-	def _update_ubo(self) -> None:
-		with self.ubo as ubo:
-			ubo.zoom = self._zoom
-			ubo.position[:] = (self._x, self._y)
-			ubo.GAME_DIMENSIONS[:] = (GAME_WIDTH, GAME_HEIGHT)
-			ubo.dimensions[:] = (self._width, self._height)
-
 	def _update_vbo(self) -> None:
 		x1 = self._screen_x
 		y1 = self._screen_y + self._height
@@ -284,66 +350,6 @@ class Camera:
 		# Not going through the trouble of indexing (yet)
 		data = (ctypes.c_float * 12)(*v[0], *v[2], *v[1], *v[0], *v[2], *v[3])
 		self.quad_vbo.set_data_array(0, _QUAD_VBO_POSITION_SEGMENT_SIZE, data)
-
-	def update(self, dt: float) -> None:
-		if self._follow_target is not None:
-			self._update_follow_target(dt)
-
-	def look_at(self, where: Vec2) -> None:
-		"""
-		Immediatedly sets the camera's target position to look at the
-		given point.
-		"""
-		# This may not respect zoom. Or, it may, and I am completely
-		# forgetting something.
-		self._x = where[0] - (self._width / 2)
-		self._y = where[1] - (self._height / 2)
-		self._update_ubo()
-
-	def set_follow_target(self, tgt: t.Optional[Vec2], lerp: float = 1.0):
-		self._follow_target = tgt
-		self._follow_lerp = lerp
-
-	def _update_follow_target(self, dt: float) -> None:
-		# There used to be a deadzone in the FlxCamera, but all uses
-		# within the fnf source (follow target is a point) have its
-		# width and height set to 0, so the deadzone is effectively
-		# reduced to a point. Take advantage of that and reduce it
-		# to the halved display width here.
-
-		tgt_x = self._follow_target[0] - (self._width / 2)
-		tgt_y = self._follow_target[1] - (self._height / 2)
-
-		self._x += (tgt_x - self._x) * self._follow_lerp
-		self._y += (tgt_y - self._y) * self._follow_lerp
-		self._update_ubo()
-
-	@property
-	def x(self) -> int:
-		return self._x
-
-	@x.setter
-	def x(self, new_x: int) -> None:
-		self._x = new_x
-		self._update_ubo()
-
-	@property
-	def y(self) -> int:
-		return self._y
-
-	@y.setter
-	def y(self, new_y: int) -> None:
-		self._y = new_y
-		self._update_ubo()
-
-	@property
-	def zoom(self) -> float:
-		return self._zoom
-
-	@zoom.setter
-	def zoom(self, new_zoom: float) -> None:
-		self._zoom = new_zoom
-		self._update_ubo()
 
 	def delete(self) -> None:
 		self.framebuffer.delete()

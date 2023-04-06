@@ -1,8 +1,10 @@
 
 import typing as t
 
-from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup, get_default_batch
+
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.camera import SimpleCamera
 
 
 class SceneContext:
@@ -24,15 +26,14 @@ class SceneContext:
 		self,
 		batch: t.Optional["PNFBatch"] = None,
 		group: t.Optional["PNFGroup"] = None,
-		cameras: t.Optional[t.Iterable["Camera"]] = None,
+		cameras: t.Optional[t.Iterable["SimpleCamera"]] = None,
 	) -> None:
 		"""
 		Creates a new context.
 		If no `batch` is given, it will be set to be the default batch.
 		If no `group` is given, it will be set to an empty group with
 		no parent.
-		If no `cameras` are given, will be set to only the global dummy
-		camera.
+		If no `cameras` are given, will be set to no camera at all.
 		"""
 
 		self.batch = batch or get_default_batch()
@@ -41,7 +42,7 @@ class SceneContext:
 		self.group = group or PNFGroup()
 		"""Group that defines a position/order in the scene tree."""
 
-		self.cameras = tuple(cameras or (Camera.get_dummy(),))
+		self.cameras = tuple(cameras or ())
 		"""
 		The cameras the owning drawable should be drawn with.
 		I am not happy with how these are in here since they don't

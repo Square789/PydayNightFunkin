@@ -1,5 +1,6 @@
 
 from platform import python_version
+import queue
 import sys
 from time import perf_counter
 import typing as t
@@ -10,11 +11,13 @@ import pyglet
 from pyday_night_funkin.core import ogg_decoder
 from pyday_night_funkin.core.asset_system import load_font
 from pyday_night_funkin.core.key_handler import KeyHandler, RawKeyHandler
-from pyday_night_funkin.core.pnf_player import PNFPlayer, SFXRing
 from pyday_night_funkin.core.pnf_window import PNFWindow
 from pyday_night_funkin.core.scene_manager import SceneManager
+from pyday_night_funkin.core.sound import SoundController
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
+from pyday_night_funkin.enums import CONTROL
+from pyday_night_funkin.volume_control_dropdown import VolumeControlDropdown
 from pyday_night_funkin.registry import Registry
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
@@ -23,17 +26,23 @@ if t.TYPE_CHECKING:
 	from loguru import Record
 	from pyday_night_funkin.character import Character
 	from pyday_night_funkin.content_pack import ContentPack, WeekData
+	from pyday_night_funkin.core.superscene import SuperScene
 	from pyday_night_funkin.core.types import Numeric
 
 
-__version__ = "0.0.42"
+__version__ = "0.0.43"
+
+
+SOUND_GRANULARITY = 10
 
 
 class _FPSData:
 	def __init__(self) -> None:
 		self.last_second_timestamp = perf_counter() * 1000
 		self._reset_measurements()
-		self.fmt_fps = "?"
+		self.fmt_fps = 0
+		self.last_draw_time = \
+		self.last_update_time = \
 		self.fmt_avg_frame_time = \
 		self.fmt_max_frame_time = \
 		self.fmt_avg_draw_time = \
@@ -45,11 +54,13 @@ class _FPSData:
 		self.last_seconds_frames = 0
 		self.last_seconds_frame_time = 0
 		self.last_seconds_spent_draw_time = 0.0
-		self.last_seconds_max_draw_time = -1
+		self.last_seconds_max_draw_time = -1.0
 		self.last_seconds_spent_update_time = 0.0
-		self.last_seconds_max_update_time = -1
+		self.last_seconds_max_update_time = -1.0
 
-	def bump(self, draw_time: "Numeric", update_time: "Numeric") -> None:
+	def bump(self, draw_time: float, update_time: float) -> None:
+		self.last_draw_time = draw_time
+		self.last_update_time = update_time
 		self.last_seconds_frames += 1
 		self.last_seconds_frame_time += draw_time + update_time
 		self.last_seconds_spent_draw_time += draw_time
@@ -61,8 +72,8 @@ class _FPSData:
 		if t - self.last_second_timestamp < 1000:
 			return
 
-		self.last_second_timestamp = t
 		self.fmt_fps = self.last_seconds_frames
+		self.last_second_timestamp = t
 		self.fmt_avg_draw_time = (
 			self.last_seconds_spent_draw_time / self.last_seconds_frames
 			if self.last_seconds_frames != 0 else float("nan")
@@ -81,22 +92,22 @@ class _FPSData:
 		)
 		tmp = self.last_seconds_max_update_time + self.last_seconds_max_draw_time
 		self.fmt_max_frame_time = tmp if tmp >= 0 else "?"
-		self.fmt_avg_frame_time = (self.fmt_avg_update_time + self.fmt_avg_draw_time) / 2
+		self.fmt_avg_frame_time = (self.fmt_avg_update_time + self.fmt_avg_draw_time) * 0.5
 		self._reset_measurements()
 
-	def build_debug_string(self, draw_time: float, update_time: float) -> str:
+	def build_debug_string(self) -> str:
 		"""
-		Returns a debug string built from the fps, average times and
-		current draw and update time.
+		Returns a debug string built from the fps, average and last
+		times.
 		"""
 		return (
 			f"FPS:    {self.fmt_fps:>3}\n"
 			f"FRAME:  avg {self.fmt_avg_frame_time:>4.1f}, max {self.fmt_max_frame_time:>5.1f}, "
-			f"cur {draw_time + update_time:>5.1f}\n"
+			f"cur {self.last_update_time + self.last_draw_time:>5.1f}\n"
 			f"UPDATE: avg {self.fmt_avg_update_time:>4.1f}, max {self.fmt_max_update_time:>5.1f}, "
-			f"cur {update_time:>5.1f}\n"
+			f"cur {self.last_update_time:>5.1f}\n"
 			f"DRAW:   avg {self.fmt_avg_draw_time:>4.1f}, max {self.fmt_max_draw_time:>5.1f}, "
-			f"cur {draw_time:>5.1f}"
+			f"cur {self.last_draw_time:>5.1f}"
 		)
 
 
@@ -106,10 +117,12 @@ class Game(SceneManager):
 
 		self.debug = debug_level > 0
 		self.use_debug_pane = debug_level > 1
-		self.debug_pane = DebugPane(8)
-		self._last_update_time = 0
+		self.debug_pane = None
+		self._debug_queue = None
+		self._last_draw_time = 0.0
 		self._fps = _FPSData()
 		self._dt_limit = .35
+		self._superscenes: t.List["SuperScene"] = []
 
 		logger.remove(0)
 
@@ -126,15 +139,17 @@ class Game(SceneManager):
 
 			logger.configure(patcher=elapsed_patcher)
 
-			_stderr_fmt = (
-				"<green>{time:MMM DD HH:mm:ss.SSS}</green> | <level>{level:<8}</level> | "
-				"<cyan>{name}</cyan>:<cyan>{function}</cyan>@<cyan>{line}</cyan> - "
-				"<level>{message}</level>"
-			)
+
 			if sys.stderr:
+				_stderr_fmt = (
+					"<green>{time:MMM DD HH:mm:ss.SSS}</green> | <level>{level:<8}</level> | "
+					"<cyan>{name}</cyan>:<cyan>{function}</cyan>@<cyan>{line}</cyan> - "
+					"<level>{message}</level>"
+				)
 				logger.add(sys.stderr, format=_stderr_fmt)
 
 			if self.use_debug_pane:
+				self._debug_queue = queue.Queue()
 				# According to the loguru docs, the string format option appends `\n{exception}`,
 				# however the exception is massive and does not belong in the debug pane and the
 				# newline creates a box character on the debug pane's single-line labels.
@@ -143,7 +158,7 @@ class Game(SceneManager):
 					"{extra[elapsed_secs_total]:0>6}.{extra[elapsed_millisecs_total]:0>3} | "
 					"{level:<8} | {name}:{function}@{line} - {message}"
 				)
-				logger.add(self.debug_pane.add_message, format=_debug_pane_fmt, colorize=False)
+				logger.add(self._debug_queue.put, format=_debug_pane_fmt, colorize=False)
 
 		if ogg_decoder not in pyglet.media.codecs.get_decoders():
 			pyglet.media.codecs.add_decoders(ogg_decoder)
@@ -163,8 +178,12 @@ class Game(SceneManager):
 		cygl.initialize(gl)
 		logger.info("cygl module initialized.")
 
+		self.volume_control = VolumeControlDropdown(SOUND_GRANULARITY)
+		self._superscenes.append(self.volume_control)
+
 		if self.use_debug_pane:
-			self.debug_pane.init_graphical()
+			self.debug_pane = DebugPane(8, self._debug_queue)
+			self._superscenes.append(self.debug_pane)
 
 		self.save_data = SaveData.load()
 
@@ -175,8 +194,11 @@ class Game(SceneManager):
 		self.window.push_handlers(self.raw_key_handler)
 		self.window.push_handlers(on_draw=self.draw, on_close=self.on_close)
 
-		self.player = PNFPlayer()
-		self.sfx_ring = SFXRing()
+		self.sound = SoundController(SOUND_GRANULARITY)
+		self.player = self.sound.create_player()
+		"""
+		A single global media player, similar to `FlxG.sound.music`.
+		"""
 
 		self.character_registry: Registry[t.Type["Character"]] = Registry()
 		self.weeks: t.List["WeekData"] = []
@@ -249,22 +271,35 @@ class Game(SceneManager):
 		if self._pending_scene_stack_removals or self._pending_scene_stack_additions:
 			self._modify_scene_stack()
 
+		vup = self.key_handler.just_pressed(CONTROL.VOLUME_UP)
+		vdn = self.key_handler.just_pressed(CONTROL.VOLUME_DOWN)
+		if vup != vdn:
+			self.sound.change_volume(1 if vup else -1)
+			self.volume_control.display_change(self.sound.selected_volume)
+		self.volume_control.update(dt)
+
 		self.key_handler.post_update()
 		self.raw_key_handler.post_update()
-		self._last_update_time = (perf_counter() - stime) * 1000.0
+		last_update_time = (perf_counter() - stime) * 1000.0
+
+		# NOTE: This causes a lie; the debug pane update is not taken into account.
+		# You can't really be perfect there, but it does suck since i'm pretty sure
+		# laying that label out takes significant time. Oh well!
+		if self.use_debug_pane:
+			self._fps.bump(self._last_draw_time, last_update_time)
+			self.debug_pane.update(self._fps.build_debug_string())
+		elif self.debug:
+			self._fps.bump(self._last_draw_time, last_update_time)
 
 	def draw(self) -> None:
 		stime = perf_counter()
+
 		self.window.clear()
 
 		for scene in self._scenes_to_draw:
 			scene.draw()
 
-		draw_time = (perf_counter() - stime) * 1000
+		for superscene in self._superscenes:
+			superscene.draw()
 
-		if self.use_debug_pane:
-			self._fps.bump(draw_time, self._last_update_time)
-			self.debug_pane.update(self._fps.build_debug_string(draw_time, self._last_update_time))
-			self.debug_pane.draw()
-		elif self.debug:
-			self._fps.bump(draw_time, self._last_update_time)
+		self._last_draw_time = (perf_counter() - stime) * 1000

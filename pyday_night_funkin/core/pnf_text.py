@@ -28,7 +28,7 @@ from pyday_night_funkin.core.shaders import ShaderContainer
 if t.TYPE_CHECKING:
 	from pyglet.font.base import Font, Glyph
 	from pyglet.image import Texture
-	from pyday_night_funkin.core.camera import Camera
+	from pyday_night_funkin.core.camera import SimpleCamera
 	from pyday_night_funkin.core.types import Numeric
 
 
@@ -190,7 +190,7 @@ class PNFText(WorldObject):
 		self._interfacer = None
 		self._create_interfacer()
 
-	def _build_state(self, ftex: "Texture", cam: "Camera") -> state.GLState:
+	def _build_state(self, ftex: "Texture", cam: "SimpleCamera") -> state.GLState:
 		"""
 		Builds a GLState for the given camera.
 		"""

@@ -4,12 +4,12 @@ from loguru import logger
 import typing as t
 
 from pyday_night_funkin.conductor import Conductor
-from pyday_night_funkin.core.pnf_player import PNFPlayer
 from pyday_night_funkin.core.scene import BaseScene
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.scene_manager import SceneSetupTrio
+	from pyday_night_funkin.core.sound.pnf_player import PNFPlayer
 
 
 
@@ -32,7 +32,7 @@ class MusicBeatScene(BaseScene):
 
 		self.conductor = Conductor()
 		self._conductor_sync_mode: t.Optional[ConductorSyncMode] = None
-		self._conductor_sync_target: t.Optional[PNFPlayer] = None
+		self._conductor_sync_target: t.Optional["PNFPlayer"] = None
 		self._sync_conductor_when_paused: bool = False
 		self._stop_conductor_sync_on_eos: bool = False
 		self._reset_step_on_conductor_sync_eos: bool = True

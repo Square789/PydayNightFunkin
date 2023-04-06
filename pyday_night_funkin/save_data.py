@@ -104,6 +104,8 @@ class Config:
 				CONTROL.RIGHT: [key.RIGHT, key.D],
 				CONTROL.ENTER: [key.ENTER],
 				CONTROL.BACK: [key.BACKSPACE],
+				CONTROL.VOLUME_UP: [key.PLUS],
+				CONTROL.VOLUME_DOWN: [key.MINUS],
 				CONTROL.DEBUG_DESYNC: [key._1],
 				CONTROL.DEBUG_WIN: [key._2],
 				CONTROL.DEBUG_LOSE: [key._3],

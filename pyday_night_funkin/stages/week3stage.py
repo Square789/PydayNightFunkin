@@ -4,7 +4,6 @@ import typing as t
 
 from pyday_night_funkin.constants import GAME_WIDTH
 from pyday_night_funkin.core.asset_system import load_image, load_sound
-from pyday_night_funkin.core.pnf_player import PNFPlayer
 from pyday_night_funkin.stages.common import BaseGameBaseStage
 
 if t.TYPE_CHECKING:
@@ -18,11 +17,6 @@ class Week3Stage(BaseGameBaseStage):
 		self._active_city_light_idx: int = 0
 		self.train: t.Optional[PNFSprite] = None
 		self.train_sound = load_sound("shared/sounds/train_passes.ogg")
-		# Fuck if i know, make a player specifically for this sound because there
-		# are things that depend on ITS AUDIO POSITION ARRGGHHG
-		# TODO: should probably look into a workaround that is pretty much identical
-		# yet 500% less crappy
-		self.train_sound_player = PNFPlayer()
 		self.train_inbound = False
 		self.train_moving = False
 		self.train_cars_remaining = 8
@@ -30,6 +24,12 @@ class Week3Stage(BaseGameBaseStage):
 		self.train_cooldown = -4
 
 		super().__init__(*args, **kwargs)
+
+		# Fuck if i know, make a player specifically for this sound because there
+		# are things that depend on ITS AUDIO POSITION ARRGGHHG
+		# TODO: should probably look into a workaround that is pretty much identical
+		# yet 500% less crappy
+		self.train_sound_player = self.game.sound.create_player()
 
 	@staticmethod
 	def get_default_cam_zoom() -> float:
@@ -44,6 +44,7 @@ class Week3Stage(BaseGameBaseStage):
 
 	def setup(self) -> None:
 		super().setup()
+
 		bg = self.create_object(
 			"sky", "main", x=-100, image=load_image("week3/images/philly/sky.png")
 		)

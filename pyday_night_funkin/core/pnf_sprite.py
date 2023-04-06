@@ -569,7 +569,9 @@ class PNFSprite(WorldObject):
 		self.rgba = color
 		# no idea how good the logic on this is. Pixel origin is (.5, .5), so this should
 		# get rid of off-by-one errors especially notable on rects on screen borders.
-		self.offset = (-int(w // 2 - .5), -int(h // 2 - .5))
+		# Sign difference because ??? projection stuff with inverted y axis who knows, this
+		# seems to work
+		self.offset = (-int(w // 2 + .5), -int(h // 2 - .5))
 
 	def set_dimensions_from_frame(self) -> None:
 		"""

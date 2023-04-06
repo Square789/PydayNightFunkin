@@ -4,15 +4,14 @@ import queue
 from pyglet import font
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.core.camera import Camera
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.core.scene import SceneContext
+from pyday_night_funkin.core.superscene import SuperScene
 from pyday_night_funkin.core.utils import to_rgba_tuple
 
 
-class DebugPane:
+class DebugPane(SuperScene):
 	"""
 	Shoddy class to manage text lines on a rectangle, used to display
 	debug messages and fps.
@@ -24,16 +23,11 @@ class DebugPane:
 	PADDING = 8
 
 	def __init__(self, line_amount: int, message_queue: queue.Queue = None) -> None:
+		super().__init__(CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
+
 		self.insert_index = 0
 		self._line_amount = line_amount
-		self._queue = queue.Queue()
-
-	def init_graphical(self) -> None:
-		"""
-		Initializes graphical resources of the DebugPane.
-		Needs to be called before any calls to `update` and `draw`.
-		"""
-		line_amount = self._line_amount
+		self._queue = message_queue
 
 		self.background = PNFGroup(order=0)
 		self.foreground = PNFGroup(order=1)
@@ -44,7 +38,7 @@ class DebugPane:
 				y = (self.FONT_SIZE * i + self.LINE_DIST * i),
 				font_name = "Consolas",
 				font_size = self.FONT_SIZE,
-				context = SceneContext(self.batch, self.foreground),
+				context = self.get_context(self.foreground),
 			) for i in range(line_amount)
 		]
 		self.timing_label = PNFText(
@@ -53,12 +47,12 @@ class DebugPane:
 			font_name = "Consolas",
 			font_size = self.FPS_FONT_SIZE,
 			multiline = True,
-			context = SceneContext(self.batch, self.foreground),
+			context = self.get_context(self.foreground),
 		)
 		self.debug_rect = PNFSprite(
 			x = self.PADDING,
 			y = 0,
-			context = SceneContext(self.batch, self.background),
+			context = self.get_context(self.background),
 		)
 		self.debug_rect.make_rect(
 			to_rgba_tuple(0x2020AA64),
@@ -66,27 +60,18 @@ class DebugPane:
 			(self.FONT_SIZE * (line_amount + 1)) + (self.LINE_DIST * (line_amount - 1)),
 		)
 
+		# HACK getting the ascent like this
+		bluegh = font.load("Consolas", self.FPS_FONT_SIZE).ascent
 		self.fps_rect = PNFSprite(
 			x = self.PADDING,
 			y = self.timing_label.y - self.LINE_DIST,
-			context = SceneContext(self.batch, self.background),
+			context = self.get_context(self.background),
 		)
-		# HACK getting the ascent like this
-		bluegh = font.load("Consolas", self.FPS_FONT_SIZE).ascent
 		self.fps_rect.make_rect(
 			to_rgba_tuple(0x7F7F7F7F),
 			CNST.GAME_WIDTH // 3,
 			(bluegh * 4) + self.LINE_DIST * 2,
 		)
-
-	def add_message(self, log_message: str) -> None:
-		"""
-		Adds the given log message to the debug pane's queue.
-		This should be thread-safe, the change will only appear
-		once `update` is called.
-		This method is safe to use before `init_graphical` is called.
-		"""
-		self._queue.put(log_message)
 
 	def update(self, timing_label_string: str = "") -> None:
 		"""
@@ -115,9 +100,3 @@ class DebugPane:
 
 			self.labels[self.insert_index].text = message
 			self.insert_index += 1
-
-	def draw(self):
-		"""
-		Draws the DebugPane.
-		"""
-		self.batch.draw(Camera.get_dummy())

@@ -3,8 +3,6 @@ from pyglet.gl import gl
 from pyglet.graphics.shader import Shader, ShaderProgram, UniformBufferObject
 
 
-# {"WindowBlock": 0, "CameraAttrs": 1}
-
 class ShaderContainer:
 	"""
 	Class to hold multiple shaders and compile them to a full

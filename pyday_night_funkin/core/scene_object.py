@@ -6,7 +6,7 @@ from pyglet.math import Vec2
 from pyday_night_funkin.core.scene_context import SceneContext
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.camera import Camera
+	from pyday_night_funkin.core.camera import SimpleCamera
 	from pyday_night_funkin.core.types import Numeric
 
 
@@ -110,7 +110,7 @@ class WorldObject(SceneObject):
 		"""
 		return Vec2(self.x + self._width * 0.5, self.y + self._height * 0.5)
 
-	def get_screen_position(self, cam: "Camera") -> Vec2:
+	def get_screen_position(self, cam: "SimpleCamera") -> Vec2:
 		"""
 		Returns the screen position the WorldObject's origin is
 		displayed at. Note that this may still be inaccurate for

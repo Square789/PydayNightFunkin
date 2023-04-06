@@ -8,7 +8,6 @@ from pyglet.math import Vec2
 
 from pyday_night_funkin.base_game_pack import SongResourceOptions, load_song
 from pyday_night_funkin.character import Character
-from pyday_night_funkin.core.pnf_player import PNFPlayer
 from pyday_night_funkin.core.utils import lerp
 from pyday_night_funkin.enums import ANIMATION_TAG, CONTROL, DIFFICULTY
 from pyday_night_funkin.hud import HUD
@@ -90,13 +89,8 @@ class InGameScene(scenes.MusicBeatScene):
 
 		self.state = GAME_STATE.LOADING
 
-		self.inst_player = PNFPlayer()
-		self.voice_player = PNFPlayer()
-		# Player group kept throwing exceptions on tutorial which doesn't have vocals
-		# Although internally it does more than just play and pause sequentially,
-		# doing just that instead seems to sound the same and doesn't cause any
-		# crashes.
-		# self.song_players = PlayerGroup((self.inst_player, self.voice_player))
+		self.inst_player = self.game.sound.create_player()
+		self.voice_player = self.game.sound.create_player()
 
 		self.song_data: t.Optional[t.Dict] = None
 
