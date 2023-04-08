@@ -7,7 +7,7 @@ from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.scene import BaseScene
-from pyday_night_funkin.core.tweens import out_quad
+from pyday_night_funkin.core.tween_effects.eases import out_quad
 from pyday_night_funkin.core.utils import to_rgb_tuple
 from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin.menu import Menu
@@ -73,14 +73,15 @@ class MainMenuScene(scenes.MusicBeatScene):
 		_, callback, sprite = self._menu_items[i]
 		if selected:
 			self.sfx_ring.play(self.confirm_sound)
-			sprite.start_flicker(1.0, 0.06, False, callback)
-			self.bg_magenta.start_flicker(1.1, 0.15, False)
+			self.effects.flicker(sprite, 1.0, 0.06, False, lambda _, c=callback: c())
+			self.effects.flicker(self.bg_magenta, 1.1, 0.15, False)
 		else:
-			sprite.start_tween(
-				out_quad,
+			self.effects.tween(
+				sprite,
 				{"opacity": 0},
 				0.4,
-				lambda sprite=sprite: setattr(sprite, "visible", False),
+				out_quad,
+				lambda s: setattr(s, "visible", False),
 			)
 
 	def update(self, dt: float) -> None:

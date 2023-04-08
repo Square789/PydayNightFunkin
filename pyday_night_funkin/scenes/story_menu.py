@@ -6,7 +6,7 @@ from pyday_night_funkin.base_game_pack import load_frames, load_week_header
 from pyday_night_funkin.core.asset_system import load_sound
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.core.tweens import linear
+from pyday_night_funkin.core.tween_effects.eases import linear
 from pyday_night_funkin.core.utils import lerp, to_rgb_tuple, to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
 from pyday_night_funkin.menu import Menu
@@ -202,9 +202,11 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.difficulty_indicator.animation.play(str(index))
 		self.difficulty_indicator.y = self.diff_arrow_left.y - 15
 		self.difficulty_indicator.opacity = 0
-		self.difficulty_indicator.remove_effect()
-		self.difficulty_indicator.start_tween(
-			linear, {"y": self.diff_arrow_left.y + 15, "opacity": 255}, 0.07
+		self.effects.remove_of(self.difficulty_indicator)
+		self.effects.tween(
+			self.difficulty_indicator,
+			{"y": self.diff_arrow_left.y + 15, "opacity": 0xFF},
+			0.07,
 		)
 
 	def _on_confirm(self, index: int, state: bool) -> None:
@@ -213,12 +215,13 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 		self.sfx_ring.play(load_sound("preload/sounds/confirmMenu.ogg"))
 		self.week_chars[1].animation.play("story_menu_confirm")
-		self.week_headers[index].start_toggle(
+		self.effects.toggle(
+			self.week_headers[index],
 			1.0,
 			0.1,
 			on_toggle_on =  lambda s: setattr(s, "color", to_rgb_tuple(0x33FFFFFF)),
 			on_toggle_off = lambda s: setattr(s, "color", to_rgb_tuple(CNST.WHITE)),
-			on_complete =   lambda w=self._weeks[index]: self._set_ingame_scene(w),
+			on_complete =   lambda _, w=self._weeks[index]: self._set_ingame_scene(w),
 		)
 
 	def _set_ingame_scene(self, week: "WeekData") -> None:

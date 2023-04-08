@@ -13,6 +13,7 @@ from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import Container, SceneObject
+from pyday_night_funkin.core.tween_effects import EffectController
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
@@ -125,6 +126,15 @@ class BaseScene(Container):
 		self.clock = Clock(self._get_elapsed_time)
 
 		self.sfx_ring = self.game.sound.create_sfx_ring()
+		"""
+		A SFXRing for this scene; destroyed along with it.
+		"""
+
+		self.effects = EffectController()
+		"""
+		The scene's effect controller. Use this for tweens and
+		toggling of just about anything.
+		"""
 
 	@staticmethod
 	def get_default_cameras() -> t.Sequence[t.Union[str, t.Tuple[str, int, int]]]:
@@ -275,6 +285,8 @@ class BaseScene(Container):
 		self._passed_time += dt
 		self.clock.tick()
 
+		self.effects.update(dt)
+
 		for c in self.cameras.values():
 			c.update(dt)
 
@@ -413,7 +425,8 @@ class BaseScene(Container):
 			cam.delete()
 
 		self.sfx_ring.destroy()
+		self.effects.destroy()
 
 		self.batch.delete()
-		self.batch = None
-		self.game = None # reference breaking or something
+		del self.batch
+		del self.game # reference breaking or something

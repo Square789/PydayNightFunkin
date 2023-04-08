@@ -57,7 +57,7 @@ class InGameScene(scenes.MusicBeatScene):
 		level_data: "LevelData",
 		difficulty: DIFFICULTY,
 		follow_scene: t.Type["BaseScene"],
-		remaining_week: t.Sequence["LevelData"] = (),
+		remaining_week: t.Optional[t.Sequence["LevelData"]] = None,
 	) -> None:
 		"""
 		Initializes the InGame scene.
@@ -71,7 +71,9 @@ class InGameScene(scenes.MusicBeatScene):
 		stopped otherwise by the user.
 		:param remaining_week: A sequence of more `LevelData` to be
 		turned into scenes that follow if the user wins this level.
-		This runs the story mode.
+		This runs the story mode and is additionally used to determine
+		whether the story mode should be considered active at all.
+		Freeplay/non-story mode is assumed when it's `None`.
 		"""
 
 		super().__init__(game)
@@ -86,6 +88,7 @@ class InGameScene(scenes.MusicBeatScene):
 		self.difficulty = difficulty
 		self.follow_scene = follow_scene
 		self.remaining_week = remaining_week
+		self.in_story_mode = remaining_week is not None
 
 		self.state = GAME_STATE.LOADING
 
@@ -99,6 +102,12 @@ class InGameScene(scenes.MusicBeatScene):
 		self.score: int = 0
 
 		self._last_followed_singer: int = 0
+		"""
+		An int indicating the character the camera is trained on.
+		0 for the opponent, 1 for the player. Anything else is
+		illegal.
+		"""
+
 		self.zoom_cams: bool = False
 
 		self.gf_speed: int = 1
@@ -113,7 +122,7 @@ class InGameScene(scenes.MusicBeatScene):
 	@staticmethod
 	def get_default_cam_zoom() -> float:
 		"""
-		Returns the default camera zoom.
+		Returns the default camera zoom for this scene.
 		"""
 		return 1.05
 
@@ -265,7 +274,7 @@ class InGameScene(scenes.MusicBeatScene):
 			c.dance()
 
 		self.main_cam.zoom = self.get_default_cam_zoom()
-		self.main_cam.look_at(self.opponent.get_midpoint() + Vec2(400, 0))
+		self.main_cam.look_at(self.opponent.get_midpoint())
 
 		self._countdown_stage = 0
 		self.state = GAME_STATE.COUNTDOWN
@@ -300,8 +309,7 @@ class InGameScene(scenes.MusicBeatScene):
 
 		# Camera following
 		if (cur_section := self.get_current_section()) is not None:
-			to_follow = int(cur_section["mustHitSection"])
-			if to_follow != self._last_followed_singer:
+			if (to_follow := int(cur_section["mustHitSection"])) != self._last_followed_singer:
 				self._last_followed_singer = to_follow
 				if to_follow == 0:
 					_cam_follow = self.opponent.get_midpoint() + Vec2(150, -100)
@@ -420,9 +428,6 @@ class InGameScene(scenes.MusicBeatScene):
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
 
-		if (sec := self.get_current_section()) is not None and sec["mustHitSection"]:
-			self.opponent.dance()
-
 		if self.zoom_cams and self.main_cam.zoom < 1.35 and self.cur_beat % 4 == 0:
 			self.main_cam.zoom += 0.015
 			self.hud_cam.zoom += 0.03
@@ -430,11 +435,15 @@ class InGameScene(scenes.MusicBeatScene):
 		if self.cur_beat % self.gf_speed == 0:
 			self.girlfriend.dance()
 
-		# This code's purpose should be to get bf out of special animations such as
-		# the bopeebo v-signs
-		t = self.boyfriend.animation.current.tags
-		if not (ANIMATION_TAG.MISS in t or ANIMATION_TAG.SING in t):
-			self.boyfriend.dance()
+		if self.cur_beat % 2 == 0:
+			# This code's purpose should be to get bf out of special animations such as
+			# the bopeebo v-signs
+			t = self.boyfriend.animation.current.tags
+			if not (ANIMATION_TAG.MISS in t or ANIMATION_TAG.SING in t):
+				self.boyfriend.dance()
+
+			if not self.opponent.animation.has_tag(ANIMATION_TAG.SING):
+				self.opponent.dance()
 
 	def on_pause(self) -> None:
 		"""

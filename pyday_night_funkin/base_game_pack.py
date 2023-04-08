@@ -235,7 +235,7 @@ class Boyfriend(Character):
 		self.frames = load_frames("shared/images/BOYFRIEND.xml")
 
 		self.animation.add_by_prefix(
-			"idle", "BF idle dance", 24, True, (-5, 0),
+			"idle", "BF idle dance", 24, False, (-5, 0),
 			(ANIMATION_TAG.IDLE,)
 		)
 		self.animation.add_by_prefix(
@@ -590,29 +590,6 @@ def load() -> ContentPack:
 		},
 	))
 
-	# # NOTE: This overrides the main menu track with a way shorter sound for loop testing.
-	# class TmpMenuTrackRerouter(AssetSystem):
-	# 	def has_asset(
-	# 		self,
-	# 		path: str,
-	# 		asset_type_name: str,
-	# 		options: t.Optional[ResourceOptions]
-	# 	) -> t.Union[
-	# 		t.Tuple[t.Literal[False], None, None, None],
-	# 		t.Tuple[
-	# 			t.Literal[True],
-	# 			str,
-	# 			t.Optional[ResourceOptions],
-	# 			t.Optional["PostLoadProcessor"],
-	# 		]
-	# 	]:
-	# 		if path == "preload/music/freakyMenu.ogg":
-	# 			return (True, "preload/sounds/confirmMenu.ogg", options, None)
-
-	# 		return (False, None, None, None)
-
-	# add_asset_system(TmpMenuTrackRerouter(allow_unknown=False))
-
 	# Deferred import, yuck! Quickest way to fix the circular import rn,
 	# could possibly split the levels and characters into a basegame submodule later.
 	from pyday_night_funkin.stages import (
@@ -688,5 +665,51 @@ def load() -> ContentPack:
 				),
 				"week3.png",
 			),
+			# WeekData(
+			# 	"MOMMY MUST MURDER",
+			# 	("mom", "boyfriend", "girlfriend"),
+			# 	(
+			# 		LevelData(
+			# 			"satin-panties", "Satin Panties", Week4Stage, "boyfriend-car", "mom"
+			# 		),
+			# 		LevelData(
+			# 			"high", "High", Week4Stage, "boyfriend-car", "girlfriend-car", "mom"
+			# 		),
+			# 		LevelData(
+			# 			"milf", "M.I.L.F.", Week4Stage, "boyfriend-car", "girlfriend-car", "mom"
+			# 		),
+			# 	),
+			# 	"week4.png",
+			# ),
+			# WeekData(
+			# 	"RED SNOW",
+			# 	("parents-christmas", "boyfriend", "girlfriend"),
+			# 	(
+			# 		LevelData(),
+			# 		LevelData(),
+			# 		LevelData(),
+			# 	),
+			# 	"week5.png",
+			# ),
+			# WeekData(
+			# 	"hating simulator ft. moawling",
+			# 	("senpai", "boyfriend", "girlfriend"),
+			# 	(
+			# 		LevelData(),
+			# 		LevelData(),
+			# 		LevelData(),
+			# 	),
+			# 	"week6.png",
+			# ),
+			# WeekData(
+			# 	"TANKMAN",
+			# 	("tankman", "boyfriend", "girlfriend"),
+			# 	(
+			# 		LevelData(),
+			# 		LevelData(),
+			# 		LevelData(),
+			# 	),
+			# 	"week7.png",
+			# ),
 		),
 	)

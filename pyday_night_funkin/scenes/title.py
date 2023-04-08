@@ -132,7 +132,6 @@ class TitleScene(scenes.MusicBeatScene):
 		# flash = self.create_object("flash")
 		# flash.make_rect(to_rgba_tuple(0xFFFFFFFF), CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
 		# flash.opacity = 255
-		# flash.start_tween(linear, {"opacity": 0.0}, 1.0)
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()

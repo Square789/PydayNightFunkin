@@ -59,7 +59,8 @@ class Character(PNFSprite):
 
 		self.scene = scene
 		self.hold_timer = 0.0
-		self._hold_timeout = self.get_character_data().hold_timeout
+		self.character_data = self.get_character_data()
+		self._hold_timeout = self.character_data.hold_timeout
 		self.dont_idle: bool = False
 		"""
 		If set to `True`, the character won't idle/dance after their

@@ -194,130 +194,6 @@ class Movement:
 		return Vec2(posx_delta, posy_delta)
 
 
-class Effect:
-	"""
-	"Abstract" effect class intertwined with the PNFSprite.
-	"""
-
-	def __init__(
-		self,
-		duration: float,
-		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
-	) -> None:
-		if duration <= 0.0:
-			raise ValueError("Duration may not be negative or zero!")
-
-		self.on_complete = on_complete
-		self.duration = duration
-		self.cur_time = 0.0
-
-	def update(self, dt: float, sprite: "PNFSprite") -> None:
-		raise NotImplementedError("Subclass this")
-
-	def is_finished(self) -> bool:
-		return self.cur_time >= self.duration
-
-
-class _Tween(Effect):
-	def __init__(
-		self,
-		tween_func: t.Callable[[float], float],
-		attr_map: t.Dict[str, t.Tuple[t.Any, t.Any]],
-		duration: float,
-		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
-	) -> None:
-		super().__init__(duration, on_complete)
-		self.tween_func = tween_func
-		self.attr_map = attr_map
-
-	def update(self, dt: float, sprite: "PNFSprite") -> None:
-		self.cur_time += dt
-		progress = self.tween_func(clamp(self.cur_time, 0.0, self.duration) / self.duration)
-
-		for attr_name, (v_ini, v_diff) in self.attr_map.items():
-			setattr(sprite, attr_name, v_ini + v_diff*progress)
-
-
-# NOTE: Left here since i would need to replace call sites with some
-# ugly lambda s: setattr(s, "visibility", True) stuff; not really
-# worth it, see into it if you have time.
-class Flicker(Effect):
-	"""
-	Effect rapidly turning a sprite's visibility off and on.
-	This is a special case of the more generic `Toggle` effect
-	affecting only a sprite's visibility.
-	"""
-	def __init__(
-		self,
-		interval: float,
-		start_visibility: bool,
-		end_visibility: bool,
-		duration: float,
-		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
-	) -> None:
-		super().__init__(duration, on_complete)
-		if interval <= 0.0:
-			raise ValueError("Interval may not be negative or zero!")
-
-		self.interval = interval
-		self.end_visibility = end_visibility
-		self._next_toggle = interval
-		self._visible = start_visibility
-
-	def update(self, dt: float, sprite: "PNFSprite") -> None:
-		self.cur_time += dt
-		if self.is_finished():
-			sprite.visible = self.end_visibility
-			return
-
-		if self.cur_time >= self._next_toggle:
-			while self.cur_time >= self._next_toggle:
-				self._next_toggle += self.interval
-			self._visible = not self._visible
-			sprite.visible = self._visible
-
-
-class Toggle(Effect):
-	"""
-	Periodically calls on/off callbacks on a sprite for a given
-	duration.
-	"""
-	def __init__(
-		self,
-		interval: float,
-		start_active: bool,
-		end_active: bool,
-		duration: float,
-		on_toggle_on: t.Optional[t.Callable[["PNFSprite"], t.Any]] = None,
-		on_toggle_off: t.Optional[t.Callable[["PNFSprite"], t.Any]] = None,
-		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
-	) -> None:
-		super().__init__(duration, on_complete)
-		if interval <= 0.0:
-			raise ValueError("Interval may not be negative or zero!")
-
-		self._cur_state = start_active
-		self._invert = -1 if not start_active else 1
-		self.interval = pi/interval
-		self.end_active = end_active
-		self.on_toggle_on = on_toggle_on
-		self.on_toggle_off = on_toggle_off
-
-	def update(self, dt: float, sprite: "PNFSprite") -> None:
-		self.cur_time += dt
-		new_state = (sin(self.cur_time * self.interval) * self._invert) > 0
-		if self._cur_state == new_state:
-			return
-
-		self._cur_state = new_state
-		if new_state:
-			if self.on_toggle_on is not None:
-				self.on_toggle_on(sprite)
-		else:
-			if self.on_toggle_off is not None:
-				self.on_toggle_off(sprite)
-
-
 class PNFSprite(WorldObject):
 	"""
 	Pretty much *the* core scene object.
@@ -351,7 +227,6 @@ class PNFSprite(WorldObject):
 		# NOTE: Copypaste of this exists at PNFSpriteContainer.__init__,
 		# modify it when modifying this!
 		self.movement: t.Optional[Movement] = None
-		self.effects: t.List[Effect] = []
 
 		self._origin = (0, 0)
 		self._offset = (0, 0)
@@ -461,82 +336,6 @@ class PNFSprite(WorldObject):
 		if change_batch or rebuild_group:
 			self._interfacer.migrate(self._context.batch, self._context.group, new_states)
 
-	def start_tween(
-		self,
-		tween_func: t.Callable[[float], float],
-		attributes: t.Dict[str, t.Any],
-		duration: float,
-		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
-	) -> _Tween:
-		"""
-		# TODO write some very cool doc
-		"""
-		# 0: initial value; 1: difference
-		attr_map = {}
-		for attribute_name, target_value in attributes.items():
-			initial_value = getattr(self, attribute_name)
-			attr_map[attribute_name] = (initial_value, target_value - initial_value)
-
-		t = _Tween(
-			tween_func,
-			duration = duration,
-			attr_map = attr_map,
-			on_complete = on_complete,
-		)
-		self.effects.append(t)
-		return t
-
-	def start_flicker(
-		self,
-		duration: float,
-		interval: float,
-		end_visibility: bool = True,
-		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
-	) -> Flicker:
-		f = Flicker(
-			interval = interval,
-			start_visibility = self.visible,
-			end_visibility = end_visibility,
-			duration = duration,
-			on_complete = on_complete,
-		)
-		self.effects.append(f)
-		return f
-
-	def start_toggle(
-		self,
-		duration: float,
-		interval: float,
-		start_status: bool = True,
-		end_status: bool = True,
-		on_toggle_on: t.Optional[t.Callable[["PNFSprite"], t.Any]] = None,
-		on_toggle_off: t.Optional[t.Callable[["PNFSprite"], t.Any]] = None,
-		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
-	) -> Toggle:
-		t = Toggle(
-			interval, start_status, end_status, duration, on_toggle_on, on_toggle_off, on_complete
-		)
-		self.effects.append(t)
-		return t
-
-	def remove_effect(self, *effects: Effect) -> None:
-		"""
-		Removes effects from the sprite.
-		Supply nothing to clear all effects. This will abruptly stop
-		all effects without calling their on_complete callbacks.
-		Supply any amount of effects to have only these removed.
-		No exception is raised for non-existent effects.
-		"""
-		if not effects:
-			self.effects.clear()
-			return
-
-		for e in effects:
-			try:
-				self.effects.remove(e)
-			except ValueError:
-				pass
-
 	def start_movement(
 		self,
 		velocity: t.Union[Vec2, t.Tuple[float, float]],
@@ -628,23 +427,6 @@ class PNFSprite(WorldObject):
 		if self.movement is not None:
 			dx, dy = self.movement.update(dt)
 			self.position = (self._x + dx, self._y + dy)
-
-		if not self.effects:
-			return
-
-		finished_effects: t.List[Effect] = []
-		for effect in self.effects:
-			effect.update(dt, self)
-			if effect.is_finished():
-				finished_effects.append(effect)
-
-		for effect in finished_effects:
-			if effect.on_complete is not None:
-				effect.on_complete()
-			try:
-				self.effects.remove(effect)
-			except ValueError:
-				pass
 
 	def _set_frame(self, idx: int) -> None:
 		new_frame = self.frames[idx]

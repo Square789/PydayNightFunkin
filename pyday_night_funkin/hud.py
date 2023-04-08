@@ -7,7 +7,7 @@ from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
-from pyday_night_funkin.core.tweens import in_out_cubic, linear, out_cubic
+from pyday_night_funkin.core.tween_effects.eases import in_out_cubic, linear, out_cubic
 from pyday_night_funkin.enums import ANIMATION_TAG
 from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.note import NOTE_TYPE, RATING
@@ -129,11 +129,12 @@ class HUD:
 
 		# NOTE: Maybe get a cleaner way of delaying the removal tween in here
 		scene.clock.schedule_once(
-			lambda _, combo_sprite=combo_sprite: combo_sprite.start_tween(
-				tween_func = out_cubic,
-				attributes = {"opacity": 0},
-				duration = 0.2,
-				on_complete = lambda: scene.remove(combo_sprite),
+			lambda _, combo_sprite=combo_sprite: scene.effects.tween(
+				combo_sprite,
+				{"opacity": 0},
+				0.2,
+				out_cubic,
+				scene.remove,
 			),
 			scene.conductor.beat_duration * 0.001,
 		)
@@ -153,16 +154,16 @@ class HUD:
 			)
 
 			scene.clock.schedule_once(
-				lambda _, sprite=sprite: sprite.start_tween(
-					tween_func = linear,
-					attributes = {"opacity": 0},
-					duration = 0.2,
-					on_complete = lambda: scene.remove(sprite),
+				lambda _, sprite=sprite: scene.effects.tween(
+					sprite,
+					{"opacity": 0},
+					0.2,
+					on_complete=scene.remove,
 				),
 				scene.conductor.beat_duration * 0.002,
 			)
 
-	def countdown_popup(self, countdown_stage: int):
+	def countdown_popup(self, countdown_stage: int) -> None:
 		"""
 		Pops up a countdown sprite for the given countdown stage.
 		"""
@@ -171,11 +172,12 @@ class HUD:
 		if tex is not None:
 			sprite = scene.create_object(self.combo_layer, self.camera, image=tex)
 			sprite.screen_center(CNST.GAME_DIMENSIONS)
-			sprite.start_tween(
-				in_out_cubic,
+			scene.effects.tween(
+				sprite,
 				{"opacity": 0},
 				scene.conductor.beat_duration * 0.001,
-				lambda sprite = sprite: scene.remove(sprite),
+				in_out_cubic,
+				scene.remove,
 			)
 
 		if self.countdown_sounds[countdown_stage] is not None:

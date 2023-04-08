@@ -8,7 +8,7 @@ from pyglet.window.key import (
 )
 from pyday_night_funkin.base_game_pack import Boyfriend, load_frames
 from pyday_night_funkin.core.pnf_text import PNFText
-from pyday_night_funkin.core.tweens import linear
+from pyday_night_funkin.core.tween_effects.eases import linear
 from pyday_night_funkin.core.utils import to_rgba_tuple
 from pyday_night_funkin.note import NOTE_TYPE
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
@@ -118,12 +118,7 @@ class TestScene(MusicBeatScene):
 		if rkh[C]:
 			sprite = self.create_object("fore", "main", x=randint(0, 100), y=randint(0, 100))
 			sprite.start_movement(Vec2(10, 5))
-			sprite.start_tween(
-				linear,
-				{"opacity": 0},
-				2.0,
-				on_complete = (lambda s=sprite: self.remove(s)),
-			)
+			self.effects.tween(sprite, {"opacity": 0}, 2.0, on_complete=self.remove)
 
 		main_cam = self.cameras["main"]
 		if rkh[LEFT]:
