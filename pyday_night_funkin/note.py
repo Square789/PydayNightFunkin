@@ -30,9 +30,12 @@ class NOTE_TYPE(IntEnum):
 		Returns the texture atlas frame sequence names for the given
 		arrow type.
 		"""
-		cap = self.name
 		lwr = self.name.lower()
-		return (f"arrow{cap}", f"{lwr} press", f"{lwr} confirm")
+		return (
+			f"arrow static instance {_NOTE_TYPE_SHEET_REMAP[self]}",
+			f"{lwr} press instance 1",
+			f"{lwr} confirm instance 1",
+		)
 
 	def get_order(self) -> int:
 		"""
@@ -42,7 +45,9 @@ class NOTE_TYPE(IntEnum):
 		return _NOTE_TYPE_ORDER.get(self, -1)
 
 _NOTE_TYPE_ORDER = {NOTE_TYPE.LEFT: 0, NOTE_TYPE.DOWN: 1, NOTE_TYPE.UP: 2, NOTE_TYPE.RIGHT: 3}
-
+_NOTE_TYPE_SHEET_REMAP = {
+	NOTE_TYPE.LEFT: 1, NOTE_TYPE.DOWN: 2, NOTE_TYPE.UP: 4, NOTE_TYPE.RIGHT: 3
+}
 
 class Note:
 	__slots__ = (

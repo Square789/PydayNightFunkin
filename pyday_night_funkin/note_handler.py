@@ -64,29 +64,29 @@ class NoteHandler(AbstractNoteHandler):
 		(These may actually have been played or - for absurd scroll
 		speeds - be invisible.)"""
 
-		note_assets = load_frames("shared/images/NOTE_assets.xml")
+		note_assets = load_frames("preload/images/NOTE_assets.xml")
 		def single_frame(pref: str) -> "Texture":
 			return AnimationController.get_frames_by_prefix(note_assets, pref)[0].texture
 
+		# this is the worst naming of anything i have ever seen
 		self.note_sprites = {
 			SUSTAIN_STAGE.NONE: {
-				NOTE_TYPE.LEFT: single_frame("purple0"),
-				NOTE_TYPE.DOWN: single_frame("blue0"),
-				NOTE_TYPE.UP: single_frame("green0"),
-				NOTE_TYPE.RIGHT: single_frame("red0"),
+				NOTE_TYPE.LEFT: single_frame("purple instance 1"),
+				NOTE_TYPE.DOWN: single_frame("blue instance 1"),
+				NOTE_TYPE.UP: single_frame("green instance 1"),
+				NOTE_TYPE.RIGHT: single_frame("red instance 1"),
 			},
 			SUSTAIN_STAGE.TRAIL: {
-				NOTE_TYPE.LEFT: single_frame("purple hold piece"),
-				NOTE_TYPE.DOWN: single_frame("blue hold piece"),
-				NOTE_TYPE.UP: single_frame("green hold piece"),
-				NOTE_TYPE.RIGHT: single_frame("red hold piece"),
+				NOTE_TYPE.LEFT: single_frame("purple hold piece instance 1"),
+				NOTE_TYPE.DOWN: single_frame("blue hold piece instance 1"),
+				NOTE_TYPE.UP: single_frame("green hold piece instance 1"),
+				NOTE_TYPE.RIGHT: single_frame("red hold piece instance 1"),
 			},
 			SUSTAIN_STAGE.END: {
-				# this is the worst naming of anything i have ever seen
-				NOTE_TYPE.LEFT: single_frame("pruple end hold"),
-				NOTE_TYPE.DOWN: single_frame("blue hold end"),
-				NOTE_TYPE.UP: single_frame("green hold end"),
-				NOTE_TYPE.RIGHT: single_frame("red hold end"),
+				NOTE_TYPE.LEFT: single_frame("pruple end hold instance 1"), # :^|
+				NOTE_TYPE.DOWN: single_frame("blue hold end instance 1"),
+				NOTE_TYPE.UP: single_frame("green hold end instance 1"),
+				NOTE_TYPE.RIGHT: single_frame("red hold end instance 1"),
 			},
 		}
 

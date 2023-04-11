@@ -30,7 +30,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.types import Numeric
 
 
-__version__ = "0.0.44"
+__version__ = "0.0.45"
 
 
 SOUND_GRANULARITY = 10

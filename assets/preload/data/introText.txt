@@ -39,6 +39,13 @@ pico funny--pico funny
 updates each friday--on time every time
 shoutouts to mason--for da homies
 bonk--get in the discord call
+carpal tunnel--game design
+downscroll--i dont know what that is
+warning--choking hazard
+devin chat--what an honorable man
+kickstarter exclusive--intro text
+cussing--we have it
+github exclusive intro text--open source forever
 interpreted language--omegalul
 indentation--significant
 traceback--most recent call last
@@ -48,3 +55,4 @@ swarm--they're here
 french people be like--piceaux
 theres a snake--in my boot
 cython--powerhouse
+romanes--eunt domus

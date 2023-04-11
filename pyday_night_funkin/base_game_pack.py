@@ -14,9 +14,9 @@ from pyglet.math import Vec2
 from schema import Schema, SchemaError, And, Or, Optional
 
 from pyday_night_funkin.core.asset_system import (
-	AssetSystem, AssetSystemEntry,
-	ImageResourceOptions, ResourceOptions, SoundResourceOptions,
-	add_asset_system,
+	AssetRouter, ComplexAssetRouter, PyobjRouter, AssetRouterEntry,
+	ImageResourceOptions, PostLoadProcessor, ResourceOptions, SoundResourceOptions,
+	add_asset_router, add_complex_asset_router, add_pyobj_router,
 	load_image, load_json, load_pyobj, load_sound, load_xml,
 	register_complex_asset_type, register_optionless_asset_type,
 )
@@ -26,10 +26,12 @@ from pyday_night_funkin.character import Character, FlipIdleCharacter
 from pyday_night_funkin.enums import ANIMATION_TAG, DIFFICULTY
 
 if t.TYPE_CHECKING:
-	from pyglet.image import Texture
+	from xml.etree.ElementTree import ElementTree
+	from pyglet.image import AbstractImage, Texture
 	from pyglet.media import Source
 	from pyday_night_funkin.character import CharacterData
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
+
 
 class SeqValidator:
 	def __init__(self, *types: t.Any) -> None:
@@ -174,10 +176,12 @@ def _load_frames_plain(path: str) -> FrameCollection:
 
 	Will load a dict mapping animation prefixes to frame sequences.
 	"""
-	xml = load_xml(path)
-	atlas_texture = load_image(str(Path(path).parent / xml.getroot().attrib["imagePath"]))
-	texture_region_cache = {}
+	# Do not cache the xml, only needed for creating the FrameCollection once, really.
+	xml = load_xml(path, cache=False)
+	atlas_texture = load_image(str(Path(path).parent / xml.getroot().attrib["imagePath"]), False)
+	texture_region_cache: t.Dict[t.Tuple[int, int, int, int], "AbstractImage"] = {}
 	frame_collection = FrameCollection()
+
 	for sub_texture in xml.getroot():
 		if sub_texture.tag != "SubTexture":
 			logger.warning(f"Expected 'SubTexture' tag, got {sub_texture.tag!r}. Skipping.")
@@ -226,13 +230,14 @@ def _load_frames_plain(path: str) -> FrameCollection:
 
 	return frame_collection
 
-load_frames = register_optionless_asset_type("frames", _load_frames_plain)
+load_frames = register_complex_asset_type("frames", lambda path: path, _load_frames_plain)
+
 
 class Boyfriend(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("shared/images/BOYFRIEND.xml")
+		self.frames = load_frames("shared/images/characters/BOYFRIEND.xml")
 
 		self.animation.add_by_prefix(
 			"idle", "BF idle dance", 24, False, (-5, 0),
@@ -329,7 +334,7 @@ class DaddyDearest(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("shared/images/DADDY_DEAREST.xml")
+		self.frames = load_frames("shared/images/characters/DADDY_DEAREST.xml")
 
 		self.animation.add_by_prefix(
 			"idle", "Dad idle dance", 24, True, (0, 0), (ANIMATION_TAG.IDLE,)
@@ -370,7 +375,7 @@ class Girlfriend(FlipIdleCharacter):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("shared/images/GF_assets.xml")
+		self.frames = load_frames("shared/images/characters/GF_assets.xml")
 
 		self.animation.add_by_prefix(
 			"cheer", "GF Cheer", 24, False, tags=(ANIMATION_TAG.SPECIAL,)
@@ -437,7 +442,7 @@ class SkidNPump(FlipIdleCharacter):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("week2/images/spooky_kids_assets.xml")
+		self.frames = load_frames("shared/images/characters/spooky_kids_assets.xml")
 
 		self.animation.add_by_prefix(
 			"sing_note_up", "spooky UP NOTE", 24, False, (-20, 26),
@@ -483,7 +488,7 @@ class Monster(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("week2/images/Monster_Assets.xml")
+		self.frames = load_frames("shared/images/characters/Monster_Assets.xml")
 
 		# It's like they're trying to win a naming inconsistency award
 		self.animation.add_by_prefix(
@@ -511,7 +516,7 @@ class Pico(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("week3/images/Pico_FNF_assetss.xml")
+		self.frames = load_frames("shared/images/characters/Pico_FNF_assetss.xml")
 
 		self.animation.add_by_prefix(
 			"idle", "Pico Idle Dance", offset=(0, 0), tags=(ANIMATION_TAG.IDLE,)
@@ -544,25 +549,53 @@ class Pico(Character):
 		)
 
 
+
+# HACK: This manipulates the cached note asset frame collection, since notes have
+# botched offsets that are fixed with a hardcoded center->subtract in the main loop.
+# Nobody wants that, so we hack in some offsets right here.
+# Both were probably found by trial-and-error, so good enough (TM)
+def note_arrow_frame_collection_post_load_hacker(fcol: FrameCollection) -> FrameCollection:
+	for frame in fcol.frames:
+		if re.search(r"confirm instance \d+$", frame.name) is not None:
+			frame.offset -= Vec2(39, 39)
+	return fcol
+
+
+# HACK: This manipulates the main menu's xml's imagePath to point to `main_menu.png`,
+# as from the week 7 update it pointed to the old file name `FNF_main_menu_assets.png`.
+# Honestly i don't know how to handle this. HaxeFlixel simply ignores this the imagePath
+# and always loads the same two files with their extensions modified, but lol lmao.
+# I'll be damned if i don't show off my shitty overengineered asset system.
+def main_menu_path_post_load_hacker(et: "ElementTree") -> "ElementTree":
+	et.getroot().set("imagePath", "main_menu.png")
+	return et
+
+
+class BaseGameComplexAssetRouter(ComplexAssetRouter):
+	def has_asset(
+		self, asset_type_name: str, *args: t.Any, **kwargs: t.Any
+	) -> t.Optional[
+		t.Tuple[t.Tuple[t.Any, ...], t.Dict[str, t.Any], t.Optional[PostLoadProcessor]]
+	]:
+		if (
+			asset_type_name == "frames" and
+			len(args) == 1 and
+			args[0] == "preload/images/NOTE_assets.xml"
+		):
+			return (args, kwargs, note_arrow_frame_collection_post_load_hacker)
+
+		return None
+
+
 def load() -> ContentPack:
 	"""
 	Loads everything required to run the base game into the asset
-	systems and returns the base game's content pack.
+	system and returns the base game's content pack.
 	"""
-
-	def arrow_post_load_hacker(fcol: FrameCollection) -> FrameCollection:
-		# HACK: This manipulates the cached note asset frame collection, since notes have
-		# botched offsets that are fixed with a hardcoded center->subtract in the main loop.
-		# Nobody wants that, so we hack in some offsets right here.
-		# Both were probably found by trial-and-error, so good enough (TM)
-		for frame in fcol.frames:
-			if re.search(r"confirm\d+$", frame.name) is not None:
-				frame.offset -= Vec2(39, 39)
-		return fcol
 
 	# Throw all of these into the same atlas, should improve combo sprite
 	# rendering somewhat
-	_iro = AssetSystemEntry(ImageResourceOptions(0), None)
+	_iro = AssetRouterEntry(None, ImageResourceOptions(0))
 	asset_system_map = {
 		"shared/images/sick.png":  _iro,
 		"shared/images/good.png":  _iro,
@@ -578,17 +611,17 @@ def load() -> ContentPack:
 		"preload/images/num7.png": _iro,
 		"preload/images/num8.png": _iro,
 		"preload/images/num9.png": _iro,
-		"shared/images/NOTE_assets.xml": AssetSystemEntry(None, arrow_post_load_hacker),
+		"preload/images/main_menu.xml":
+			AssetRouterEntry(post_load_processor=main_menu_path_post_load_hacker),
 	}
 
-	add_asset_system(AssetSystem(
-		asset_system_map,
-		{
-			"PATH_WEEK_HEADERS": "preload/images/storymenu/",
-			"PATH_DATA": "preload/data/",
-			"PATH_SONGS": "songs/",
-		},
-	))
+	add_asset_router(AssetRouter(asset_system_map))
+	add_complex_asset_router(BaseGameComplexAssetRouter())
+	add_pyobj_router(PyobjRouter({
+		"PATH_WEEK_HEADERS": "preload/images/storymenu/",
+		"PATH_DATA": "preload/data/",
+		"PATH_SONGS": "songs/",
+	}))
 
 	# Deferred import, yuck! Quickest way to fix the circular import rn,
 	# could possibly split the levels and characters into a basegame submodule later.

@@ -38,7 +38,7 @@ class TestScene(MusicBeatScene):
 
 		self.conductor.bpm = 123
 
-		note_sprites = load_frames("shared/images/NOTE_assets.xml")
+		note_sprites = load_frames("preload/images/NOTE_assets.xml")
 		self.arrows = []
 		for i, note_type in enumerate(NOTE_TYPE):
 			atlas_names = note_type.get_atlas_names()

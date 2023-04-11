@@ -60,7 +60,7 @@ class HUD:
 		}
 
 		self.number_textures = [load_image(f"preload/images/num{i}.png") for i in range(10)]
-		note_sprites = load_frames("shared/images/NOTE_assets.xml")
+		note_sprites = load_frames("preload/images/NOTE_assets.xml")
 
 		self.static_arrows: t.List[t.Dict[NOTE_TYPE, "PNFSprite"]] = [{}, {}]
 		for i, note_type in product((0, 1), NOTE_TYPE):

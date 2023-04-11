@@ -37,7 +37,7 @@ class MainMenuScene(scenes.MusicBeatScene):
 		self.bg_magenta.visible = False
 		self.bg_magenta.color = to_rgb_tuple(0xFD719BFF)
 
-		menu_item_assets = load_frames("preload/images/FNF_main_menu_assets.xml")
+		menu_item_assets = load_frames("preload/images/main_menu.xml")
 		self._menu_items: t.List[t.Tuple[str, t.Callable[[], t.Any], "PNFSprite"]] = []
 		for i, (name, callback) in enumerate((
 			("story mode", self._sel_story_mode),
@@ -46,8 +46,8 @@ class MainMenuScene(scenes.MusicBeatScene):
 		)):
 			sprite = self.create_object("fg", y=60 + i*160)
 			sprite.frames = menu_item_assets
-			sprite.animation.add_by_prefix("idle", f"{name} basic", 24, True)
-			sprite.animation.add_by_prefix("selected", f"{name} white", 24, True)
+			sprite.animation.add_by_prefix("idle", f"{name} idle", 24, True)
+			sprite.animation.add_by_prefix("selected", f"{name} selected", 24, True)
 			sprite.animation.play("idle", True)
 			sprite.screen_center(CNST.GAME_DIMENSIONS, y=False)
 			self._menu_items.append((name, callback, sprite))

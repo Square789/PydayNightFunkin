@@ -526,5 +526,10 @@ class InGameScene(scenes.MusicBeatScene):
 
 	def destroy(self) -> None:
 		super().destroy()
-		self.voice_player.delete()
-		self.inst_player.delete()
+		self.voice_player.destroy()
+		self.inst_player.destroy()
+		# Pathetic attempt at cleaning up more cyclic references i guess
+		del self.note_handler
+		del self.boyfriend
+		del self.girlfriend
+		del self.opponent

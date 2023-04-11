@@ -16,7 +16,7 @@ from loguru import logger
 from pyglet import font
 from pyglet import image
 from pyglet.image import get_max_texture_size
-from pyglet.image.atlas import AllocatorException, TextureBin
+from pyglet.image.atlas import TextureBin
 from pyglet import media
 
 from pyday_night_funkin.core.almost_xml_parser import AlmostXMLParser
@@ -98,65 +98,69 @@ class JsonResourceOptions(TextResourceOptions):
 	pass
 
 
-class AssetSystemEntry:
-	__slots__ = ("options", "post_load_processor")
+class AssetRouterEntry:
+	__slots__ = ("path", "options", "post_load_processor")
 
 	def __init__(
 		self,
+		path: t.Optional[str] = None,
 		options: t.Optional[ResourceOptions] = None,
 		post_load_processor: t.Optional[PostLoadProcessor] = None,
 	) -> None:
+		self.path = path
 		self.options = options
 		self.post_load_processor = post_load_processor
 
 
-class AssetSystem:
-	"""
-	# TODO
-	"""
-
-	def __init__(
-		self,
-		asset_map: t.Optional[t.Dict[str, AssetSystemEntry]] = None,
-		pyobj_map: t.Optional[t.Dict[t.Hashable, t.Any]] = None,
-		allow_unknown: bool = True,
-	) -> None:
+class AssetRouter:
+	def __init__(self, asset_map: t.Optional[t.Dict[str, AssetRouterEntry]]) -> None:
 		self._asset_map = {} if asset_map is None else asset_map
-		self._pyobj_map = {} if pyobj_map is None else pyobj_map
-		self._allow_unknown = allow_unknown
 
 	def has_asset(
-		self,
-		path: str,
-		asset_type_name: str,
-		options: t.Optional[ResourceOptions],
-	) -> t.Union[
-		t.Tuple[t.Literal[False], None, None, None],
-		t.Tuple[
-			t.Literal[True],
-			str,
-			t.Optional[ResourceOptions],
-			t.Optional[PostLoadProcessor],
-		]
-	]:
+		self, path: str, asset_type_name: str, options: t.Optional[ResourceOptions]
+	) -> t.Optional[t.Tuple[str, t.Optional[ResourceOptions], t.Optional[PostLoadProcessor]]]:
 		"""
-		Determines whether an asset exists in this AssetSystem by its
+		Determines whether an asset exists in this AssetRouter by its
 		path.
-		If the asset exists (bool at [0]), the tuple element at [1]
-		will be the true path to it, [2] may be overridden options the
-		asset should be loaded with and [3] may be an additional
-		function that modifies the asset after loading.
-		If the asset does not exist, all other entries will be `None`.
+		If the asset exists, a three-length tuple is returned. The
+		tuple element at [0] will be the true path to it, [1] may be
+		overridden options the asset should be loaded with or the
+		original options if none were found and [2] may be an
+		additional function that modifies the asset after loading.
+		If the asset does not exist, leaves it alone returning `None`.
+
+		This method can be overridden to also react to
+		`asset_type_name` if you dare use such stringly-typed evils.
 		"""
 		if (entry := self._asset_map.get(path)) is not None:
-			return (True, path, entry.options, entry.post_load_processor)
+			return (
+				path if entry.path is None else entry.path,
+				options if entry.options is None else entry.options,
+				entry.post_load_processor,
+			)
 
-		if self._allow_unknown:
-			return (True, path, options, None)
-		else:
-			return (False, None, None, None)
+		return None
+
+class ComplexAssetRouter:
+	def has_asset(
+		self, asset_type_name: str, *args: t.Any, **kwargs: t.Any
+	) -> t.Optional[
+		t.Tuple[t.Tuple[t.Any, ...], t.Dict[str, t.Any], t.Optional[PostLoadProcessor]
+	]]:
+		return None
+
+
+class PyobjRouter:
+	def __init__(self, pyobj_map: t.Dict[t.Hashable, t.Any]) -> None:
+		self._pyobj_map = {} if pyobj_map is None else pyobj_map
 
 	def has_pyobj(self, ident: t.Hashable) -> t.Tuple[bool, t.Any]:
+		"""
+		Returns a two-element tuple indicating whether this asset
+		system knows an object with this name.
+		If it does, [0] is True and [1] will be the object.
+		If it does not, [0] is False and [1] irrelevant.
+		"""
 		if ident in self._pyobj_map:
 			return (True, self._pyobj_map[ident])
 		else:
@@ -169,7 +173,9 @@ class _AssetSystemManager:
 	"""
 
 	def __init__(self) -> None:
-		self.asset_system_stack: t.List[AssetSystem] = []
+		self.asset_router_stack: t.List[AssetRouter] = []
+		self.complex_asset_router_stack: t.List[ComplexAssetRouter] = []
+		self.pyobj_router_stack: t.List[PyobjRouter] = []
 
 		self.asset_type_registry: t.Set[str] = set()
 
@@ -182,24 +188,56 @@ class _AssetSystemManager:
 		self._hinted_tex_bin: t.Dict[t.Hashable, TextureBin] = defaultdict(make_tex_bin)
 		self._tex_bin = make_tex_bin()
 
-	def add_asset_system(self, asset_system: AssetSystem) -> None:
+	def add_asset_router(self, router: AssetRouter) -> None:
 		"""
-		Adds an asset system to the asset system stack, which may
-		influence the asset loading behavior.
+		Adds a regular asset router to the asset router stack, which
+		may influence loading behavior of regular assets.
 		Invalidates the asset system manager's cache.
 		"""
-		self.asset_system_stack.append(asset_system)
+		self.asset_router_stack.append(router)
 		self.clear_cache()
 
-	def remove_asset_system(self, asset_system: AssetSystem) -> None:
+	def remove_asset_router(self, router: AssetRouter) -> None:
 		"""
-		Removes an asset system and invalidates the cache.
+		Removes an asset router and invalidates the cache.
 		"""
 		try:
-			self.asset_system_stack.remove(asset_system)
+			self.asset_router_stack.remove(router)
 		except ValueError:
 			return
 		self.clear_cache()
+
+	def add_complex_asset_router(self, router: ComplexAssetRouter) -> None:
+		"""
+		Adds a complex asset router to the complex asset router stack
+		which may influence the behavior of complex assets.
+		Invalidates the asset system manager's cache.
+		"""
+		self.complex_asset_router_stack.append(router)
+		self.clear_cache()
+
+	def remove_complex_asset_router(self, router: ComplexAssetRouter) -> None:
+		"""
+		Removes a complex asset router and ivalidates the cache.
+		"""
+		try:
+			self.complex_asset_router_stack.remove(router)
+		except ValueError:
+			return
+		self.clear_cache()
+
+	# TODO: pyobj routers are really just glorified dicts (ok this is python, everything is),
+	# but i forgot why i have them in the first place. maybe reevaluate that.
+	def add_pyobj_router(self, router: PyobjRouter) -> None:
+		self.pyobj_router_stack.append(router)
+		self._pyobj_cache.clear()
+
+	def remove_pyobj_router(self, router: PyobjRouter) -> None:
+		try:
+			self.pyobj_router_stack.remove(router)
+		except ValueError:
+			return
+		self._pyobj_cache.clear()
 
 	def store_image(
 		self,
@@ -238,12 +276,25 @@ class _AssetSystemManager:
 		system stack. Will always fall back to returning the input
 		without a post-load processor if none applied.
 		"""
-		for as_ in reversed(self.asset_system_stack):
-			have, true_path, true_options, plpf = as_.has_asset(path, asset_type_name, options)
-			if have:
-				return true_path, (options if true_options is None else true_options), plpf
+		for as_ in reversed(self.asset_router_stack):
+			if (entry := as_.has_asset(path, asset_type_name, options)) is not None:
+				return entry
 
 		return path, options, None
+
+	def _process_complex_asset(
+		self, name: str, *args: t.Any, **kwargs: t.Any
+	) -> t.Tuple[t.Tuple[t.Any, ...], t.Dict[str, t.Any], t.Optional[PostLoadProcessor]]:
+		"""
+		Possibly figures out differing args and/or kwargs and/or a
+		post-load processor for a complex asset based on the current
+		asset system stack.
+		"""
+		for as_ in reversed(self.complex_asset_router_stack):
+			if (entry := as_.has_asset(name, *args, **kwargs)) is not None:
+				return entry
+
+		return (args, kwargs, None)
 
 	def load_pyobj(self, ident: t.Hashable) -> t.Any:
 		"""
@@ -255,13 +306,13 @@ class _AssetSystemManager:
 		if ident in self._pyobj_cache:
 			return self._pyobj_cache[ident]
 
-		for as_ in reversed(self.asset_system_stack):
+		for as_ in reversed(self.pyobj_router_stack):
 			have, o = as_.has_pyobj(ident)
 			if have:
 				self._pyobj_cache[ident] = o
 				return o
 
-		raise AssetNotFoundError(f"Could not find pyobj {ident!r} in current asset system stack")
+		raise AssetNotFoundError(f"Could not find {ident!r} in current pyobj router stack!")
 
 	def load_image(
 		self, path: str, cache: bool = True, options: t.Optional[ImageResourceOptions] = None
@@ -275,7 +326,7 @@ class _AssetSystemManager:
 		true_path_tail, true_opt, post_load_processor = self._process_asset(
 			path, "image", in_opt
 		)
-		if not isinstance(true_opt, type(in_opt)):
+		if not isinstance(true_opt, ImageResourceOptions):
 			raise RuntimeError("Asset system delivered incompatible options for asset.")
 
 		data = image.load(self._get_full_path(true_path_tail))
@@ -320,6 +371,7 @@ class _AssetSystemManager:
 				data = post_load_processor_func(data)
 			if cache:
 				cache_dict[path] = data
+
 			return data
 
 		self.asset_type_registry.add(name)
@@ -431,9 +483,16 @@ class _AssetSystemManager:
 			cache_key = cache_key_maker(*args, **kwargs)
 			if cache_key in cache_dict:
 				return cache_dict[cache_key]
-			data = loader_func(*args, **kwargs)
+
+			prc_args, prc_kwargs, post_load_processor = self._process_complex_asset(
+				name, *args, **kwargs
+			)
+			data = loader_func(*prc_args, **prc_kwargs)
+			if post_load_processor is not None:
+				data = post_load_processor(data)
 			if cache:
 				cache_dict[cache_key] = data
+
 			return data
 
 		self.asset_type_registry.add(name)
@@ -461,8 +520,6 @@ def _load_text_plain(path: str, options: TextResourceOptions) -> str:
 		return f.read()
 load_text = _asm.register_asset_type("text", _load_text_plain, TextResourceOptions)
 
-load_image = _asm.load_image
-
 def _load_sound_plain(path: str, options: SoundResourceOptions) -> media.Source:
 	return media.load(path, streaming=options.stream, decoder=options.decoder)
 load_sound = _asm.register_asset_type("sound", _load_sound_plain, SoundResourceOptions)
@@ -489,10 +546,15 @@ def _load_font_plain(path: str) -> None:
 	return None
 load_font = _asm.register_optionless_asset_type("font", _load_font_plain)
 
-
 load_pyobj = _asm.load_pyobj
-add_asset_system = _asm.add_asset_system
-remove_asset_system = _asm.remove_asset_system
+load_image = _asm.load_image
+
+add_asset_router = _asm.add_asset_router
+add_complex_asset_router = _asm.add_complex_asset_router
+add_pyobj_router = _asm.add_pyobj_router
+remove_asset_router = _asm.add_asset_router
+remove_complex_asset_router = _asm.add_complex_asset_router
+remove_pyobj_router = _asm.add_pyobj_router
 invalidate_cache = _asm.clear_cache
 register_asset_type = _asm.register_asset_type
 register_optionless_asset_type = _asm.register_optionless_asset_type
