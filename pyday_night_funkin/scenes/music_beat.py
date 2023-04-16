@@ -9,7 +9,7 @@ from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.scene_manager import SceneSetupTrio
-	from pyday_night_funkin.core.sound.pnf_player import PNFPlayer
+	from pyday_night_funkin.core.sound import PNFPlayer
 
 
 

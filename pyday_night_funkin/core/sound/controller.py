@@ -3,7 +3,8 @@ import typing as t
 
 from loguru import logger
 
-from pyday_night_funkin.core.sound.pnf_player import SFXRing, PNFPlayer
+from .pnf_player import PNFPlayer
+from .sfx_ring import SFXRing
 from pyday_night_funkin.core.utils import clamp
 
 
@@ -39,7 +40,6 @@ class SoundController:
 		controller.
 		"""
 		player = PNFPlayer(self)
-		player.volume = self.volume
 		self._known_players.append(player)
 		return player
 
@@ -69,4 +69,5 @@ class SoundController:
 		"""
 		self.volume = new_volume
 		for player in self._known_players:
-			player.volume = new_volume
+			# They're linked to this controller and will read `self.volume` via this.
+			player.volume = player.volume

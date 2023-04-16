@@ -30,7 +30,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.types import Numeric
 
 
-__version__ = "0.0.45"
+__version__ = "0.0.46"
 
 
 SOUND_GRANULARITY = 10
@@ -138,7 +138,6 @@ class Game(SceneManager):
 				record["extra"]["elapsed_millisecs_total"] = millisecs
 
 			logger.configure(patcher=elapsed_patcher)
-
 
 			if sys.stderr:
 				_stderr_fmt = (
