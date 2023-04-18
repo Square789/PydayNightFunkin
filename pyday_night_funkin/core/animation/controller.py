@@ -123,7 +123,7 @@ class AnimationController:
 		prefix: str,
 		fps: float = 24.0,
 		loop: bool = True,
-		offset: t.Optional[t.Union[t.Tuple[int, int], Vec2]] = None,
+		offset: t.Optional[t.Union[t.Tuple[float, float], Vec2]] = None,
 		tags: t.Sequence[t.Hashable] = (),
 	) -> None:
 		"""
@@ -156,7 +156,7 @@ class AnimationController:
 		indices: t.Sequence[int],
 		fps: float = 24.0,
 		loop: bool = True,
-		offset: t.Optional[t.Union[t.Tuple[int, int], Vec2]] = None,
+		offset: t.Optional[t.Union[t.Tuple[float, float], Vec2]] = None,
 		tags: t.Sequence[t.Hashable] = (),
 	) -> None:
 		"""

@@ -17,7 +17,7 @@ class Animation:
 		frame_indices: t.Sequence[int],
 		fps: float = 24.0,
 		loop: bool = False,
-		offset: t.Optional[t.Union[t.Tuple[int, int], Vec2]] = None,
+		offset: t.Optional[t.Union[t.Tuple[float, float], Vec2]] = None,
 		tags: t.Sequence[t.Hashable] = (),
 	):
 		if not frame_indices:
