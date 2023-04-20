@@ -121,7 +121,7 @@ class Game(SceneManager):
 		self._debug_queue = None
 		self._last_draw_time = 0.0
 		self._fps = _FPSData()
-		self._dt_limit = .35
+		self._dt_limit = .2
 		self._superscenes: t.List["SuperScene"] = []
 
 		logger.remove(0)

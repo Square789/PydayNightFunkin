@@ -7,6 +7,11 @@ T = t.TypeVar("T")
 
 
 class Registry(t.Generic[T]):
+	"""
+	Stupidly overengineered dict that not only stores things and their
+	values but also "sources" these things came from.
+	"""
+
 	def __init__(self) -> None:
 		self._dict = {}
 		self._sources = defaultdict(set)

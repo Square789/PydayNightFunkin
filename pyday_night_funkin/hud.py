@@ -92,7 +92,7 @@ class HUD:
 		)
 
 		self.score_text = scene.create_object(
-			self.health_bar_layers[0],
+			self.combo_layer,
 			self.camera,
 			PNFText,
 			x = self.health_bar.background.x + self.health_bar.background.width - 190,

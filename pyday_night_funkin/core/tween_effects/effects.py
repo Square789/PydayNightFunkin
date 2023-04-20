@@ -22,7 +22,7 @@ class BaseEffect(t.Generic[T]):
 	def __init__(
 		self,
 		duration: float,
-		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
+		on_complete: t.Optional[t.Callable[[T], t.Any]] = None,
 	) -> None:
 		if duration <= 0.0:
 			raise ValueError("Duration may not be negative or zero!")
@@ -44,7 +44,7 @@ class Tween(BaseEffect[T]):
 		tween_func: t.Callable[[float], float],
 		attr_map: t.Dict[str, t.Tuple[t.Any, t.Any]],
 		duration: float,
-		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
+		on_complete: t.Optional[t.Callable[[T], t.Any]] = None,
 	) -> None:
 		super().__init__(duration, on_complete)
 		self.tween_func = tween_func
@@ -73,7 +73,7 @@ class Flicker(BaseEffect[HasVisibleT]):
 		start_visibility: bool,
 		end_visibility: bool,
 		duration: float,
-		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
+		on_complete: t.Optional[t.Callable[[HasVisibleT], t.Any]] = None,
 	) -> None:
 		super().__init__(duration, on_complete)
 		if interval <= 0.0:
@@ -110,7 +110,7 @@ class Toggle(BaseEffect[T]):
 		duration: float,
 		on_toggle_on: t.Optional[t.Callable[[T], t.Any]] = None,
 		on_toggle_off: t.Optional[t.Callable[[T], t.Any]] = None,
-		on_complete: t.Optional[t.Callable[[], t.Any]] = None,
+		on_complete: t.Optional[t.Callable[[T], t.Any]] = None,
 	) -> None:
 		super().__init__(duration, on_complete)
 		if interval <= 0.0:

@@ -1,12 +1,8 @@
 
-from math import pi, sin
 import typing as t
 
 from .eases import linear
 from .effects import BaseEffect, Flicker, Toggle, Tween
-
-if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.scene_object import WorldObject
 
 
 T = t.TypeVar("T")
@@ -23,7 +19,7 @@ class EffectController:
 		self._tweens: t.Dict[t.Hashable, t.Set["BaseEffect"]] = {}
 		"""All of this controller's tweens."""
 
-	def _add(self, obj: t.Hashable, tw: "BaseEffect") -> None:
+	def _add(self, obj: HashableT, tw: "BaseEffect[HashableT]") -> None:
 		if obj not in self._tweens:
 			self._tweens[obj] = set()
 		self._tweens[obj].add(tw)

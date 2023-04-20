@@ -153,7 +153,7 @@ class AnimationController:
 		self,
 		name: str,
 		prefix: str,
-		indices: t.Sequence[int],
+		indices: t.Iterable[int],
 		fps: float = 24.0,
 		loop: bool = True,
 		offset: t.Optional[t.Union[t.Tuple[float, float], Vec2]] = None,

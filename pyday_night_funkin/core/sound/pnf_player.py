@@ -322,6 +322,9 @@ class PNFPlayer(EventDispatcher):
 		volume, clamped between 0. and 1., and raised to the power of
 		`e`.
 		"""
+		# Thanks to this thread:
+		# https://www.reddit.com/r/gamedev/comments/7hht15/developers_fix_your_volume_sliders/
+		# the OP seems to have delusions of grandeur, but was pretty helpful nonetheless
 		return pow(clamp(self._volume * self.controller.volume, 0.0, 1.0), e)
 
 	min_distance = _make_player_property(

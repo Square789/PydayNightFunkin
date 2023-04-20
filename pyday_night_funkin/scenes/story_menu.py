@@ -57,6 +57,8 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		if not self.game.player.playing:
 			self.game.player.set(load_sound("preload/music/freakyMenu.ogg"))
 
+		black_bar = self.create_object("mid")
+		black_bar.make_rect(to_rgba_tuple(0x000000FF), CNST.GAME_WIDTH, 56)
 		yellow_stripe = self.create_object("mid", x=0, y=56)
 		yellow_stripe.make_rect(to_rgba_tuple(0xF9CF51FF), CNST.GAME_WIDTH, 400)
 
