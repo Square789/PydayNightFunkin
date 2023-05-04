@@ -66,7 +66,7 @@ class NoteHandler(AbstractNoteHandler):
 
 		note_assets = load_frames("preload/images/NOTE_assets.xml")
 		def single_frame(pref: str) -> "Texture":
-			return AnimationController.get_frames_by_prefix(note_assets, pref)[0].texture
+			return note_assets.collect_ordered_by_prefix(pref)[0].texture
 
 		# this is the worst naming of anything i have ever seen
 		self.note_sprites = {

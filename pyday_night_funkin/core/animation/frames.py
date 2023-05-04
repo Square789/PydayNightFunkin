@@ -37,6 +37,13 @@ class AnimationFrame:
 		)
 
 
+def _try_int(v: object) -> int:
+	try:
+		return int(v)
+	except ValueError:
+		return 0
+
+
 class FrameCollection:
 	"""
 	A frame collection is really just a list and a dict for storing
@@ -71,6 +78,37 @@ class FrameCollection:
 		if frame not in self._index_map:
 			raise KeyError("Frame unknown to FrameCollection.")
 		return self._index_map[frame]
+
+	def collect_by_prefix(self, prefix: str) -> t.List[t.Tuple[AnimationFrame, int]]:
+		"""
+		Returns all `AnimationFrame`s whose name starts with the given
+		prefix, as well as their frame designation in a list of tuples.
+		"""
+		prefix_candidates = [
+			frame for frame in self.frames
+			if frame.name is not None and frame.name.startswith(prefix)
+		]
+		if not prefix_candidates:
+			raise ValueError(f"No frames with prefix {prefix!r} found.")
+
+		prefix_len = len(prefix)
+		suffix_start_idx = prefix_candidates[0].name.find('.', prefix_len)
+		# If a dot is present, try converting to an integer behind the prefix and
+		# in front of the dot.
+		# Otherwise, try converting whatever is behind the prefix to an integer.
+		# Point of this is to deal with frames like `x-000.png`, `x-001.png`;
+		# assumes the length of `.png` will never change and just cuts these off.
+		# All of this is not really relevant in FNF, no animation name contains
+		# dots i believe
+		slc = slice(prefix_len, None if suffix_start_idx == -1 else suffix_start_idx)
+		return [(f, _try_int(f.name[slc])) for f in prefix_candidates]
+
+	def collect_ordered_by_prefix(self, prefix: str) -> t.List[AnimationFrame]:
+		"""
+		Returns all frames for the given prefix, sorted by the indices
+		in their names.
+		"""
+		return [f for (f, _) in sorted(self.collect_by_prefix(prefix), key=lambda x: x[1])]
 
 	def __getitem__(self, i: int) -> AnimationFrame:
 		return self.frames[i]

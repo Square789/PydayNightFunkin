@@ -18,7 +18,7 @@ from pyday_night_funkin.core.asset_system import (
 	ImageResourceOptions, PostLoadProcessor, ResourceOptions, SoundResourceOptions,
 	add_asset_router, add_complex_asset_router, add_pyobj_router,
 	load_image, load_json, load_pyobj, load_sound, load_xml,
-	register_complex_asset_type, register_optionless_asset_type,
+	register_complex_asset_type,
 )
 from pyday_night_funkin.content_pack import ContentPack, LevelData, WeekData
 from pyday_night_funkin.core.animation import FrameCollection
@@ -34,6 +34,12 @@ if t.TYPE_CHECKING:
 
 
 class SeqValidator:
+	"""
+	Validator for the `schema` library that will only allow lists or
+	tuples where each item matches the schema in the corresponding
+	blueprint. Validates into a tuple.
+	"""
+
 	def __init__(self, *types: t.Any) -> None:
 		self.schemas = tuple(x if isinstance(x, Schema) else Schema(x) for x in types)
 
@@ -80,24 +86,7 @@ SONG_SCHEMA = Schema(
 )
 
 
-_HEALTH_ICON_MAP = {
-	"bf":                ((   0,   0), ( 150,   0)),
-	"spooky":            (( 300,   0), ( 450,   0)),
-	"pico":              (( 600,   0), ( 750,   0)),
-	"mom":               (( 900,   0), (1050,   0)),
-	"tankman":           ((1200,   0), (1350,   0)),
-	"face":              ((   0, 150), ( 150, 150)),
-	"dad":               (( 300, 150), ( 450, 150)),
-	"bf-old":            (( 600, 150), ( 750, 150)),
-	"gf":                (( 900, 150), ( 900, 150)),
-	"parents-christmas": ((1050, 150), (1200, 150)),
-	"monster":           ((1350, 150), (   0, 300)),
-	"bf-pixel":          (( 150, 300), ( 150, 300)),
-	"senpai":            (( 300, 300), ( 300, 300)),
-	"spirit":            (( 450, 300), ( 450, 300)),
-}
-
-def load_health_icon(character: str) -> t.Tuple["Texture", "Texture"]:
+def _load_character_icon(character: str) -> t.Tuple["Texture", "Texture"]:
 	"""
 	Loads an icon grid image and a character string into health icons.
 
@@ -105,15 +94,21 @@ def load_health_icon(character: str) -> t.Tuple["Texture", "Texture"]:
 	default and losing icon.
 	"""
 
-	icon_texture = load_image("preload/images/iconGrid.png")
-	if icon_texture.width < 1500 or icon_texture.height < 900:
-		raise ValueError("Icon grid has invalid shape!")
+	icon_texture = load_image(f"preload/images/icons/icon-{character}.png")
 
-	return tuple(
-		icon_texture.get_region(x, icon_texture.height - 150 - y, 150, 150).get_texture()
-		for x, y in _HEALTH_ICON_MAP[character]
+	if icon_texture.width != 300 or icon_texture.height != 150:
+		raise ValueError("Icon texture has an invalid shape: Must be 300x150!")
+
+	return (
+		icon_texture.get_region(  0, 0, 150, 150).get_texture(),
+		icon_texture.get_region(150, 0, 150, 150).get_texture(),
 	)
 
+load_character_icon = register_complex_asset_type(
+	"character_icon", lambda c: c, _load_character_icon
+)
+# TODO RENAME ALIAS USE SITES
+load_health_icon = load_character_icon
 
 
 class SongResourceOptions(ResourceOptions):
@@ -173,8 +168,8 @@ def load_week_header(name: str) -> "Texture":
 def _load_frames_plain(path: str) -> FrameCollection:
 	"""
 	Loads animation frames from path.
-
-	Will load a dict mapping animation prefixes to frame sequences.
+	Will load a `FrameCollection`, which can directly be set to a
+	sprite's `frames` attribute.
 	"""
 	# Do not cache the xml, only needed for creating the FrameCollection once, really.
 	xml = load_xml(path, cache=False)
@@ -238,57 +233,22 @@ class Boyfriend(Character):
 		super().__init__(*args, **kwargs)
 
 		self.frames = load_frames("shared/images/characters/BOYFRIEND.xml")
+		self.load_offsets("bf")
 
-		self.animation.add_by_prefix(
-			"idle", "BF idle dance", 24, False, (-5, 0),
-			(ANIMATION_TAG.IDLE,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_left", "BF NOTE LEFT0", 24, False, (12, -6),
-			(ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"miss_note_left", "BF NOTE LEFT MISS", 24, False, (12, 24),
-			(ANIMATION_TAG.MISS,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_down", "BF NOTE DOWN0", 24, False, (-10, -50),
-			(ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"miss_note_down", "BF NOTE DOWN MISS", 24, False, (-11, -19),
-			(ANIMATION_TAG.MISS,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_up", "BF NOTE UP0", 24, False, (-29, 27),
-			(ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"miss_note_up", "BF NOTE UP MISS", 24, False, (-29, 27),
-			(ANIMATION_TAG.MISS,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_right", "BF NOTE RIGHT0", 24, False, (-38, -7),
-			(ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"miss_note_right", "BF NOTE RIGHT MISS", 24, False, (-30, 21),
-			(ANIMATION_TAG.MISS,)
-		)
-		self.animation.add_by_prefix("scared", "BF idle shaking", 24, True, (-4, 0))
-		self.animation.add_by_prefix(
-			"hey", "BF HEY!!", 24, False, (7, 4), (ANIMATION_TAG.SPECIAL,)
-		)
-		self.animation.add_by_prefix(
-			"game_over_ini", "BF dies", 24, False, (37, 11), (ANIMATION_TAG.GAME_OVER,)
-		)
-		self.animation.add_by_prefix(
-			"game_over_loop", "BF Dead Loop", 24, True, (37, 5), (ANIMATION_TAG.GAME_OVER,)
-		)
-		self.animation.add_by_prefix(
-			"game_over_confirm", "BF Dead confirm", 24, False, (37, 69),
-			(ANIMATION_TAG.GAME_OVER,)
-		)
+		self.add_animation("idle", "BF idle dance", tags=(ANIMATION_TAG.IDLE,))
+		self.add_animation("sing_left", "BF NOTE LEFT0", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("miss_left", "BF NOTE LEFT MISS", tags=(ANIMATION_TAG.MISS,))
+		self.add_animation("sing_down", "BF NOTE DOWN0", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("miss_down", "BF NOTE DOWN MISS", tags=(ANIMATION_TAG.MISS,))
+		self.add_animation("sing_up", "BF NOTE UP0", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("miss_up", "BF NOTE UP MISS", tags=(ANIMATION_TAG.MISS,))
+		self.add_animation("sing_right", "BF NOTE RIGHT0", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("miss_right", "BF NOTE RIGHT MISS", tags=(ANIMATION_TAG.MISS,))
+		self.add_animation("scared", "BF idle shaking")
+		self.add_animation("hey", "BF HEY!!", tags=(ANIMATION_TAG.SPECIAL,))
+		self.add_animation("game_over_ini", "BF dies", tags=(ANIMATION_TAG.GAME_OVER,))
+		self.add_animation("game_over_loop", "BF Dead Loop", tags=(ANIMATION_TAG.GAME_OVER,))
+		self.add_animation("game_over_end", "BF Dead confirm", tags=(ANIMATION_TAG.GAME_OVER,))
 
 	def update(self, dt: float) -> None:
 		singing = self.animation.has_tag(ANIMATION_TAG.SING)
@@ -330,85 +290,31 @@ class Boyfriend(Character):
 		)
 
 
-class DaddyDearest(Character):
-	def __init__(self, *args, **kwargs) -> None:
-		super().__init__(*args, **kwargs)
-
-		self.frames = load_frames("shared/images/characters/DADDY_DEAREST.xml")
-
-		self.animation.add_by_prefix(
-			"idle", "Dad idle dance", 24, True, (0, 0), (ANIMATION_TAG.IDLE,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_left", "Dad Sing Note LEFT", 24, False, (-10, 10), (ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_down", "Dad Sing Note DOWN", 24, False, (0, -30), (ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_up", "Dad Sing Note UP", 24, False, (-6, 50), (ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_right", "Dad Sing Note RIGHT", 24, False, (0, 27), (ANIMATION_TAG.SING,)
-		)
-
-	@classmethod
-	def get_character_data(cls) -> "CharacterData":
-		return super().get_character_data().update({
-			"hold_timeout": 6.1,
-			"story_menu_offset": (120.0, 200.0),
-			"icon_name": "dad",
-		})
-
-	@staticmethod
-	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
-		spr.animation.add_by_prefix(
-			"story_menu",
-			"Dad idle dance BLACK LINE",
-			fps = 24,
-			loop = True,
-			tags = (ANIMATION_TAG.STORY_MENU,),
-		)
-
-
 class Girlfriend(FlipIdleCharacter):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
 		self.frames = load_frames("shared/images/characters/GF_assets.xml")
+		self.load_offsets("gf")
 
-		self.animation.add_by_prefix(
-			"cheer", "GF Cheer", 24, False, tags=(ANIMATION_TAG.SPECIAL,)
+		self.add_animation("cheer", "GF Cheer", tags=(ANIMATION_TAG.SPECIAL,))
+		self.add_indexed_animation(
+			"idle_left", "GF Dancing Beat", range(15), tags=(ANIMATION_TAG.IDLE,)
 		)
-		self.animation.add_by_indices(
-			"idle_left", "GF Dancing Beat", range(15), 24, False, (0, -9),
-			(ANIMATION_TAG.IDLE,)
+		self.add_indexed_animation(
+			"idle_right", "GF Dancing Beat", range(15, 30), tags=(ANIMATION_TAG.IDLE,)
 		)
-		self.animation.add_by_indices(
-			"idle_right", "GF Dancing Beat", range(15, 30), 24, False, (0, -9),
-			(ANIMATION_TAG.IDLE,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_left", "GF left note", 24, False, (0, -19), (ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_down", "GF Down Note", 24, False, (0, -20), (ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_up", "GF Up Note", 24, False, (0, 4), (ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_right", "GF Right Note", 24, False, (0, -20), (ANIMATION_TAG.SING,)
-		)
+		self.add_animation("sing_left", "GF left note", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_down", "GF Down Note", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_right", "GF Right Note", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_up", "GF Up Note", tags=(ANIMATION_TAG.SING,))
 		# Nice space at the end bro
-		self.animation.add_by_prefix("scared", "GF FEAR ", 24, True, (-2, -17))
-		self.animation.add_by_indices(
-			"hair_blow", "GF Dancing Beat Hair blowing", [*range(4)], 24, True,
-			(45, -8), (ANIMATION_TAG.HAIR,)
+		self.add_animation("scared", "GF FEAR ")
+		self.add_indexed_animation(
+			"hair_blow", "GF Dancing Beat Hair blowing", range(4), 24, True, (ANIMATION_TAG.HAIR,)
 		)
-		self.animation.add_by_indices(
-			"hair_fall", "GF Dancing Beat Hair Landing", [*range(12)], 24, False,
-			(0, -9), (ANIMATION_TAG.HAIR,)
+		self.add_indexed_animation(
+			"hair_fall", "GF Dancing Beat Hair Landing", range(12), tags=(ANIMATION_TAG.HAIR,)
 		)
 
 	@classmethod
@@ -438,35 +344,56 @@ class Girlfriend(FlipIdleCharacter):
 		)
 
 
+class DaddyDearest(Character):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.frames = load_frames("shared/images/characters/DADDY_DEAREST.xml")
+		self.load_offsets("dad")
+
+		self.add_animation("idle", "Dad idle dance", 24, True, (0, 0), (ANIMATION_TAG.IDLE,)
+		)
+		self.add_animation("sing_left", "Dad Sing Note LEFT", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_down", "Dad Sing Note DOWN", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_up", "Dad Sing Note UP", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_right", "Dad Sing Note RIGHT", tags=(ANIMATION_TAG.SING,))
+
+	@classmethod
+	def get_character_data(cls) -> "CharacterData":
+		return super().get_character_data().update({
+			"hold_timeout": 6.1,
+			"story_menu_offset": (120.0, 200.0),
+			"icon_name": "dad",
+		})
+
+	@staticmethod
+	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
+		spr.animation.add_by_prefix(
+			"story_menu",
+			"Dad idle dance BLACK LINE",
+			fps = 24,
+			loop = True,
+			tags = (ANIMATION_TAG.STORY_MENU,),
+		)
+
+
 class SkidNPump(FlipIdleCharacter):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
 		self.frames = load_frames("shared/images/characters/spooky_kids_assets.xml")
+		self.load_offsets("spooky")
 
-		self.animation.add_by_prefix(
-			"sing_note_up", "spooky UP NOTE", 24, False, (-20, 26),
-			(ANIMATION_TAG.SING,)
+		self.add_animation("sing_up", "spooky UP NOTE", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_down", "spooky DOWN note", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_left", "note sing left", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_right", "spooky sing right", tags=(ANIMATION_TAG.SING,))
+
+		self.add_indexed_animation(
+			"idle_left", "spooky dance idle", (0, 2, 6), 12, tags=(ANIMATION_TAG.IDLE,)
 		)
-		self.animation.add_by_prefix(
-			"sing_note_down", "spooky DOWN note", 24, False, (-50, -130),
-			(ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_left", "note sing left", 24, False, (130, -10),
-			(ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_right", "spooky sing right", 24, False, (-130, -14),
-			(ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_indices(
-			"idle_left", "spooky dance idle", [0, 2, 6], 12, False, (0, 0),
-			(ANIMATION_TAG.IDLE,)
-		)
-		self.animation.add_by_indices(
-			"idle_right", "spooky dance idle", [8, 10, 12, 14], 12, False, (0, 0),
-			(ANIMATION_TAG.IDLE,)
+		self.add_indexed_animation(
+			"idle_right", "spooky dance idle", (8, 10, 12, 14), 12, tags=(ANIMATION_TAG.IDLE,)
 		)
 
 	@classmethod
@@ -489,23 +416,14 @@ class Monster(Character):
 		super().__init__(*args, **kwargs)
 
 		self.frames = load_frames("shared/images/characters/Monster_Assets.xml")
+		self.load_offsets("monster")
 
 		# It's like they're trying to win a naming inconsistency award
-		self.animation.add_by_prefix(
-			"idle", "monster idle", 24, False, (0, 0), (ANIMATION_TAG.IDLE,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_up", "monster up note", 24, False, (-20, 50), (ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_down", "monster down", 24, False, (-30, -40), (ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_left", "Monster left note", 24, False, (-30, 0), (ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_right", "Monster Right note", 24, False, (-51, 0), (ANIMATION_TAG.SING,)
-		)
+		self.add_animation("idle", "monster idle", tags=(ANIMATION_TAG.IDLE,))
+		self.add_animation("sing_up", "monster up note", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_down", "monster down", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_left", "Monster left note", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_right", "Monster Right note", tags=(ANIMATION_TAG.SING,))
 
 	@classmethod
 	def get_character_data(cls) -> "CharacterData":
@@ -517,23 +435,14 @@ class Pico(Character):
 		super().__init__(*args, **kwargs)
 
 		self.frames = load_frames("shared/images/characters/Pico_FNF_assetss.xml")
+		self.load_offsets("pico")
 
-		self.animation.add_by_prefix(
-			"idle", "Pico Idle Dance", offset=(0, 0), tags=(ANIMATION_TAG.IDLE,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_up", "pico Up note0", offset=(-29, 27), tags=(ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_down", "Pico Down Note0", offset=(200, -70), tags=(ANIMATION_TAG.SING,)
-		)
-		# MY GOD WHY
-		self.animation.add_by_prefix(
-			"sing_note_left", "Pico Note Right0", offset=(65, 9), tags=(ANIMATION_TAG.SING,)
-		)
-		self.animation.add_by_prefix(
-			"sing_note_right", "Pico NOTE LEFT0", offset=(-68, -7), tags=(ANIMATION_TAG.SING,)
-		)
+		self.add_animation("idle", "Pico Idle Dance", tags=(ANIMATION_TAG.IDLE,))
+		self.add_animation("sing_up", "pico Up note0", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_down", "Pico Down Note0", tags=(ANIMATION_TAG.SING,))
+		# my god why
+		self.add_animation("sing_left", "Pico Note Right0", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_right", "Pico NOTE LEFT0", tags=(ANIMATION_TAG.SING,))
 
 		self.flip_x = True
 
@@ -587,35 +496,55 @@ class BaseGameComplexAssetRouter(ComplexAssetRouter):
 		return None
 
 
+class BaseGameAssetRouter(AssetRouter):
+	def __init__(self,):
+		self._iro = ImageResourceOptions(0)
+
+		# Throw most UI sprites into the same atlas, should improve rendering of it
+		# somewhat
+		_entry = AssetRouterEntry(None, ImageResourceOptions(0))
+		super().__init__({
+			"shared/images/sick.png":         _entry,
+			"shared/images/good.png":         _entry,
+			"shared/images/bad.png":          _entry,
+			"shared/images/shit.png":         _entry,
+			"shared/images/healthBar.png":    _entry,
+			"preload/images/NOTE_assets.png": _entry,
+			"preload/images/num0.png":        _entry,
+			"preload/images/num1.png":        _entry,
+			"preload/images/num2.png":        _entry,
+			"preload/images/num3.png":        _entry,
+			"preload/images/num4.png":        _entry,
+			"preload/images/num5.png":        _entry,
+			"preload/images/num6.png":        _entry,
+			"preload/images/num7.png":        _entry,
+			"preload/images/num8.png":        _entry,
+			"preload/images/num9.png":        _entry,
+			"preload/images/main_menu.xml":
+				AssetRouterEntry(post_load_processor=main_menu_path_post_load_hacker),
+		})
+
+	def has_asset(
+		self, path: str, asset_type_name: str, options: t.Optional[ResourceOptions]
+	) -> t.Optional[t.Tuple[str, t.Optional[ResourceOptions], t.Optional[PostLoadProcessor]]]:
+		sup = super().has_asset(path, asset_type_name, options)
+		if sup is not None:
+			return sup
+
+		# Throw icons into the same atlas as combo sprites. This should work out nicely.
+		if path.startswith("preload/images/icons/"):
+			return (path, self._iro, None)
+
+		return None
+
+
 def load() -> ContentPack:
 	"""
 	Loads everything required to run the base game into the asset
 	system and returns the base game's content pack.
 	"""
 
-	# Throw all of these into the same atlas, should improve combo sprite
-	# rendering somewhat
-	_iro = AssetRouterEntry(None, ImageResourceOptions(0))
-	asset_system_map = {
-		"shared/images/sick.png":  _iro,
-		"shared/images/good.png":  _iro,
-		"shared/images/bad.png":   _iro,
-		"shared/images/shit.png":  _iro,
-		"preload/images/num0.png": _iro,
-		"preload/images/num1.png": _iro,
-		"preload/images/num2.png": _iro,
-		"preload/images/num3.png": _iro,
-		"preload/images/num4.png": _iro,
-		"preload/images/num5.png": _iro,
-		"preload/images/num6.png": _iro,
-		"preload/images/num7.png": _iro,
-		"preload/images/num8.png": _iro,
-		"preload/images/num9.png": _iro,
-		"preload/images/main_menu.xml":
-			AssetRouterEntry(post_load_processor=main_menu_path_post_load_hacker),
-	}
-
-	add_asset_router(AssetRouter(asset_system_map))
+	add_asset_router(BaseGameAssetRouter())
 	add_complex_asset_router(BaseGameComplexAssetRouter())
 	add_pyobj_router(PyobjRouter({
 		"PATH_WEEK_HEADERS": "preload/images/storymenu/",

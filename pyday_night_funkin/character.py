@@ -1,13 +1,18 @@
 
 from dataclasses import dataclass
+import re
 import typing as t
 
-from pyday_night_funkin.enums import ANIMATION_TAG
+from pyday_night_funkin.core.asset_system import load_text
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
+from pyday_night_funkin.enums import ANIMATION_TAG
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.scenes import MusicBeatScene
 
+
+# This could be replaced with `Self`, but that's a 3.11 thing
+CharacterDataT = t.TypeVar("CharacterDataT", bound="CharacterData")
 
 class CharacterDataDict(t.TypedDict, total=False):
 	hold_timeout: float
@@ -15,8 +20,8 @@ class CharacterDataDict(t.TypedDict, total=False):
 	icon_name: t.Optional[str]
 
 
-# This could be replaced with `Self`, but that's a 3.11 thing
-CharacterDataT = t.TypeVar("CharacterDataT", bound="CharacterData")
+RE_OFFSETS_LINE = re.compile(r"^(.*)\s+(-?\d+)\s+(-?\d+)$")
+
 
 @dataclass
 class CharacterData:
@@ -47,6 +52,24 @@ class CharacterData:
 		return self
 
 
+_ANIMATION_NAME_REMAP = {
+	"danceLeft": "idle_left",
+	"danceRight": "idle_right",
+	"idleHair": "idle_hair",
+	"singUP": "sing_up",
+	"singDOWN": "sing_down",
+	"singLEFT": "sing_left",
+	"singRIGHT": "sing_right",
+	"singUPmiss": "miss_up",
+	"singDOWNmiss": "miss_down",
+	"singLEFTmiss": "miss_left",
+	"singRIGHTmiss": "miss_right",
+	"firstDeath": "game_over_ini",
+	"deathLoop": "game_over_loop",
+	"deathConfirm": "game_over_end",
+	"hairBlow": "hair_blow",
+	"hairFall": "hair_fall",
+}
 class Character(PNFSprite):
 	"""
 	A beloved character that moves, sings and... well I guess that's
@@ -107,6 +130,78 @@ class Character(PNFSprite):
 		character appearing in the center (usually just bf.)
 		"""
 		raise NotImplementedError("Subclass this.")
+
+	def load_offsets(self, id_: str, remapper: t.Optional[t.Dict[str, str]] = None) -> None:
+		"""
+		Attempts to load this character's offsets file into
+		`self.animation_offsets`.
+		Does nothing if the file can not be found.
+
+		Since PNF's animation names deviate from the names in the
+		offset files, by default this method will alter the keys of
+		the offset map from stuff like `singRIGHTmiss` to `miss_right`.
+		If this is not desired (or you want to have an influence on it),
+		pass a different or empty dict as the `remapper` parameter.
+		"""
+		try:
+			raw = load_text(
+				f"shared/images/characters/{id_}Offsets.txt"
+			)
+		except FileNotFoundError:
+			return
+
+		remapper = _ANIMATION_NAME_REMAP if remapper is None else remapper
+		res = {}
+		for line in raw.split("\n"):
+			if (match := RE_OFFSETS_LINE.match(line)) is not None:
+				res[remapper.get(match[1], match[1])] = (float(match[2]), float(match[3]))
+
+		self.animation_offsets = res
+
+	def add_animation(
+		self,
+		name: str,
+		prefix: str,
+		fps: float = 24.0,
+		loop: bool = False,
+		tags: t.Sequence[ANIMATION_TAG] = (),
+		offset_override: t.Optional[t.Tuple[float, float]] = None,
+	) -> None:
+		"""
+		Convenience method that will call
+		`self.animation.add_by_prefix` and create an animation with
+		the given name from `prefix`.
+		If not overridden, the offset is read from
+		`self.animation_offsets`, so load them using `load_offsets`
+		beforehand if necessary.
+		"""
+		offset = (
+			self.animation_offsets.get(name, None) if offset_override is None else offset_override
+		)
+		self.animation.add_by_prefix(name, prefix, fps, loop, offset, tags)
+
+	def add_indexed_animation(
+		self,
+		name: str,
+		prefix: str,
+		indices: t.Iterable[int],
+		fps: float = 24.0,
+		loop: bool = False,
+		tags: t.Sequence[ANIMATION_TAG] = (),
+		offset_override: t.Optional[t.Tuple[float, float]] = None,
+	) -> None:
+		"""
+		Convenience method that will call
+		`self.animation.add_by_indices` and create an animation from
+		`prefix` and `indices`.
+		If not overridden, the offset is read from
+		`self.animation_offsets`, so load them using `load_offsets`
+		beforehand if necessary.
+		"""
+		offset = (
+			self.animation_offsets.get(name, None) if offset_override is None else offset_override
+		)
+		self.animation.add_by_indices(name, prefix, indices, fps, loop, offset, tags)
 
 
 class FlipIdleCharacter(Character):

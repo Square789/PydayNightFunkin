@@ -143,9 +143,9 @@ class InGameScene(scenes.MusicBeatScene):
 		given the character type.
 		By default, the sprite is expected to have the following
 		animations:
-		`[x]_note_[y]` for x in (`sing`, `miss`)
+		`{x}_{y}` for x in (`sing`, `miss`)
 		and y in (`left`, `down`, `right`, `up`), as well as
-		`game_over_[x]` for x in (`ini`, `loop`, `confirm`).
+		`game_over_{x}` for x in (`ini`, `loop`, `confirm`).
 		"""
 		raise NotImplementedError("Subclass this!")
 
@@ -165,7 +165,7 @@ class InGameScene(scenes.MusicBeatScene):
 		the character type.
 		The opponent sprite is expected to have the following
 		animations:
-		`sing_note_[x]` for x in (`left`, `down`, `right`, `up`).
+		`sing_{x}` for x in (`left`, `down`, `right`, `up`).
 		"""
 		raise NotImplementedError("Subclass this!")
 
@@ -337,14 +337,14 @@ class InGameScene(scenes.MusicBeatScene):
 		if opponent_hit:
 			op_note = opponent_hit[-1]
 			self.opponent.hold_timer = 0.0
-			self.opponent.animation.play(f"sing_note_{op_note.type.name.lower()}", True)
+			self.opponent.animation.play(f"sing_{op_note.type.name.lower()}", True)
 			self.zoom_cams = True
 
 		if player_missed:
 			for note in player_missed:
 				self.on_note_miss(note)
 			fail_note = player_missed[-1]
-			self.boyfriend.animation.play(f"miss_note_{fail_note.type.name.lower()}", True)
+			self.boyfriend.animation.play(f"miss_{fail_note.type.name.lower()}", True)
 
 		for type_ in NOTE_TYPE:
 			if type_ not in player_res:
@@ -389,7 +389,7 @@ class InGameScene(scenes.MusicBeatScene):
 		combo popups and adjusts health.
 		"""
 		self.boyfriend.hold_timer = 0.0
-		self.boyfriend.animation.play(f"sing_note_{note.type.name.lower()}", True)
+		self.boyfriend.animation.play(f"sing_{note.type.name.lower()}", True)
 
 		health = 0.004
 		if note.sustain_stage is SUSTAIN_STAGE.NONE:
@@ -413,7 +413,7 @@ class InGameScene(scenes.MusicBeatScene):
 		By default, plays a miss animation on bf, breaks the combo and
 		reduces health.
 		"""
-		self.boyfriend.animation.play(f"miss_note_{type_.name.lower()}", True)
+		self.boyfriend.animation.play(f"miss_{type_.name.lower()}", True)
 		self.combo = 0
 		self.set_health(self.health - 0.04)
 

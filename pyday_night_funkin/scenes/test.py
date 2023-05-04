@@ -96,15 +96,15 @@ class TestScene(MusicBeatScene):
 			if rkh[F]:
 				self.boyfriend.flip_x = not self.boyfriend.flip_x
 			if rkh[W]:
-				self.boyfriend.animation.play("sing_note_up")
+				self.boyfriend.animation.play("sing_up")
 			if rkh[A]:
-				self.boyfriend.animation.play("sing_note_left")
+				self.boyfriend.animation.play("sing_left")
 			if rkh[S]:
-				self.boyfriend.animation.play("sing_note_down")
+				self.boyfriend.animation.play("sing_down")
 			if rkh[D]:
-				self.boyfriend.animation.play("sing_note_right")
+				self.boyfriend.animation.play("sing_right")
 			if rkh[M]:
-				self.boyfriend.animation.play("miss_note_down")
+				self.boyfriend.animation.play("miss_down")
 			if rkh[I]:
 				self.boyfriend.animation.play("idle")
 

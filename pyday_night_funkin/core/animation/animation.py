@@ -31,7 +31,7 @@ class Animation:
 		self.offset = offset
 
 		self.fps = fps
-		self.spf = 1 / fps
+		self.spf = 1.0 / fps
 		self.loop = loop
 		self.tags = set(tags)
 

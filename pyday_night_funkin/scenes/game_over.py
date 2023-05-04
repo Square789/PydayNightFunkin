@@ -71,7 +71,7 @@ class GameOverScene(scenes.MusicBeatScene):
 			return
 
 		self.is_ending = True
-		self.bf.animation.play("game_over_confirm", True)
+		self.bf.animation.play("game_over_end", True)
 		self.game.player.set(self.game_over_end)
 
 		def f(_):

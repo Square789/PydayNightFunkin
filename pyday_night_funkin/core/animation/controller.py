@@ -4,39 +4,9 @@ import typing as t
 from pyglet.math import Vec2
 
 from .animation import Animation
-from .frames import AnimationFrame
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
-
-
-def _try_int(v: object) -> int:
-	try:
-		return int(v)
-	except ValueError:
-		return 0
-
-
-def _collect_prefixed_animation_frames(
-	frames: t.Iterable[AnimationFrame], prefix: str
-) -> t.List[t.Tuple[AnimationFrame, int]]:
-	prefix_candidates = [
-		frame for frame in frames
-		if frame.name is not None and frame.name.startswith(prefix)
-	]
-	if not prefix_candidates:
-		raise ValueError(f"No frames with prefix {prefix!r} found.")
-
-	prefix_len = len(prefix)
-	suffix_start_idx = prefix_candidates[0].name.find('.', prefix_len)
-	# If a dot is present, try converting to an integer behind the prefix and
-	# in front of the dot.
-	# Otherwise, try converting whatever is behind the prefix to an integer.
-	# Point of this is to deal with frames like `x-000.png`, `x-001.png`;
-	# assumes the length of `.png` will never change and just cuts these off.
-	# Not really relevant in FNF, no animation name contains dots i believe
-	slc = slice(prefix_len, None if suffix_start_idx == -1 else suffix_start_idx)
-	return [(f, _try_int(f.name[slc])) for f in prefix_candidates]
 
 
 class AnimationController:
@@ -107,16 +77,6 @@ class AnimationController:
 			if self.current.update(dt):
 				self._on_new_frame()
 
-	@staticmethod
-	def get_frames_by_prefix(
-		frames: t.Iterable[AnimationFrame], prefix: str
-	) -> t.List[AnimationFrame]:
-		"""
-		Returns all frames for the given prefix, sorted by the indices
-		in their names.
-		"""
-		return [f for f, _ in _collect_prefixed_animation_frames(frames, prefix)]
-
 	def add_by_prefix(
 		self,
 		name: str,
@@ -141,12 +101,11 @@ class AnimationController:
 			raise ValueError("FPS can't be equal to or less than 0!")
 
 		frames = self._owner_sprite.frames
-		prefix_candidates = _collect_prefixed_animation_frames(frames, prefix)
-		prefix_candidates.sort(key=lambda f: f[1])
+		prefix_candidates = frames.collect_ordered_by_prefix(prefix)
 
 		self.add(
 			name,
-			Animation([frames.index_of(f) for f, _ in prefix_candidates], fps, loop, offset, tags),
+			Animation([frames.index_of(f) for f in prefix_candidates], fps, loop, offset, tags),
 		)
 
 	def add_by_indices(
@@ -171,7 +130,7 @@ class AnimationController:
 
 		frames = self._owner_sprite.frames
 		index_map = {}
-		for frame, idx in _collect_prefixed_animation_frames(frames, prefix):
+		for frame, idx in frames.collect_by_prefix(prefix):
 			if idx not in index_map:
 				index_map[idx] = frame
 			else:
@@ -197,6 +156,14 @@ class AnimationController:
 		if self.current is not None:
 			self._detach_animation()
 		self._animations = {}
+
+	def remove_safe(self, name: str) -> None:
+		"""
+		Calls into `remove` only if an animation of this name
+		actually exists.
+		"""
+		if self.exists(name):
+			self.remove(name)
 
 	def remove(self, name: str) -> None:
 		"""
