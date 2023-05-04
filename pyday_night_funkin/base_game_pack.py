@@ -351,8 +351,7 @@ class DaddyDearest(Character):
 		self.frames = load_frames("shared/images/characters/DADDY_DEAREST.xml")
 		self.load_offsets("dad")
 
-		self.add_animation("idle", "Dad idle dance", 24, True, (0, 0), (ANIMATION_TAG.IDLE,)
-		)
+		self.add_animation("idle", "Dad idle dance", tags=(ANIMATION_TAG.IDLE,))
 		self.add_animation("sing_left", "Dad Sing Note LEFT", tags=(ANIMATION_TAG.SING,))
 		self.add_animation("sing_down", "Dad Sing Note DOWN", tags=(ANIMATION_TAG.SING,))
 		self.add_animation("sing_up", "Dad Sing Note UP", tags=(ANIMATION_TAG.SING,))
