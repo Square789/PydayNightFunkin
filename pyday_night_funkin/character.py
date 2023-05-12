@@ -1,4 +1,5 @@
 
+from collections import namedtuple
 from dataclasses import dataclass
 import re
 import typing as t
@@ -6,50 +7,113 @@ import typing as t
 from pyday_night_funkin.core.asset_system import load_text
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.enums import ANIMATION_TAG
+from pyday_night_funkin.registry import Registry
 
 if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.scene import BaseScene
 	from pyday_night_funkin.scenes import MusicBeatScene
-
 
 # This could be replaced with `Self`, but that's a 3.11 thing
 CharacterDataT = t.TypeVar("CharacterDataT", bound="CharacterData")
-
-class CharacterDataDict(t.TypedDict, total=False):
-	hold_timeout: float
-	story_menu_offset: t.Tuple[float, float]
-	icon_name: t.Optional[str]
+T = t.TypeVar("T")
 
 
 RE_OFFSETS_LINE = re.compile(r"^(.*)\s+(-?\d+)\s+(-?\d+)$")
 
 
+# class PointDict(t.TypedDict):
+# 	x: float
+# 	y: float
+
+# class AnimationDataDict(t.TypedDict):
+# 	prefix: str
+# 	tags: t.List[int]
+# 	indices: t.List[int]
+# 	fps: float
+# 	offset: PointDict
+# 	loop: bool
+
+# NOTE: Man i'm gonna throw up; maybe figure out something nicer later(TM)
+AnimationDataTuple = t.Union[
+	t.Tuple[str],
+	t.Tuple[str, float],
+	t.Tuple[str, float, bool],
+	t.Tuple[str, float, bool, t.Tuple[float, float]],
+	t.Tuple[str, float, bool, t.Tuple[float, float], t.Sequence[t.Hashable]],
+]
+# yeah, this is a great idea.
+
+class StoryMenuCharacterData:
+	__slots__ = ("image", "animations", "offset")
+
+	def __init__(
+		self,
+		image: str,
+		animations: t.Sequence[AnimationDataTuple],
+		offset: t.Optional[t.Tuple[float, float]] = None,
+	) -> None:
+		self.image = image
+		self.animations = animations
+		self.offset = offset
+
+
+class CharacterDataDict(t.TypedDict, total=False):
+	type: t.Type["Character"]
+	icon_name: str
+	hold_timeout: float
+	game_over_fallback: t.Optional[t.Hashable]
+	story_menu_data: t.Optional[StoryMenuCharacterData]
+	offset_id: t.Optional[str]
+
 @dataclass
 class CharacterData:
-	hold_timeout: float
+	type: t.Type["Character"]
 	"""
-	Hold timeout. Default is `4.0`.
-	"""
-
-	story_menu_offset: t.Tuple[float, float]
-	"""
-	Offset of the sprite in the story menu.
-	Default is `(100.0, 100.0)`.
+	This character's Python class/type.
 	"""
 
-	icon_name: t.Optional[str]
+	icon_name: str = "face"
 	"""
 	Name of this character's health icon.
 	"""
 
-	def update(self: CharacterDataT, updater: CharacterDataDict) -> CharacterDataT:
-		"""
-		Updates the CharacterData from the given dict and then
-		returns itself.
-		"""
-		self.hold_timeout = updater.get("hold_timeout", self.hold_timeout)
-		self.story_menu_offset = updater.get("story_menu_offset", self.story_menu_offset)
-		self.icon_name = updater.get("icon_name", self.icon_name)
-		return self
+	hold_timeout: float = 4.0
+	"""
+	How many steps should pass until the character returns to their
+	idle pose after singing. Default is `4.0`.
+	"""
+
+	game_over_fallback: t.Optional[t.Hashable] = None
+	"""
+	The id of a character that should instead be used in order to
+	display the doomed variant on the game-over screen.
+	This should be used if the character can be controlled by the
+	player, but does not have `game_over` animations.
+	If `None`, no such replacement will occur.
+	"""
+
+	story_menu_data: t.Optional[StoryMenuCharacterData] = None
+	"""
+	How/what the character should display in the story menu.
+	If `None`, will hide the accompanying sprite.
+	"""
+	# NOTE: Maybe refurbish this some more cause as it stands it's a pretty
+	# primitive and unfinished solution. But good enough.
+
+	offset_id: t.Optional[str] = None
+	"""
+	The base game's ID for this character. Used to access other stuff
+	in its assets such as offset files.
+	"""
+
+	# positioning: t.Optional[PositioningStrategy] = None
+
+	def __post_init__(self) -> None:
+		if self.offset_id is None:
+			self.offset_id = self.icon_name
+
+		# if self.positioning is None:
+		# 	self.positioning = PositioningStrategy()
 
 
 _ANIMATION_NAME_REMAP = {
@@ -70,20 +134,28 @@ _ANIMATION_NAME_REMAP = {
 	"hairBlow": "hair_blow",
 	"hairFall": "hair_fall",
 }
+
 class Character(PNFSprite):
 	"""
 	A beloved character that moves, sings and... well I guess that's
 	about it. Holds some more information than a generic sprite which
-	is related to the character via `get_character_data`.
+	is related to the character via its `CharacterData` and
+	additionally is coupled to a scene.
 	"""
 
-	def __init__(self, scene: "MusicBeatScene", *args, **kwargs) -> None:
+	def __init__(self, scene: "MusicBeatScene", data: CharacterData, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
 		self.scene = scene
 		self.hold_timer = 0.0
-		self.character_data = self.get_character_data()
-		self._hold_timeout = self.character_data.hold_timeout
+		self.character_data = data
+		self._hold_timeout = data.hold_timeout
+		self.animation_offsets: t.Dict[str, t.Tuple[float, float]] = {}
+		"""
+		Animation offsets for this character, used by `add_animation`.
+		Load these using `load_offsets`.
+		"""
+
 		self.dont_idle: bool = False
 		"""
 		If set to `True`, the character won't idle/dance after their
@@ -113,25 +185,7 @@ class Character(PNFSprite):
 		"""
 		self.animation.play("idle")
 
-	@classmethod
-	def get_character_data(cls) -> CharacterData:
-		return CharacterData(
-			hold_timeout = 4.0,
-			story_menu_offset = (100.0, 100.0),
-			icon_name = "face",
-		)
-
-	@staticmethod
-	def initialize_story_menu_sprite(spr: PNFSprite) -> None:
-		"""
-		Initializes a sprite with story menu animations.
-		It is expected that an animation called `story_menu` will be
-		added. Also, `story_menu_confirm` is required for every story
-		character appearing in the center (usually just bf.)
-		"""
-		raise NotImplementedError("Subclass this.")
-
-	def load_offsets(self, id_: str, remapper: t.Optional[t.Dict[str, str]] = None) -> None:
+	def load_offsets(self, remapper: t.Optional[t.Dict[str, str]] = None) -> None:
 		"""
 		Attempts to load this character's offsets file into
 		`self.animation_offsets`.
@@ -145,7 +199,7 @@ class Character(PNFSprite):
 		"""
 		try:
 			raw = load_text(
-				f"shared/images/characters/{id_}Offsets.txt"
+				f"shared/images/characters/{self.character_data.offset_id}Offsets.txt"
 			)
 		except FileNotFoundError:
 			return
@@ -216,3 +270,32 @@ class FlipIdleCharacter(Character):
 	def dance(self) -> None:
 		self._dance_right = not self._dance_right
 		self.animation.play("idle_right" if self._dance_right else "idle_left")
+
+
+class CharacterRegistry(Registry[CharacterData]):
+	"""
+	Registry subclass tailored to characters; with some convenience
+	to construct them directly.
+	"""
+
+	def create_immediate(
+		self,
+		layer: str,
+		cameras: t.Union[str, t.Iterable[str]],
+		id_: t.Hashable,
+		scene: "BaseScene",
+		*args,
+		**kwargs,
+	) -> Character:
+		data = self.get(id_)
+		char = scene.create_object(layer, cameras, data.type, scene, data, *args, **kwargs)
+		return char
+
+
+# TODO: May be expanded into data-driven character setup by adding SimpleCharacterSetupData
+# to the registry as an optional entry and populating from it accordingly, but i'll only care
+# enough when the entire base game is in i think.
+
+# class SimpleCharacterSetupDataDict(t.TypedDict, total=False):
+# 	animations: t.Dict[str, AnimationDataDict]
+# 	load_offsets: bool

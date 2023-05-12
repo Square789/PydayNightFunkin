@@ -8,6 +8,7 @@ import typing as t
 from loguru import logger
 import pyglet
 
+from pyday_night_funkin.character import CharacterRegistry
 from pyday_night_funkin.core import ogg_decoder
 from pyday_night_funkin.core.asset_system import load_font
 from pyday_night_funkin.core.key_handler import KeyHandler, RawKeyHandler
@@ -18,19 +19,16 @@ from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin.volume_control_dropdown import VolumeControlDropdown
-from pyday_night_funkin.registry import Registry
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
 
 if t.TYPE_CHECKING:
 	from loguru import Record
-	from pyday_night_funkin.character import Character
 	from pyday_night_funkin.content_pack import ContentPack, WeekData
 	from pyday_night_funkin.core.superscene import SuperScene
-	from pyday_night_funkin.core.types import Numeric
 
 
-__version__ = "0.0.47"
+__version__ = "0.0.48"
 
 
 SOUND_GRANULARITY = 10
@@ -199,7 +197,7 @@ class Game(SceneManager):
 		A single global media player, similar to `FlxG.sound.music`.
 		"""
 
-		self.character_registry: Registry[t.Type["Character"]] = Registry()
+		self.character_registry = CharacterRegistry()
 		self.weeks: t.List["WeekData"] = []
 		self._registered_packs: t.Dict[t.Hashable, t.List[int]] = {}
 		"""
@@ -233,8 +231,8 @@ class Game(SceneManager):
 		if pack_id in self._registered_packs:
 			raise ValueError(f"ContentPack with id {pack_id!r} already registered!")
 
-		for id_, char_class in pack.characters.items():
-			self.character_registry.add(pack_id, id_, char_class)
+		for char_id, char_data in pack.characters.items():
+			self.character_registry.add(pack_id, char_id, char_data)
 
 		new_week_range_start = len(self.weeks)
 		self.weeks.extend(pack.weeks)

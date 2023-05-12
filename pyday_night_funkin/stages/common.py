@@ -5,30 +5,35 @@ in multiple levels.
 
 import typing as t
 
+from pyglet.math import Vec2
+
 from pyday_night_funkin.core.asset_system import load_image
+from pyday_night_funkin.core.scene import OrderedLayer
 from pyday_night_funkin.note_handler import AbstractNoteHandler, NoteHandler
 from pyday_night_funkin.hud import HUD
-from pyday_night_funkin.scenes import InGameScene
-
-if t.TYPE_CHECKING:
-	from pyday_night_funkin.character import Character
+from pyday_night_funkin.scenes.in_game import CharacterAnchor, InGameScene, InGameSceneKernel
 
 
 class BaseGameBaseStage(InGameScene):
 	"""
 	Common superclass for the base game's stages.
-	Does stuff that happens the same in most stages.
+	Does stuff that stays uniform in the base game's stages.
 	"""
 
-	@staticmethod
-	def get_default_cam_zoom() -> float:
-		return 0.9
-
-	@staticmethod
-	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return (
-			"background0", "background1", "girlfriend", "stage", "curtains",
-			("ui_combo", True), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
+	def __init__(self, kernel: InGameSceneKernel, *args, **kwargs) -> None:
+		super().__init__(
+			kernel.fill(
+				layers = (
+					"background0", "background1", "girlfriend", "stage", "curtains",
+					OrderedLayer("ui_combo"), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
+				),
+				default_cam_zoom = 0.9,
+				player_anchor = CharacterAnchor(Vec2(770, 450), None, "stage"),
+				girlfriend_anchor = CharacterAnchor(Vec2(400, 130), None, "girlfriend"),
+				opponent_anchor=CharacterAnchor(Vec2(100, 100), None, "stage"),
+			),
+			*args,
+			**kwargs,
 		)
 
 	def create_hud(self) -> HUD:
@@ -37,18 +42,10 @@ class BaseGameBaseStage(InGameScene):
 	def create_note_handler(self) -> AbstractNoteHandler:
 		return NoteHandler(self, "ui_notes", "hud")
 
-	def create_player(self, char_cls: t.Type["Character"]) -> "Character":
-		return self.create_object("stage", "main", char_cls, scene=self, x=770, y=450)
-
-	def create_girlfriend(self, char_cls: t.Type["Character"]) -> "Character":
-		gf = self.create_object("girlfriend", "main", char_cls, scene=self, x=400, y=130)
-		gf.scroll_factor = (.95, .95)
-		return gf
-
-	def setup_default_base_game_arena(self) -> None:
+	def spawn_default_base_game_arena(self) -> None:
 		"""
 		Sets up the classic default stage in this scene.
-		To be exact:
+		To be exact, will create:
 		- Stageback in layer `background0`
 		- Stagefront in layer `background1`
 		- Curtains in layer `curtains`

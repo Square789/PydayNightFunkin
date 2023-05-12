@@ -1,20 +1,11 @@
 
-import typing as t
-
 from pyday_night_funkin.stages.common import BaseGameBaseStage
-
-if t.TYPE_CHECKING:
-	from pyday_night_funkin.character import Character
 
 
 class Week1Stage(BaseGameBaseStage):
-	def setup(self) -> None:
-		super().setup()
-		self.setup_default_base_game_arena()
-
-	def create_opponent(self, char_cls: t.Type["Character"]) -> "Character":
-		return self.create_object("stage", "main", char_cls, scene=self, x=100, y=100)
-
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+		self.spawn_default_base_game_arena()
 
 class BopeeboStage(Week1Stage):
 	def on_beat_hit(self) -> None:

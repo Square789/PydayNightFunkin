@@ -19,9 +19,22 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.main_game import Game
 
 SceneObjectT = t.TypeVar("SceneObjectT", bound=SceneObject)
+BaseSceneT = t.TypeVar("BaseSceneT", bound="BaseScene")
+SceneKernelT = t.TypeVar("SceneKernelT", bound="SceneKernel")
 
 
-class Layer:
+class OrderedLayer:
+	"""
+	Signals the `BaseScene` constructor to create an ordered layer
+	with the given name.
+	"""
+	__slots__ = ("name",)
+
+	def __init__(self, name: t.Hashable) -> None:
+		self.name = name
+
+
+class _Layer:
 	"""
 	A layer is the scene's last intermediate step to the group system.
 	Its only point really is the `get_group` function; see its doc.
@@ -53,21 +66,83 @@ class Layer:
 			return self.group
 
 
+class SceneKernel:
+	"""
+	A `SceneKernel` is fancy-talk for an object storing a scene's
+	setup arguments so they may create it at a later time.
+	They additionally pass themselves through the stack of a scene's
+	`__init__` methods, where data tightly coupled to a specific scene,
+	such as the camera and layer names are written in, overridable by
+	newer subclasses.
+	"""
+
+	def __init__(self, scene_type: t.Type["BaseScene"], *args, **kwargs) -> None:
+		self._scene_type = scene_type
+		self._scene_args = args
+		self._scene_kwargs = kwargs
+
+		self.game: t.Optional["Game"] = None
+
+		self.layers = None
+		self.cameras = None
+
+	def create_scene(self, game: "Game") -> "BaseScene":
+		self.game = game
+		return self._scene_type(self, *self._scene_args, **self._scene_kwargs)
+
+	# NOTE: Wait for le python 3.12 typing: https://peps.python.org/pep-0692/
+	def fill(
+		self: SceneKernelT,
+		*,
+		layers: t.Optional[t.Sequence[t.Union[t.Hashable, OrderedLayer]]] = None,
+		cameras: t.Optional[t.Sequence[t.Hashable]] = None,
+	) -> SceneKernelT:
+		"""
+		Fills in scene-specific defaults for this kernel to be used by
+		scenes during their initialization.
+
+		:param layers: A sequence of layer names to be used for this
+		scene. The layers can later be referenced by name in
+		`create_object` and `add`. The layers will be drawn
+		first-to-last as they are given.
+		By default, the order in which drawables on the same layer
+		are drawn is undefined. It's possible to force each
+		drawable onto its own layer subgroup by specifying
+		`OrderedLayer("my_layer")` instead of just the layer name
+		`"my_layer"`, which may prevent drawing optimizations.
+		This should be used only when necessary.
+		By default, a single unordered layer by the name of `_default`
+		is created.
+
+		:param cameras: A sequence of camera names to be used for this
+		scene's cameras. They can later be referenced by that name in
+		`create_object` and `add`.
+		"""
+		if self.layers is None:
+			self.layers = layers
+		if self.cameras is None:
+			self.cameras = cameras
+
+		return self
+
+
 class BaseScene(Container):
 	"""
 	A scene holds a number of scene objects and cameras, a batch and
 	is the general setting of a chunk of game logic.
 	"""
 
-	def __init__(self, game: "Game") -> None:
+	def __init__(self, kernel: SceneKernel) -> None:
 		"""
 		Initializes the base scene.
 
-		:param game: The `Game` the scene belongs to.
+		:param kernel: The `SceneKernel` the scene is initialized from.
 		"""
 		super().__init__()
 
-		self.game = game
+		kernel.fill(layers=("default_",), cameras=("_default",))
+
+		self.game = kernel.game
 
 		self.batch = PNFBatch()
 
@@ -83,28 +158,30 @@ class BaseScene(Container):
 		updated. `False` by default.
 		"""
 
-		self.layers: t.Dict[str, Layer] = OrderedDict(
-			(name, Layer(PNFGroup(order=i), force_order))
-			for i, (name, force_order) in enumerate(
-				(x, False) if not isinstance(x, tuple) else x
-				for x in self.get_default_layers()
-			)
-		)
-		if not self.layers:
+		_layers = []
+		for i, x in enumerate(kernel.layers):
+			if isinstance(x, OrderedLayer):
+				_layers.append((x.name, _Layer(PNFGroup(order=i), True)))
+			else:
+				if x is None:
+					raise TypeError("`None` is not a valid layer name!")
+				_layers.append((x, _Layer(PNFGroup(order=i), False)))
+		if not _layers:
 			raise ValueError("Scenes must at least have one layer!")
+		self.layers: t.Dict[str, _Layer] = OrderedDict(_layers)
 
 		self.default_layer = next(iter(self.layers.values()))
 		"""
 		The first layer which will be used in case no layer is given to
 		methods requiring one.
-		This is the layer created from the first value of
-		`get_default_layers()`.
+		This is the layer created from the first value of the scene
+		kernel's `layers`.
 		"""
 
 		self.cameras = OrderedDict(
 			(name, Camera(0, 0, w, h)) for name, w, h in (
 				(x, CNST.GAME_WIDTH, CNST.GAME_HEIGHT) if not isinstance(x, tuple) else x
-				for x in self.get_default_cameras()
+				for x in kernel.cameras
 			)
 		)
 		if not self.cameras:
@@ -114,8 +191,8 @@ class BaseScene(Container):
 		"""
 		The scene's default camera which will be used if an operation
 		needs one but none was given.
-		This is the camera created from the first value of
-		`get_default_cameras()`.
+		This is the camera created from the first value of the scene
+		kernel's `cameras`.
 		"""
 
 		# Draw call will fail when nothing is added to a camera otherwise.
@@ -132,36 +209,18 @@ class BaseScene(Container):
 
 		self.effects = EffectController()
 		"""
-		The scene's effect controller. Use this for tweens and
-		toggling of just about anything.
+		The scene's effect controller. Use this for tweening and
+		toggling just about anything.
 		"""
 
-	@staticmethod
-	def get_default_cameras() -> t.Sequence[t.Union[str, t.Tuple[str, int, int]]]:
+	@classmethod
+	def get_kernel(cls) -> SceneKernel:
 		"""
-		Gets a list of the names to be used for this scene's cameras.
-		By default, a single camera by the name of `_default` is
-		created.
+		Creates a `SceneKernel` for this scene, which is necessary to
+		delay its creation. See the SceneKernel's class docstring for
+		more info.
 		"""
-		return ("default_",)
-
-	@staticmethod
-	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		"""
-		Gets a list of layer names to be used for this scene.
-		The layers can later be referenced by name in `create_object`.
-		The layers will be drawn first-to-last as they are given.
-		By default, the order in which drawables on the same layer
-		are drawn is undefined. It's possible to force each
-		drawable onto its own layer subgroup by specifying
-		`("my_layer", True)` instead of just the layer name
-		`"my_layer"`, which (probably) comes at a performance
-		cost and prevents optimizations. This should be used
-		only when necessary.
-		By default, a single layer by the name of `_default` is
-		created.
-		"""
-		return ("_default",)
+		return SceneKernel(cls)
 
 	def _get_elapsed_time(self) -> float:
 		return self._passed_time
@@ -396,7 +455,7 @@ class BaseScene(Container):
 		"""
 		self.game.remove_scene(subscene)
 
-	def on_imminent_replacement(self, new_scene: t.Type["BaseScene"], *args, **kwargs) -> bool:
+	def on_imminent_replacement(self, new_scene_kernel: SceneKernel) -> bool:
 		"""
 		Called on the top scene as soon as the game receives a request
 		to replace it via `set_scene`.

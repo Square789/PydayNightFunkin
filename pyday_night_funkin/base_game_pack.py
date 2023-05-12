@@ -22,15 +22,15 @@ from pyday_night_funkin.core.asset_system import (
 )
 from pyday_night_funkin.content_pack import ContentPack, LevelData, WeekData
 from pyday_night_funkin.core.animation import FrameCollection
-from pyday_night_funkin.character import Character, FlipIdleCharacter
+from pyday_night_funkin.character import (
+	Character, CharacterData, FlipIdleCharacter, StoryMenuCharacterData
+)
 from pyday_night_funkin.enums import ANIMATION_TAG, DIFFICULTY
 
 if t.TYPE_CHECKING:
 	from xml.etree.ElementTree import ElementTree
 	from pyglet.image import AbstractImage, Texture
 	from pyglet.media import Source
-	from pyday_night_funkin.character import CharacterData
-	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 
 class SeqValidator:
@@ -107,8 +107,6 @@ def _load_character_icon(character: str) -> t.Tuple["Texture", "Texture"]:
 load_character_icon = register_complex_asset_type(
 	"character_icon", lambda c: c, _load_character_icon
 )
-# TODO RENAME ALIAS USE SITES
-load_health_icon = load_character_icon
 
 
 class SongResourceOptions(ResourceOptions):
@@ -135,9 +133,6 @@ class SongResourceOptions(ResourceOptions):
 		return hash((self.difficulty, self.inst_opt, self.voice_opt))
 
 
-def _load_song_build_cache_key(song_name: str, options: SongResourceOptions):
-	return (song_name, options)
-
 def _load_song_plain(
 	song_name: str,
 	options: SongResourceOptions,
@@ -160,7 +155,8 @@ def _load_song_plain(
 
 	return (inst, voic, chart)
 
-load_song = register_complex_asset_type("song", _load_song_build_cache_key, _load_song_plain)
+load_song = register_complex_asset_type("song", lambda sn, opt: (sn, opt), _load_song_plain)
+
 
 def load_week_header(name: str) -> "Texture":
 	return load_image(os.path.join(load_pyobj("PATH_WEEK_HEADERS"), name))
@@ -233,7 +229,7 @@ class Boyfriend(Character):
 		super().__init__(*args, **kwargs)
 
 		self.frames = load_frames("shared/images/characters/BOYFRIEND.xml")
-		self.load_offsets("bf")
+		self.load_offsets()
 
 		self.add_animation("idle", "BF idle dance", tags=(ANIMATION_TAG.IDLE,))
 		self.add_animation("sing_left", "BF NOTE LEFT0", tags=(ANIMATION_TAG.SING,))
@@ -274,28 +270,15 @@ class Boyfriend(Character):
 		# Admittedly this also ruins everything but you can blame the original code for that.
 		super(Character, self).update(dt)
 
-	@classmethod
-	def get_character_data(cls) -> "CharacterData":
-		return super().get_character_data().update({"icon_name": "bf"})
-
-	@staticmethod
-	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
-		spr.animation.add_by_prefix(
-			"story_menu", "BF idle dance white", 24, True,
-			tags = (ANIMATION_TAG.STORY_MENU,)
-		)
-		spr.animation.add_by_prefix(
-			"story_menu_confirm", "BF HEY!!", 24, False,
-			tags = (ANIMATION_TAG.STORY_MENU, ANIMATION_TAG.SPECIAL)
-		)
-
 
 class Girlfriend(FlipIdleCharacter):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
+		self.scroll_factor = (0.95, 0.95)
+
 		self.frames = load_frames("shared/images/characters/GF_assets.xml")
-		self.load_offsets("gf")
+		self.load_offsets()
 
 		self.add_animation("cheer", "GF Cheer", tags=(ANIMATION_TAG.SPECIAL,))
 		self.add_indexed_animation(
@@ -317,10 +300,6 @@ class Girlfriend(FlipIdleCharacter):
 			"hair_fall", "GF Dancing Beat Hair Landing", range(12), tags=(ANIMATION_TAG.HAIR,)
 		)
 
-	@classmethod
-	def get_character_data(cls) -> "CharacterData":
-		return super().get_character_data().update({"icon_name": "gf"})
-
 	def dance(self) -> None:
 		if not self.animation.has_tag(ANIMATION_TAG.HAIR):
 			super().dance()
@@ -331,17 +310,8 @@ class Girlfriend(FlipIdleCharacter):
 			return
 
 		if ANIMATION_TAG.HAIR in ca.tags and not ca.playing:
+			self._dance_right = False
 			self.animation.play("idle_right")
-
-	@staticmethod
-	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
-		spr.animation.add_by_prefix(
-			"story_menu",
-			"GF Dancing Beat WHITE",
-			fps = 24,
-			loop = True,
-			tags = (ANIMATION_TAG.STORY_MENU,),
-		)
 
 
 class DaddyDearest(Character):
@@ -349,7 +319,7 @@ class DaddyDearest(Character):
 		super().__init__(*args, **kwargs)
 
 		self.frames = load_frames("shared/images/characters/DADDY_DEAREST.xml")
-		self.load_offsets("dad")
+		self.load_offsets()
 
 		self.add_animation("idle", "Dad idle dance", tags=(ANIMATION_TAG.IDLE,))
 		self.add_animation("sing_left", "Dad Sing Note LEFT", tags=(ANIMATION_TAG.SING,))
@@ -357,31 +327,13 @@ class DaddyDearest(Character):
 		self.add_animation("sing_up", "Dad Sing Note UP", tags=(ANIMATION_TAG.SING,))
 		self.add_animation("sing_right", "Dad Sing Note RIGHT", tags=(ANIMATION_TAG.SING,))
 
-	@classmethod
-	def get_character_data(cls) -> "CharacterData":
-		return super().get_character_data().update({
-			"hold_timeout": 6.1,
-			"story_menu_offset": (120.0, 200.0),
-			"icon_name": "dad",
-		})
-
-	@staticmethod
-	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
-		spr.animation.add_by_prefix(
-			"story_menu",
-			"Dad idle dance BLACK LINE",
-			fps = 24,
-			loop = True,
-			tags = (ANIMATION_TAG.STORY_MENU,),
-		)
-
 
 class SkidNPump(FlipIdleCharacter):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
 		self.frames = load_frames("shared/images/characters/spooky_kids_assets.xml")
-		self.load_offsets("spooky")
+		self.load_offsets()
 
 		self.add_animation("sing_up", "spooky UP NOTE", tags=(ANIMATION_TAG.SING,))
 		self.add_animation("sing_down", "spooky DOWN note", tags=(ANIMATION_TAG.SING,))
@@ -395,27 +347,13 @@ class SkidNPump(FlipIdleCharacter):
 			"idle_right", "spooky dance idle", (8, 10, 12, 14), 12, tags=(ANIMATION_TAG.IDLE,)
 		)
 
-	@classmethod
-	def get_character_data(cls) -> "CharacterData":
-		return super().get_character_data().update({"icon_name": "spooky"})
-
-	@staticmethod
-	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
-		spr.animation.add_by_prefix(
-			"story_menu",
-			"spooky dance idle BLACK LINES",
-			fps = 24,
-			loop = True,
-			tags = (ANIMATION_TAG.STORY_MENU,)
-		)
-
 
 class Monster(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
 		self.frames = load_frames("shared/images/characters/Monster_Assets.xml")
-		self.load_offsets("monster")
+		self.load_offsets()
 
 		# It's like they're trying to win a naming inconsistency award
 		self.add_animation("idle", "monster idle", tags=(ANIMATION_TAG.IDLE,))
@@ -424,17 +362,13 @@ class Monster(Character):
 		self.add_animation("sing_left", "Monster left note", tags=(ANIMATION_TAG.SING,))
 		self.add_animation("sing_right", "Monster Right note", tags=(ANIMATION_TAG.SING,))
 
-	@classmethod
-	def get_character_data(cls) -> "CharacterData":
-		return super().get_character_data().update({"icon_name": "monster"})
-
 
 class Pico(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
 		self.frames = load_frames("shared/images/characters/Pico_FNF_assetss.xml")
-		self.load_offsets("pico")
+		self.load_offsets()
 
 		self.add_animation("idle", "Pico Idle Dance", tags=(ANIMATION_TAG.IDLE,))
 		self.add_animation("sing_up", "pico Up note0", tags=(ANIMATION_TAG.SING,))
@@ -445,17 +379,74 @@ class Pico(Character):
 
 		self.flip_x = True
 
-	@classmethod
-	def get_character_data(cls) -> "CharacterData":
-		return super().get_character_data().update({"icon_name": "pico"})
 
-	@staticmethod
-	def initialize_story_menu_sprite(spr: "PNFSprite") -> None:
-		spr.animation.add_by_prefix(
-			"story_menu", "Pico Idle Dance", 24, True,
-			tags = (ANIMATION_TAG.STORY_MENU,)
+# mother of christ this is disgusting but hey whatever. Thanks:
+# https://stackoverflow.com/questions/56980077/how-to-type-python-mixin-with-superclass-calls
+if t.TYPE_CHECKING:
+	_base = Character
+else:
+	_base = object
+
+class HairLoopMixin(_base):
+	def update(self, dt: float) -> None:
+		super().update(dt)
+		if (
+			not self.animation.current.playing and
+			ANIMATION_TAG.SING not in self.animation.current.tags
+		):
+			self.animation.play("idle_hair")
+
+
+class BoyfriendCar(HairLoopMixin, Boyfriend):
+	def __init__(self, *args, **kwargs) -> None:
+		# Skip Boyfriend.__init__
+		super(Boyfriend, self).__init__(*args, **kwargs)
+
+		self.frames = load_frames("shared/images/characters/bfCar.xml")
+		self.load_offsets()
+
+		self.add_animation("idle", "BF idle dance", tags=(ANIMATION_TAG.IDLE,))
+		self.add_animation("sing_up", "BF NOTE UP0", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("miss_up", "BF NOTE UP MISS0", tags=(ANIMATION_TAG.MISS,))
+		self.add_animation("sing_left", "BF NOTE LEFT0", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("miss_left", "BF NOTE LEFT MISS0", tags=(ANIMATION_TAG.MISS,))
+		self.add_animation("sing_right", "BF NOTE RIGHT0", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("miss_right", "BF NOTE RIGHT MISS0", tags=(ANIMATION_TAG.MISS,))
+		self.add_animation("sing_down", "BF NOTE DOWN0", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("miss_down", "BF NOTE DOWN MISS0", tags=(ANIMATION_TAG.MISS,))
+
+		self.add_indexed_animation("idle_hair", "BF idle dance", (10, 11, 12, 13))
+
+
+class GirlfriendCar(HairLoopMixin, FlipIdleCharacter):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.frames = load_frames("shared/images/characters/gfCar.xml")
+		self.load_offsets()
+
+		self.add_indexed_animation("idle_left", "GF Dancing Beat Hair blowing CAR", range(15))
+		self.add_indexed_animation(
+			"idle_right", "GF Dancing Beat Hair blowing CAR", range(15, 30)
+		)
+		self.add_indexed_animation(
+			"idle_hair", "GF Dancing Beat Hair blowing CAR", (10, 11, 12, 25, 26, 27)
 		)
 
+
+class MommyMearest(HairLoopMixin, Character):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.frames = load_frames("shared/images/characters/momCar.xml")
+		self.load_offsets()
+		self.add_animation("idle", "Mom Idle", tags=(ANIMATION_TAG.IDLE,))
+		self.add_animation("sing_up", "Mom Up Pose", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_down", "MOM DOWN POSE", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_left", "Mom Left Pose", tags=(ANIMATION_TAG.SING,))
+		# well done
+		self.add_animation("sing_right", "Mom Pose Left", tags=(ANIMATION_TAG.SING,))
+		self.add_indexed_animation("idle_hair", "Mom Idle", (10, 11, 12, 13))
 
 
 # HACK: This manipulates the cached note asset frame collection, since notes have
@@ -468,7 +459,6 @@ def note_arrow_frame_collection_post_load_hacker(fcol: FrameCollection) -> Frame
 			frame.offset -= Vec2(39, 39)
 	return fcol
 
-
 # HACK: This manipulates the main menu's xml's imagePath to point to `main_menu.png`,
 # as from the week 7 update it pointed to the old file name `FNF_main_menu_assets.png`.
 # Honestly i don't know how to handle this. HaxeFlixel simply ignores this the imagePath
@@ -477,7 +467,6 @@ def note_arrow_frame_collection_post_load_hacker(fcol: FrameCollection) -> Frame
 def main_menu_path_post_load_hacker(et: "ElementTree") -> "ElementTree":
 	et.getroot().set("imagePath", "main_menu.png")
 	return et
-
 
 class BaseGameComplexAssetRouter(ComplexAssetRouter):
 	def has_asset(
@@ -554,18 +543,65 @@ def load() -> ContentPack:
 	# Deferred import, yuck! Quickest way to fix the circular import rn,
 	# could possibly split the levels and characters into a basegame submodule later.
 	from pyday_night_funkin.stages import (
-		TutorialStage, Week1Stage, BopeeboStage, Week2Stage, MonsterStage, Week3Stage
+		TutorialStage, Week1Stage, BopeeboStage, Week2Stage, MonsterStage, Week3Stage, Week4Stage
+	)
+
+	# Characters do not have IDs like gf; gf-pixel; gf-car; bf; bf-pixel; bf-car; mom; mom-car
+	# etc. anymore, where behavior is massively built around pre- and suffixes.
+	# They still have IDs. These are the keys given in this dict. Their class follows as well as a
+	# CharacterData dict, which may be enhanced by a concrete character class if it so desires.
+	# On initialization, characters receive the CharacterData and can then go do whatever
+	# with it.
+
+	# Could add class generation for more customization, MOOOOORE;
+	# But man, we'd be going off the deep end with that.
+
+	bf_smcd = StoryMenuCharacterData(
+		"preload/images/campaign_menu_UI_characters.xml",
+		(
+			("BF idle dance white", 24, True),
+			("BF HEY!!", 24, False),
+		)
+	)
+	gf_smcd = StoryMenuCharacterData(
+		"preload/images/campaign_menu_UI_characters.xml",
+		(("GF Dancing Beat WHITE", 24, True),),
+	)
+	dad_smcd = StoryMenuCharacterData(
+		"preload/images/campaign_menu_UI_characters.xml",
+		(("Dad idle dance BLACK LINE", 24, True),),
+		(120.0, 200.0),
+	)
+	snp_smcd = StoryMenuCharacterData(
+		"preload/images/campaign_menu_UI_characters.xml",
+		(("spooky dance idle BLACK LINES", 24, True),),
+	)
+	pico_smcd = StoryMenuCharacterData(
+		"preload/images/campaign_menu_UI_characters.xml",
+		(("Pico Idle Dance", 24, True),),
+	)
+	mom_smcd = StoryMenuCharacterData(
+		"preload/images/campaign_menu_UI_characters.xml",
+		(("Mom Idle BLACK LINES", 24, True),),
+		(100.0, 200.0),
 	)
 
 	return ContentPack(
 		pack_id = "_pnf_base",
 		characters = {
-			"boyfriend":     Boyfriend,
-			"girlfriend":    Girlfriend,
-			"daddy_dearest": DaddyDearest,
-			"skid_n_pump":   SkidNPump,
-			"monster":       Monster,
-			"pico":          Pico,
+			"boyfriend":      CharacterData(Boyfriend, "bf", story_menu_data=bf_smcd),
+			"girlfriend":     CharacterData(Girlfriend, "gf", story_menu_data=gf_smcd),
+			"daddy_dearest":  CharacterData(DaddyDearest, "dad", 6.1, story_menu_data=dad_smcd),
+			"skid_n_pump":    CharacterData(SkidNPump, "spooky", story_menu_data=snp_smcd),
+			"monster":        CharacterData(Monster, "monster"),
+			"pico":           CharacterData(Pico, "pico", story_menu_data=pico_smcd),
+			"boyfriend_car":  CharacterData(
+				BoyfriendCar, "bf", game_over_fallback="boyfriend", offset_id="bf-car"
+			),
+			"girlfriend_car": CharacterData(GirlfriendCar, "gf", offset_id="gf-car"),
+			"mommy_mearest":  CharacterData(
+				MommyMearest, "mom", story_menu_data=mom_smcd, offset_id="mom-car"
+			),
 		},
 		weeks = (
 			WeekData(
@@ -626,22 +662,32 @@ def load() -> ContentPack:
 				),
 				"week3.png",
 			),
-			# WeekData(
-			# 	"MOMMY MUST MURDER",
-			# 	("mom", "boyfriend", "girlfriend"),
-			# 	(
-			# 		LevelData(
-			# 			"satin-panties", "Satin Panties", Week4Stage, "boyfriend-car", "mom"
-			# 		),
-			# 		LevelData(
-			# 			"high", "High", Week4Stage, "boyfriend-car", "girlfriend-car", "mom"
-			# 		),
-			# 		LevelData(
-			# 			"milf", "M.I.L.F.", Week4Stage, "boyfriend-car", "girlfriend-car", "mom"
-			# 		),
-			# 	),
-			# 	"week4.png",
-			# ),
+			WeekData(
+				"MOMMY MUST MURDER",
+				("mommy_mearest", "boyfriend", "girlfriend"),
+				(
+					LevelData(
+						"satin-panties",
+						"Satin Panties",
+						Week4Stage,
+						"boyfriend_car",
+						"girlfriend_car",
+						"mommy_mearest"
+					),
+					LevelData(
+						"high", "High", Week4Stage, "boyfriend_car", "girlfriend_car", "mommy_mearest"
+					),
+					LevelData(
+						"milf",
+						"MILF",
+						Week4Stage,
+						"boyfriend_car",
+						"girlfriend_car",
+						"mommy_mearest"
+					),
+				),
+				"week4.png",
+			),
 			# WeekData(
 			# 	"RED SNOW",
 			# 	("parents-christmas", "boyfriend", "girlfriend"),

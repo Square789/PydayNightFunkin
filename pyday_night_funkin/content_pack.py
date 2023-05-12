@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import typing as t
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.character import Character
+	from pyday_night_funkin.character import CharacterData
 	from pyday_night_funkin.scenes.in_game import InGameScene
 
 
@@ -27,20 +27,34 @@ class LevelData:
 	alphabet can't handle.
 	"""
 
-	stage_class: t.Type["InGameScene"]
+	stage_type: t.Type["InGameScene"]
 	"""The InGameScene this level takes place on."""
 
 	player_character: t.Hashable
-	"""Name of the player controlled character in this level."""
+	"""
+	Name of the player controlled character in this level.
+	The logic of the `InGameScene` expects the resolved character to
+	have the following animations: `{x}_{y}` for x in (`sing`, `miss`)
+	and y in (`left`, `down`, `right`, `up`), as well as
+	`game_over_{x}` for x in (`ini`, `loop`, `end`). (Unless the
+	character specifies a `game_over_fallback` character that does
+	have those last animations instead.)
+	"""
 
 	girlfriend_character: t.Optional[t.Hashable]
 	"""
-	Name of the girlfriend of this level. Can be set to `None`,
-	meaning she won't appear.
+	Name of the girlfriend, or some kind of background decoration
+	bopper of this level. Can be set to `None`, meaning she won't
+	appear.
 	"""
 
 	opponent_character: t.Hashable
-	"""Name of the opponent character in this level."""
+	"""
+	Name of the opponent character in this level.
+	The opponent sprite is expected to have the following
+	animations:
+	`sing_{x}` for x in (`left`, `down`, `right`, `up`).
+	"""
 
 
 @dataclass
@@ -80,5 +94,5 @@ class WeekData:
 @dataclass
 class ContentPack:
 	pack_id: t.Hashable
-	characters: t.Dict[t.Hashable, t.Type["Character"]]
+	characters: t.Dict[t.Hashable, "CharacterData"]
 	weeks: t.Sequence["WeekData"]

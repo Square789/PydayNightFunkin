@@ -9,13 +9,12 @@ from pyglet import gl
 from pyglet.window.key import LEFT, UP, DOWN, RIGHT, X, Z
 
 import pyday_night_funkin.core.graphics.state as st
-from pyday_night_funkin.core.scene import BaseScene
+from pyday_night_funkin.core.scene import BaseScene, OrderedLayer, SceneKernel
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import SceneObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.main_game import Game
 	from pyday_night_funkin.core.types import Numeric
 
 
@@ -130,16 +129,12 @@ class Triangle(SceneObject):
 
 
 class TriangleScene(BaseScene):
-	def __init__(self, game: "Game") -> None:
-		super().__init__(game)
+	def __init__(self, kernel: "SceneKernel") -> None:
+		super().__init__(kernel.fill(layers=OrderedLayer("main")))
 
 		self.tri0 = Triangle(self.get_context("main"), 0, 0.7)
 		self.tri1 = Triangle(self.get_context("main"), -20, 60)
 		self.tri2 = Triangle(self.get_context("main"), 200, 100)
-
-	@staticmethod
-	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return (("main", True),)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)

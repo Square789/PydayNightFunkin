@@ -2,20 +2,35 @@
 from random import randint
 import typing as t
 
+from pyglet.math import Vec2
+
 from pyday_night_funkin.constants import GAME_WIDTH
 from pyday_night_funkin.core.asset_system import load_image, load_sound
+from pyday_night_funkin.core.scene import OrderedLayer
 from pyday_night_funkin.stages.common import BaseGameBaseStage
+from pyday_night_funkin.scenes.in_game import CharacterAnchor, InGameSceneKernel
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.character import Character
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 
 class Week3Stage(BaseGameBaseStage):
-	def __init__(self, *args, **kwargs) -> None:
+	def __init__(self, kernel: InGameSceneKernel, *args, **kwargs) -> None:
+		super().__init__(
+			kernel.fill(
+				layers = (
+					"sky", "city", "lights", OrderedLayer("train"), "girlfriend", "stage",
+					OrderedLayer("ui_combo"), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
+				),
+				default_cam_zoom = 1.05,
+				opponent_anchor = CharacterAnchor(Vec2(100, 400), None, "stage"),
+			),
+			*args,
+			**kwargs,
+		)
+
 		self.city_lights: t.List[PNFSprite] = []
 		self._active_city_light_idx: int = 0
-		self.train: t.Optional[PNFSprite] = None
 		self.train_sound = load_sound("shared/sounds/train_passes.ogg")
 		self.train_inbound = False
 		self.train_moving = False
@@ -23,27 +38,11 @@ class Week3Stage(BaseGameBaseStage):
 		self.train_timer = 0.0
 		self.train_cooldown = -4
 
-		super().__init__(*args, **kwargs)
-
 		# Fuck if i know, make a player specifically for this sound because there
 		# are things that depend on ITS AUDIO POSITION ARRGGHHG
 		# TODO: should probably look into a workaround that is pretty much identical
 		# yet 500% less crappy
 		self.train_sound_player = self.game.sound.create_player()
-
-	@staticmethod
-	def get_default_cam_zoom() -> float:
-		return 1.05
-
-	@staticmethod
-	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return (
-			"sky", "city", "lights", ("train", True), "girlfriend", "stage",
-			("ui_combo", True), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
-		)
-
-	def setup(self) -> None:
-		super().setup()
 
 		bg = self.create_object(
 			"sky", "main", x=-100, image=load_image("week3/images/philly/sky.png")
@@ -75,9 +74,6 @@ class Week3Stage(BaseGameBaseStage):
 			"train", "main",
 			x=-40, y=sokagrafie.y, image=load_image("week3/images/philly/street.png")
 		)
-
-	def create_opponent(self, char_cls: t.Type["Character"]) -> "Character":
-		return self.create_object("stage", "main", char_cls, scene=self, x=100, y=400)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)

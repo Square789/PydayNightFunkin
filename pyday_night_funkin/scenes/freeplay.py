@@ -3,7 +3,7 @@ import typing as t
 
 from pyday_night_funkin.alphabet import MenuTextLine
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.base_game_pack import load_health_icon
+from pyday_night_funkin.base_game_pack import load_character_icon
 from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
@@ -26,8 +26,8 @@ class StickySprite(PNFSprite):
 
 
 class FreeplayScene(scenes.MusicBeatScene):
-	def __init__(self, *args, **kwargs) -> None:
-		super().__init__(*args, **kwargs)
+	def __init__(self, kernel) -> None:
+		super().__init__(kernel.fill(layers=("bg", "fg", "textfg")))
 
 		if not self.game.player.playing:
 			self.game.player.set(load_sound("preload/music/freakyMenu.ogg"))
@@ -78,16 +78,13 @@ class FreeplayScene(scenes.MusicBeatScene):
 			self._text_lines.append(m)
 			self.add(m, "fg")
 
-			opp_dat = self.game.character_registry[lvl.opponent_character].get_character_data()
+			opp_icon = self.game.character_registry[lvl.opponent_character].icon_name
 			self.create_object(
 				"fg",
 				object_class = StickySprite,
 				stickee = m,
-				image = load_health_icon(opp_dat.icon_name)[0],
+				image = load_character_icon(opp_icon)[0],
 			)
-			# NOTE: should probably call `lvl.get_opponent().icon_name` or something,
-			# but creating opponent without an in game scene sorta sucks.
-			# This is a crappy leftover, try to get rid of it some time (TM)
 
 		self.menu = Menu(
 			self.game.key_handler, len(self.displayed_songs), self._on_select, self._on_confirm
@@ -100,10 +97,6 @@ class FreeplayScene(scenes.MusicBeatScene):
 			fwd_control = CONTROL.RIGHT,
 			bkwd_control = CONTROL.LEFT,
 		)
-
-	@staticmethod
-	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return ("bg", "fg", "textfg")
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
@@ -129,13 +122,13 @@ class FreeplayScene(scenes.MusicBeatScene):
 	def _on_confirm(self, i: int, selected: bool) -> None:
 		if selected:
 			self.game.set_scene(
-				self.displayed_songs[i].stage_class,
-				self.displayed_songs[i],
-				DIFFICULTY(self.diff_menu.selection_index),
-				FreeplayScene,
+				self.displayed_songs[i].stage_type.get_kernel(
+					self.displayed_songs[i],
+					DIFFICULTY(self.diff_menu.selection_index),
+					FreeplayScene,
+				)
 			)
 
 	def _on_diff_select(self, i: int, state: bool) -> None:
 		if state:
 			self.diff_text.text = DIFFICULTY(i).name
-

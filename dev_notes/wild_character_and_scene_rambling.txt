@@ -1,0 +1,314 @@
+Characters can:
+ choose their position depending on song
+ modify the camera's initial position depending on song
+ (which is always the opponent's graphics midpoint)
+
+Stages can:
+ modify the opponent's, gf's and player's position,
+ depending on what the damn player/gf/etc is. This effectively places character knowledge in
+ the stages themselves, so might as well strip the character self-positioning entirely.
+
+Althoooough, how about?
+Each stage has anchor points, say, the lower left corner of a character.
+Characters then have to supply an offset to that anchor point which is their business since
+you know, it's their spritesheet, and can thus get a controlled position across all stages?
+This mechanism could also be supplied with the stage name, so the characters could behave
+differently on a certain stage if they must.
+^ If done this way, you could seamlessly drop in pico for daddy dearest for example and have them
+  be positioned properly despite the height difference. This is probably what psych engine meant
+  to do with the character position arrays now that i think about it. What an insane revelation,
+  oh man.
+As for camera control:
+In the base game, it is only ever dependant on the opponent's position or the stage (well,
+and that one time it needs to know whether story mode is active or not, but that's still stage
+business.)
+It would still be useful if characters could supply something like (RELATIVE, (123, 321)) or
+(ABSOLUTE, (100, 100)) to control the initial position of the camera, as well as their
+focus point during gameplay, which is something that will have to be modifiable for sure.
+(see senpai)
+
+                      bf          gf           opp              inicam
+tutorial           770,450    <400,130>      400,130    100,100+opp_mid+[600,0]*
+bopeebo            770,450     400,130       100,100    100,100+opp_mid+400,0
+fresh              770,450     400,130       100,100    100,100+opp_mid+400,0
+dadbattle          770,450     400,130       100,100    100,100+opp_mid+400,0
+spookeez           770,450     400,130       300,100    100,100+opp_mid
+south              770,450     400,130       300,100    100,100+opp_mid
+monster            770,450     400,130       200,100    100,100+opp_mid
+pico               770,450     400,130       100,400    100,100+opp_mid+600,0
+philly             770,450     400,130       100,400    100,100+opp_mid+600,0
+blammed            770,450     400,130       100,400    100,100+opp_mid+600,0
+satin-panties      510,230     400,130       100,400    100,100+opp_mid
+high               510,230     400,130       100,400    100,100+opp_mid
+milf               510,230     400,130       100,400    100,100+opp_mid
+cocoa              970,450     400,130      -400,400    100,100+opp_mid
+eggnog             970,450     400,130      -400,400    100,100+opp_mid
+winter-horrorland 1090,450     400,130       100,150    100,100+opp_mid
+senpai             970,670     580,430       250,510    250,510+opp_mid+300,0
+roses              970,670     580,430       250,510    250,510+opp_mid+300,0
+thorns             970,670     580,430       -50,200    -50,200+opp_mid+300,0
+ugh                810,450     370,140       200,160    100,100+opp_mid
+guns               810,450     370,140       200,160    100,100+opp_mid
+stress             810,450     200,65        200,160    100,100+opp_mid
+
+*only if story mode, for some reason
+
+// === //
+
+how would you like to integrate characters?
+think of something moderately complex like QT/KB
+yeah, how would those work?
+
+// Character code probably limited to the standard, really:
+class QT(Character):
+	def __init__(self, *args, **kwargs):
+		super().__init__(self, *args, **kwargs)
+
+		self.frames = load_frames("characters/qt.xml")
+		self.load_offsets()
+
+		self.add_animation("idle", "Final_Idle", tags=(TAG_IDLE,), fps=18)
+		self.add_animation("sing_up", "Final_Up", (22, -135), (TAG_SING,), 14)
+		...
+
+	// on_sing function instead of the game loop going .animation.play(f"sing_{dir}") ?
+	// Makes a lot more sense as augmenting the game loop will localize the effect to certain
+	// stages only.
+	def on_sing(direction: NOTE_TYPE) -> None:
+		n = f"sing_{direction.name}_alt" if randint(0, 19) == 0 else f"sing_{direction.name}"
+		self.animation.play(n)
+
+// Q: Could this be data-driven(TM)?
+// A: Kinda, but only in a really limited fashion. Think of pico where it already breaks down
+// having to accomodate stuff like "flip_x"
+// Plus, going through with that will mean having to supply the data externally/through the
+// constructor, which will make the character data non-inheritable anymore, but i doubt that
+// was gonna be useful anytime soon. Should prolly get rid of that weirdness.
+// [addendum 1] ^ Done.
+// This change makes it possible at least to shred the current leaves off the base game's
+// character tree as those could now all be replaced purely with data dicts. (But will still need
+// coupling to specific subclasses (FlipIdleCharacter, Boyfriend), and use stuff like the HairMixin)
+
+// pnf_chardef.json5 (mockup idk)
+{
+	"name": str,
+	"animations": {
+		str: {
+			"prefix": str,
+			*"tags": list[int],
+			*"indices": list[int],
+			*"fps": float,
+			*"offset": {"x": float, "y": float},
+			*"loop": bool,
+		},
+	},
+	"image": str,
+	"scale": float,
+	"sing_duration": float,
+	"health_icon_name": str,
+	"position": {"type": "absolute" | "relative", "x": float, "y": float},
+	"camera_position": {"type": "absolute" | "relative", "x": float, "y": float},
+	"flip": {"x": bool, "y": bool},
+	"antialias": bool,
+	"healthbar_color": {"r": int, "g": int, "b": int} | int,
+	"game_over_alternate": str,
+}
+
+// Psych chardef json:
+{
+	"animations": [
+		"offsets": [int, int],
+		"loop": bool,
+		"fps": int, (float?)
+		"anim": str, // Animation to be created in-game
+		"indices": [?],
+		"name": str // Prefix to be used
+	],
+	"image": str,
+	"scale": float,
+	"sing_duration": float,
+	"healthicon": str,
+	"position": [float, float],
+	"camera_position": [float, float],
+	"flip_x": bool,
+	"no_antialiasing": bool,
+	"healthbar_colors": [int, int, int]
+}
+
+// Hardcoded chardef by base game switch-case expansion
+// Straight-up stolen from the kade version; QT v2 uses psych characters as usual.
+				tex = Paths.getSparrowAtlas('qt_annoyed');
+				frames = tex;
+				animation.addByPrefix('idle', 'Final_Idle', 18, false);
+				animation.addByPrefix('singUP', 'Final_Up', 14, false);
+				animation.addByPrefix('singRIGHT', 'Final_Right', 14, false);
+				animation.addByPrefix('singDOWN', 'Final_Down', 14, false);
+				animation.addByPrefix('singLEFT', 'Final_Left', 14, false);
+
+				//glitch animations
+				animation.addByPrefix('singUP-alt', 'glitch_up', 18, false);
+				animation.addByPrefix('singDOWN-alt', 'glitch_down', 14, false);
+				animation.addByPrefix('singLEFT-alt', 'glitch_left', 14, false);
+				animation.addByPrefix('singRIGHT-alt', 'glitch_right', 14, false);
+
+				//Positive = goes to left / Up. -Haz
+				//Negative = goes to right / Down. -Haz
+
+				addOffset('idle', 3,-350);
+				addOffset("singUP", 22, -315);
+				addOffset("singRIGHT", -13, -324);
+				addOffset("singDOWN", 29, -284);
+				addOffset("singLEFT", -62, -333);
+				//alt animations
+				addOffset("singUP-alt", 18, -308);
+				addOffset("singRIGHT-alt", -13, -324);
+				addOffset("singDOWN-alt", 29, -284);
+				addOffset("singLEFT-alt", 7, -321);
+				
+				playAnim('idle');
+
+// === //
+
+CharacterData:
+ [new] positioning: t.Tuple[FocusStrategy, Vec2]
+
+BaseScene:
+ get_default_layers => get_layer_names()
+ get_default_cameras => get_camera_names()
+
+ Transitions? Probably should be moved there as well.
+
+MusicBeatScene:
+ introduces pretty much nothing relevant to the kernel. maaaybe the bpm, but nah.
+
+InGameScene:
+ // Should be coupled to the stage, anything else makes little sense.
+ get_default_cam_zoom -> float
+ [new] default_cam_zoom -> float
+
+ class FocusStrategy(IntEnum):
+  RELATIVE = 0
+  ABSOLUTE = 1
+ class AnchorKind(IntEnum):
+  BOTTOM_LEFT, BOTTOM_RIGHT, TOP_LEFT, TOP_RIGHT
+ class CharacterAnchor:
+  position: Vec2
+  kind: AnchorKind
+  
+ [new] initial_camera_focus: t.Optional[Tuple[FocusStrategy], Vec2]
+ [new] player_anchor/opponent_anchor/gf_anchor: CharacterAnchor
+
+ // Interacted with only in the actual rhythm processing part of the game loop.
+ // Ugly coupling to the scene as it also contains the notes' sprites.
+ create_note_handler -> AbstractNoteHandler
+ // Interacted with only ^ above and in the countdown.
+ // The HUD is rather dependant on the basic cornerstones FNF sets; 2 strumrows à 4 notes each.
+ // These two could be hyper-dynamicised into some kind of system that at its core is just a song
+ // Position tracker/Keyframe system for the essential "expecting input around x", which is what
+ // rhythm games are. But do not bother with that now.
+ create_hud -> HUD
+
+ // Make relatively dynamic just like in the actual modding engines so it does not need to be
+ // overridden as much in stage subclasses.
+ // Probably do not bother with multiple characters in the same category for now.
+ // Unless gf, maybe? She still is special as in reacts to combo loss, but it would make
+ // sense to create some kind of generic "stupidly reacts to beat hits at the given phase with the
+ // given offset" logic. This could include the background dancers that start appearing from week 4.
+ // SkidNPump for example are the only characters that dance at an uneven beat.
+ create_player
+ create_girlfriend
+ create_opponent
+ 
+...
+_ANCHOR_MUL_MAP = {
+	AnchorKind.BOTTOM_LEFT = (0, -1)
+	AnchorKind.BOTTOM_RIGHT = (-1, -1)
+	AnchorKind.TOP_LEFT = (0, 0)
+	AnchorKind.TOP_RIGHT = (-1, 0)
+}
+
+PositioningStrategy: t.Callable[[LevelData, PlayerAnchor], Vec2]
+
+class InGameScene:
+	def create_player(self, char_data: CharacterData) -> Character:
+		pos = self.player_anchor.position
+		# Can't actually use match cause i'm still clinging to py3.8, but you know
+		match char_data.positioning:
+			# It would make sense to have the positioning be
+			# the width and height of the character
+			case [RELATIVE, Vec2 as player_pos]:
+				pos = pos + player_pos * _ANCHOR_MUL_MAP[self.player_anchor.kind]
+			case [ABSOLUTE, Vec2 as player_pos]:
+				pos = player_pos
+			case [FUNCTION, f]:
+				pos = f(self.level_data, self.player_anchor)
+			case _:
+				raise RuntimeError("Bad")
+...
+
+
+Scene kernels!
+They could hold data relating to scenes without actually being one.
+It would kinda duplicate stuff and create coupling between classes but it would prevent
+scenes being in an illegal pre-setup-call state, which is what HaxeFlixel <6.0 still has.
+Ultimately we'd require some kind of PNFSceneData, not LevelData, which should i.e. only be the
+same when given to TutorialScene. This should be the home for the stuff related to the
+scene which was previously in these ugly-ass static get methods, so character positions as well as
+the initial camera zoom, and the new initial camera positioning.
+This would ultimately make the !code bodies! of SceneKernels the scene registry then.*
+Also, definitely create a base SceneKernel with the camera and layer names.
+*If this turns out to be annoying, see about creating an actual scene registry instead; this would
+however maybe make SceneKernels useless again and justify another simpler structure to pass to
+the push|set_scene methods.
+^
+Outdated again; Technically there are three types of data:
+ - Scene-specific data, which should only ever be passed to one precise subclass. This is the
+   default cam zoom, the layer and camera names and more.
+   The subclasses generate this in their `__init__` methods and stuff it into the kernel, filling
+   in defaults along the way.
+ - Scene-driving data; parameters which influence how the scene operates. There are none by default,
+   but the InGameScene specifies a bunch (level data etc.)
+ - Superdata; the `Game` reference and not much else (ok technically this could kinda belong to
+   "Scene-driving data" as well, but shut up)
+
+// Usage/mockup i guess idk //
+
+Decision needs to be made:
+ game.push_scene(Level3SceneKernel(init_param))
+ -requires a kernel for each scene subclass. No.
+ game.push_scene(Level3Scene.get_kernel(init_param))
+ -Overriding class- and static methods/fields is legal, but i'm trying to avoid it.
+  There isn't a way around it with this entire system though, still way better than the overridden
+  methods before.
+ game.push_scene(lambda k: Level3Scene(k, level_data))
+ -HaxeFlixel's new way of doing it.
+  Not toooo bad tbh; stuffs the dynamic parameters away into a lambda closure and takes away the
+  kernel's responsibility for keeping them.
+  Does not communicate kernel type. however it removes the scene-driving data from it; so may
+  honestly make subclassing kernels useless.
+ -Makes it impossible for `on_imminent_replacement` to identify the replacing scene type, though
+  it is unlikely anyone was gonna use that anyways.
+Decision made: get_kernel. I find it pretty annoying to create a lambda every time you want to
+create a scene; though you could certainly argue `get_kernel` is just as weird.
+ 
+Decision needs to be made:
+ Have the SceneKernel call `setup` in `create_scene` for a two-stage setup?
+ Pros:
+ -Subclasses can always call super().__init__ first; otherwise `setup` will run before those finish,
+  requiring creation of attributes before init, which irks me a lot.
+ -SceneKernel does not need to transport InGameScene specific default values anymore; they can just
+  be set by subclasses post-super().__init__
+ Cons:
+ -Technically introduces a zombie state where the scene has been inited but many important objects
+  don't exist, which i am trying to avoid
+
+ Have pretty much everything happen as a direct consequence of __init__?
+ Pros:
+ - Does not have the zombie state as defined above
+ Cons:
+ -`setup` runs before subclasses' __init__ methods finish; meaning that all subclasses will need
+  to communicate their default values through the kernel before calling into super().__init__ and
+  setup all attribute shells at that point as well.
+A decision has been made: Abolish setup into __init__, transfer scene-specific data through the
+kernel and call functions that do not create more objects, but rather adjust and operate on them
+(load_song, ready) from outside/the kernel

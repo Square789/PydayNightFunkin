@@ -4,30 +4,27 @@ import typing as t
 from pyglet.math import Vec2
 
 from pyday_night_funkin.core.tween_effects.eases import in_out_elastic
+from pyday_night_funkin.scenes.in_game import CharacterAnchor, InGameSceneKernel
 from pyday_night_funkin.stages.common import BaseGameBaseStage
-
-if t.TYPE_CHECKING:
-	from pyday_night_funkin.character import Character
 
 
 class TutorialStage(BaseGameBaseStage):
-	def setup(self) -> None:
-		super().setup()
-		self.setup_default_base_game_arena()
+	def __init__(self, kernel: InGameSceneKernel, *args, **kwargs) -> None:
+		from pyday_night_funkin.scenes.in_game import CharacterAnchor
+		super().__init__(
+			kernel.fill(opponent_anchor=CharacterAnchor(Vec2(400, 130), None, "girlfriend")),
+			*args,
+			**kwargs,
+		)
 
-	def create_opponent(self, char_cls: t.Type["Character"]) -> "Character":
-		return self.create_object("girlfriend", "main", char_cls, scene=self, x=400, y=130)
+		self.spawn_default_base_game_arena()
 
 	def ready(self) -> None:
 		super().ready()
 		# This behavior makes no sense whatsoever, but replicating it anyways!
 		# Coordinates reconstructed from arcane float kung-fu in PlayState.hx
-		x_orig = 600.0 if self.in_story_mode else 100.0
-		self.main_cam.look_at(Vec2(
-			x_orig + self.opponent.width * 0.5,
-			100.0 + self.opponent.height * 0.5
-		))
 		if self.in_story_mode:
+			self.main_cam.x += 500.0
 			self._tween_camera(1.3)
 
 	def update(self, dt: float) -> None:

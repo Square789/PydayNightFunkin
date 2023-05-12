@@ -51,8 +51,6 @@ class VolumeControlDropdown(SuperScene):
 		self._state_progress = 0.0
 
 		self._boxes: t.List[PNFSprite] = []
-		self._camera = SimpleCamera(CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
-		self._cameras = (self._camera,)
 
 		self.batch = PNFBatch()
 

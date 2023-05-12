@@ -22,6 +22,8 @@ class Registry(t.Generic[T]):
 		from source `source_name`.
 		Raises a `ValueError` if `name` is already known.
 		"""
+		if name is None:
+			raise TypeError("Registry names may not be `None`!")
 		if name in self._dict:
 			raise ValueError(f"{name} already exists in this registry!")
 
@@ -55,4 +57,5 @@ class Registry(t.Generic[T]):
 		"""
 		return self._dict[name]
 
-	__getitem__ = get
+	def __getitem__(self, k: t.Hashable) -> T:
+		return self.get(k)

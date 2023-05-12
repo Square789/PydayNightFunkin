@@ -16,6 +16,31 @@
   - *Cython* ([Homepage](https://cython.org/))
   - *opengl-registry* ([Github](https://github.com/moderngl/opengl-registry))
 
+## Why would you want this?
+ A good question! The answer is: You probably don't! Here's some pros and cons:
+### Pros
+ - **Starts quickly**; Changes to Python files are visible far more quickly than changes
+   made to Haxe as Python bytecode typically beats html5/hxcpp compilation times.
+ - **Significantly cleaner code** than most engines i have seen so far due to an attempt at
+   documentation and logically separating stages instead of mashing them together into a
+   5000 line long PlayState file.
+### Cons
+ - **Runs slowly**; due to Python's interpreted nature, PNF runs ~20-50 times slower than
+   FNF's compiled C++ code and ~1-4 times as slow as html5 builds, though this is still fast
+   enough to not scrape the fabled 16ms 60FPS ceiling.
+ - **Does not run in a web browser**; The OpenGL variants are quite different from what i get, and
+   Pyglet does not target anything else than desktop.
+   - There have been experiments, but those will definitely remain experiments for the foreseeable
+     future.
+ - This is a **complete hobby project** that's still in development and rapidly breaks stuff.
+ - **Still lacks many many features** such as: Save data, asset cache clearing, scene transitions,
+   a loading screen, options, a chart editor, any kind of comprehensive modding frontend, an
+   accuracy system and tightly timed input detection that doesn't risk lagging behind by up to
+   16ms.
+
+## Boring! Show me a video!
+ Soon™
+
 ## How to run?
  I'm honored you want to try this out, because there's really nothing revolutionary in here.
  Anyways:
@@ -23,6 +48,10 @@
 ### 0. Prerequisites
  - You will need OpenGL 4.5 support on your system, cause the Direct State Access mechanism it
    introduced was just too sweet to not use.
+   - This makes PNF incompatible with apple devices cause they decided OpenGL 4.5 wasn't good
+     enough for them anymore. I did create a [4_1-compat branch](https://github.com/Square789/PydayNightFunkin/tree/gl4_1-compat)
+     for that, however don't really care much about updating it, meaning it's likely far behind
+     main, so you'll need to update it on your own.
  - You will need Python.
    - I recommend getting it from [its official website](https://www.python.org/downloads/). I
      have seen the windows store version cause weird access restriction problems when installing

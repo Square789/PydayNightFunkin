@@ -3,37 +3,35 @@
 from random import choice, randint
 import typing as t
 
+from pyglet.math import Vec2
+
 from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.asset_system import load_sound
+from pyday_night_funkin.core.scene import OrderedLayer
+from pyday_night_funkin.scenes.in_game import CharacterAnchor, InGameSceneKernel
 from pyday_night_funkin.stages.common import BaseGameBaseStage
-
-if t.TYPE_CHECKING:
-	from pyday_night_funkin.character import Character
 
 
 class Week2Stage(BaseGameBaseStage):
-	def __init__(self, *args, **kwargs) -> None:
-		super().__init__(*args, **kwargs)
+	def __init__(self, kernel: InGameSceneKernel, *args, **kwargs) -> None:
+		super().__init__(
+			kernel.fill(
+				layers = (
+					"background", "girlfriend", "stage", OrderedLayer("ui_combo"), "ui_arrows",
+					"ui_notes", "ui0", "ui1", "ui2"
+				),
+				default_cam_zoom = 1.05,
+				opponent_anchor = CharacterAnchor(Vec2(100, 300), None, "stage")
+			),
+			*args,
+			**kwargs,
+		)
 
 		self._next_lightning_thresh = 0
 		self._lightning_sounds = (
 			load_sound("shared/sounds/thunder_1.ogg"),
 			load_sound("shared/sounds/thunder_2.ogg"),
 		)
-
-	@staticmethod
-	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return (
-			"background", "girlfriend", "stage",
-			("ui_combo", True), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
-		)
-
-	@staticmethod
-	def get_default_cam_zoom() -> float:
-		return 1.05
-
-	def setup(self) -> None:
-		super().setup()
 
 		self.background = self.create_object("background", "main", x=-200, y=-100)
 		self.background.frames = load_frames("week2/images/halloween_bg.xml")
@@ -43,9 +41,6 @@ class Week2Stage(BaseGameBaseStage):
 			"lightning", "halloweem bg lightning strike", 24, False
 		)
 		self.background.animation.play("idle")
-
-	def create_opponent(self, char_cls: t.Type["Character"]) -> "Character":
-		return self.create_object("stage", "main", char_cls, scene=self, x=100, y=300)
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
@@ -62,5 +57,9 @@ class Week2Stage(BaseGameBaseStage):
 
 
 class MonsterStage(Week2Stage):
-	def create_opponent(self, char_cls: t.Type["Character"]) -> "Character":
-		return self.create_object("stage", "main", char_cls, scene=self, x=100, y=230)
+	def __init__(self, kernel: InGameSceneKernel, *args, **kwargs) -> None:
+		super().__init__(
+			kernel.fill(opponent_anchor=CharacterAnchor(Vec2(100, 230), None, "stage")),
+			*args,
+			**kwargs,
+		)

@@ -4,16 +4,16 @@ import typing as t
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.base_game_pack import load_frames, load_week_header
 from pyday_night_funkin.core.asset_system import load_sound
-from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.core.tween_effects.eases import linear
+from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
 from pyday_night_funkin.core.utils import lerp, to_rgb_tuple, to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL, DIFFICULTY
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.character import Character
+	from pyday_night_funkin.core.scene import SceneKernel
+	from pyday_night_funkin.character import StoryMenuCharacterData
 	from pyday_night_funkin.content_pack import WeekData
 
 
@@ -27,27 +27,35 @@ class _WeekChar(PNFSprite):
 	def __init__(self, displayed_char: t.Hashable, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 		self.displayed_char = displayed_char
+		self.displayed_image = ""
 
-	def display_new_char(self, char_id: t.Hashable, char_cls: t.Type["Character"]) -> None:
+	def add_animations(self, sm_data: "StoryMenuCharacterData") -> None:
+		if sm_data.image != self.displayed_image:
+			self.frames = load_frames(sm_data.image)
+			self.displayed_image = sm_data.image
+
+		for n, a in zip(("story_menu", "story_menu_confirm"), sm_data.animations):
+			self.animation.add_by_prefix(n, *a)
+
+	def display_new_char(self, char_id: t.Hashable, sm_data: "StoryMenuCharacterData") -> None:
 		if self.displayed_char == char_id:
 			return
 
 		self.animation.remove("story_menu")
-		if self.animation.exists("story_menu_confirm"):
-			self.animation.remove("story_menu_confirm")
+		self.animation.remove_safe("story_menu_confirm")
 
-		char_cls.initialize_story_menu_sprite(self)
+		self.add_animations(sm_data)
 		self.animation.play("story_menu")
 		# 214.5 is extracted as the default `width` of sprite 0, which is truth is kind of
 		# a constant as Daddy Dearest will always be the character the story menu is created with.
 		self.scale = 214.5 / self.get_current_frame_dimensions()[0]
-		self.offset = char_cls.get_character_data().story_menu_offset
+		self.offset = sm_data.offset or (100.0, 100.0)
 		self.displayed_char = char_id
 
 
 class StoryMenuScene(scenes.MusicBeatScene):
-	def __init__(self, *args, **kwargs) -> None:
-		super().__init__(*args, **kwargs)
+	def __init__(self, kernel: "SceneKernel") -> None:
+		super().__init__(kernel.fill(layers=("bg", "mid", "fg")))
 
 		self._weeks = self.game.weeks # same list, who cares, we're only reading it.
 		if not self._weeks:
@@ -62,13 +70,10 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		yellow_stripe = self.create_object("mid", x=0, y=56)
 		yellow_stripe.make_rect(to_rgba_tuple(0xF9CF51FF), CNST.GAME_WIDTH, 400)
 
-		_story_menu_char_anims = load_frames("preload/images/campaign_menu_UI_characters.xml")
-
 		# Week character setup (these get modified later)
 		self.week_chars: t.List[_WeekChar] = []
 		for i in range(3):
 			char_id = self._weeks[0].story_menu_chars[i]
-			char_type = self.game.character_registry[char_id]
 			spr = self.create_object(
 				"fg",
 				object_class = _WeekChar,
@@ -76,11 +81,10 @@ class StoryMenuScene(scenes.MusicBeatScene):
 				x = (CNST.GAME_WIDTH * 0.25 * (i + 1)) - 150 - (80 * (i == 1)),
 				y = 70,
 			)
-			spr.frames = _story_menu_char_anims
-			char_type.initialize_story_menu_sprite(spr)
+			spr.add_animations(self.game.character_registry[char_id].story_menu_data)
 			spr.animation.play("story_menu")
-			spr.scale = 0.9 if i == 1 else 0.5
-			spr.recalculate_positioning()
+			spr.set_scale_and_repos(0.9 if i == 1 else 0.5)
+
 			self.week_chars.append(spr)
 
 		ui_tex = load_frames("preload/images/campaign_menu_UI_assets.xml")
@@ -171,10 +175,6 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			bkwd_control = CONTROL.LEFT,
 		)
 
-	@staticmethod
-	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return ("bg", "mid", "fg")
-
 	def _on_week_select(self, index: int, state: bool) -> None:
 		if not state:
 			self.week_headers[index].opacity = 153
@@ -194,8 +194,8 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 		for i, week_char_display_sprite in enumerate(self.week_chars):
 			new_char_id = self._weeks[index].story_menu_chars[i]
-			new_char_type = self.game.character_registry[new_char_id]
-			week_char_display_sprite.display_new_char(new_char_id, new_char_type)
+			new_char_sm_data = self.game.character_registry[new_char_id].story_menu_data
+			week_char_display_sprite.display_new_char(new_char_id, new_char_sm_data)
 
 	def _on_diff_select(self, index: int, state: bool) -> None:
 		if not state:
@@ -229,11 +229,12 @@ class StoryMenuScene(scenes.MusicBeatScene):
 	def _set_ingame_scene(self, week: "WeekData") -> None:
 		level = week.levels[0]
 		self.game.set_scene(
-			level.stage_class,
-			level_data = level,
-			difficulty = DIFFICULTY(self.diff_menu.selection_index),
-			follow_scene = StoryMenuScene,
-			remaining_week = week.levels[1:],
+			level.stage_type.get_kernel(
+				level_data = level,
+				difficulty = DIFFICULTY(self.diff_menu.selection_index),
+				follow_scene = StoryMenuScene,
+				remaining_week = week.levels[1:],
+			),
 		)
 
 	def update(self, dt: float) -> None:

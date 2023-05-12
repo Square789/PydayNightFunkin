@@ -4,11 +4,10 @@ from loguru import logger
 import typing as t
 
 from pyday_night_funkin.conductor import Conductor
-from pyday_night_funkin.core.scene import BaseScene
+from pyday_night_funkin.core.scene import BaseScene, SceneKernel
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.scene_manager import SceneSetupTrio
 	from pyday_night_funkin.core.sound import PNFPlayer
 
 
@@ -27,8 +26,8 @@ class MusicBeatScene(BaseScene):
 	successive calls in the same frame are possible.
 	"""
 
-	def __init__(self, *args, **kwargs) -> None:
-		super().__init__(*args, **kwargs)
+	def __init__(self, kernel: SceneKernel) -> None:
+		super().__init__(kernel)
 
 		self.conductor = Conductor()
 		self._conductor_sync_mode: t.Optional[ConductorSyncMode] = None
@@ -39,21 +38,23 @@ class MusicBeatScene(BaseScene):
 
 		self._out_transition_started: bool = False
 		self._out_transition_complete: bool = False
-		self._out_transition_next: t.Optional["SceneSetupTrio"] = None
+		self._out_transition_next: t.Optional[SceneKernel] = None
 
 		self._last_step: int = -1
 		self.cur_step: int = -1
 		self.cur_beat: int = -1
 
-		# self.game.push_scene(scenes.TransitionScene, True)
+		# self.game.push_scene(scenes.TransitionScene.get_kernel(True))
 
-	def on_imminent_replacement(self, new_scene: t.Type["BaseScene"], *args, **kwargs) -> bool:
+	def on_imminent_replacement(self, new_scene_kernel: SceneKernel) -> bool:
 		return True
 		if self._out_transition_complete:
 			return True
 
 		if not self._out_transition_started:
-			self.game.push_scene(scenes.TransitionScene, False, self.on_out_transition_complete)
+			self.game.push_scene(
+				scenes.TransitionScene.get_kernel(False, self.on_out_transition_complete)
+			)
 			self._out_transition_next = (new_scene, args, kwargs)
 			self._out_transition_started = True
 		else:
@@ -63,13 +64,12 @@ class MusicBeatScene(BaseScene):
 
 	def on_out_transition_complete(self) -> None:
 		self._out_transition_complete = True
-		if self._out_transition_next:
-			t, a, k = self._out_transition_next
+		if self._out_transition_next is None:
+			self.remove_scene()
+		else:
 			# Should call into `on_imminent_replacement`.
 			# If it doesn't, who knows! This scene system is chaos!
-			self.game.set_scene(t, *a, **k)
-		else:
-			self.remove_scene()
+			self.game.set_scene(self._out_transition_next)
 
 	def sync_conductor_from_player(
 		self,
@@ -98,8 +98,8 @@ class MusicBeatScene(BaseScene):
 
 	def sync_conductor_from_dt(self) -> None:
 		"""
-		Automatically starts syncing the scene's conductor from the
-		`update` function's time delta.
+		Starts syncing the scene's conductor from the `update`
+		function's time delta.
 		"""
 		self.stop_conductor_syncer()
 		self._conductor_sync_mode = ConductorSyncMode.DT

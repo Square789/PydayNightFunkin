@@ -6,7 +6,6 @@ from loguru import logger
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.asset_system import load_image, load_sound
-from pyday_night_funkin.core.scene import BaseScene
 from pyday_night_funkin.core.tween_effects.eases import out_quad
 from pyday_night_funkin.core.utils import to_rgb_tuple
 from pyday_night_funkin.enums import CONTROL
@@ -18,8 +17,8 @@ if t.TYPE_CHECKING:
 
 
 class MainMenuScene(scenes.MusicBeatScene):
-	def __init__(self, *args, **kwargs) -> None:
-		super().__init__(*args, **kwargs)
+	def __init__(self, kernel) -> None:
+		super().__init__(kernel.fill(layers=("bg", "bg_mag", "fg")))
 
 		self.scroll_sound = load_sound("preload/sounds/scrollMenu.ogg")
 		self.confirm_sound = load_sound("preload/sounds/confirmMenu.ogg")
@@ -55,10 +54,6 @@ class MainMenuScene(scenes.MusicBeatScene):
 		self.menu = Menu(
 			self.game.key_handler, len(self._menu_items), self._on_select, self._on_confirm
 		)
-
-	@staticmethod
-	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return ("bg", "bg_mag", "fg")
 
 	def _on_select(self, i: int, state: bool) -> None:
 		s = self._menu_items[i][2]

@@ -362,6 +362,7 @@ class PNFSprite(WorldObject):
 		offset and set scale_x as well as scale_y.
 		"""
 		self.image = get_pixel_tex()
+		self.scale = 1.0
 		self.scale_x = w
 		self.scale_y = h
 		self.recalculate_positioning()
@@ -743,3 +744,12 @@ class PNFSprite(WorldObject):
 	def flip_y(self, new_flip_y: bool) -> None:
 		self._flip_y = new_flip_y
 		self._interfacer.set_data("flip", (self._flip_x, new_flip_y) * 4)
+
+	def _dump(self) -> None:
+		print(f"x, y: {self.x}, {self.y}")
+		print(f"Offset: {self.offset}")
+		print(f"Origin: {self.origin}")
+		print(f"Frame offset: {self._frame.offset}")
+		print(f"Frame source size: {self._frame.source_dimensions}")
+		print(f"w, h: {self._width}, {self._height}")
+		print(f"fw, fh: {self._frame.source_dimensions}")

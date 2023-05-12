@@ -28,7 +28,7 @@ class SoundController:
 
 	def create_sfx_ring(self, size: int = _SFX_RING_DEFAULT_SIZE) -> "SFXRing":
 		"""
-		Creates a new SFXRing from players created through this
+		Creates a new SFXRing with new players created through this
 		controller.
 		"""
 		ring = SFXRing(self, [self.create_player() for _ in range(size)])
@@ -47,7 +47,7 @@ class SoundController:
 		try:
 			self._known_players.remove(player)
 		except ValueError:
-			logger.warning("PlayerController told to delete unknown player.")
+			logger.warning("PlayerController was told to delete unknown player.")
 
 	def change_volume(self, by: int) -> bool:
 		"""

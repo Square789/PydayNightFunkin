@@ -11,11 +11,12 @@ from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.alphabet import AlphabetCharacter
+	from pyday_night_funkin.core.scene import SceneKernel
 
 
 class TitleScene(scenes.MusicBeatScene):
-	def __init__(self, *args, **kwargs) -> None:
-		super().__init__(*args, **kwargs)
+	def __init__(self, kernel: "SceneKernel") -> None:
+		super().__init__(kernel.fill(layers=("main", "title_text", "flash")))
 
 		self.gf = self.create_object("main", x=CNST.GAME_WIDTH * 0.4, y=CNST.GAME_HEIGHT * 0.07)
 		self.gf.frames = load_frames("preload/images/gfDanceTitle.xml")
@@ -82,10 +83,6 @@ class TitleScene(scenes.MusicBeatScene):
 			15: self._delete_text,
 			16: self._intro_end,
 		}
-
-	@staticmethod
-	def get_default_layers() -> t.Sequence[t.Union[str, t.Tuple[str, bool]]]:
-		return ("main", "title_text", "flash")
 
 	def _create_text(self, *lines: str) -> None:
 		for line in lines:

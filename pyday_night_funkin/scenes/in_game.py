@@ -7,7 +7,8 @@ from loguru import logger
 from pyglet.math import Vec2
 
 from pyday_night_funkin.base_game_pack import SongResourceOptions, load_song
-from pyday_night_funkin.character import Character
+from pyday_night_funkin.character import Character, CharacterData
+from pyday_night_funkin.core.scene import BaseScene, SceneKernel
 from pyday_night_funkin.core.utils import lerp
 from pyday_night_funkin.enums import ANIMATION_TAG, CONTROL, DIFFICULTY
 from pyday_night_funkin.hud import HUD
@@ -16,9 +17,24 @@ from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.content_pack import LevelData
-	from pyday_night_funkin.core.scene import BaseScene
 	from pyday_night_funkin.main_game import Game
 	from pyday_night_funkin.note_handler import AbstractNoteHandler
+
+
+class CharacterAnchor:
+	__slots__ = ("position", "alignment", "layer", "cameras")
+
+	def __init__(
+		self,
+		position: Vec2,
+		alignment, # NOTE: Useless for now
+		layer: t.Optional[t.Hashable] = None,
+		cameras: t.Optional[t.Hashable] = None,
+	) -> None:
+		self.position = position
+		self.alignment = alignment
+		self.layer = layer
+		self.cameras = cameras
 
 
 class _ThrowawayGf(Character):
@@ -34,16 +50,54 @@ class _ThrowawayGf(Character):
 		pass
 
 
-class GAME_STATE(IntEnum):
+class GameState(IntEnum):
 	LOADING = 0
 	COUNTDOWN = 1
 	PLAYING = 2
 	ENDED = 3
 
 
+class InGameSceneKernel(SceneKernel):
+	def __init__(self, scene_type: t.Type["InGameScene"], *args, **kwargs) -> None:
+		super().__init__(scene_type, *args, **kwargs)
+
+		self.default_cam_zoom = None
+		self.player_anchor = None
+		self.girlfriend_anchor = None
+		self.opponent_anchor = None
+
+	def fill(
+		self,
+		*,
+		default_cam_zoom: t.Optional[float] = None,
+		player_anchor: t.Optional[CharacterAnchor] = None,
+		girlfriend_anchor: t.Optional[CharacterAnchor] = None,
+		opponent_anchor: t.Optional[CharacterAnchor] = None,
+		**kwargs,
+	):
+		if self.default_cam_zoom is None:
+			self.default_cam_zoom = default_cam_zoom
+		if self.player_anchor is None:
+			self.player_anchor = player_anchor
+		if self.girlfriend_anchor is None:
+			self.girlfriend_anchor = girlfriend_anchor
+		if self.opponent_anchor is None:
+			self.opponent_anchor = opponent_anchor
+
+		super().fill(**kwargs)
+
+		return self
+
+	def create_scene(self, game: "Game") -> "InGameScene":
+		scene = super().create_scene(game) # type: InGameScene
+		scene.load_song()
+		scene.ready()
+		return scene
+
+
 class InGameScene(scenes.MusicBeatScene):
 	"""
-	Main game driver scene.
+	Main PNF game driver scene.
 	Meant to be a jumble of sprites, players, handlers etc. running the
 	entire game.
 	Note that this base class only provides a small shred of
@@ -53,7 +107,7 @@ class InGameScene(scenes.MusicBeatScene):
 
 	def __init__(
 		self,
-		game: "Game",
+		kernel: InGameSceneKernel,
 		level_data: "LevelData",
 		difficulty: DIFFICULTY,
 		follow_scene: t.Type["BaseScene"],
@@ -62,7 +116,8 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		Initializes the InGame scene.
 
-		:param game: The game the scene runs under.
+		:param kernel: The InGameSceneKernel to initialize the scene
+		from.
 		:param level_data: The level to be loaded. Heavily influences
 		how the scene will play out.
 		:param difficulty: Difficulty the scene plays in.
@@ -76,21 +131,33 @@ class InGameScene(scenes.MusicBeatScene):
 		Freeplay/non-story mode is assumed when it's `None`.
 		"""
 
-		super().__init__(game)
+		super().__init__(
+			kernel.fill(
+				default_cam_zoom = 1.05,
+				cameras = ("main", "hud"),
+			)
+		)
 
 		self.level_data = level_data
-
-		if self.game.player.playing:
-			self.game.player.pause()
-
-		self.draw_passthrough = False
-
 		self.difficulty = difficulty
 		self.follow_scene = follow_scene
+		"""The scene type that should be set once all songs are exhausted."""
 		self.remaining_week = remaining_week
 		self.in_story_mode = remaining_week is not None
 
-		self.state = GAME_STATE.LOADING
+		self._default_cam_zoom = kernel.default_cam_zoom
+
+		self.player_anchor = kernel.player_anchor
+		self.girlfriend_anchor = kernel.girlfriend_anchor
+		self.opponent_anchor = kernel.opponent_anchor
+		if any(a is None for a in (
+			self.player_anchor, self.girlfriend_anchor, self.opponent_anchor
+		)):
+			logger.warning("A character anchor is None, expect an error!")
+
+		self.draw_passthrough = False
+
+		self.state = GameState.LOADING
 
 		self.inst_player = self.game.sound.create_player()
 		self.voice_player = self.game.sound.create_player()
@@ -115,21 +182,37 @@ class InGameScene(scenes.MusicBeatScene):
 		Causes `self.girlfriend.dance` to be called on each xth beat.
 		"""
 
-		self.setup()
-		self.load_song()
-		self.ready()
+		if self.game.player.playing:
+			self.game.player.pause()
 
-	@staticmethod
-	def get_default_cam_zoom() -> float:
-		"""
-		Returns the default camera zoom for this scene.
-		"""
-		return 1.05
+		self.boyfriend = self.create_character(self.player_anchor, level_data.player_character)
+		if (gf_char_id := level_data.girlfriend_character) is None:
+			# HACK: Feeding `CharacterData()` here is probably a gross violation of something
+			self.girlfriend = self.create_object(
+				"girlfriend", "main", _ThrowawayGf, self, CharacterData(_ThrowawayGf)
+			)
+		else:
+			self.girlfriend = self.create_character(self.girlfriend_anchor, gf_char_id)
+		self.opponent = self.create_character(self.opponent_anchor, level_data.opponent_character)
 
-	# Override from BaseScene
-	@staticmethod
-	def get_default_cameras() -> t.Sequence[t.Union[str, t.Tuple[str, int, int]]]:
-		return ("main", "hud")
+		self.main_cam = self.cameras["main"]
+		self.hud_cam = self.cameras["hud"]
+
+		self.note_handler = self.create_note_handler()
+
+		self.hud = self.create_hud()
+		self.hud.update_score(0)
+		self.hud.update_health(0.5)
+
+	@classmethod
+	def get_kernel(
+		cls,
+		level_data: "LevelData",
+		difficulty: DIFFICULTY,
+		follow_scene: t.Type["BaseScene"],
+		remaining_week: t.Optional[t.Sequence["LevelData"]] = None,
+	) -> InGameSceneKernel:
+		return InGameSceneKernel(cls, level_data, difficulty, follow_scene, remaining_week)
 
 	def create_note_handler(self) -> "AbstractNoteHandler":
 		raise NotImplementedError("Subclass this!")
@@ -137,79 +220,17 @@ class InGameScene(scenes.MusicBeatScene):
 	def create_hud(self) -> "HUD":
 		raise NotImplementedError("Subclass this!")
 
-	def create_player(self, char_cls: t.Type["Character"]) -> "Character":
-		"""
-		This function should create the player character on stage already
-		given the character type.
-		By default, the sprite is expected to have the following
-		animations:
-		`{x}_{y}` for x in (`sing`, `miss`)
-		and y in (`left`, `down`, `right`, `up`), as well as
-		`game_over_{x}` for x in (`ini`, `loop`, `confirm`).
-		"""
-		raise NotImplementedError("Subclass this!")
-
-	def create_girlfriend(self, char_cls: t.Type["Character"]) -> "Character":
-		"""
-		This function should create gf, or some kind of replacement
-		background decoration bopper already given the character
-		type.
-		This function is not always called, as level data is allowed
-		to set this entry to `None`.
-		"""
-		raise NotImplementedError("Subclass this!")
-
-	def create_opponent(self, char_cls: t.Type["Character"]) -> "Character":
-		"""
-		This function should create the level's opponent, already given
-		the character type.
-		The opponent sprite is expected to have the following
-		animations:
-		`sing_{x}` for x in (`left`, `down`, `right`, `up`).
-		"""
-		raise NotImplementedError("Subclass this!")
-
-	def setup(self) -> None:
-		"""
-		Sets up the game scene.
-		By default, this function calls:
-		`create_[boyfriend|girlfriend|opponent|hud|note_handler]`.
-		Override it (and don't forget `super().setup()`) to add custom
-		game scene code (backgrounds etc.)
-		"""
-		self.note_handler = self.create_note_handler()
-
-		char_reg = self.game.character_registry
-		level_data = self.level_data
-
-		self.boyfriend = self.create_player(char_reg[level_data.player_character])
-
-		if level_data.girlfriend_character is None:
-			self.girlfriend = self.create_object(
-				"girlfriend", "main", object_class=_ThrowawayGf, scene=self, x=-100, y=-100
-			)
-		else:
-			self.girlfriend = self.create_girlfriend(char_reg[level_data.girlfriend_character])
-
-		self.opponent = self.create_opponent(char_reg[level_data.opponent_character])
-
-		self.main_cam = self.cameras["main"]
-		self.hud_cam = self.cameras["hud"]
-
-		self.hud = self.create_hud()
-		self.hud.update_score(0)
-		self.hud.update_health(0.5)
-
-	def resync(self) -> None:
-		logger.info("Resyncing...")
-		self.voice_player.pause()
-		# NOTE: Conductor may be rewound here which has potential to screw things up real bad.
-		new_pos = self.inst_player.time * 1000.0
-		if new_pos < self.conductor.song_position:
-			logger.warning(f"Rewound conductor by {self.conductor.song_position - new_pos}, oops.")
-		self.conductor.song_position = new_pos
-		self.voice_player.seek(self.conductor.song_position * 0.001)
-		self.voice_player.play()
+	def create_character(self, anchor: CharacterAnchor, char_id: t.Hashable) -> Character:
+		# pos = self.scene_data.player_anchor
+		# pos = self._POSITIONING_FUNCS[char_data.positioning.type](self, char_data)
+		return self.game.character_registry.create_immediate(
+			anchor.layer,
+			anchor.cameras,
+			char_id,
+			self,
+			x = anchor.position.x,
+			y = anchor.position.y,
+		)
 
 	def load_song(self) -> t.Dict:
 		"""
@@ -233,6 +254,43 @@ class InGameScene(scenes.MusicBeatScene):
 		self.note_handler.feed_song_data(song_data)
 
 		self.song_data = song_data
+
+	def ready(self) -> None:
+		"""
+		Called after `setup` and `load_song` have been called.
+		Should be used to start the level.
+		"""
+		# NOTE: This is somewhat of a hack. In the original game, characters play
+		# an animation when you create them, I don't feel like copying that so
+		# they switch to their idle animation's first frame here.
+		# This is actually required cause camera focussing subtly depends on that.
+		# (Or maybe not so subtly, depends on the spritesheet.)
+		# Yes, for FlipIdleCharacters, this means differrent behavior from the default
+		# game. If you have complaints about that go send them to your nearest recycling bin.
+		for c in (self.boyfriend, self.girlfriend, self.opponent):
+			c.dance()
+
+		self.main_cam.zoom = self._default_cam_zoom
+		self.main_cam.look_at(self.opponent.get_midpoint())
+
+		self._countdown_stage = 0
+		self.state = GameState.COUNTDOWN
+		self.conductor.song_position = self.conductor.beat_duration * -5
+		self.sync_conductor_from_dt()
+		self.clock.schedule_interval(
+			self.countdown, self.conductor.beat_duration * 0.001
+		)
+
+	def resync(self) -> None:
+		logger.info("Resyncing...")
+		self.voice_player.pause()
+		# NOTE: Conductor may be rewound here which has potential to screw things up real bad.
+		new_pos = self.inst_player.time * 1000.0
+		if new_pos < self.conductor.song_position:
+			logger.warning(f"Rewound conductor by {self.conductor.song_position - new_pos}, oops.")
+		self.conductor.song_position = new_pos
+		self.voice_player.seek(self.conductor.song_position * 0.001)
+		self.voice_player.play()
 
 	def pause_players(self) -> None:
 		"""
@@ -258,31 +316,7 @@ class InGameScene(scenes.MusicBeatScene):
 		self.sync_conductor_from_player(self.inst_player, True, False, False)
 		self.inst_player.push_handlers(on_eos=self.on_song_end)
 		self.play_players()
-		self.state = GAME_STATE.PLAYING
-
-	def ready(self) -> None:
-		"""
-		Called after `setup` and `load_song` have been called.
-		Should be used to start the level.
-		"""
-		# NOTE: This is somewhat of a hack. In the original game, characters play
-		# an animation when you create them, I don't feel like copying that so
-		# they switch to their idle animation's first frame here.
-		# Yes, for FlipIdleCharacters, this means differrent behavior from the default
-		# game. If you have complaints about that go send them to your nearest recycling bin.
-		for c in (self.boyfriend, self.girlfriend, self.opponent):
-			c.dance()
-
-		self.main_cam.zoom = self.get_default_cam_zoom()
-		self.main_cam.look_at(self.opponent.get_midpoint())
-
-		self._countdown_stage = 0
-		self.state = GAME_STATE.COUNTDOWN
-		self.conductor.song_position = self.conductor.beat_duration * -5
-		self.sync_conductor_from_dt()
-		self.clock.schedule_interval(
-			self.countdown, self.conductor.beat_duration * 0.001
-		)
+		self.state = GameState.PLAYING
 
 	def get_current_section(self) -> t.Optional[t.Dict]:
 		"""
@@ -303,7 +337,7 @@ class InGameScene(scenes.MusicBeatScene):
 		super().update(dt)
 
 		self.process_input(dt)
-		if self.health < 0.0 and self.state is not GAME_STATE.ENDED:
+		if self.health < 0.0 and self.state is not GameState.ENDED:
 			# Game over may have been triggered in process_input already
 			self.on_game_over()
 
@@ -318,7 +352,7 @@ class InGameScene(scenes.MusicBeatScene):
 				self.main_cam.set_follow_target(_cam_follow, 0.04)
 
 		if self.zoom_cams:
-			self.main_cam.zoom = lerp(self.get_default_cam_zoom(), self.main_cam.zoom, 0.95)
+			self.main_cam.zoom = lerp(self._default_cam_zoom, self.main_cam.zoom, 0.95)
 			self.hud_cam.zoom = lerp(1.0, self.hud_cam.zoom, 0.95)
 
 	def process_input(self, dt: float) -> None:
@@ -461,16 +495,15 @@ class InGameScene(scenes.MusicBeatScene):
 		are created with this scene's difficulty and follow scene.
 		"""
 		self.pause_players()
-		self.state = GAME_STATE.ENDED
+		self.state = GameState.ENDED
 		if self.remaining_week:
-			next_level, *week_rest = self.remaining_week
+			next_level_data, *week_rest = self.remaining_week
 			self.game.set_scene(
-				next_level.stage_class,
-				next_level,
-				self.difficulty,
-				self.follow_scene,
-				week_rest,
+				next_level_data.stage_type.get_kernel(
+					next_level_data, self.difficulty, self.follow_scene, week_rest
+				)
 			)
+			return
 		else:
 			self.game.set_scene(self.follow_scene)
 
@@ -481,14 +514,18 @@ class InGameScene(scenes.MusicBeatScene):
 		Sets the game state to `ENDED` and pushes a `GameOverScene`.
 		"""
 		self.pause_players()
-		self.state = GAME_STATE.ENDED
-		game_over_bf = self.create_player(type(self.boyfriend))
-		scx, scy = self.boyfriend.get_screen_position(self.main_cam)
-		game_over_bf.position = (scx, scy)
-		# In case bf is created with `create_object`, which will add him to 2
-		# scenes at the same time, which you definitely do not want
-		self.remove(game_over_bf, keep=True)
-		self.game.push_scene(scenes.GameOverScene, game_over_bf)
+		self.state = GameState.ENDED
+
+		if self.boyfriend.character_data.game_over_fallback is not None:
+			cd = self.game.character_registry[self.boyfriend.character_data.game_over_fallback]
+			game_over_bf = cd.type(self, cd)
+		else:
+			# Definitely do not want to add him to two scenes
+			game_over_bf = self.boyfriend
+			self.remove(game_over_bf, keep=True)
+
+		game_over_bf.position = tuple(self.boyfriend.get_screen_position(self.main_cam))
+		self.game.push_scene(scenes.GameOverScene.get_kernel(game_over_bf))
 
 	def countdown(self, dt: float) -> None:
 		self.opponent.dance()
@@ -503,7 +540,7 @@ class InGameScene(scenes.MusicBeatScene):
 			self.hud.countdown_popup(self._countdown_stage)
 			self._countdown_stage += 1
 
-	def on_subscene_removal(self, subscene, end_self=None, reset=False):
+	def on_subscene_removal(self, subscene, end_self=None, reset=False) -> None:
 		super().on_subscene_removal(subscene)
 		if end_self is None:
 			return
@@ -512,16 +549,17 @@ class InGameScene(scenes.MusicBeatScene):
 			self.game.set_scene(self.follow_scene)
 		else:
 			if not reset:
-				if self.state is GAME_STATE.PLAYING:
+				if self.state is GameState.PLAYING:
 					self.play_players()
 					self.resync()
 			else:
 				self.game.set_scene(
-					self.level_data.stage_class,
-					self.level_data,
-					self.difficulty,
-					self.follow_scene,
-					self.remaining_week,
+					self.level_data.stage_type.get_kernel(
+						self.level_data,
+						self.difficulty,
+						self.follow_scene,
+						self.remaining_week,
+					)
 				)
 
 	def destroy(self) -> None:
