@@ -240,11 +240,11 @@ class Boyfriend(Character):
 		self.add_animation("miss_up", "BF NOTE UP MISS", tags=(ANIMATION_TAG.MISS,))
 		self.add_animation("sing_right", "BF NOTE RIGHT0", tags=(ANIMATION_TAG.SING,))
 		self.add_animation("miss_right", "BF NOTE RIGHT MISS", tags=(ANIMATION_TAG.MISS,))
-		self.add_animation("scared", "BF idle shaking")
+		self.add_animation("scared", "BF idle shaking", loop=True)
 		self.add_animation("hey", "BF HEY!!", tags=(ANIMATION_TAG.SPECIAL,))
-		self.add_animation("game_over_ini", "BF dies", tags=(ANIMATION_TAG.GAME_OVER,))
-		self.add_animation("game_over_loop", "BF Dead Loop", tags=(ANIMATION_TAG.GAME_OVER,))
-		self.add_animation("game_over_end", "BF Dead confirm", tags=(ANIMATION_TAG.GAME_OVER,))
+		self.add_animation("game_over_ini", "BF dies")
+		self.add_animation("game_over_loop", "BF Dead Loop", loop=True)
+		self.add_animation("game_over_end", "BF Dead confirm")
 
 	def update(self, dt: float) -> None:
 		singing = self.animation.has_tag(ANIMATION_TAG.SING)
@@ -267,7 +267,8 @@ class Boyfriend(Character):
 			self.animation.play("idle", True, 10)
 
 		# Skip `Character.update` because it ruins everything
-		# Admittedly this also ruins everything but you can blame the original code for that.
+		# TODO: Maybe, juuust maybe class OpponentCharacter(Character) and move it out
+		# there good god
 		super(Character, self).update(dt)
 
 
@@ -382,12 +383,7 @@ class Pico(Character):
 
 # mother of christ this is disgusting but hey whatever. Thanks:
 # https://stackoverflow.com/questions/56980077/how-to-type-python-mixin-with-superclass-calls
-if t.TYPE_CHECKING:
-	_base = Character
-else:
-	_base = object
-
-class HairLoopMixin(_base):
+class HairLoopMixin(Character if t.TYPE_CHECKING else object):
 	def update(self, dt: float) -> None:
 		super().update(dt)
 		if (

@@ -51,5 +51,4 @@ class ANIMATION_TAG(IntEnum):
 	STATIC = 4
 	PRESSED = 5
 	CONFIRM = 6
-	GAME_OVER = 7
-	HAIR = 8
+	HAIR = 7
