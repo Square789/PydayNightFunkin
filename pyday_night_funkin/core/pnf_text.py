@@ -168,11 +168,11 @@ class PNFText(WorldObject):
 		self._font_size = font_size
 		self._color = color
 		self._autosize = width <= 0
-		self._width = width
+		self._width_constrain = width
 		self._multiline = multiline
 		self._align = align
 
-		self.content_width = 0
+		self._width = 0
 		"""
 		Pixels the label's contents take up. This may be lower than
 		the manually set width [TODO but never higher?].
@@ -215,7 +215,7 @@ class PNFText(WorldObject):
 			x_advance = 0
 			if self._align is not ALIGNMENT.LEFT:
 				x_advance = (
-					max(self._width - line.width, 0) /
+					max(self._width_constrain - line.width, 0) /
 					(2 if self._align is ALIGNMENT.CENTER else 1)
 				)
 			for glyph in line.glyphs:
@@ -293,7 +293,7 @@ class PNFText(WorldObject):
 			self.lines[0].glyphs[0].owner if self.lines and self.lines[0].glyphs
 			else load_font().get_glyphs("A")[0].owner
 		)
-		self.content_width = max(l.width for l in self.lines)
+		self._width = max(l.width for l in self.lines)
 
 	def set_context(self, parent_context: "SceneContext") -> None:
 		self._context = parent_context.inherit()

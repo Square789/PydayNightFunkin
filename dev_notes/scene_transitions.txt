@@ -1,0 +1,185 @@
+
+HaxeFlixel:
+ FlxG.switchState:
+  Calls the top state's switchTo; will then change in next update call if switchTo returns true.
+  TransitionableState reacts to this by denying and starting what basically is a tween with another
+  delayed FlxG.switchState call.
+  UPDATE:
+  Now uses a startOutro mechanism where FlxG passes in a ()->Void which creates the new state and
+  sets it.
+  TransitionableState now takes this callback and calls it once its out-transition tween ended (
+  or calls it immediatedly in case of no transition).
+  Will not be cloning this for PNF due to the creation of scene kernels.
+
+ FlxState.openSubState:
+  Unavoidably opens substate on next tryUpdate; Terminates complete existing chain of substates.
+ FlxState.closeSubState:
+  Unavoidably terminates substate on next tryUpdate
+
+ FlxState.close does not exist!
+ FlxSubState.close:
+  Directly calls parent state's closeSubState
+
+ Transitions are started by each FlxState automatically in `create` (and post-6.0 in `new`,
+ probably), unless some global skipping stuff is set. Note that SubStates never ever start
+ transitions: there is only FlxTransitionableState, not FlxTransitionableSubState.
+
+FNF:
+ PlayState.openSubState
+  Stops music/timers, then calls into FlxState.openSubState
+ PlayState.closeSubState:
+  Restarts music etc., then calls into FlxState.closeSubState
+
+ FlxTransitionableState.skipNextTransIn/Out are global and do what it sounds like.
+ Only ever set between songs when they are beat normally.
+ FlxTransitionableState.defaultTransIn/Out are set in TitleState, which is disgusting as that's
+ some kind of 2nd implicit layer of initialization.
+ all assignments to transIn/Out are completely useless as they happen in
+ FlxTransitionableState.create from the static globals set above already.
+
+PNF:
+ I do not make a typing distinction between top scenes and subscenes.
+ This is gonna require a slightly different approach.
+
+ Opening pause:
+  Pause music etc., then simply call push_scene
+   Scene stack then:        Game, Pause
+   WARN: It might end up as Game, Trans, Pause
+   Or rather? (would require insert_after or so; but definitely look better.)
+                            Game, Pause, Trans
+
+ close pause:
+  Stole HF's principle: `remove_scene` analogous to `close`; calls `on_subscene_removal` with
+  optional result parameters that are stomped through the scene stack.
+  Note that these result parameters are untyped/very loose.
+
+ In-transitions could be triggered by the scene controller if a scene has been pushed as a result
+ of set_scene/previous clearing of scene stack
+
+ self.game.push_scene(Transition.get_kernel(True))
+ self.game.push_scene(Transition)
+
+ self.game.push_scene(PauseScene)
+
+What if an out transition is started while the in-transition is running?
+In HaxeFlixel, the in-transition will simply be abruptly replaced by the out transition
+In PNF, the out-transition would start overlapping the in-transition; both would exist
+simultaneously.
+To accurately emulate behavior, maybe have scenes keep track of their transitions and stop the
+in one if the out one comes up.
+
+Definitely do not bother reimplementing all this TransitionData and TransitionEffect stuff.
+Problem: Transitions are pretty global as the HF coding scene seems to be really scared of passing
+stuff through constructors.
+
+So, now what?
+I guess scene initialization business falls into three categories:
+A: Kernel arguments. They are specified by subclasses and strictly meant to be locked in by a
+   subclass, effectively terminating their value at this point.
+   => layers, cameras, default_cam_zoom
+B: Parameter arguments. These may influence how a scene plays out
+   => layer_data, difficulty
+C: "Lmao just set it in __init__, it's only used afterwards"
+   => draw|update_passthrough, 
+
+?: skip_transition_in ???? Does not exist as of me writing, would fit into C at time of writing
+   due to start_transition_in being a separate post-__init__ call.
+
+Aarrghmm, the problem with default_cam_zoom is that it can definitely fit into both A and B
+(and... default_cam_zoom into C too, but no, i think that is most definitely a terrible idea).
+If misspecified, it will look weird but not error out; the layers/cameras would.
+Exact same with the anchors. Maybe reconsider stuff there.
+
+right, anyways. back to transitions. wanna be able to specify different ones.
+their goal really just is:
+  in-transition:  (more-or-less-)gradually obscure a scene to an image
+  out-transition: start with corresponding image and (more-or-less-)gradually reveal scene.
+
+heyhey lemme write down this funny:
+	def start_transition_out(kernel):
+		self.game.insert_scene_before(kernel)
+		# Will not have start_transition_in called as it is not the only scene!
+		s = MeltShader()
+		self.main_camera.shaders.append(s)
+		# or maybe just self.game.remove_scene(self) if you don't want the new scene to know
+		self.effects.tween(s, {"value": 0.0}, 0.8, on_complete=self.remove_scene())
+
+it may end up looking pretty damn awesome and (take that, HF, is really easily done due to
+absolutely no substate meddling required (takes big fat whiff o' copium))
+
+SceneObject                    ()
+|-Container                    ()
+| '-BaseScene                  (kernel) (layers, cameras)
+|   '-MusicBeatScene           () ()
+|   | |-InGameScene            (level_data, difficulty, follow_scene, remaining_week) (default_cam_zoom, *_anchor)
+|   | | '-BaseGameBaseScene    ()
+|   | |   '-Week2Scene         ()
+|   | |     '-Monster          ()
+|   | |-TitleScene
+|   | |-PauseScene
+|   | |-FreeplayScene
+|   | |-StoryMenuScene
+|   | '-GameOverScene
+|   |-TransitionScene
+|   '-TestScene
+'-WorldObject
+
+FNF'S TRANSITIONS:
+FlxTransitionableState.defaultTransIn = new TransitionData(
+	FADE,
+	FlxColor.BLACK,
+	1,
+	new FlxPoint(0, -1),
+	{asset: diamond, width: 32, height: 32},
+	new FlxRect(-200, -200, FlxG.width * 1.4, FlxG.height * 1.4)
+);
+FlxTransitionableState.defaultTransOut = new TransitionData(
+	FADE,
+	FlxColor.BLACK,
+	0.7,
+	new FlxPoint(0, 1),
+	{asset: diamond, width: 32, height: 32},
+	new FlxRect(-200, -200, FlxG.width * 1.4, FlxG.height * 1.4)
+);
+
+Transition in goes down/leaves towards bottom in 0.7 seconds:
+ -- makeSprite is called
+ locY = 0
+ angle = 270
+ creates a graphic x @ -200, -200. region.height * 2 px tall. full black.
+ creates a gradient from black to transparent upwards (270 deg) region.height px tall
+ copies the gradient into x at (0, locY)
+ sets x's wscale to region.width
+ --- start(OUT) is called
+  -- setTweenValues() is called
+  tweenStr = "y"
+  valStart = -x.height / 2
+  valEnd = FlxG.height
+ tween between those is then run pretty obviously.
+
+.....
+-----
++++++
+#####
+#####
+#####
+
+Transition out comes in from top in 1 second:
+ -- makeSprite is called
+ locY = region.height
+ angle = 90
+ creates a graphic x @ -200, -200; region.height * 2 px tall. full black.
+ creates a gradient from black to transparent downwards (90) deg region.height pixels tall
+ copies the gradient into x at (0, locY)
+ -- start(IN) is called
+  -- setTweenValues() is called
+   tweenStr = "y"
+   valStart = -x.height
+   valEnd = 0
+
+#####
+#####
+#####
++++++
+-----
+.....

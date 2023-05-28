@@ -97,6 +97,4 @@ class MainMenuScene(scenes.MusicBeatScene):
 		self.game.set_scene(scenes.FreeplayScene)
 
 	def _sel_options(self) -> None:
-		logger.info("No options yet")
-		self.game.set_scene(scenes.TitleScene)
-		# self.game.set_scene(scenes.SettingsScene)
+		self.game.set_scene(scenes.SettingsScene)

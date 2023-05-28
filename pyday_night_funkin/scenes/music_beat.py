@@ -19,15 +19,17 @@ class ConductorSyncMode(IntEnum):
 
 class MusicBeatScene(BaseScene):
 	"""
+	A core scene for pretty much all of FNF/PNFs menus and the game.
 	The music beat scene offers the two functions `on_beat_hit` and
 	`on_step_hit` that are called from `update` every time the scene's
-	conductor's beat/step respectively change.
+	conductor's beat/step respectively change, so stuff can happen in
+	tune to music.
 	Skipped beats and skipped steps will be accustomed, so multiple
 	successive calls in the same frame are possible.
 	"""
 
 	def __init__(self, kernel: SceneKernel) -> None:
-		super().__init__(kernel)
+		super().__init__(kernel.fill(transition=scenes.FNFTransitionScene))
 
 		self.conductor = Conductor()
 		self._conductor_sync_mode: t.Optional[ConductorSyncMode] = None
@@ -36,40 +38,9 @@ class MusicBeatScene(BaseScene):
 		self._stop_conductor_sync_on_eos: bool = False
 		self._reset_step_on_conductor_sync_eos: bool = True
 
-		self._out_transition_started: bool = False
-		self._out_transition_complete: bool = False
-		self._out_transition_next: t.Optional[SceneKernel] = None
-
 		self._last_step: int = -1
 		self.cur_step: int = -1
 		self.cur_beat: int = -1
-
-		# self.game.push_scene(scenes.TransitionScene.get_kernel(True))
-
-	def on_imminent_replacement(self, new_scene_kernel: SceneKernel) -> bool:
-		return True
-		if self._out_transition_complete:
-			return True
-
-		if not self._out_transition_started:
-			self.game.push_scene(
-				scenes.TransitionScene.get_kernel(False, self.on_out_transition_complete)
-			)
-			self._out_transition_next = (new_scene, args, kwargs)
-			self._out_transition_started = True
-		else:
-			logger.info("Running transition already, ignoring incoming replacement")
-
-		return False
-
-	def on_out_transition_complete(self) -> None:
-		self._out_transition_complete = True
-		if self._out_transition_next is None:
-			self.remove_scene()
-		else:
-			# Should call into `on_imminent_replacement`.
-			# If it doesn't, who knows! This scene system is chaos!
-			self.game.set_scene(self._out_transition_next)
 
 	def sync_conductor_from_player(
 		self,
@@ -88,7 +59,7 @@ class MusicBeatScene(BaseScene):
 		:param reset_step_on_eos: Whether to reset the scene's step
 		once the player exhausted its current source.
 		"""
-		self.stop_conductor_syncer()
+		self.stop_conductor_syncing()
 		self._conductor_sync_mode = ConductorSyncMode.PLAYER
 		self._conductor_sync_target = player
 		self._sync_conductor_when_paused = sync_when_paused
@@ -101,10 +72,10 @@ class MusicBeatScene(BaseScene):
 		Starts syncing the scene's conductor from the `update`
 		function's time delta.
 		"""
-		self.stop_conductor_syncer()
+		self.stop_conductor_syncing()
 		self._conductor_sync_mode = ConductorSyncMode.DT
 
-	def stop_conductor_syncer(self) -> None:
+	def stop_conductor_syncing(self) -> None:
 		"""
 		Stops syncing the scene's conductor. Does nothing if it wasn't
 		being synced in the first place.
@@ -127,7 +98,7 @@ class MusicBeatScene(BaseScene):
 			self._last_step = -1
 			self.cur_step = -1
 		if self._stop_conductor_sync_on_eos:
-			self.stop_conductor_syncer()
+			self.stop_conductor_syncing()
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
@@ -153,10 +124,6 @@ class MusicBeatScene(BaseScene):
 			self.on_step_hit()
 			self._last_step = tween_step
 
-	def destroy(self) -> None:
-		super().destroy()
-		self.stop_conductor_syncer()
-
 	def on_beat_hit(self) -> None:
 		"""
 		This function is called from `on_step_hit` each 4th step.
@@ -171,3 +138,7 @@ class MusicBeatScene(BaseScene):
 		"""
 		if self.cur_step % 4 == 0:
 			self.on_beat_hit()
+
+	def destroy(self) -> None:
+		super().destroy()
+		self.stop_conductor_syncing()

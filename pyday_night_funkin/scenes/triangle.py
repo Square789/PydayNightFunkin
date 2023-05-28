@@ -130,7 +130,7 @@ class Triangle(SceneObject):
 
 class TriangleScene(BaseScene):
 	def __init__(self, kernel: "SceneKernel") -> None:
-		super().__init__(kernel.fill(layers=OrderedLayer("main")))
+		super().__init__(kernel.fill(layers=(OrderedLayer("main"),)))
 
 		self.tri0 = Triangle(self.get_context("main"), 0, 0.7)
 		self.tri1 = Triangle(self.get_context("main"), -20, 60)

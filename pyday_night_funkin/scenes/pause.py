@@ -3,18 +3,21 @@ import typing as t
 
 from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.core.scene import BaseScene, SceneKernel
 from pyday_night_funkin.core.tween_effects.eases import in_out_quart
 from pyday_night_funkin.core.utils import to_rgba_tuple
 from pyday_night_funkin.enums import CONTROL
+from pyday_night_funkin import scenes
+
+if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.scene import SceneKernel
 
 
-class PauseScene(BaseScene):
+class PauseScene(scenes.MusicBeatScene):
 	"""
-	Cheap menu scene that destroys itself when button is pressed.
+	Cheap menu scene that destroys itself when a button is pressed.
 	"""
 
-	def __init__(self, kernel: SceneKernel) -> None:
+	def __init__(self, kernel: "SceneKernel") -> None:
 		super().__init__(kernel.fill(layers=("bg", "fg")))
 
 		self.background = self.create_object("bg")
@@ -28,6 +31,6 @@ class PauseScene(BaseScene):
 		super().update(dt)
 
 		if self.game.key_handler.just_pressed(CONTROL.ENTER):
-			self.remove_scene(False)
+			self.remove_scene(end_game=False, reset=False)
 		elif self.game.key_handler.just_pressed(CONTROL.BACK):
-			self.remove_scene(True)
+			self.remove_scene(end_game=True)

@@ -16,7 +16,12 @@ if t.TYPE_CHECKING:
 
 class TitleScene(scenes.MusicBeatScene):
 	def __init__(self, kernel: "SceneKernel") -> None:
-		super().__init__(kernel.fill(layers=("main", "title_text", "flash")))
+		super().__init__(kernel.fill(
+			layers = ("main", "title_text", "flash"),
+			# Checks out as in fnf only the title screen sets the default transitions, so it
+			# appears without one. Not that anyone would notice considering it's all full black
+			transition = (None, scenes.FNFTransitionScene),
+		))
 
 		self.gf = self.create_object("main", x=CNST.GAME_WIDTH * 0.4, y=CNST.GAME_HEIGHT * 0.07)
 		self.gf.frames = load_frames("preload/images/gfDanceTitle.xml")

@@ -133,3 +133,6 @@ pyday_night_funkin/**/*.html
 pyday_night_funkin/core/graphics/cygl/gl.pxd
 pyday_night_funkin/core/graphics/cygl/gl.pyx
 pyday_night_funkin/core/graphics/vertexbuffer.pxi
+
+# TODO: Gotta actually get used to this and toy around with it some more.
+pyproject.toml

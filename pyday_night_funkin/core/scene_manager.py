@@ -13,6 +13,11 @@ class SceneManager:
 		self._pending_scene_stack_additions: t.List[SceneKernel] = []
 
 	def _on_scene_stack_change(self) -> None:
+		"""
+		Recomputes `self._scenes_to_draw` and
+		`self._scenes_to_update`.
+		"""
+		# TODO: will not be reflected if a scene decides to randomly change this at runtime!
 		i = len(self._scene_stack) - 1
 		while i > 0 and self._scene_stack[i].draw_passthrough:
 			i -= 1
@@ -23,13 +28,13 @@ class SceneManager:
 			i -= 1
 		self._scenes_to_update = self._scene_stack[i:]
 
-	def _modify_scene_stack(self) -> float:
+	def _modify_scene_stack(self) -> None:
 		"""Applies outstanding modifications to the scene stack."""
 		# This stuff can't be done exactly when a scene demands it since
 		# then we would be looking at a mess of half-dead scenes still
 		# running their update code and erroring out.
 		if self._pending_scene_stack_removals:
-			for i, scene in enumerate(self._scene_stack[::-1]): # reverse shallow copy
+			for scene in self._scene_stack[::-1]: # reverse shallow copy
 				if scene not in self._pending_scene_stack_removals:
 					continue
 				self._scene_stack.remove(scene)
@@ -37,12 +42,16 @@ class SceneManager:
 			self._on_scene_stack_change()
 			self._pending_scene_stack_removals.clear()
 
-		if self._pending_scene_stack_additions:
-			# Iterate like this as scenes may push more scenes in their __init__
-			while self._pending_scene_stack_additions:
-				kernel = self._pending_scene_stack_additions.pop(0)
-				self._scene_stack.append(kernel.create_scene(self))
-			self._on_scene_stack_change()
+		full_wipe = len(self._scene_stack) == 0
+		# Iterate like this as scenes may push more scenes during initialization
+		while self._pending_scene_stack_additions:
+			kernel = self._pending_scene_stack_additions.pop(0)
+			self._scene_stack.append(kernel.create_scene(self))
+			if full_wipe and self._scene_stack:
+				full_wipe = False
+				self._scene_stack[0].start_transition_in()
+
+		self._on_scene_stack_change()
 
 	def _maybe_get_kernel(
 		self, scene_type_or_kernel: t.Union[t.Type[BaseScene], SceneKernel]
@@ -52,23 +61,28 @@ class SceneManager:
 		else:
 			return scene_type_or_kernel
 
-	def push_scene(self, type_or_kernel: t.Union[t.Type[BaseScene], SceneKernel]) -> None:
+	def push_scene(
+		self,
+		type_or_kernel: t.Union[t.Type[BaseScene], SceneKernel],
+		force: bool = False,
+	) -> None:
 		"""
 		Requests push of a new scene kernel onto the scene stack which
 		will then become the topmost scene.
-		Note that this method will not do its job if a scene has
-		already been pushed before in this update tick. Use
-		`push_scene_always` for that.
+		Note that by default this method will **not** do its job if a
+		scene has already been pushed before in this update tick. If
+		you want this to happen, set the `force` parameter to `True`.
 		"""
-		if not self._pending_scene_stack_additions:
-			self.push_scene_always(type_or_kernel)
+		if (not self._pending_scene_stack_additions) or force:
+			self._pending_scene_stack_additions.append(self._maybe_get_kernel(type_or_kernel))
 
-	def push_scene_always(self, type_or_kernel: t.Union[t.Type[BaseScene], SceneKernel]) -> None:
-		"""
-		Requests push of a new scene kernel onto the scene stack, which
-		will then become the topmost scene.
-		"""
-		self._pending_scene_stack_additions.append(self._maybe_get_kernel(type_or_kernel))
+	def insert_scene(
+		self,
+		type_or_kernel: t.Union[t.Type[BaseScene], SceneKernel],
+		where: t.Union[int, BaseScene],
+		before: bool,
+	) -> None:
+		pass
 
 	def set_scene(self, type_or_kernel: t.Union[t.Type[BaseScene], SceneKernel]) -> bool:
 		"""
@@ -85,14 +99,18 @@ class SceneManager:
 		if self._scene_stack and not self._scene_stack[0].on_imminent_replacement(kernel):
 			return False
 
-		for scene in self._scene_stack:
-			self._pending_scene_stack_removals.add(scene)
-		self._pending_scene_stack_additions.clear()
-
-		# self.push_scene_always(kernel)
-		self._pending_scene_stack_additions.append(kernel)
-
+		self.set_scene_force(kernel)
 		return True
+
+	def set_scene_force(self, type_or_kernel: t.Union[t.Type[BaseScene], SceneKernel]) -> None:
+		"""
+		Unavoidably clears all pending scene additions and arranges for
+		clearing of the scene stack as well as for the supplied scene
+		to be set as the only one.
+		"""
+		self._pending_scene_stack_removals.update(self._scene_stack)
+		self._pending_scene_stack_additions.clear()
+		self._pending_scene_stack_additions.append(self._maybe_get_kernel(type_or_kernel))
 
 	def remove_scene(self, scene: BaseScene) -> None:
 		"""

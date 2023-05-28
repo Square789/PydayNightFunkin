@@ -28,7 +28,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.superscene import SuperScene
 
 
-__version__ = "0.0.48"
+__version__ = "0.0.49"
 
 
 SOUND_GRANULARITY = 10
@@ -117,9 +117,10 @@ class Game(SceneManager):
 		self.use_debug_pane = debug_level > 1
 		self.debug_pane = None
 		self._debug_queue = None
+		self.dt_limit = 0.1
+
 		self._last_draw_time = 0.0
 		self._fps = _FPSData()
-		self._dt_limit = .2
 		self._superscenes: t.List["SuperScene"] = []
 
 		logger.remove(0)
@@ -159,6 +160,14 @@ class Game(SceneManager):
 
 		if ogg_decoder not in pyglet.media.codecs.get_decoders():
 			pyglet.media.codecs.add_decoders(ogg_decoder)
+
+		self.dimensions = (GAME_WIDTH, GAME_HEIGHT)
+		"""
+		The intended pixel size of the game and each of its scenes.
+		This does not reflect the true window dimensions or the
+		dimensions the scenes may be drawn in, but it will be the world
+		space seen in a scene with an unzoomed camera.
+		"""
 
 		self.window = PNFWindow(
 			width = GAME_WIDTH,
@@ -258,9 +267,9 @@ class Game(SceneManager):
 	def update(self, dt: float) -> None:
 		stime = perf_counter()
 
-		if dt > self._dt_limit:
-			logger.warning(f"dt exceeding limit ({dt:.4f} > {self._dt_limit:.4f}), capping.")
-			dt = self._dt_limit
+		if dt > self.dt_limit:
+			# logger.warning(f"dt exceeding limit ({dt:.4f} > {self.dt_limit:.4f}), capping.")
+			dt = self.dt_limit
 
 		for scene in self._scenes_to_update:
 			scene.update(dt)
@@ -277,16 +286,14 @@ class Game(SceneManager):
 
 		self.key_handler.post_update()
 		self.raw_key_handler.post_update()
-		last_update_time = (perf_counter() - stime) * 1000.0
 
+		if self.debug:
+			self._fps.bump(self._last_draw_time, (perf_counter() - stime) * 1000.0)
 		# NOTE: This causes a lie; the debug pane update is not taken into account.
 		# You can't really be perfect there, but it does suck since i'm pretty sure
 		# laying that label out takes significant time. Oh well!
 		if self.use_debug_pane:
-			self._fps.bump(self._last_draw_time, last_update_time)
 			self.debug_pane.update(self._fps.build_debug_string())
-		elif self.debug:
-			self._fps.bump(self._last_draw_time, last_update_time)
 
 	def draw(self) -> None:
 		stime = perf_counter()

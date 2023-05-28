@@ -44,7 +44,7 @@ class GameOverScene(scenes.MusicBeatScene):
 
 		if self.game.key_handler.just_pressed(CONTROL.BACK) and not self.is_ending:
 			self.game.player.stop()
-			self.remove_scene(True)
+			self.remove_scene(end_game=True)
 
 		if (
 			not self._camera_locked_on and
@@ -73,6 +73,6 @@ class GameOverScene(scenes.MusicBeatScene):
 			# Assumes the above scene is an InGame scene, so its
 			# remove_subscene method will take `end_self`, `reset` as args.
 			self.game.player.stop()
-			self.remove_scene(False, True)
+			self.remove_scene(end_game=False, reset=True)
 
 		self.clock.schedule_once(f, 2.7)

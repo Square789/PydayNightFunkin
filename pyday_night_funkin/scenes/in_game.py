@@ -8,7 +8,7 @@ from pyglet.math import Vec2
 
 from pyday_night_funkin.base_game_pack import SongResourceOptions, load_song
 from pyday_night_funkin.character import Character, CharacterData
-from pyday_night_funkin.core.scene import BaseScene, SceneKernel
+from pyday_night_funkin.core.scene import BaseScene, SceneKernel, BaseSceneArgDict
 from pyday_night_funkin.core.utils import lerp
 from pyday_night_funkin.enums import ANIMATION_TAG, CONTROL, DIFFICULTY
 from pyday_night_funkin.hud import HUD
@@ -57,36 +57,28 @@ class GameState(IntEnum):
 	ENDED = 3
 
 
+class InGameSceneArgDict(BaseSceneArgDict, total=False):
+	default_cam_zoom: t.Optional[float]
+	player_anchor: t.Optional[CharacterAnchor]
+	girlfriend_anchor: t.Optional[CharacterAnchor]
+	opponent_anchor: t.Optional[CharacterAnchor]
+
+
 class InGameSceneKernel(SceneKernel):
 	def __init__(self, scene_type: t.Type["InGameScene"], *args, **kwargs) -> None:
 		super().__init__(scene_type, *args, **kwargs)
 
-		self.default_cam_zoom = None
-		self.player_anchor = None
-		self.girlfriend_anchor = None
-		self.opponent_anchor = None
+		self.default_cam_zoom: t.Optional[float] = None
+		self.player_anchor: t.Optional[CharacterAnchor] = None
+		self.girlfriend_anchor: t.Optional[CharacterAnchor] = None
+		self.opponent_anchor: t.Optional[CharacterAnchor] = None
 
-	def fill(
-		self,
-		*,
-		default_cam_zoom: t.Optional[float] = None,
-		player_anchor: t.Optional[CharacterAnchor] = None,
-		girlfriend_anchor: t.Optional[CharacterAnchor] = None,
-		opponent_anchor: t.Optional[CharacterAnchor] = None,
-		**kwargs,
-	):
-		if self.default_cam_zoom is None:
-			self.default_cam_zoom = default_cam_zoom
-		if self.player_anchor is None:
-			self.player_anchor = player_anchor
-		if self.girlfriend_anchor is None:
-			self.girlfriend_anchor = girlfriend_anchor
-		if self.opponent_anchor is None:
-			self.opponent_anchor = opponent_anchor
+		self.register_kernel_params(
+			"default_cam_zoom", "player_anchor", "girlfriend_anchor", "opponent_anchor"
+		)
 
-		super().fill(**kwargs)
-
-		return self
+	def fill(self, arg_dict: t.Optional[InGameSceneArgDict] = None, **kwargs):
+		return super().fill(arg_dict, **kwargs)
 
 	def create_scene(self, game: "Game") -> "InGameScene":
 		scene = super().create_scene(game) # type: InGameScene
@@ -97,7 +89,7 @@ class InGameSceneKernel(SceneKernel):
 
 class InGameScene(scenes.MusicBeatScene):
 	"""
-	Main PNF game driver scene.
+	The main PNF ingame driver scene.
 	Meant to be a jumble of sprites, players, handlers etc. running the
 	entire game.
 	Note that this base class only provides a small shred of
@@ -113,23 +105,7 @@ class InGameScene(scenes.MusicBeatScene):
 		follow_scene: t.Type["BaseScene"],
 		remaining_week: t.Optional[t.Sequence["LevelData"]] = None,
 	) -> None:
-		"""
-		Initializes the InGame scene.
-
-		:param kernel: The InGameSceneKernel to initialize the scene
-		from.
-		:param level_data: The level to be loaded. Heavily influences
-		how the scene will play out.
-		:param difficulty: Difficulty the scene plays in.
-		:param follow_scene: Which scene type to push once the scene
-		is over and `remaining_week` is exhausted or when the game is
-		stopped otherwise by the user.
-		:param remaining_week: A sequence of more `LevelData` to be
-		turned into scenes that follow if the user wins this level.
-		This runs the story mode and is additionally used to determine
-		whether the story mode should be considered active at all.
-		Freeplay/non-story mode is assumed when it's `None`.
-		"""
+		"""Initializes the InGame scene."""
 
 		super().__init__(
 			kernel.fill(
@@ -150,12 +126,14 @@ class InGameScene(scenes.MusicBeatScene):
 		self.player_anchor = kernel.player_anchor
 		self.girlfriend_anchor = kernel.girlfriend_anchor
 		self.opponent_anchor = kernel.opponent_anchor
-		if any(a is None for a in (
-			self.player_anchor, self.girlfriend_anchor, self.opponent_anchor
-		)):
-			logger.warning("A character anchor is None, expect an error!")
 
 		self.draw_passthrough = False
+
+		self.allow_pausing = True
+		"""
+		Whether the InGameScene should open a pause menu if the
+		user hits the pause key.
+		"""
 
 		self.state = GameState.LOADING
 
@@ -185,7 +163,9 @@ class InGameScene(scenes.MusicBeatScene):
 		if self.game.player.playing:
 			self.game.player.pause()
 
-		self.boyfriend = self.create_character(self.player_anchor, level_data.player_character)
+		self.boyfriend = self.create_character(
+			self.player_anchor, level_data.player_character
+		)
 		if (gf_char_id := level_data.girlfriend_character) is None:
 			# HACK: Feeding `CharacterData()` here is probably a gross violation of something
 			self.girlfriend = self.create_object(
@@ -193,7 +173,9 @@ class InGameScene(scenes.MusicBeatScene):
 			)
 		else:
 			self.girlfriend = self.create_character(self.girlfriend_anchor, gf_char_id)
-		self.opponent = self.create_character(self.opponent_anchor, level_data.opponent_character)
+		self.opponent = self.create_character(
+			self.opponent_anchor, level_data.opponent_character
+		)
 
 		self.main_cam = self.cameras["main"]
 		self.hud_cam = self.cameras["hud"]
@@ -212,6 +194,22 @@ class InGameScene(scenes.MusicBeatScene):
 		follow_scene: t.Type["BaseScene"],
 		remaining_week: t.Optional[t.Sequence["LevelData"]] = None,
 	) -> InGameSceneKernel:
+		"""
+		Creates a kernel suitable to pass to an InGameScene (or
+		subclass thereof) when it's time to actually create it.
+
+		:param level_data: The level to be loaded. Heavily influences
+		how the scene will play out.
+		:param difficulty: Difficulty the scene plays in.
+		:param follow_scene: Which scene type to push once the scene
+		is over and `remaining_week` is exhausted or when the game is
+		stopped otherwise by the user.
+		:param remaining_week: A sequence of more `LevelData` to be
+		turned into scenes that follow if the user wins this level.
+		This runs the story mode and is additionally used to determine
+		whether the story mode should be considered active at all.
+		Freeplay/non-story mode is assumed when it's `None`.
+		"""
 		return InGameSceneKernel(cls, level_data, difficulty, follow_scene, remaining_week)
 
 	def create_note_handler(self) -> "AbstractNoteHandler":
@@ -482,10 +480,12 @@ class InGameScene(scenes.MusicBeatScene):
 	def on_pause(self) -> None:
 		"""
 		Called when user requested to open the pause menu.
-		Stops the song players and opens the pause menu.
+		Stops the song players and opens the pause menu, as long as
+		it's allowed per `allow_pausing`.
 		"""
-		self.pause_players()
-		self.game.push_scene(scenes.PauseScene)
+		if self.allow_pausing:
+			self.pause_players()
+			self.game.push_scene(scenes.PauseScene)
 
 	def on_song_end(self) -> None:
 		"""
@@ -525,6 +525,11 @@ class InGameScene(scenes.MusicBeatScene):
 			self.remove(game_over_bf, keep=True)
 
 		game_over_bf.position = tuple(self.boyfriend.get_screen_position(self.main_cam))
+
+		# Do not transition out anymore once the gameover scene has been opened cause the
+		# glimpse of a bf-less dead stage is weird
+		self.skip_transition_out = True
+
 		self.game.push_scene(scenes.GameOverScene.get_kernel(game_over_bf))
 
 	def countdown(self, dt: float) -> None:
@@ -540,27 +545,30 @@ class InGameScene(scenes.MusicBeatScene):
 			self.hud.countdown_popup(self._countdown_stage)
 			self._countdown_stage += 1
 
-	def on_subscene_removal(self, subscene, end_self=None, reset=False) -> None:
+	def on_subscene_removal(self, subscene, end_game=None, reset=False, *_, **__) -> None:
 		super().on_subscene_removal(subscene)
-		if end_self is None:
+		if end_game is None:
 			return
 
-		if end_self:
+		if end_game:
+			self.state = GameState.ENDED
+			self.allow_pausing = False
+			# It's possible to end the game while countdown is running, which will start the game
+			# again during the out transition. Inhibit that here.
+			self.clock.unschedule(self.countdown)
 			self.game.set_scene(self.follow_scene)
 		else:
-			if not reset:
+			if reset:
+				self.allow_pausing = False
+				self.game.set_scene(
+					self.get_kernel(
+						self.level_data, self.difficulty, self.follow_scene, self.remaining_week
+					)
+				)
+			else:
 				if self.state is GameState.PLAYING:
 					self.play_players()
 					self.resync()
-			else:
-				self.game.set_scene(
-					self.level_data.stage_type.get_kernel(
-						self.level_data,
-						self.difficulty,
-						self.follow_scene,
-						self.remaining_week,
-					)
-				)
 
 	def destroy(self) -> None:
 		super().destroy()

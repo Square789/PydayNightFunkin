@@ -152,7 +152,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			width = 500,
 		)
 		self.week_title_txt = self.create_object(
-			"bg",
+			"fg",
 			object_class = PNFText,
 			x = CNST.GAME_WIDTH * 0.7,
 			y = 10,
@@ -186,7 +186,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			header.target_y = i - index
 
 		self.week_title_txt.text = self._weeks[index].display_name
-		self.week_title_txt.x = CNST.GAME_WIDTH - (self.week_title_txt.content_width + 10)
+		self.week_title_txt.x = CNST.GAME_WIDTH - (self.week_title_txt.width + 10)
 
 		self.tracklist_txt.text = "TRACKS\n\n" + "\n".join(
 			level.display_name.upper() for level in self._weeks[index].levels
