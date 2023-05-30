@@ -33,10 +33,9 @@
    - There have been experiments, but those will definitely remain experiments for the foreseeable
      future.
  - This is a **complete hobby project** that's still in development and rapidly breaks stuff.
- - **Still lacks many many features** such as: Save data, asset cache clearing, scene transitions,
-   a loading screen, options, a chart editor, any kind of comprehensive modding frontend, an
-   accuracy system and tightly timed input detection that doesn't risk lagging behind by up to
-   16ms.
+ - **Still lacks many many things** such as: Save data, asset cache clearing, a loading screen,
+   options, a chart editor, any kind of comprehensive modding frontend, an accuracy system and
+   tightly timed input detection that doesn't risk lagging behind by up to 16ms.
 
 ## Boring! Show me a video!
  Soon™
