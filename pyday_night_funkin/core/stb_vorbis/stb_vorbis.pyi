@@ -1,3 +1,4 @@
+
 class STBVorbisException(RuntimeError):
 	pass
 
@@ -6,6 +7,9 @@ def _get_error_string(err: int) -> str:
 
 
 class STBVorbis:
+	def __init__(self, file_name: str) -> None:
+		...
+
 	@property
 	def channel_amount(self) -> float:
 		"""
@@ -26,7 +30,7 @@ class STBVorbis:
 
 	def get_sample_offset(self) -> int:
 		"""
-		Returns the sample offset or -1 if it somehow invalid.
+		Returns the sample offset or -1 if it is somehow invalid.
 		"""
 
 	def get_samples_short_interleaved(self, num_samples: int) -> tuple[int, bytes]:

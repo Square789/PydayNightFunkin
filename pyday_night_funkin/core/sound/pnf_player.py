@@ -12,7 +12,7 @@ import typing as t
 from pyglet import clock
 from pyglet.event import EventDispatcher
 from pyglet.media import get_audio_driver
-from pyglet.media.codecs.base import Source, SourceGroup
+from pyglet.media.codecs.base import Source
 from pyglet.media.player import PlaybackTimer
 
 from pyday_night_funkin.core.utils import clamp
@@ -278,8 +278,8 @@ class PNFPlayer(EventDispatcher):
 		ap.set_cone_outer_gain(self._cone_outer_gain)
 
 	@property
-	def source(self) -> t.Union[Source, SourceGroup, None]:
-		"""Returns the current `Source`, `SourceGroup` or `None`."""
+	def source(self) -> t.Union[Source, None]:
+		"""Returns the current `Source` or `None`."""
 		return self._source
 
 	@property
