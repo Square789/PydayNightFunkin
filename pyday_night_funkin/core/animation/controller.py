@@ -119,7 +119,7 @@ class AnimationController:
 		tags: t.Sequence[t.Hashable] = (),
 	) -> None:
 		"""
-		Finds all the sprite's frames whose names sharing the prefix
+		Finds all the sprite's frames whose names share the prefix
 		`prefix` and then adds an animation composed from the frame
 		indices as they're found in the frame names. See
 		`add_by_prefix` for prefix oddities.
@@ -196,5 +196,20 @@ class AnimationController:
 		self._on_new_frame()
 
 	def stop(self) -> None:
+		"""
+		Immediatedly stops the current animation; none will be playing
+		afterwards.
+		"""
 		if self.current is not None:
+			self._detach_animation()
+
+	def finish(self) -> None:
+		"""
+		Immediatedly finishes the current animation, advancing it to
+		its last frame, then stops it.
+		Whether it's looped or not does not have any effect.
+		"""
+		if self.current is not None:
+			if self.current.finish():
+				self._on_new_frame()
 			self._detach_animation()

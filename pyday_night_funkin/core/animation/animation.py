@@ -49,6 +49,20 @@ class Animation:
 		"""
 		self.playing = False
 
+	def finish(self) -> bool:
+		"""
+		Stops the animation via `stop`, then sets it to display its
+		last frame.
+		Returns whether the frame changed.
+		"""
+		self.stop()
+		if self._cur_index_index == (last := len(self._frame_indices) - 1):
+			return False
+
+		self._cur_index_index = last
+		self.cur_index = self._frame_indices[last]
+		return True
+
 	def play(self, force: bool, frame: int) -> None:
 		"""
 		Plays this animation. starting from the given frame.
