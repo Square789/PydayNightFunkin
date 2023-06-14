@@ -123,6 +123,7 @@ class SimpleCamera:
 		self._follow_lerp = 1.0
 
 		self.ubo = self._shader_container.get_camera_ubo()
+		self._ubo_needs_update = False
 		self._update_ubo()
 
 	def _update_ubo(self) -> None:
@@ -136,6 +137,10 @@ class SimpleCamera:
 		if self._follow_target is not None:
 			self._update_follow_target(dt)
 
+		if self._ubo_needs_update:
+			self._update_ubo()
+			self._ubo_needs_update = False
+
 	def look_at(self, where: Vec2) -> None:
 		"""
 		Immediatedly sets the camera's target position to look at the
@@ -145,7 +150,7 @@ class SimpleCamera:
 		# forgetting something.
 		self._x = where[0] - (self._width / 2)
 		self._y = where[1] - (self._height / 2)
-		self._update_ubo()
+		self._ubo_needs_update = True
 
 	def set_follow_target(self, tgt: t.Optional[Vec2], lerp: float = 1.0):
 		self._follow_target = tgt
@@ -163,7 +168,7 @@ class SimpleCamera:
 
 		self._x += (tgt_x - self._x) * self._follow_lerp
 		self._y += (tgt_y - self._y) * self._follow_lerp
-		self._update_ubo()
+		self._ubo_needs_update = True
 
 	@property
 	def x(self) -> int:
@@ -172,7 +177,7 @@ class SimpleCamera:
 	@x.setter
 	def x(self, new_x: int) -> None:
 		self._x = new_x
-		self._update_ubo()
+		self._ubo_needs_update = True
 
 	@property
 	def y(self) -> int:
@@ -181,7 +186,7 @@ class SimpleCamera:
 	@y.setter
 	def y(self, new_y: int) -> None:
 		self._y = new_y
-		self._update_ubo()
+		self._ubo_needs_update = True
 
 	@property
 	def zoom(self) -> float:
@@ -190,7 +195,7 @@ class SimpleCamera:
 	@zoom.setter
 	def zoom(self, new_zoom: float) -> None:
 		self._zoom = new_zoom
-		self._update_ubo()
+		self._ubo_needs_update = True
 
 	def delete(self) -> None:
 		pass
@@ -319,7 +324,7 @@ class Camera(SimpleCamera):
 		gl.glVertexArrayAttribBinding(self.quad_vao, 1, 1)
 		gl.glVertexArrayAttribBinding(self.quad_vao, 2, 2)
 
-		self._update_vbo()
+		self._init_vbo()
 
 	def draw_framebuffer(self) -> None:
 		"""
@@ -336,7 +341,7 @@ class Camera(SimpleCamera):
 		gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 		gl.glBindVertexArray(0)
 
-	def _update_vbo(self) -> None:
+	def _init_vbo(self) -> None:
 		x1 = self._screen_x
 		y1 = self._screen_y + self._height
 		x2 = self._screen_x + self._width
