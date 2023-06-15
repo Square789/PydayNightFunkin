@@ -1,8 +1,9 @@
 
-from collections import namedtuple
 from dataclasses import dataclass
 import re
 import typing as t
+
+from pyglet.math import Vec2
 
 from pyday_night_funkin.core.asset_system import load_text
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
@@ -175,15 +176,38 @@ class Character(PNFSprite):
 			not self.dont_idle
 		):
 			self.hold_timer = 0.0
-			self.dance()
+			self.dance(True)
 
-	def dance(self) -> None:
+	def get_focus_point(self) -> Vec2:
+		"""
+		Returns an absolute coordinate a camera should be trained on
+		to focus on this character.
+		By default, returns `self.get_midpoint() + Vec2(150, -100)`.
+		"""
+		return self.get_midpoint() + Vec2(150.0, -100.0)
+
+	def should_dance(self) -> bool:
+		"""
+		Determines whether the character should "dance", that is, play
+		their idle animation.
+		By default, returns `False` if the character's current
+		animation is tagged `AnimationTag.SING` or `MISS`.
+		"""
+		return not (
+			self.animation.has_tag(ANIMATION_TAG.SING) or
+			self.animation.has_tag(ANIMATION_TAG.MISS)
+		)
+
+	def dance(self, force: bool = False) -> None:
 		"""
 		Makes the character play their idle animation.
+		Unless `force` is set to `True`, this function calls into
+		`should_dance` and will not do anything if it returns `False`.
 		Subclassable for characters that alternate between dancing
 		poses, by default just plays an animation called `idle`.
 		"""
-		self.animation.play("idle")
+		if force or self.should_dance():
+			self.animation.play("idle")
 
 	def load_offsets(self, remapper: t.Optional[t.Dict[str, str]] = None) -> None:
 		"""
@@ -267,30 +291,10 @@ class FlipIdleCharacter(Character):
 
 	_dance_right = False
 
-	def dance(self) -> None:
-		self._dance_right = not self._dance_right
-		self.animation.play("idle_right" if self._dance_right else "idle_left")
-
-
-class CharacterRegistry(Registry[CharacterData]):
-	"""
-	Registry subclass tailored to characters; with some convenience
-	to construct them directly.
-	"""
-
-	def create_immediate(
-		self,
-		layer: str,
-		cameras: t.Union[str, t.Iterable[str]],
-		id_: t.Hashable,
-		scene: "BaseScene",
-		*args,
-		**kwargs,
-	) -> Character:
-		data = self.get(id_)
-		char = scene.create_object(layer, cameras, data.type, scene, data, *args, **kwargs)
-		return char
-
+	def dance(self, force: bool = False) -> None:
+		if force or self.should_dance():
+			self._dance_right = not self._dance_right
+			self.animation.play("idle_right" if self._dance_right else "idle_left")
 
 # TODO: May be expanded into data-driven character setup by adding SimpleCharacterSetupData
 # to the registry as an optional entry and populating from it accordingly, but i'll only care

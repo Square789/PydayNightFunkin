@@ -11,7 +11,9 @@ from pyday_night_funkin.core.asset_system import load_image
 from pyday_night_funkin.core.scene import OrderedLayer
 from pyday_night_funkin.note_handler import AbstractNoteHandler, NoteHandler
 from pyday_night_funkin.hud import HUD
-from pyday_night_funkin.scenes.in_game import CharacterAnchor, InGameScene, InGameSceneKernel
+from pyday_night_funkin.scenes.in_game import (
+	Anchor, AnchorAlignment as Al, InGameScene, InGameSceneKernel
+)
 
 
 class BaseGameBaseStage(InGameScene):
@@ -28,9 +30,12 @@ class BaseGameBaseStage(InGameScene):
 					OrderedLayer("ui_combo"), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
 				),
 				default_cam_zoom = 0.9,
-				player_anchor = CharacterAnchor(Vec2(770, 450), None, "stage"),
-				girlfriend_anchor = CharacterAnchor(Vec2(400, 130), None, "girlfriend"),
-				opponent_anchor=CharacterAnchor(Vec2(100, 100), None, "stage"),
+				# Was (770, 450), bf's height added
+				player_anchor = Anchor(Vec2(770, 885), Al.BOTTOM_LEFT, "stage"),
+				# Was (400, 130), gf's height added
+				girlfriend_anchor = Anchor(Vec2(400, 787), Al.BOTTOM_LEFT, "girlfriend"),
+				# Was (100, 100), dad's dimensions added
+				opponent_anchor = Anchor(Vec2(570, 835), Al.BOTTOM_RIGHT, "stage"),
 			),
 			*args,
 			**kwargs,

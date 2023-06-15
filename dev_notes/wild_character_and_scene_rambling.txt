@@ -6,9 +6,9 @@ Characters can:
 Stages can:
  modify the opponent's, gf's and player's position,
  depending on what the damn player/gf/etc is. This effectively places character knowledge in
- the stages themselves, so might as well strip the character self-positioning entirely.
+ the stages themselves, so will need to make some kind of compromise/decoupling there.
 
-Althoooough, how about?
+How about?
 Each stage has anchor points, say, the lower left corner of a character.
 Characters then have to supply an offset to that anchor point which is their business since
 you know, it's their spritesheet, and can thus get a controlled position across all stages?
@@ -27,32 +27,102 @@ It would still be useful if characters could supply something like (RELATIVE, (1
 focus point during gameplay, which is something that will have to be modifiable for sure.
 (see senpai)
 
-                      bf          gf           opp              inicam
-tutorial           770,450    <400,130>      400,130    100,100+opp_mid+[600,0]*
-bopeebo            770,450     400,130       100,100    100,100+opp_mid+400,0
-fresh              770,450     400,130       100,100    100,100+opp_mid+400,0
-dadbattle          770,450     400,130       100,100    100,100+opp_mid+400,0
-spookeez           770,450     400,130       300,100    100,100+opp_mid
-south              770,450     400,130       300,100    100,100+opp_mid
-monster            770,450     400,130       200,100    100,100+opp_mid
-pico               770,450     400,130       100,400    100,100+opp_mid+600,0
-philly             770,450     400,130       100,400    100,100+opp_mid+600,0
-blammed            770,450     400,130       100,400    100,100+opp_mid+600,0
-satin-panties      510,230     400,130       100,400    100,100+opp_mid
-high               510,230     400,130       100,400    100,100+opp_mid
-milf               510,230     400,130       100,400    100,100+opp_mid
-cocoa              970,450     400,130      -400,400    100,100+opp_mid
-eggnog             970,450     400,130      -400,400    100,100+opp_mid
-winter-horrorland 1090,450     400,130       100,150    100,100+opp_mid
-senpai             970,670     580,430       250,510    250,510+opp_mid+300,0
-roses              970,670     580,430       250,510    250,510+opp_mid+300,0
-thorns             970,670     580,430       -50,200    -50,200+opp_mid+300,0
-ugh                810,450     370,140       200,160    100,100+opp_mid
-guns               810,450     370,140       200,160    100,100+opp_mid
-stress             810,450     200,65        200,160    100,100+opp_mid
+
+vvv HAHA THANKS nevermind about opp_cam in week4; the base game compares "mom" vvv
+vvv and not "mom-car", the former being absolutely unused :melting_face:       vvv
+                      bf        gf         opp      ini_cam     bf_cam     opp_cam def_zoom
+tutorial           770,450   <400,130>   400,130^  [600,0]*^  -100,-100   150,-100   .9
+bopeebo            770,450    400,130    100,100    400,0^    -100,-100   150,-100   .9
+fresh              770,450    400,130    100,100    400,0^    -100,-100   150,-100   .9
+dadbattle          770,450    400,130    100,100    400,0^    -100,-100   150,-100   .9
+spookeez           770,450    400,130    300,100^             -100,-100   150,-100   .9
+south              770,450    400,130    300,100^             -100,-100   150,-100   .9
+monster            770,450    400,130    200,100^             -100,-100   150,-100   .9
+pico               770,450    400,130    100,400^   600,0^    -100,-100   150,-100   .9
+philly             770,450    400,130    100,400^   600,0^    -100,-100   150,-100   .9
+blammed            770,450    400,130    100,400^   600,0^    -100,-100   150,-100   .9
+satin-panties     1030,230'   400,130    100,100              -400,-100'  150,-100   .9
+high              1030,230'   400,130    100,100              -400,-100'  150,-100   .9
+milf              1030,230'   400,130    100,100              -400,-100'  150,-100   .9
+cocoa              970,450'   400,130   -400,400^             -100,-300'  150,-100   .8!
+eggnog             970,450'   400,130   -400,400^             -100,-300'  150,-100   .8!
+winter-horrorland 1090,450'   400,130    100,150'             -400,-100   150,-100  1.05!
+senpai             970,670'   580,430'   250,510^  300,0$^    -300,-300'  -430,100^ 1.05!
+roses              970,670'   580,430'   250,510^  300,0$^    -300,-300'  -430,100^ 1.05!
+thorns             970,670'   580,430'   -50,200^  300,0$^    -300,-300'  -430,100^ 1.05!
+ugh                810,450'   370,140'   20,340^'             -100,-100   150,-100   .9
+guns               810,450'   370,140'   20,340^'             -100,-100   150,-100   .9
+stress             810,450'   150,-135^' 20,340^'             -100,-100   150,-100   .9
+
+all values in "ini_cam" add the opponent's graphical midpoint without the opponent's actual world
+position + (100, 100), unless the cell is marked with `$`. In that case it's "opp" instead of
+(100, 100).
+all values in "opp_cam" add the opponent's regular midpoint.
+all values in "bf_cam" add bf's regular midpoint.
+"regular midpoint" just means width/2, height/2. "graphical midpoint" means the same, except
+width and height are those of the currently displayed frame's.
 
 *only if story mode, for some reason
+^Change made depending on the character in this song
+'Change made depending on the stage string of this song
+!Change made depending on the song's name
+$See remark on "opp_cam" above.
 
+Treating 100,100 as some default coordinate that stages then build around and characters
+position themselves around with a disgusting hardcode-relation between songs/stages is idiotic.
+The default camera coordinate should be stage-based.
+The default character coordinates should also be.
+fnf's standard formula is: opponent left. bf right. gf somewhere inbetween.
+This means, bf's+gf's anchors would be fitting to always be lower left, and the opponent's to be
+lower right. This way, even when swapping out characters, the distance between them remains.
+
+initial sizes:
+ bf:       439, 435
+ gf:       703, 657
+ dad:      470, 735
+ snp:      564, 531
+ monster:  381, 691
+ pico:     736, 392
+ bf_car:   375, 362
+ gf_car:   774, 649
+ mom:      459, 613
+ 
+...
+_ANCHOR_MUL_MAP = {
+	AnchorKind.BOTTOM_LEFT = (0, -1)
+	AnchorKind.BOTTOM_RIGHT = (-1, -1)
+	AnchorKind.TOP_LEFT = (0, 0)
+	AnchorKind.TOP_RIGHT = (-1, 0)
+}
+
+PositioningStrategy: t.Callable[[LevelData, PlayerAnchor], Vec2]
+
+class InGameScene:
+	def create_player(self, char_data: CharacterData) -> Character:
+		pos = self.player_anchor.position
+		# Can't actually use match cause i'm still clinging to py3.8, but you know
+		match char_data.positioning:
+			# It would make sense to have the positioning be
+			# the width and height of the character
+			case [RELATIVE, Vec2 as player_pos]:
+				pos = pos + player_pos * _ANCHOR_MUL_MAP[self.player_anchor.kind]
+			case [ABSOLUTE, Vec2 as player_pos]:
+				pos = player_pos
+			case [FUNCTION, f]:
+				pos = f(self.level_data, self.player_anchor)
+			case _:
+				raise RuntimeError("Bad")
+...
+
+class FocusStrategy(IntEnum):
+ RELATIVE = 0
+ ABSOLUTE = 1
+class AnchorKind(IntEnum):
+ BOTTOM_LEFT, BOTTOM_RIGHT, TOP_LEFT, TOP_RIGHT
+class CharacterAnchor:
+ position: Vec2
+ kind: AnchorKind
+  
 // === //
 
 how would you like to integrate characters?
@@ -186,15 +256,6 @@ InGameScene:
  get_default_cam_zoom -> float
  [new] default_cam_zoom -> float
 
- class FocusStrategy(IntEnum):
-  RELATIVE = 0
-  ABSOLUTE = 1
- class AnchorKind(IntEnum):
-  BOTTOM_LEFT, BOTTOM_RIGHT, TOP_LEFT, TOP_RIGHT
- class CharacterAnchor:
-  position: Vec2
-  kind: AnchorKind
-  
  [new] initial_camera_focus: t.Optional[Tuple[FocusStrategy], Vec2]
  [new] player_anchor/opponent_anchor/gf_anchor: CharacterAnchor
 
@@ -218,34 +279,6 @@ InGameScene:
  create_player
  create_girlfriend
  create_opponent
- 
-...
-_ANCHOR_MUL_MAP = {
-	AnchorKind.BOTTOM_LEFT = (0, -1)
-	AnchorKind.BOTTOM_RIGHT = (-1, -1)
-	AnchorKind.TOP_LEFT = (0, 0)
-	AnchorKind.TOP_RIGHT = (-1, 0)
-}
-
-PositioningStrategy: t.Callable[[LevelData, PlayerAnchor], Vec2]
-
-class InGameScene:
-	def create_player(self, char_data: CharacterData) -> Character:
-		pos = self.player_anchor.position
-		# Can't actually use match cause i'm still clinging to py3.8, but you know
-		match char_data.positioning:
-			# It would make sense to have the positioning be
-			# the width and height of the character
-			case [RELATIVE, Vec2 as player_pos]:
-				pos = pos + player_pos * _ANCHOR_MUL_MAP[self.player_anchor.kind]
-			case [ABSOLUTE, Vec2 as player_pos]:
-				pos = player_pos
-			case [FUNCTION, f]:
-				pos = f(self.level_data, self.player_anchor)
-			case _:
-				raise RuntimeError("Bad")
-...
-
 
 Scene kernels!
 They could hold data relating to scenes without actually being one.

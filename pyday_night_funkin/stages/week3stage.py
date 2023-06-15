@@ -8,7 +8,7 @@ from pyday_night_funkin.constants import GAME_WIDTH
 from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.scene import OrderedLayer
 from pyday_night_funkin.stages.common import BaseGameBaseStage
-from pyday_night_funkin.scenes.in_game import CharacterAnchor, InGameSceneKernel
+from pyday_night_funkin.scenes.in_game import Anchor, AnchorAlignment as Al, InGameSceneKernel
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
@@ -23,7 +23,8 @@ class Week3Stage(BaseGameBaseStage):
 					OrderedLayer("ui_combo"), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
 				),
 				default_cam_zoom = 1.05,
-				opponent_anchor = CharacterAnchor(Vec2(100, 400), None, "stage"),
+				# (100, 400) + pico's dimensions (736, 392)
+				opponent_anchor = Anchor(Vec2(836, 792), Al.BOTTOM_RIGHT, "stage"),
 			),
 			*args,
 			**kwargs,
@@ -74,6 +75,10 @@ class Week3Stage(BaseGameBaseStage):
 			"train", "main",
 			x=-40, y=sokagrafie.y, image=load_image("week3/images/philly/street.png")
 		)
+
+	def ready(self) -> None:
+		super().ready()
+		self.main_cam.x += 600.0
 
 	def update(self, dt: float) -> None:
 		super().update(dt)

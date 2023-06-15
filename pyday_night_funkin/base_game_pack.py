@@ -246,6 +246,8 @@ class Boyfriend(Character):
 		self.add_animation("game_over_loop", "BF Dead Loop", loop=True)
 		self.add_animation("game_over_end", "BF Dead confirm")
 
+		self.animation.play("idle")
+
 	def update(self, dt: float) -> None:
 		singing = self.animation.has_tag(ANIMATION_TAG.SING)
 		missing = self.animation.has_tag(ANIMATION_TAG.MISS)
@@ -270,6 +272,9 @@ class Boyfriend(Character):
 		# TODO: Maybe, juuust maybe class OpponentCharacter(Character) and move it out
 		# there good god
 		super(Character, self).update(dt)
+
+	def get_focus_point(self) -> Vec2:
+		return self.get_midpoint() + Vec2(-100.0, -100.0)
 
 
 class Girlfriend(FlipIdleCharacter):
@@ -301,9 +306,10 @@ class Girlfriend(FlipIdleCharacter):
 			"hair_fall", "GF Dancing Beat Hair Landing", range(12), tags=(ANIMATION_TAG.HAIR,)
 		)
 
-	def dance(self) -> None:
-		if not self.animation.has_tag(ANIMATION_TAG.HAIR):
-			super().dance()
+		self.animation.play("idle_right")
+
+	def should_dance(self) -> bool:
+		return not self.animation.has_tag(ANIMATION_TAG.HAIR) and super().should_dance()
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
@@ -328,6 +334,8 @@ class DaddyDearest(Character):
 		self.add_animation("sing_up", "Dad Sing Note UP", tags=(ANIMATION_TAG.SING,))
 		self.add_animation("sing_right", "Dad Sing Note RIGHT", tags=(ANIMATION_TAG.SING,))
 
+		self.animation.play("idle")
+
 
 class SkidNPump(FlipIdleCharacter):
 	def __init__(self, *args, **kwargs) -> None:
@@ -348,6 +356,8 @@ class SkidNPump(FlipIdleCharacter):
 			"idle_right", "spooky dance idle", (8, 10, 12, 14), 12, tags=(ANIMATION_TAG.IDLE,)
 		)
 
+		self.animation.play("idle_right")
+
 
 class Monster(Character):
 	def __init__(self, *args, **kwargs) -> None:
@@ -363,6 +373,7 @@ class Monster(Character):
 		self.add_animation("sing_left", "Monster left note", tags=(ANIMATION_TAG.SING,))
 		self.add_animation("sing_right", "Monster Right note", tags=(ANIMATION_TAG.SING,))
 
+		self.animation.play("idle")
 
 class Pico(Character):
 	def __init__(self, *args, **kwargs) -> None:
@@ -379,6 +390,8 @@ class Pico(Character):
 		self.add_animation("sing_right", "Pico NOTE LEFT0", tags=(ANIMATION_TAG.SING,))
 
 		self.flip_x = True
+
+		self.animation.play("idle")
 
 
 # mother of christ this is disgusting but hey whatever. Thanks:
@@ -410,8 +423,9 @@ class BoyfriendCar(HairLoopMixin, Boyfriend):
 		self.add_animation("miss_right", "BF NOTE RIGHT MISS0", tags=(ANIMATION_TAG.MISS,))
 		self.add_animation("sing_down", "BF NOTE DOWN0", tags=(ANIMATION_TAG.SING,))
 		self.add_animation("miss_down", "BF NOTE DOWN MISS0", tags=(ANIMATION_TAG.MISS,))
-
 		self.add_indexed_animation("idle_hair", "BF idle dance", (10, 11, 12, 13))
+
+		self.animation.play("idle")
 
 
 class GirlfriendCar(HairLoopMixin, FlipIdleCharacter):
@@ -429,6 +443,8 @@ class GirlfriendCar(HairLoopMixin, FlipIdleCharacter):
 			"idle_hair", "GF Dancing Beat Hair blowing CAR", (10, 11, 12, 25, 26, 27)
 		)
 
+		self.animation.play("idle_right")
+
 
 class MommyMearest(HairLoopMixin, Character):
 	def __init__(self, *args, **kwargs) -> None:
@@ -443,6 +459,8 @@ class MommyMearest(HairLoopMixin, Character):
 		# well done
 		self.add_animation("sing_right", "Mom Pose Left", tags=(ANIMATION_TAG.SING,))
 		self.add_indexed_animation("idle_hair", "Mom Idle", (10, 11, 12, 13))
+
+		self.animation.play("idle")
 
 
 # HACK: This manipulates the cached note asset frame collection, since notes have
@@ -539,7 +557,11 @@ def load() -> ContentPack:
 	# Deferred import, yuck! Quickest way to fix the circular import rn,
 	# could possibly split the levels and characters into a basegame submodule later.
 	from pyday_night_funkin.stages import (
-		TutorialStage, Week1Stage, BopeeboStage, Week2Stage, MonsterStage, Week3Stage, Week4Stage
+		TutorialStage,
+		Week1Stage, BopeeboStage, FreshStage,
+		Week2Stage, MonsterStage,
+		Week3Stage,
+		Week4Stage,
 	)
 
 	# Characters do not have IDs like gf; gf-pixel; gf-car; bf; bf-pixel; bf-car; mom; mom-car
@@ -618,7 +640,7 @@ def load() -> ContentPack:
 						"bopeebo", "Bopeebo", BopeeboStage, "boyfriend", "girlfriend", "daddy_dearest"
 					),
 					LevelData(
-						"fresh", "Fresh", Week1Stage, "boyfriend", "girlfriend", "daddy_dearest"
+						"fresh", "Fresh", FreshStage, "boyfriend", "girlfriend", "daddy_dearest"
 					),
 					LevelData(
 						"dadbattle", "Dadbattle", Week1Stage, "boyfriend", "girlfriend", "daddy_dearest"
@@ -646,15 +668,9 @@ def load() -> ContentPack:
 				"PICO",
 				("pico", "boyfriend", "girlfriend"),
 				(
-					LevelData(
-						"pico", "Pico", Week3Stage, "boyfriend", "girlfriend", "pico"
-					),
-					LevelData(
-						"philly", "Philly", Week3Stage, "boyfriend", "girlfriend", "pico"
-					),
-					LevelData(
-						"blammed", "Blammed", Week3Stage, "boyfriend", "girlfriend", "pico"
-					),
+					LevelData("pico", "Pico", Week3Stage, "boyfriend", "girlfriend", "pico"),
+					LevelData("philly", "Philly", Week3Stage, "boyfriend", "girlfriend", "pico"),
+					LevelData("blammed", "Blammed", Week3Stage, "boyfriend", "girlfriend", "pico"),
 				),
 				"week3.png",
 			),
@@ -668,7 +684,7 @@ def load() -> ContentPack:
 						Week4Stage,
 						"boyfriend_car",
 						"girlfriend_car",
-						"mommy_mearest"
+						"mommy_mearest",
 					),
 					LevelData(
 						"high", "High", Week4Stage, "boyfriend_car", "girlfriend_car", "mommy_mearest"
@@ -679,7 +695,7 @@ def load() -> ContentPack:
 						Week4Stage,
 						"boyfriend_car",
 						"girlfriend_car",
-						"mommy_mearest"
+						"mommy_mearest",
 					),
 				),
 				"week4.png",

@@ -1,4 +1,5 @@
 
+from collections import defaultdict
 from enum import IntEnum
 import random
 import typing as t
@@ -21,18 +22,25 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.note_handler import AbstractNoteHandler
 
 
-class CharacterAnchor:
+class AnchorAlignment:
+	BOTTOM_LEFT =  Vec2( 0, -1)
+	BOTTOM_RIGHT = Vec2(-1, -1)
+	TOP_LEFT =     Vec2( 0,  0)
+	TOP_RIGHT =    Vec2(-1,  0)
+
+
+class Anchor:
 	__slots__ = ("position", "alignment", "layer", "cameras")
 
 	def __init__(
 		self,
 		position: Vec2,
-		alignment, # NOTE: Useless for now
-		layer: t.Optional[t.Hashable] = None,
-		cameras: t.Optional[t.Hashable] = None,
+		alignment: t.Optional[Vec2] = None,
+		layer: t.Optional[str] = None,
+		cameras: t.Optional[t.Union[str, t.Iterable[str]]] = None,
 	) -> None:
 		self.position = position
-		self.alignment = alignment
+		self.alignment = AnchorAlignment.TOP_LEFT if alignment is None else alignment
 		self.layer = layer
 		self.cameras = cameras
 
@@ -50,6 +58,40 @@ class _ThrowawayGf(Character):
 		pass
 
 
+class _Dancer(t.Protocol):
+	def dance(self) -> t.Any:
+		...
+
+class DancerInfo:
+	__slots__ = ("frequency", "offset", "during_countdown")
+
+	def __init__(self, frequency: int = 1, offset: int = 0, during_countdown: bool = True) -> None:
+		"""
+		Initializes a `DancerInfo` helper class.
+		:param frequency: How frequently to dance. 1 will do it every
+		beat, 2 every two beats, etc.
+		:param offset: On which beat to dance. For `frequency` 2,
+		setting this value to 1 will cause the `dance` method to be
+		called only on odd beats.
+		:param during_countdown: Whether to dance during the countdown
+		steps as well.
+		"""
+		self.frequency = frequency
+		self.offset = offset
+		self.during_countdown = during_countdown
+
+
+class FocusTargetInfo:
+	__slots__ = ("character", "additional_offset")
+
+	def __init__(self, character: Character, additional_offset: t.Optional[Vec2] = None) -> None:
+		self.character = character
+		self.additional_offset = Vec2(0.0, 0.0) if additional_offset is None else additional_offset
+
+	def get_focus_point(self) -> Vec2:
+		return self.character.get_focus_point() + self.additional_offset
+
+
 class GameState(IntEnum):
 	LOADING = 0
 	COUNTDOWN = 1
@@ -57,11 +99,11 @@ class GameState(IntEnum):
 	ENDED = 3
 
 
-class InGameSceneArgDict(BaseSceneArgDict, total=False):
+class _InGameSceneArgDict(BaseSceneArgDict, total=False):
 	default_cam_zoom: t.Optional[float]
-	player_anchor: t.Optional[CharacterAnchor]
-	girlfriend_anchor: t.Optional[CharacterAnchor]
-	opponent_anchor: t.Optional[CharacterAnchor]
+	player_anchor: t.Optional[Anchor]
+	girlfriend_anchor: t.Optional[Anchor]
+	opponent_anchor: t.Optional[Anchor]
 
 
 class InGameSceneKernel(SceneKernel):
@@ -69,15 +111,15 @@ class InGameSceneKernel(SceneKernel):
 		super().__init__(scene_type, *args, **kwargs)
 
 		self.default_cam_zoom: t.Optional[float] = None
-		self.player_anchor: t.Optional[CharacterAnchor] = None
-		self.girlfriend_anchor: t.Optional[CharacterAnchor] = None
-		self.opponent_anchor: t.Optional[CharacterAnchor] = None
+		self.player_anchor: t.Optional[Anchor] = None
+		self.girlfriend_anchor: t.Optional[Anchor] = None
+		self.opponent_anchor: t.Optional[Anchor] = None
 
 		self.register_kernel_params(
 			"default_cam_zoom", "player_anchor", "girlfriend_anchor", "opponent_anchor"
 		)
 
-	def fill(self, arg_dict: t.Optional[InGameSceneArgDict] = None, **kwargs):
+	def fill(self, arg_dict: t.Optional[_InGameSceneArgDict] = None, **kwargs):
 		return super().fill(arg_dict, **kwargs)
 
 	def create_scene(self, game: "Game") -> "InGameScene":
@@ -146,18 +188,28 @@ class InGameScene(scenes.MusicBeatScene):
 		self.combo: int = 0
 		self.score: int = 0
 
-		self._last_followed_singer: int = 0
+		self._last_focused_character: int = 0
 		"""
 		An int indicating the character the camera is trained on.
 		0 for the opponent, 1 for the player. Anything else is
 		illegal.
 		"""
 
+		self.focus_targets: t.List[FocusTargetInfo] = []
+		"""
+		Stuff that can be focussed by cameras. Realistically, just a
+		2-element list connected to `self._last_focused_character`,
+		where 0 is the opponent and 1 is the player character.
+		"""
+
 		self.zoom_cams: bool = False
 
-		self.gf_speed: int = 1
+		self.dancers: t.DefaultDict[_Dancer, DancerInfo] = defaultdict(DancerInfo)
 		"""
-		Causes `self.girlfriend.dance` to be called on each xth beat.
+		Stuff that dances. This includes just about anything that
+		has a `dance` method, which will be called by the InGameScene
+		every time a beat is hit; or by the countdown phase as well if
+		applicable.
 		"""
 
 		if self.game.player.playing:
@@ -176,6 +228,13 @@ class InGameScene(scenes.MusicBeatScene):
 		self.opponent = self.create_character(
 			self.opponent_anchor, level_data.opponent_character
 		)
+
+		self.dancers[self.opponent] = DancerInfo(2, 0)
+		self.dancers[self.boyfriend] = DancerInfo(2, 0)
+		self.dancers[self.girlfriend] = DancerInfo(1, 0)
+
+		self.focus_targets.append(FocusTargetInfo(self.opponent))
+		self.focus_targets.append(FocusTargetInfo(self.boyfriend))
 
 		self.main_cam = self.cameras["main"]
 		self.hud_cam = self.cameras["hud"]
@@ -218,19 +277,20 @@ class InGameScene(scenes.MusicBeatScene):
 	def create_hud(self) -> "HUD":
 		raise NotImplementedError("Subclass this!")
 
-	def create_character(self, anchor: CharacterAnchor, char_id: t.Hashable) -> Character:
-		# pos = self.scene_data.player_anchor
-		# pos = self._POSITIONING_FUNCS[char_data.positioning.type](self, char_data)
-		return self.game.character_registry.create_immediate(
-			anchor.layer,
-			anchor.cameras,
-			char_id,
-			self,
-			x = anchor.position.x,
-			y = anchor.position.y,
+	def create_character(self, anchor: Anchor, char_id: t.Hashable) -> Character:
+		data = self.game.character_registry[char_id]
+		char = self.create_object(anchor.layer, anchor.cameras, data.type, self, data)
+		char.position = (
+			anchor.position.x + char.width * anchor.alignment.x,
+			anchor.position.y + char.height * anchor.alignment.y,
 		)
+		# print(
+		# 	f"Created character {char.character_data.type} @ {char.position}. "
+		# 	f"Spans {char.width}, {char.height}"
+		# )
+		return char
 
-	def load_song(self) -> t.Dict:
+	def load_song(self) -> None:
 		"""
 		# TODO doc
 		"""
@@ -256,28 +316,26 @@ class InGameScene(scenes.MusicBeatScene):
 	def ready(self) -> None:
 		"""
 		Called after `setup` and `load_song` have been called.
-		Should be used to start the level.
+		Starts the level by setting the main camera's zoom as well as
+		view targets and initializing the countdown.
 		"""
-		# NOTE: This is somewhat of a hack. In the original game, characters play
-		# an animation when you create them, I don't feel like copying that so
-		# they switch to their idle animation's first frame here.
-		# This is actually required cause camera focussing subtly depends on that.
+		# NOTE: Typically, characters play an animation when you create them, which then goes on
+		# to subtly influence camera focussing.
 		# (Or maybe not so subtly, depends on the spritesheet.)
-		# Yes, for FlipIdleCharacters, this means differrent behavior from the default
-		# game. If you have complaints about that go send them to your nearest recycling bin.
-		for c in (self.boyfriend, self.girlfriend, self.opponent):
-			c.dance()
-
 		self.main_cam.zoom = self._default_cam_zoom
-		self.main_cam.look_at(self.opponent.get_midpoint())
+		self.main_cam.look_at(
+			self.opponent.get_current_frame_dimensions() * 0.5 +
+			Vec2(100.0, 100.0)
+		)
+
+		if self.song_data["notes"]:
+			self._set_focused_character(int(self.song_data["notes"][0]["mustHitSection"]))
 
 		self._countdown_stage = 0
 		self.state = GameState.COUNTDOWN
 		self.conductor.song_position = self.conductor.beat_duration * -5
 		self.sync_conductor_from_dt()
-		self.clock.schedule_interval(
-			self.countdown, self.conductor.beat_duration * 0.001
-		)
+		self.clock.schedule_interval(self.countdown, self.conductor.beat_duration * 0.001)
 
 	def resync(self) -> None:
 		logger.info("Resyncing...")
@@ -331,6 +389,11 @@ class InGameScene(scenes.MusicBeatScene):
 
 		return self.song_data["notes"][sec]
 
+	def _set_focused_character(self, focus_target: int) -> None:
+		self._last_focused_character = focus_target
+		target = self.focus_targets[focus_target]
+		self.main_cam.set_follow_target(target.get_focus_point(), 0.04)
+
 	def update(self, dt: float) -> None:
 		super().update(dt)
 
@@ -341,13 +404,8 @@ class InGameScene(scenes.MusicBeatScene):
 
 		# Camera following
 		if (cur_section := self.get_current_section()) is not None:
-			if (to_follow := int(cur_section["mustHitSection"])) != self._last_followed_singer:
-				self._last_followed_singer = to_follow
-				if to_follow == 0:
-					_cam_follow = self.opponent.get_midpoint() + Vec2(150, -100)
-				else:
-					_cam_follow = self.boyfriend.get_midpoint() + Vec2(-100, -100)
-				self.main_cam.set_follow_target(_cam_follow, 0.04)
+			if (to_follow := int(cur_section["mustHitSection"])) != self._last_focused_character:
+				self._set_focused_character(to_follow)
 
 		if self.zoom_cams:
 			self.main_cam.zoom = lerp(self._default_cam_zoom, self.main_cam.zoom, 0.95)
@@ -457,6 +515,20 @@ class InGameScene(scenes.MusicBeatScene):
 		self.health = min(new_health, 1.0)
 		self.hud.update_health(new_health)
 
+	def countdown(self, _dt: float) -> None:
+		if self._countdown_stage >= 4:
+			self.start_song()
+			self.clock.unschedule(self.countdown)
+			return
+
+		self.hud.countdown_popup(self._countdown_stage)
+
+		for dancer, info in self.dancers.items():
+			if info.during_countdown and (self._countdown_stage % info.frequency == info.offset):
+				dancer.dance()
+
+		self._countdown_stage += 1
+
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
 
@@ -464,18 +536,9 @@ class InGameScene(scenes.MusicBeatScene):
 			self.main_cam.zoom += 0.015
 			self.hud_cam.zoom += 0.03
 
-		if self.cur_beat % self.gf_speed == 0:
-			self.girlfriend.dance()
-
-		if self.cur_beat % 2 == 0:
-			# This code's purpose should be to get bf out of special animations such as
-			# the bopeebo v-signs
-			t = self.boyfriend.animation.current.tags
-			if not (ANIMATION_TAG.MISS in t or ANIMATION_TAG.SING in t):
-				self.boyfriend.dance()
-
-			if not self.opponent.animation.has_tag(ANIMATION_TAG.SING):
-				self.opponent.dance()
+		for dancer, info in self.dancers.items():
+			if self.cur_beat % info.frequency == info.offset:
+				dancer.dance()
 
 	def on_pause(self) -> None:
 		"""
@@ -532,19 +595,6 @@ class InGameScene(scenes.MusicBeatScene):
 
 		self.game.push_scene(scenes.GameOverScene.get_kernel(game_over_bf))
 
-	def countdown(self, dt: float) -> None:
-		self.opponent.dance()
-		self.girlfriend.dance()
-		self.boyfriend.dance()
-
-		if self._countdown_stage == 4:
-			self.start_song()
-			self.clock.unschedule(self.countdown)
-		else:
-			# self._countdown_stage will be changed once hide is called
-			self.hud.countdown_popup(self._countdown_stage)
-			self._countdown_stage += 1
-
 	def on_subscene_removal(self, subscene, end_game=None, reset=False, *_, **__) -> None:
 		super().on_subscene_removal(subscene)
 		if end_game is None:
@@ -575,6 +625,7 @@ class InGameScene(scenes.MusicBeatScene):
 		self.voice_player.destroy()
 		self.inst_player.destroy()
 		# Pathetic attempt at cleaning up more cyclic references i guess
+		del self.dancers
 		del self.note_handler
 		del self.boyfriend
 		del self.girlfriend

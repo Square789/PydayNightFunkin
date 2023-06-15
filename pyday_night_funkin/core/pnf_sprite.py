@@ -100,9 +100,9 @@ void main() {{
 	// Applies the translation caused by the camera and the sprite's
 	// scroll factor as well as the scaling caused by the camera's zoom.
 	m_camera_trans_scale[3].xy = (
-		(camera.zoom * -camera.GAME_DIMENSIONS / 2) +
+		(camera.zoom * -camera.GAME_DIMENSIONS / 2.0) +
 		(camera.zoom * scroll_factor * -camera.position) +
-		(camera.GAME_DIMENSIONS / 2)
+		(camera.GAME_DIMENSIONS / 2.0)
 	);
 	m_camera_trans_scale[0][0] = camera.zoom;
 	m_camera_trans_scale[1][1] = camera.zoom;       // 6TH
@@ -429,7 +429,11 @@ class PNFSprite(WorldObject):
 			dx, dy = self.movement.update(dt)
 			self.position = (self._x + dx, self._y + dy)
 
-	def _set_frame(self, idx: int) -> None:
+	def set_frame_by_index(self, idx: int) -> None:
+		"""
+		Sets the sprite's displayed frame to be frame `idx` in its
+		current frame collection (`self.frames`).
+		"""
 		new_frame = self.frames[idx]
 		self._frame = new_frame
 		texture = new_frame.texture
@@ -507,7 +511,7 @@ class PNFSprite(WorldObject):
 
 		self.animation.delete_animations()
 		self._frames = new_frames
-		self._set_frame(0)
+		self.set_frame_by_index(0)
 		self.set_dimensions_from_frame()
 		self.center_origin()
 
@@ -558,7 +562,6 @@ class PNFSprite(WorldObject):
 	def scale_x(self) -> "Numeric":
 		"""
 		The sprite's scale along the x axis.
-		The sprite's scale along the y axis.
 		Attention: Sprites get weird with scaling and rotation when
 		their scale is changed and `recalculate_positioning` is not
 		called. Try `set_scale_x_and_repos` for convenience instead.
@@ -722,8 +725,7 @@ class PNFSprite(WorldObject):
 	@property
 	def flip_x(self) -> bool:
 		"""
-		Unsurprisingly, determines whether the sprite is flipped on
-		the x axis.
+		Whether the sprite gets flipped on the x axis.
 		"""
 		return self._flip_x
 
@@ -735,8 +737,7 @@ class PNFSprite(WorldObject):
 	@property
 	def flip_y(self) -> bool:
 		"""
-		Unsurprisingly, determines whether the sprite is flipped on
-		the y axis.
+		Whether the sprite gets flipped on the y axis.
 		"""
 		return self._flip_y
 

@@ -76,13 +76,13 @@ class SceneManager:
 		if (not self._pending_scene_stack_additions) or force:
 			self._pending_scene_stack_additions.append(self._maybe_get_kernel(type_or_kernel))
 
-	def insert_scene(
-		self,
-		type_or_kernel: t.Union[t.Type[BaseScene], SceneKernel],
-		where: t.Union[int, BaseScene],
-		before: bool,
-	) -> None:
-		pass
+	# def insert_scene(
+	# 	self,
+	# 	type_or_kernel: t.Union[t.Type[BaseScene], SceneKernel],
+	# 	where: t.Union[int, BaseScene],
+	# 	before: bool,
+	# ) -> None:
+	# 	pass
 
 	def set_scene(self, type_or_kernel: t.Union[t.Type[BaseScene], SceneKernel]) -> bool:
 		"""

@@ -1,14 +1,13 @@
 
 
 from random import choice, randint
-import typing as t
 
 from pyglet.math import Vec2
 
 from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.asset_system import load_sound
 from pyday_night_funkin.core.scene import OrderedLayer
-from pyday_night_funkin.scenes.in_game import CharacterAnchor, InGameSceneKernel
+from pyday_night_funkin.scenes.in_game import Anchor, AnchorAlignment as Al, InGameSceneKernel
 from pyday_night_funkin.stages.common import BaseGameBaseStage
 
 
@@ -21,11 +20,17 @@ class Week2Stage(BaseGameBaseStage):
 					"ui_notes", "ui0", "ui1", "ui2"
 				),
 				default_cam_zoom = 1.05,
-				opponent_anchor = CharacterAnchor(Vec2(100, 300), None, "stage")
+				opponent_anchor = Anchor(Vec2(664, 831), Al.BOTTOM_RIGHT, "stage"),
 			),
 			*args,
 			**kwargs,
 		)
+
+		# For whatever reason, they idle at odd beats.
+		# NOTE: This isolates behavior for them into this stage only with an id comp.
+		# Maybe make a CharacterData property for this?
+		if self.level_data.opponent_character == "skid_n_pump":
+			self.dancers[self.opponent].offset = 1
 
 		self._next_lightning_thresh = 0
 		self._lightning_sounds = (
@@ -59,7 +64,9 @@ class Week2Stage(BaseGameBaseStage):
 class MonsterStage(Week2Stage):
 	def __init__(self, kernel: InGameSceneKernel, *args, **kwargs) -> None:
 		super().__init__(
-			kernel.fill(opponent_anchor=CharacterAnchor(Vec2(100, 230), None, "stage")),
+			kernel.fill(
+				opponent_anchor = Anchor(Vec2(481, 921), Al.BOTTOM_RIGHT, "stage"),
+			),
 			*args,
 			**kwargs,
 		)

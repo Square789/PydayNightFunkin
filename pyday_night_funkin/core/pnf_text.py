@@ -175,7 +175,7 @@ class PNFText(WorldObject):
 		self._width = 0
 		"""
 		Pixels the label's contents take up. This may be lower than
-		the manually set width [TODO but never higher?].
+		the manually set width.
 		"""
 
 		self.lines: t.List[_Line] = []

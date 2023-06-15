@@ -1,26 +1,18 @@
 
-from math import ceil
 import typing as t
 
 from pyglet.gl import gl
 from pyglet.image import ImageData
 
 from pyday_night_funkin.core.graphics import state as s
-from pyday_night_funkin.core.pnf_sprite import (
-	PNFSprite, PNFSpriteFragmentShader, PNFSpriteVertexShader
-)
+from pyday_night_funkin.core.pnf_sprite import PNFSprite, PNFSpriteVertexShader
 from pyday_night_funkin.core.shaders import ShaderContainer
 from pyday_night_funkin.core.scene import TransitionScene
-from pyday_night_funkin.core.utils import to_rgba_tuple, to_rgba_bytes
+from pyday_night_funkin.core.utils import to_rgba_bytes
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import UniformBufferObject
 
-
-# class GradientShaderContainer(ShaderContainer):
-# 	super().__init__(
-
-# 	)
 
 # https://stackoverflow.com/questions/47376499/creating-a-gradient-color-in-fragment-shader
 _GRADIENT_SPRITE_FRAGMENT_SHADER_SOURCE = """

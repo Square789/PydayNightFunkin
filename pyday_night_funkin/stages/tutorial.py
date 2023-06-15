@@ -1,18 +1,17 @@
 
-import typing as t
-
 from pyglet.math import Vec2
 
 from pyday_night_funkin.core.tween_effects.eases import in_out_elastic
-from pyday_night_funkin.scenes.in_game import CharacterAnchor, InGameSceneKernel
+from pyday_night_funkin.scenes.in_game import AnchorAlignment as Al, Anchor, InGameSceneKernel
 from pyday_night_funkin.stages.common import BaseGameBaseStage
 
 
 class TutorialStage(BaseGameBaseStage):
 	def __init__(self, kernel: InGameSceneKernel, *args, **kwargs) -> None:
-		from pyday_night_funkin.scenes.in_game import CharacterAnchor
 		super().__init__(
-			kernel.fill(opponent_anchor=CharacterAnchor(Vec2(400, 130), None, "girlfriend")),
+			kernel.fill(
+				opponent_anchor = Anchor(Vec2(400, 787), Al.BOTTOM_LEFT, "girlfriend")
+			),
 			*args,
 			**kwargs,
 		)
@@ -22,19 +21,22 @@ class TutorialStage(BaseGameBaseStage):
 	def ready(self) -> None:
 		super().ready()
 		# This behavior makes no sense whatsoever, but replicating it anyways!
-		# Coordinates reconstructed from arcane float kung-fu in PlayState.hx
 		if self.in_story_mode:
-			self.main_cam.x += 500.0
-			self._tween_camera(1.3)
+			self.main_cam.x += 600.0
+			# Due to what i assume is an extremely horrible double-tween triggered by the original
+			# game's spaghetti in `cameraMovement`, this one is made obsolete.
+			# Will always 1.0-tween as bf has the first sections in tutorial.
+			# self._tween_camera(1.3)
+		self._tween_camera(1.0)
 
 	def update(self, dt: float) -> None:
 		# observe whether gf/bf focus changed and then run this goofy elastic tween
-		_singer = self._last_followed_singer
+		_singer = self._last_focused_character
 
 		super().update(dt)
 
-		if self._last_followed_singer != _singer:
-			self._tween_camera(1.3 if self._last_followed_singer == 0 else 1.0)
+		if self._last_focused_character != _singer:
+			self._tween_camera(1.3 if self._last_focused_character == 0 else 1.0)
 
 	def _tween_camera(self, zoom: float) -> None:
 		self.effects.remove_of(self.main_cam) # be safe

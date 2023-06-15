@@ -1,18 +1,38 @@
 
 from random import choice, randint
-import typing as t
 
 from pyglet.math import Vec2
 
 from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.asset_system import load_image, load_sound
+from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene import OrderedLayer
+from pyday_night_funkin.scenes.in_game import (
+	Anchor, AnchorAlignment as Al, DancerInfo, InGameSceneKernel
+)
 from pyday_night_funkin.stages.common import BaseGameBaseStage
-from pyday_night_funkin.scenes.in_game import CharacterAnchor, InGameSceneKernel
 
-if t.TYPE_CHECKING:
-	from pyday_night_funkin.character import CharacterData
-	from pyday_night_funkin.core.pnf_sprite import PNFSprite
+
+class Henchman(PNFSprite):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.frames = load_frames("week4/images/limo/limoDancer.xml")
+		self.animation.add_by_indices(
+			"dance_left", "bg dancer sketch PINK", range(15), 24, False
+		)
+		self.animation.add_by_indices(
+			"dance_right", "bg dancer sketch PINK", range(15, 30), 24, False
+		)
+		# NOTE pretty ugly private access, but whatever.
+		self.set_frame_by_index(self.animation._animations["dance_left"]._frame_indices[-1])
+
+		self._next_right = True
+
+	def dance(self) -> None:
+		a = "dance_right" if self._next_right else "dance_left"
+		self._next_right = not self._next_right
+		self.animation.play(a)
 
 
 class Week4Stage(BaseGameBaseStage):
@@ -24,14 +44,17 @@ class Week4Stage(BaseGameBaseStage):
 					OrderedLayer("ui_combo"), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
 				),
 				default_cam_zoom = 0.9,
-				player_anchor = CharacterAnchor(Vec2(1030, 230), None, "stage"),
+				# car bf's height added; x adjusted as per base game
+				player_anchor = Anchor(Vec2(1030, 592), Al.BOTTOM_LEFT, "stage"),
+				# (100, 100) + mom's dimensions (450, 613)
+				opponent_anchor = Anchor(Vec2(559, 713), Al.BOTTOM_RIGHT, "stage"),
 			),
 			*args,
 			**kwargs,
 		)
 
-		self._henchmen: t.List[PNFSprite] = []
-		self._henchmen_next_right = True
+		self.focus_targets[1].additional_offset = Vec2(-300, 0)
+
 		self._allow_passing_car = False
 		self._car_sounds = [load_sound(f"shared/sounds/carPass{i}.ogg") for i in range(2)]
 
@@ -46,17 +69,13 @@ class Week4Stage(BaseGameBaseStage):
 		bg_limo.animation.add_by_prefix("drive", "background limo pink")
 		bg_limo.animation.play("drive")
 
+		# Original game spawns 5, but the last one is never seen so this works too
 		for i in range(4):
-			chad = self.create_object("henchmen", x=(370*i) + 130, y=bg_limo.y - 400)
+			chad = self.create_object(
+				"henchmen", None, Henchman, x=(370*i) + 130, y=bg_limo.y - 400
+			)
 			chad.scroll_factor = (0.4, 0.4)
-			chad.frames = load_frames("week4/images/limo/limoDancer.xml")
-			chad.animation.add_by_indices(
-				"dance_left", "bg dancer sketch PINK", [*range(15)], 24, False
-			)
-			chad.animation.add_by_indices(
-				"dance_right", "bg dancer sketch PINK", [*range(15, 30)], 24, False
-			)
-			self._henchmen.append(chad)
+			self.dancers[chad] = DancerInfo(1, 0, False)
 
 		limo = self.create_object("limo", x=-120, y=550)
 		limo.frames = load_frames("week4/images/limo/limoDrive.xml")
@@ -68,10 +87,6 @@ class Week4Stage(BaseGameBaseStage):
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
-		a = "dance_right" if self._henchmen_next_right else "dance_left"
-		self._henchmen_next_right = not self._henchmen_next_right
-		for chad in self._henchmen:
-			chad.animation.play(a)
 
 		if self._allow_passing_car and randint(0, 9) == 0:
 			self._move_car()

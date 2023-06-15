@@ -8,7 +8,6 @@ import typing as t
 from loguru import logger
 import pyglet
 
-from pyday_night_funkin.character import CharacterRegistry
 from pyday_night_funkin.core import ogg_decoder
 from pyday_night_funkin.core.asset_system import load_font
 from pyday_night_funkin.core.key_handler import KeyHandler, RawKeyHandler
@@ -20,15 +19,17 @@ from pyday_night_funkin.debug_pane import DebugPane
 from pyday_night_funkin.enums import CONTROL
 from pyday_night_funkin.volume_control_dropdown import VolumeControlDropdown
 from pyday_night_funkin.save_data import SaveData
-from pyday_night_funkin.scenes import TestScene, TitleScene, TriangleScene
+from pyday_night_funkin.registry import Registry
+from pyday_night_funkin.scenes import FreeplayScene, TestScene, TitleScene, TriangleScene
 
 if t.TYPE_CHECKING:
 	from loguru import Record
+	from pyday_night_funkin.character import CharacterData
 	from pyday_night_funkin.content_pack import ContentPack, WeekData
 	from pyday_night_funkin.core.superscene import SuperScene
 
 
-__version__ = "0.0.49"
+__version__ = "0.0.50"
 
 
 SOUND_GRANULARITY = 10
@@ -206,7 +207,7 @@ class Game(SceneManager):
 		A single global media player, similar to `FlxG.sound.music`.
 		"""
 
-		self.character_registry = CharacterRegistry()
+		self.character_registry: Registry["CharacterData"] = Registry()
 		self.weeks: t.List["WeekData"] = []
 		self._registered_packs: t.Dict[t.Hashable, t.List[int]] = {}
 		"""
@@ -223,6 +224,7 @@ class Game(SceneManager):
 
 		# Push initial scene
 		self.push_scene(TitleScene)
+		#self.push_scene(FreeplayScene)
 		#self.push_scene(TestScene)
 		#self.push_scene(TriangleScene)
 

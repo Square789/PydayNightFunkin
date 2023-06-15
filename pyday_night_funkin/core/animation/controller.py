@@ -28,7 +28,7 @@ class AnimationController:
 		self.current = self.current_name = None
 
 	def _on_new_frame(self) -> None:
-		self._owner_sprite._set_frame(self.current.cur_index)
+		self._owner_sprite.set_frame_by_index(self.current.cur_index)
 
 	def get_current_frame_index(self) -> t.Optional[int]:
 		"""

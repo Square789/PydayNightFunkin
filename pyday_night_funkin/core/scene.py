@@ -143,8 +143,16 @@ class SceneKernel:
 		`"cameras"` A sequence of camera names to be used for this
 		scene's cameras. They can later be referenced by that name in
 		`create_object` and `add`.
+		By default, a single camera by the name of `_default` is
+		created.
 
-		`"transition"`: TODO
+		`"transition"`: A 2-length tuple of: Either a transition scene
+		type that will be used for the scene's transition in ([0]) or
+		out ([1]), or `None`, in which case no transition happens.
+		A single non-tuple argument is equivalent to a 2-length tuple
+		with the argument in both positions.
+		By default, the standard `TransitionScene` with a simple black 
+		adein/out is used for both.
 		"""
 		arg_dict: BaseSceneArgDict = kwargs if arg_dict is None else arg_dict
 		for parameter in self._kernel_params:
@@ -336,7 +344,6 @@ class BaseScene(Container):
 		self,
 		layer: t.Optional[str] = None,
 		cameras: t.Optional[t.Union[str, t.Iterable[str]]] = None,
-		*args,
 		**kwargs,
 	) -> PNFSprite:
 		...
@@ -369,7 +376,9 @@ class BaseScene(Container):
 		faster as no migration from a virtual batch to the scene's
 		batch has to happen.
 		"""
-		kwargs.setdefault("context", self.get_context(layer, cameras))
+		if "context" not in kwargs:
+			kwargs["context"] = self.get_context(layer, cameras)
+
 		member = object_class(*args, **kwargs)
 		self._members.append(member)
 		return member
