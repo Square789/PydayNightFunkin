@@ -123,4 +123,4 @@ class VolumeControlDropdown(SuperScene):
 		Draws the VolumeControl if applicable.
 		"""
 		if self._state is not _VolumeControlState.HIDDEN:
-			self.batch.draw(self._camera)
+			super().draw()

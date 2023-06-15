@@ -133,13 +133,17 @@ class SimpleCamera:
 			ubo.GAME_DIMENSIONS[:] = (GAME_WIDTH, GAME_HEIGHT)
 			ubo.dimensions[:] = (self._width, self._height)
 
+	def maybe_update_ubo(self) -> None:
+		"""If needed, uploads new data to the camera's UBO."""
+		if self._ubo_needs_update:
+			self._update_ubo()
+			self._ubo_needs_update = False
+
 	def update(self, dt: float) -> None:
 		if self._follow_target is not None:
 			self._update_follow_target(dt)
 
-		if self._ubo_needs_update:
-			self._update_ubo()
-			self._ubo_needs_update = False
+		self.maybe_update_ubo()
 
 	def look_at(self, where: Vec2) -> None:
 		"""
