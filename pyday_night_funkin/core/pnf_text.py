@@ -137,7 +137,7 @@ class _Line:
 		self.width = width
 
 
-class ALIGNMENT(IntEnum):
+class TextAlignment(IntEnum):
 	LEFT = 0
 	CENTER = 1
 	RIGHT = 2
@@ -157,7 +157,7 @@ class PNFText(WorldObject):
 		color: t.Tuple[int, int, int, int] = (0xFF, 0xFF, 0xFF, 0xFF),
 		multiline: bool = False,
 		width: int = 0,
-		align: ALIGNMENT = ALIGNMENT.LEFT,
+		align: TextAlignment = TextAlignment.LEFT,
 		context: t.Optional[SceneContext] = None,
 	) -> None:
 		super().__init__(x, y)
@@ -213,10 +213,10 @@ class PNFText(WorldObject):
 		i = 0
 		for line in self.lines:
 			x_advance = 0
-			if self._align is not ALIGNMENT.LEFT:
+			if self._align is not TextAlignment.LEFT:
 				x_advance = (
 					max(self._width_constrain - line.width, 0) /
-					(2 if self._align is ALIGNMENT.CENTER else 1)
+					(2 if self._align is TextAlignment.CENTER else 1)
 				)
 			for glyph in line.glyphs:
 				# print(vars(glyph))

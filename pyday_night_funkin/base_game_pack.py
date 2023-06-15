@@ -25,7 +25,7 @@ from pyday_night_funkin.core.animation import FrameCollection
 from pyday_night_funkin.character import (
 	Character, CharacterData, FlipIdleCharacter, StoryMenuCharacterData
 )
-from pyday_night_funkin.enums import ANIMATION_TAG, DIFFICULTY
+from pyday_night_funkin.enums import AnimationTag, Difficulty
 
 if t.TYPE_CHECKING:
 	from xml.etree.ElementTree import ElementTree
@@ -112,11 +112,11 @@ load_character_icon = register_complex_asset_type(
 class SongResourceOptions(ResourceOptions):
 	def __init__(
 		self,
-		difficulty: t.Optional["DIFFICULTY"] = None,
+		difficulty: t.Optional["Difficulty"] = None,
 		inst_opt: t.Optional[SoundResourceOptions] = None,
 		voice_opt: t.Optional[SoundResourceOptions] = None,
 	) -> None:
-		self.difficulty = DIFFICULTY.NORMAL if difficulty is None else difficulty
+		self.difficulty = Difficulty.NORMAL if difficulty is None else difficulty
 		self.inst_opt = SoundResourceOptions() if inst_opt is None else inst_opt
 		self.voice_opt = SoundResourceOptions() if voice_opt is None else voice_opt
 
@@ -231,17 +231,17 @@ class Boyfriend(Character):
 		self.frames = load_frames("shared/images/characters/BOYFRIEND.xml")
 		self.load_offsets()
 
-		self.add_animation("idle", "BF idle dance", tags=(ANIMATION_TAG.IDLE,))
-		self.add_animation("sing_left", "BF NOTE LEFT0", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("miss_left", "BF NOTE LEFT MISS", tags=(ANIMATION_TAG.MISS,))
-		self.add_animation("sing_down", "BF NOTE DOWN0", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("miss_down", "BF NOTE DOWN MISS", tags=(ANIMATION_TAG.MISS,))
-		self.add_animation("sing_up", "BF NOTE UP0", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("miss_up", "BF NOTE UP MISS", tags=(ANIMATION_TAG.MISS,))
-		self.add_animation("sing_right", "BF NOTE RIGHT0", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("miss_right", "BF NOTE RIGHT MISS", tags=(ANIMATION_TAG.MISS,))
+		self.add_animation("idle", "BF idle dance", tags=(AnimationTag.IDLE,))
+		self.add_animation("sing_left", "BF NOTE LEFT0", tags=(AnimationTag.SING,))
+		self.add_animation("miss_left", "BF NOTE LEFT MISS", tags=(AnimationTag.MISS,))
+		self.add_animation("sing_down", "BF NOTE DOWN0", tags=(AnimationTag.SING,))
+		self.add_animation("miss_down", "BF NOTE DOWN MISS", tags=(AnimationTag.MISS,))
+		self.add_animation("sing_up", "BF NOTE UP0", tags=(AnimationTag.SING,))
+		self.add_animation("miss_up", "BF NOTE UP MISS", tags=(AnimationTag.MISS,))
+		self.add_animation("sing_right", "BF NOTE RIGHT0", tags=(AnimationTag.SING,))
+		self.add_animation("miss_right", "BF NOTE RIGHT MISS", tags=(AnimationTag.MISS,))
 		self.add_animation("scared", "BF idle shaking", loop=True)
-		self.add_animation("hey", "BF HEY!!", tags=(ANIMATION_TAG.SPECIAL,))
+		self.add_animation("hey", "BF HEY!!", tags=(AnimationTag.SPECIAL,))
 		self.add_animation("game_over_ini", "BF dies")
 		self.add_animation("game_over_loop", "BF Dead Loop", loop=True)
 		self.add_animation("game_over_end", "BF Dead confirm")
@@ -249,8 +249,8 @@ class Boyfriend(Character):
 		self.animation.play("idle")
 
 	def update(self, dt: float) -> None:
-		singing = self.animation.has_tag(ANIMATION_TAG.SING)
-		missing = self.animation.has_tag(ANIMATION_TAG.MISS)
+		singing = self.animation.has_tag(AnimationTag.SING)
+		missing = self.animation.has_tag(AnimationTag.MISS)
 		if singing or missing:
 			self.hold_timer += dt
 		else:
@@ -286,37 +286,37 @@ class Girlfriend(FlipIdleCharacter):
 		self.frames = load_frames("shared/images/characters/GF_assets.xml")
 		self.load_offsets()
 
-		self.add_animation("cheer", "GF Cheer", tags=(ANIMATION_TAG.SPECIAL,))
+		self.add_animation("cheer", "GF Cheer", tags=(AnimationTag.SPECIAL,))
 		self.add_indexed_animation(
-			"idle_left", "GF Dancing Beat", range(15), tags=(ANIMATION_TAG.IDLE,)
+			"idle_left", "GF Dancing Beat", range(15), tags=(AnimationTag.IDLE,)
 		)
 		self.add_indexed_animation(
-			"idle_right", "GF Dancing Beat", range(15, 30), tags=(ANIMATION_TAG.IDLE,)
+			"idle_right", "GF Dancing Beat", range(15, 30), tags=(AnimationTag.IDLE,)
 		)
-		self.add_animation("sing_left", "GF left note", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_down", "GF Down Note", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_right", "GF Right Note", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_up", "GF Up Note", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_left", "GF left note", tags=(AnimationTag.SING,))
+		self.add_animation("sing_down", "GF Down Note", tags=(AnimationTag.SING,))
+		self.add_animation("sing_right", "GF Right Note", tags=(AnimationTag.SING,))
+		self.add_animation("sing_up", "GF Up Note", tags=(AnimationTag.SING,))
 		# Nice space at the end bro
 		self.add_animation("scared", "GF FEAR ")
 		self.add_indexed_animation(
-			"hair_blow", "GF Dancing Beat Hair blowing", range(4), 24, True, (ANIMATION_TAG.HAIR,)
+			"hair_blow", "GF Dancing Beat Hair blowing", range(4), 24, True, (AnimationTag.HAIR,)
 		)
 		self.add_indexed_animation(
-			"hair_fall", "GF Dancing Beat Hair Landing", range(12), tags=(ANIMATION_TAG.HAIR,)
+			"hair_fall", "GF Dancing Beat Hair Landing", range(12), tags=(AnimationTag.HAIR,)
 		)
 
 		self.animation.play("idle_right")
 
 	def should_dance(self) -> bool:
-		return not self.animation.has_tag(ANIMATION_TAG.HAIR) and super().should_dance()
+		return not self.animation.has_tag(AnimationTag.HAIR) and super().should_dance()
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
 		if (ca := self.animation.current) is None:
 			return
 
-		if ANIMATION_TAG.HAIR in ca.tags and not ca.playing:
+		if AnimationTag.HAIR in ca.tags and not ca.playing:
 			self._dance_right = False
 			self.animation.play("idle_right")
 
@@ -328,11 +328,11 @@ class DaddyDearest(Character):
 		self.frames = load_frames("shared/images/characters/DADDY_DEAREST.xml")
 		self.load_offsets()
 
-		self.add_animation("idle", "Dad idle dance", tags=(ANIMATION_TAG.IDLE,))
-		self.add_animation("sing_left", "Dad Sing Note LEFT", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_down", "Dad Sing Note DOWN", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_up", "Dad Sing Note UP", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_right", "Dad Sing Note RIGHT", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("idle", "Dad idle dance", tags=(AnimationTag.IDLE,))
+		self.add_animation("sing_left", "Dad Sing Note LEFT", tags=(AnimationTag.SING,))
+		self.add_animation("sing_down", "Dad Sing Note DOWN", tags=(AnimationTag.SING,))
+		self.add_animation("sing_up", "Dad Sing Note UP", tags=(AnimationTag.SING,))
+		self.add_animation("sing_right", "Dad Sing Note RIGHT", tags=(AnimationTag.SING,))
 
 		self.animation.play("idle")
 
@@ -344,16 +344,16 @@ class SkidNPump(FlipIdleCharacter):
 		self.frames = load_frames("shared/images/characters/spooky_kids_assets.xml")
 		self.load_offsets()
 
-		self.add_animation("sing_up", "spooky UP NOTE", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_down", "spooky DOWN note", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_left", "note sing left", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_right", "spooky sing right", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_up", "spooky UP NOTE", tags=(AnimationTag.SING,))
+		self.add_animation("sing_down", "spooky DOWN note", tags=(AnimationTag.SING,))
+		self.add_animation("sing_left", "note sing left", tags=(AnimationTag.SING,))
+		self.add_animation("sing_right", "spooky sing right", tags=(AnimationTag.SING,))
 
 		self.add_indexed_animation(
-			"idle_left", "spooky dance idle", (0, 2, 6), 12, tags=(ANIMATION_TAG.IDLE,)
+			"idle_left", "spooky dance idle", (0, 2, 6), 12, tags=(AnimationTag.IDLE,)
 		)
 		self.add_indexed_animation(
-			"idle_right", "spooky dance idle", (8, 10, 12, 14), 12, tags=(ANIMATION_TAG.IDLE,)
+			"idle_right", "spooky dance idle", (8, 10, 12, 14), 12, tags=(AnimationTag.IDLE,)
 		)
 
 		self.animation.play("idle_right")
@@ -367,11 +367,11 @@ class Monster(Character):
 		self.load_offsets()
 
 		# It's like they're trying to win a naming inconsistency award
-		self.add_animation("idle", "monster idle", tags=(ANIMATION_TAG.IDLE,))
-		self.add_animation("sing_up", "monster up note", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_down", "monster down", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_left", "Monster left note", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_right", "Monster Right note", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("idle", "monster idle", tags=(AnimationTag.IDLE,))
+		self.add_animation("sing_up", "monster up note", tags=(AnimationTag.SING,))
+		self.add_animation("sing_down", "monster down", tags=(AnimationTag.SING,))
+		self.add_animation("sing_left", "Monster left note", tags=(AnimationTag.SING,))
+		self.add_animation("sing_right", "Monster Right note", tags=(AnimationTag.SING,))
 
 		self.animation.play("idle")
 
@@ -382,12 +382,12 @@ class Pico(Character):
 		self.frames = load_frames("shared/images/characters/Pico_FNF_assetss.xml")
 		self.load_offsets()
 
-		self.add_animation("idle", "Pico Idle Dance", tags=(ANIMATION_TAG.IDLE,))
-		self.add_animation("sing_up", "pico Up note0", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_down", "Pico Down Note0", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("idle", "Pico Idle Dance", tags=(AnimationTag.IDLE,))
+		self.add_animation("sing_up", "pico Up note0", tags=(AnimationTag.SING,))
+		self.add_animation("sing_down", "Pico Down Note0", tags=(AnimationTag.SING,))
 		# my god why
-		self.add_animation("sing_left", "Pico Note Right0", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_right", "Pico NOTE LEFT0", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_left", "Pico Note Right0", tags=(AnimationTag.SING,))
+		self.add_animation("sing_right", "Pico NOTE LEFT0", tags=(AnimationTag.SING,))
 
 		self.flip_x = True
 
@@ -401,7 +401,7 @@ class HairLoopMixin(Character if t.TYPE_CHECKING else object):
 		super().update(dt)
 		if (
 			not self.animation.current.playing and
-			ANIMATION_TAG.SING not in self.animation.current.tags
+			AnimationTag.SING not in self.animation.current.tags
 		):
 			self.animation.play("idle_hair")
 
@@ -414,15 +414,15 @@ class BoyfriendCar(HairLoopMixin, Boyfriend):
 		self.frames = load_frames("shared/images/characters/bfCar.xml")
 		self.load_offsets()
 
-		self.add_animation("idle", "BF idle dance", tags=(ANIMATION_TAG.IDLE,))
-		self.add_animation("sing_up", "BF NOTE UP0", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("miss_up", "BF NOTE UP MISS0", tags=(ANIMATION_TAG.MISS,))
-		self.add_animation("sing_left", "BF NOTE LEFT0", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("miss_left", "BF NOTE LEFT MISS0", tags=(ANIMATION_TAG.MISS,))
-		self.add_animation("sing_right", "BF NOTE RIGHT0", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("miss_right", "BF NOTE RIGHT MISS0", tags=(ANIMATION_TAG.MISS,))
-		self.add_animation("sing_down", "BF NOTE DOWN0", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("miss_down", "BF NOTE DOWN MISS0", tags=(ANIMATION_TAG.MISS,))
+		self.add_animation("idle", "BF idle dance", tags=(AnimationTag.IDLE,))
+		self.add_animation("sing_up", "BF NOTE UP0", tags=(AnimationTag.SING,))
+		self.add_animation("miss_up", "BF NOTE UP MISS0", tags=(AnimationTag.MISS,))
+		self.add_animation("sing_left", "BF NOTE LEFT0", tags=(AnimationTag.SING,))
+		self.add_animation("miss_left", "BF NOTE LEFT MISS0", tags=(AnimationTag.MISS,))
+		self.add_animation("sing_right", "BF NOTE RIGHT0", tags=(AnimationTag.SING,))
+		self.add_animation("miss_right", "BF NOTE RIGHT MISS0", tags=(AnimationTag.MISS,))
+		self.add_animation("sing_down", "BF NOTE DOWN0", tags=(AnimationTag.SING,))
+		self.add_animation("miss_down", "BF NOTE DOWN MISS0", tags=(AnimationTag.MISS,))
 		self.add_indexed_animation("idle_hair", "BF idle dance", (10, 11, 12, 13))
 
 		self.animation.play("idle")
@@ -452,12 +452,12 @@ class MommyMearest(HairLoopMixin, Character):
 
 		self.frames = load_frames("shared/images/characters/momCar.xml")
 		self.load_offsets()
-		self.add_animation("idle", "Mom Idle", tags=(ANIMATION_TAG.IDLE,))
-		self.add_animation("sing_up", "Mom Up Pose", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_down", "MOM DOWN POSE", tags=(ANIMATION_TAG.SING,))
-		self.add_animation("sing_left", "Mom Left Pose", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("idle", "Mom Idle", tags=(AnimationTag.IDLE,))
+		self.add_animation("sing_up", "Mom Up Pose", tags=(AnimationTag.SING,))
+		self.add_animation("sing_down", "MOM DOWN POSE", tags=(AnimationTag.SING,))
+		self.add_animation("sing_left", "Mom Left Pose", tags=(AnimationTag.SING,))
 		# well done
-		self.add_animation("sing_right", "Mom Pose Left", tags=(ANIMATION_TAG.SING,))
+		self.add_animation("sing_right", "Mom Pose Left", tags=(AnimationTag.SING,))
 		self.add_indexed_animation("idle_hair", "Mom Idle", (10, 11, 12, 13))
 
 		self.animation.play("idle")

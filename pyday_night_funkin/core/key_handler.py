@@ -2,7 +2,8 @@
 from collections import defaultdict
 import typing as t
 
-from pyday_night_funkin.enums import CONTROL
+HashableT = t.TypeVar("HashableT", bound=t.Hashable)
+
 
 class RawKeyHandler:
 	def __init__(self) -> None:
@@ -32,20 +33,21 @@ class RawKeyHandler:
 	__getitem__ = pressed
 
 
-class KeyHandler:
+class KeyHandler(t.Generic[HashableT]):
 	"""
 	Class to manage key presses by mapping them to controls.
+	A control can be pretty much anything hashable.
 	"""
 
-	def __init__(self, key_bindings: t.Dict[CONTROL, t.Sequence[int]]):
+	def __init__(self, key_bindings: t.Dict[HashableT, t.Sequence[int]]):
 		"""
 		# TODO Le doc
 		"""
 		self.key_bindings = key_bindings
-		self.control_activators: t.Dict[CONTROL, t.Set[int]] = {
+		self.control_activators: t.Dict[HashableT, t.Set[int]] = {
 			k: set() for k in key_bindings.keys()
 		}
-		self._just_pressed_controls: t.Set[CONTROL] = set()
+		self._just_pressed_controls: t.Set[HashableT] = set()
 
 		_key_to_control_map = defaultdict(list)
 		for ctrl, keys in key_bindings.items():
@@ -70,7 +72,7 @@ class KeyHandler:
 			if not self.pressed(control):
 				self._just_pressed_controls.discard(control)
 
-	def just_pressed(self, control: CONTROL) -> bool:
+	def just_pressed(self, control: HashableT) -> bool:
 		"""
 		Returns whether a control was "just pressed". This will be False
 		for an unpressed control, True if this is the first time the
@@ -80,7 +82,7 @@ class KeyHandler:
 		"""
 		return control in self._just_pressed_controls
 
-	def pressed(self, control: CONTROL) -> bool:
+	def pressed(self, control: HashableT) -> bool:
 		"""
 		Returns whether a control is pressed/being held down.
 		"""

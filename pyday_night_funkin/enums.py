@@ -5,7 +5,7 @@ Enums that aren't really too coupled to anything else.
 from enum import IntEnum
 
 
-class DIFFICULTY(IntEnum):
+class Difficulty(IntEnum):
 	EASY = 0
 	NORMAL = 1
 	HARD = 2
@@ -29,7 +29,7 @@ class DIFFICULTY(IntEnum):
 		return ""
 
 
-class CONTROL(IntEnum):
+class Control(IntEnum):
 	LEFT = 0
 	DOWN = 1
 	UP = 2
@@ -43,7 +43,7 @@ class CONTROL(IntEnum):
 	DEBUG_LOSE = 1002
 
 
-class ANIMATION_TAG(IntEnum):
+class AnimationTag(IntEnum):
 	IDLE = 0
 	SING = 1
 	MISS = 2

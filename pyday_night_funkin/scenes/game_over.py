@@ -3,7 +3,7 @@ import typing as t
 
 from pyday_night_funkin.core.asset_system import load_sound
 from pyday_night_funkin.core.scene import SceneKernel
-from pyday_night_funkin.enums import CONTROL
+from pyday_night_funkin.enums import Control
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
@@ -39,10 +39,10 @@ class GameOverScene(scenes.MusicBeatScene):
 	def update(self, dt: float) -> None:
 		super().update(dt)
 
-		if self.game.key_handler.just_pressed(CONTROL.ENTER):
+		if self.game.key_handler.just_pressed(Control.ENTER):
 			self.retry()
 
-		if self.game.key_handler.just_pressed(CONTROL.BACK) and not self.is_ending:
+		if self.game.key_handler.just_pressed(Control.BACK) and not self.is_ending:
 			self.game.player.stop()
 			self.remove_scene(end_game=True)
 

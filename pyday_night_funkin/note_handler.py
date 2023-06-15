@@ -6,8 +6,8 @@ from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.animation import AnimationController
 from pyday_night_funkin.core.utils import ListWindow
-from pyday_night_funkin.enums import CONTROL
-from pyday_night_funkin.note import Note, NOTE_TYPE, SUSTAIN_STAGE
+from pyday_night_funkin.enums import Control
+from pyday_night_funkin.note import Note, NoteType, SustainStage
 
 if t.TYPE_CHECKING:
 	from pyglet.image import Texture
@@ -39,10 +39,10 @@ class NoteHandler(AbstractNoteHandler):
 	"""
 
 	NOTE_TO_CONTROL_MAP = {
-		NOTE_TYPE.LEFT: CONTROL.LEFT,
-		NOTE_TYPE.DOWN: CONTROL.DOWN,
-		NOTE_TYPE.UP: CONTROL.UP,
-		NOTE_TYPE.RIGHT: CONTROL.RIGHT,
+		NoteType.LEFT: Control.LEFT,
+		NoteType.DOWN: Control.DOWN,
+		NoteType.UP: Control.UP,
+		NoteType.RIGHT: Control.RIGHT,
 	}
 
 	def __init__(self, game_scene: "InGameScene", note_layer: str, note_camera: str) -> None:
@@ -70,23 +70,23 @@ class NoteHandler(AbstractNoteHandler):
 
 		# this is the worst naming of anything i have ever seen
 		self.note_sprites = {
-			SUSTAIN_STAGE.NONE: {
-				NOTE_TYPE.LEFT: single_frame("purple instance 1"),
-				NOTE_TYPE.DOWN: single_frame("blue instance 1"),
-				NOTE_TYPE.UP: single_frame("green instance 1"),
-				NOTE_TYPE.RIGHT: single_frame("red instance 1"),
+			SustainStage.NONE: {
+				NoteType.LEFT: single_frame("purple instance 1"),
+				NoteType.DOWN: single_frame("blue instance 1"),
+				NoteType.UP: single_frame("green instance 1"),
+				NoteType.RIGHT: single_frame("red instance 1"),
 			},
-			SUSTAIN_STAGE.TRAIL: {
-				NOTE_TYPE.LEFT: single_frame("purple hold piece instance 1"),
-				NOTE_TYPE.DOWN: single_frame("blue hold piece instance 1"),
-				NOTE_TYPE.UP: single_frame("green hold piece instance 1"),
-				NOTE_TYPE.RIGHT: single_frame("red hold piece instance 1"),
+			SustainStage.TRAIL: {
+				NoteType.LEFT: single_frame("purple hold piece instance 1"),
+				NoteType.DOWN: single_frame("blue hold piece instance 1"),
+				NoteType.UP: single_frame("green hold piece instance 1"),
+				NoteType.RIGHT: single_frame("red hold piece instance 1"),
 			},
-			SUSTAIN_STAGE.END: {
-				NOTE_TYPE.LEFT: single_frame("pruple end hold instance 1"), # :^|
-				NOTE_TYPE.DOWN: single_frame("blue hold end instance 1"),
-				NOTE_TYPE.UP: single_frame("green hold end instance 1"),
-				NOTE_TYPE.RIGHT: single_frame("red hold end instance 1"),
+			SustainStage.END: {
+				NoteType.LEFT: single_frame("pruple end hold instance 1"), # :^|
+				NoteType.DOWN: single_frame("blue hold end instance 1"),
+				NoteType.UP: single_frame("green hold end instance 1"),
+				NoteType.RIGHT: single_frame("red hold end instance 1"),
 			},
 		}
 
@@ -100,12 +100,12 @@ class NoteHandler(AbstractNoteHandler):
 		for section in song_data["notes"]:
 			for time_, type_, sustain in section["sectionNotes"]:
 				singer = int(section["mustHitSection"]) # 0: opponent, 1: bf
-				if type_ >= len(NOTE_TYPE): # Note is sung by other character
-					type_ %= len(NOTE_TYPE)
+				if type_ >= len(NoteType): # Note is sung by other character
+					type_ %= len(NoteType)
 					singer ^= 1
-				type_ = NOTE_TYPE(type_)
+				type_ = NoteType(type_)
 
-				self.notes.append(Note(singer, time_, type_, sustain, SUSTAIN_STAGE.NONE))
+				self.notes.append(Note(singer, time_, type_, sustain, SustainStage.NONE))
 				trail_notes = math.ceil(sustain / self.game_scene.conductor.step_duration)
 				for i in range(trail_notes): # 0 and effectless for non-sustain notes.
 					self.notes.append(Note(
@@ -113,14 +113,14 @@ class NoteHandler(AbstractNoteHandler):
 						time_ + (self.game_scene.conductor.step_duration * (i + 1)),
 						type_,
 						sustain,
-						SUSTAIN_STAGE.END if i == trail_notes - 1 else SUSTAIN_STAGE.TRAIL,
+						SustainStage.END if i == trail_notes - 1 else SustainStage.TRAIL,
 					))
 		self.notes.sort()
 
 	def update(
 		self,
-		pressed: t.Dict[NOTE_TYPE, bool],
-	) -> t.Tuple[t.List[Note], t.List[Note], t.Dict[NOTE_TYPE, t.Optional[Note]]]:
+		pressed: t.Dict[NoteType, bool],
+	) -> t.Tuple[t.List[Note], t.List[Note], t.Dict[NoteType, t.Optional[Note]]]:
 		"""
 		Update the note handler, causing it to move all onscreen notes
 		and handle hit/missed notes.
@@ -168,10 +168,10 @@ class NoteHandler(AbstractNoteHandler):
 				image = self.note_sprites[cur_note.sustain_stage][cur_note.type],
 			)
 			sprite.set_scale_and_repos(.7)
-			if cur_note.sustain_stage is not SUSTAIN_STAGE.NONE:
+			if cur_note.sustain_stage is not SustainStage.NONE:
 				sprite.opacity = 153
 				sprite.x += (_MAGIC_ARROW_OFFSET - sprite.width) / 2
-				if cur_note.sustain_stage is SUSTAIN_STAGE.TRAIL:
+				if cur_note.sustain_stage is SustainStage.TRAIL:
 					sprite.set_scale_y_and_repos(
 						self.game_scene.conductor.step_duration * (1/30) * speed
 					)
@@ -227,7 +227,7 @@ class NoteHandler(AbstractNoteHandler):
 				# no other note was already encountered
 				res_hit_map[note.type] is None and
 				# Was either just pressed or is a sustain note
-				(pressed[note.type] or note.sustain_stage is not SUSTAIN_STAGE.NONE)
+				(pressed[note.type] or note.sustain_stage is not SustainStage.NONE)
 			):
 				# Congrats, note hit
 				res_hit_map[note.type] = note

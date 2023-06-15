@@ -6,7 +6,7 @@ from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.asset_system import load_image, load_sound, load_text
-from pyday_night_funkin.enums import CONTROL
+from pyday_night_funkin.enums import Control
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
@@ -147,7 +147,7 @@ class TitleScene(scenes.MusicBeatScene):
 				self._BEAT_FUNCS[self.cur_beat]()
 
 	def update(self, dt: float) -> None:
-		if self.game.key_handler.just_pressed(CONTROL.ENTER):
+		if self.game.key_handler.just_pressed(Control.ENTER):
 			if not self._intro_ended:
 				self._intro_end()
 			elif not self._leaving_scene:

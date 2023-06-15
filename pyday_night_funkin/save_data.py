@@ -9,7 +9,7 @@ from loguru import logger
 from pyglet.window import key
 from schema import Or, Schema
 
-from pyday_night_funkin.enums import CONTROL
+from pyday_night_funkin.enums import Control
 
 
 class UnsupportedPlatformError(Exception):
@@ -48,7 +48,7 @@ class Config:
 		self,
 		scroll_speed: float,
 		safe_window: float,
-		key_bindings: t.Dict[CONTROL, t.Sequence[int]],
+		key_bindings: t.Dict[Control, t.Sequence[int]],
 	) -> None:
 		self.scroll_speed = scroll_speed
 		self.safe_window = safe_window
@@ -71,7 +71,7 @@ class Config:
 			data["scroll_speed"],
 			data["safe_window"],
 			{
-				getattr(CONTROL, ctrl_name): [getattr(key, k) for k in key_names]
+				getattr(Control, ctrl_name): [getattr(key, k) for k in key_names]
 				for ctrl_name, key_names in data["key_bindings"].items()
 			},
 		)
@@ -98,17 +98,17 @@ class Config:
 			scroll_speed = 1.0,
 			safe_window = 167.0,
 			key_bindings = {
-				CONTROL.LEFT: [key.LEFT, key.A],
-				CONTROL.DOWN: [key.DOWN, key.S],
-				CONTROL.UP: [key.UP, key.W],
-				CONTROL.RIGHT: [key.RIGHT, key.D],
-				CONTROL.ENTER: [key.ENTER],
-				CONTROL.BACK: [key.BACKSPACE],
-				CONTROL.VOLUME_UP: [key.PLUS],
-				CONTROL.VOLUME_DOWN: [key.MINUS],
-				CONTROL.DEBUG_DESYNC: [key._1],
-				CONTROL.DEBUG_WIN: [key._2],
-				CONTROL.DEBUG_LOSE: [key._3],
+				Control.LEFT: [key.LEFT, key.A],
+				Control.DOWN: [key.DOWN, key.S],
+				Control.UP: [key.UP, key.W],
+				Control.RIGHT: [key.RIGHT, key.D],
+				Control.ENTER: [key.ENTER],
+				Control.BACK: [key.BACKSPACE],
+				Control.VOLUME_UP: [key.PLUS],
+				Control.VOLUME_DOWN: [key.MINUS],
+				Control.DEBUG_DESYNC: [key._1],
+				Control.DEBUG_WIN: [key._2],
+				Control.DEBUG_LOSE: [key._3],
 			},
 		)
 

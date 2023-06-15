@@ -1,6 +1,6 @@
 import typing as t
 
-from pyday_night_funkin.enums import CONTROL
+from pyday_night_funkin.enums import Control
 from pyday_night_funkin.scenes import MusicBeatScene, MainMenuScene
 
 from pyday_night_funkin.core.pnf_text import PNFText
@@ -23,5 +23,5 @@ class SettingsScene(MusicBeatScene):
 	def update(self, dt: float) -> None:
 		super().update(dt)
 
-		if self.game.key_handler.just_pressed(CONTROL.BACK):
+		if self.game.key_handler.just_pressed(Control.BACK):
 			self.game.set_scene(MainMenuScene)

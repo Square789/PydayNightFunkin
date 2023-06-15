@@ -11,7 +11,7 @@ from pyday_night_funkin.character import CharacterData
 from pyday_night_funkin.core.pnf_text import PNFText
 from pyday_night_funkin.core.tween_effects.eases import linear
 from pyday_night_funkin.core.utils import to_rgba_tuple
-from pyday_night_funkin.note import NOTE_TYPE
+from pyday_night_funkin.note import NoteType
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 
 if t.TYPE_CHECKING:
@@ -43,7 +43,7 @@ class TestScene(MusicBeatScene):
 
 		note_sprites = load_frames("preload/images/NOTE_assets.xml")
 		self.arrows: t.List["PNFSprite"] = []
-		for i, note_type in enumerate(NOTE_TYPE):
+		for i, note_type in enumerate(NoteType):
 			atlas_names = note_type.get_atlas_names()
 			s = self.create_object("ye_olde_layer", "main", x=300, y=50 + i*200)
 			s.frames = note_sprites

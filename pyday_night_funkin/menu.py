@@ -2,7 +2,7 @@
 import typing as t
 
 from pyday_night_funkin.core.key_handler import KeyHandler
-from pyday_night_funkin.enums import CONTROL
+from pyday_night_funkin.enums import Control
 
 
 class Menu:
@@ -18,8 +18,8 @@ class Menu:
 		on_select: t.Optional[t.Callable[[int, bool], t.Any]] = None,
 		on_confirm: t.Optional[t.Callable[[int, bool], t.Any]] = None,
 		ini_selection_index: int = 0,
-		fwd_control: CONTROL = CONTROL.DOWN,
-		bkwd_control: CONTROL = CONTROL.UP,
+		fwd_control: Control = Control.DOWN,
+		bkwd_control: Control = Control.UP,
 	) -> None:
 		"""
 		Initializes a menu.
@@ -119,7 +119,7 @@ class Menu:
 		if kh.just_pressed(self._fwd_control):
 			self._change_item(1)
 
-		if kh.just_pressed(CONTROL.ENTER):
+		if kh.just_pressed(Control.ENTER):
 			self.choice_made = True
 			for i in range(self.item_count):
 				self.on_confirm(i, i == self.selection_index)

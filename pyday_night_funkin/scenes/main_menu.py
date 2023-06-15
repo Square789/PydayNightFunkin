@@ -8,7 +8,7 @@ from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.tween_effects.eases import out_quad
 from pyday_night_funkin.core.utils import to_rgb_tuple
-from pyday_night_funkin.enums import CONTROL
+from pyday_night_funkin.enums import Control
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
 
@@ -84,7 +84,7 @@ class MainMenuScene(scenes.MusicBeatScene):
 		if self.menu.choice_made:
 			return
 
-		if self.game.key_handler.just_pressed(CONTROL.BACK):
+		if self.game.key_handler.just_pressed(Control.BACK):
 			self.game.set_scene(scenes.TitleScene)
 			return
 

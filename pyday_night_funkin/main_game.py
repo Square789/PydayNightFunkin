@@ -16,7 +16,7 @@ from pyday_night_funkin.core.scene_manager import SceneManager
 from pyday_night_funkin.core.sound import SoundController
 from pyday_night_funkin.constants import GAME_WIDTH, GAME_HEIGHT
 from pyday_night_funkin.debug_pane import DebugPane
-from pyday_night_funkin.enums import CONTROL
+from pyday_night_funkin.enums import Control
 from pyday_night_funkin.volume_control_dropdown import VolumeControlDropdown
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.registry import Registry
@@ -195,7 +195,7 @@ class Game(SceneManager):
 		self.save_data = SaveData.load()
 
 		self.raw_key_handler = RawKeyHandler()
-		self.key_handler = KeyHandler(self.save_data.config.key_bindings)
+		self.key_handler: KeyHandler[Control] = KeyHandler(self.save_data.config.key_bindings)
 
 		self.window.push_handlers(self.key_handler)
 		self.window.push_handlers(self.raw_key_handler)
@@ -279,8 +279,8 @@ class Game(SceneManager):
 		if self._pending_scene_stack_removals or self._pending_scene_stack_additions:
 			self._modify_scene_stack()
 
-		vup = self.key_handler.just_pressed(CONTROL.VOLUME_UP)
-		vdn = self.key_handler.just_pressed(CONTROL.VOLUME_DOWN)
+		vup = self.key_handler.just_pressed(Control.VOLUME_UP)
+		vdn = self.key_handler.just_pressed(Control.VOLUME_DOWN)
 		if vup != vdn:
 			self.sound.change_volume(1 if vup else -1)
 			self.volume_control.display_change(self.sound.selected_volume)

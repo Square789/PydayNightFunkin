@@ -11,9 +11,9 @@ from pyday_night_funkin.base_game_pack import SongResourceOptions, load_song
 from pyday_night_funkin.character import Character, CharacterData
 from pyday_night_funkin.core.scene import BaseScene, SceneKernel, BaseSceneArgDict
 from pyday_night_funkin.core.utils import lerp
-from pyday_night_funkin.enums import ANIMATION_TAG, CONTROL, DIFFICULTY
+from pyday_night_funkin.enums import AnimationTag, Control, Difficulty
 from pyday_night_funkin.hud import HUD
-from pyday_night_funkin.note import NOTE_TYPE, SUSTAIN_STAGE, Note
+from pyday_night_funkin.note import NoteType, SustainStage, Note
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
@@ -143,7 +143,7 @@ class InGameScene(scenes.MusicBeatScene):
 		self,
 		kernel: InGameSceneKernel,
 		level_data: "LevelData",
-		difficulty: DIFFICULTY,
+		difficulty: Difficulty,
 		follow_scene: t.Type["BaseScene"],
 		remaining_week: t.Optional[t.Sequence["LevelData"]] = None,
 	) -> None:
@@ -249,7 +249,7 @@ class InGameScene(scenes.MusicBeatScene):
 	def get_kernel(
 		cls,
 		level_data: "LevelData",
-		difficulty: DIFFICULTY,
+		difficulty: Difficulty,
 		follow_scene: t.Type["BaseScene"],
 		remaining_week: t.Optional[t.Sequence["LevelData"]] = None,
 	) -> InGameSceneKernel:
@@ -436,7 +436,7 @@ class InGameScene(scenes.MusicBeatScene):
 			fail_note = player_missed[-1]
 			self.boyfriend.animation.play(f"miss_{fail_note.type.name.lower()}", True)
 
-		for type_ in NOTE_TYPE:
+		for type_ in NoteType:
 			if type_ not in player_res:
 				# Note not being held, make the arrow static
 				self.hud.arrow_static(type_)
@@ -457,18 +457,18 @@ class InGameScene(scenes.MusicBeatScene):
 
 		handler_called = False
 		if self.game.debug:
-			if key_handler.just_pressed(CONTROL.DEBUG_DESYNC):
+			if key_handler.just_pressed(Control.DEBUG_DESYNC):
 				desync = random.randint(-400, 400)
 				logger.debug(f"Desyncing conductor by {desync}ms")
 				self.conductor.song_position += desync
-			if key_handler.just_pressed(CONTROL.DEBUG_WIN):
+			if key_handler.just_pressed(Control.DEBUG_WIN):
 				handler_called = True
 				self.on_song_end()
-			if key_handler.just_pressed(CONTROL.DEBUG_LOSE) and not handler_called:
+			if key_handler.just_pressed(Control.DEBUG_LOSE) and not handler_called:
 				handler_called = True
 				self.on_game_over()
 
-		if key_handler.just_pressed(CONTROL.ENTER) and not handler_called:
+		if key_handler.just_pressed(Control.ENTER) and not handler_called:
 			handler_called = True
 			self.on_pause()
 
@@ -482,7 +482,7 @@ class InGameScene(scenes.MusicBeatScene):
 		self.boyfriend.animation.play(f"sing_{note.type.name.lower()}", True)
 
 		health = 0.004
-		if note.sustain_stage is SUSTAIN_STAGE.NONE:
+		if note.sustain_stage is SustainStage.NONE:
 			self.combo += 1
 			self.hud.combo_popup(note.rating, self.combo)
 			health = 0.023
@@ -496,7 +496,7 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		self.set_health(self.health - 0.0475)
 
-	def on_misinput(self, type_: NOTE_TYPE) -> None: # CALM DOWN CALM DOWN
+	def on_misinput(self, type_: NoteType) -> None: # CALM DOWN CALM DOWN
 		"""
 		Called whenever an arrow is pressed and no note for it was
 		playable.

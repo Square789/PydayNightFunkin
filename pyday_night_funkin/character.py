@@ -7,7 +7,7 @@ from pyglet.math import Vec2
 
 from pyday_night_funkin.core.asset_system import load_text
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.enums import ANIMATION_TAG
+from pyday_night_funkin.enums import AnimationTag
 from pyday_night_funkin.registry import Registry
 
 if t.TYPE_CHECKING:
@@ -166,8 +166,8 @@ class Character(PNFSprite):
 	def update(self, dt: float) -> None:
 		super().update(dt)
 		if (
-			self.animation.has_tag(ANIMATION_TAG.SING) or
-			self.animation.has_tag(ANIMATION_TAG.MISS)
+			self.animation.has_tag(AnimationTag.SING) or
+			self.animation.has_tag(AnimationTag.MISS)
 		):
 			self.hold_timer += dt
 
@@ -194,8 +194,8 @@ class Character(PNFSprite):
 		animation is tagged `AnimationTag.SING` or `MISS`.
 		"""
 		return not (
-			self.animation.has_tag(ANIMATION_TAG.SING) or
-			self.animation.has_tag(ANIMATION_TAG.MISS)
+			self.animation.has_tag(AnimationTag.SING) or
+			self.animation.has_tag(AnimationTag.MISS)
 		)
 
 	def dance(self, force: bool = False) -> None:
@@ -242,7 +242,7 @@ class Character(PNFSprite):
 		prefix: str,
 		fps: float = 24.0,
 		loop: bool = False,
-		tags: t.Sequence[ANIMATION_TAG] = (),
+		tags: t.Sequence[AnimationTag] = (),
 		offset_override: t.Optional[t.Tuple[float, float]] = None,
 	) -> None:
 		"""
@@ -265,7 +265,7 @@ class Character(PNFSprite):
 		indices: t.Iterable[int],
 		fps: float = 24.0,
 		loop: bool = False,
-		tags: t.Sequence[ANIMATION_TAG] = (),
+		tags: t.Sequence[AnimationTag] = (),
 		offset_override: t.Optional[t.Tuple[float, float]] = None,
 	) -> None:
 		"""

@@ -5,7 +5,7 @@ from pyday_night_funkin.alphabet import TextLine
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.tween_effects.eases import in_out_quart
 from pyday_night_funkin.core.utils import to_rgba_tuple
-from pyday_night_funkin.enums import CONTROL
+from pyday_night_funkin.enums import Control
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
@@ -30,7 +30,7 @@ class PauseScene(scenes.MusicBeatScene):
 	def update(self, dt: float) -> None:
 		super().update(dt)
 
-		if self.game.key_handler.just_pressed(CONTROL.ENTER):
+		if self.game.key_handler.just_pressed(Control.ENTER):
 			self.remove_scene(end_game=False, reset=False)
-		elif self.game.key_handler.just_pressed(CONTROL.BACK):
+		elif self.game.key_handler.just_pressed(Control.BACK):
 			self.remove_scene(end_game=True)

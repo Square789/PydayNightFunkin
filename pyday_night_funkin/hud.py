@@ -6,11 +6,11 @@ import typing as t
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin.core.asset_system import load_image, load_sound
-from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
+from pyday_night_funkin.core.pnf_text import TextAlignment, PNFText
 from pyday_night_funkin.core.tween_effects.eases import in_out_cubic, linear, out_cubic
-from pyday_night_funkin.enums import ANIMATION_TAG
+from pyday_night_funkin.enums import AnimationTag
 from pyday_night_funkin.health_bar import HealthBar
-from pyday_night_funkin.note import NOTE_TYPE, RATING
+from pyday_night_funkin.note import NoteType, Rating
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
@@ -53,17 +53,17 @@ class HUD:
 		)
 
 		self.note_rating_textures = {
-			RATING.SICK: load_image("shared/images/sick.png"),
-			RATING.GOOD: load_image("shared/images/good.png"),
-			RATING.BAD: load_image("shared/images/bad.png"),
-			RATING.SHIT: load_image("shared/images/shit.png"),
+			Rating.SICK: load_image("shared/images/sick.png"),
+			Rating.GOOD: load_image("shared/images/good.png"),
+			Rating.BAD: load_image("shared/images/bad.png"),
+			Rating.SHIT: load_image("shared/images/shit.png"),
 		}
 
 		self.number_textures = [load_image(f"preload/images/num{i}.png") for i in range(10)]
 		note_sprites = load_frames("preload/images/NOTE_assets.xml")
 
-		self.static_arrows: t.List[t.Dict[NOTE_TYPE, "PNFSprite"]] = [{}, {}]
-		for i, note_type in product((0, 1), NOTE_TYPE):
+		self.static_arrows: t.List[t.Dict[NoteType, "PNFSprite"]] = [{}, {}]
+		for i, note_type in product((0, 1), NoteType):
 			atlas_names = note_type.get_atlas_names()
 			arrow_sprite = self._scene.create_object(
 				self.arrow_layer,
@@ -75,7 +75,7 @@ class HUD:
 			for anim_name, atlas_name, tag in zip(
 				("static", "pressed", "confirm"),
 				atlas_names,
-				(ANIMATION_TAG.STATIC, ANIMATION_TAG.PRESSED, ANIMATION_TAG.CONFIRM),
+				(AnimationTag.STATIC, AnimationTag.PRESSED, AnimationTag.CONFIRM),
 			):
 				arrow_sprite.animation.add_by_prefix(anim_name, atlas_name, 24, False, tags=(tag,))
 			arrow_sprite.set_scale_and_repos(.7)
@@ -100,7 +100,7 @@ class HUD:
 			text = "",
 			font_size = 16,
 			font_name = "VCR OSD Mono",
-			align = ALIGNMENT.RIGHT,
+			align = TextAlignment.RIGHT,
 		)
 
 	def update_health(self, health: float) -> None:
@@ -109,7 +109,7 @@ class HUD:
 	def update_score(self, new_score: int) -> None:
 		self.score_text.text = f"Score:{new_score}"
 
-	def combo_popup(self, rating: RATING, combo: int) -> None:
+	def combo_popup(self, rating: Rating, combo: int) -> None:
 		"""
 		Pops up sprites to notify of a combo and a note hit rating.
 		"""
@@ -183,13 +183,13 @@ class HUD:
 		if self.countdown_sounds[countdown_stage] is not None:
 			scene.sfx_ring.play(self.countdown_sounds[countdown_stage])
 
-	def arrow_static(self, type_: NOTE_TYPE) -> None:
-		if not self.static_arrows[1][type_].animation.has_tag(ANIMATION_TAG.STATIC):
+	def arrow_static(self, type_: NoteType) -> None:
+		if not self.static_arrows[1][type_].animation.has_tag(AnimationTag.STATIC):
 			self.static_arrows[1][type_].animation.play("static")
 
-	def arrow_pressed(self, type_: NOTE_TYPE) -> None:
-		if self.static_arrows[1][type_].animation.has_tag(ANIMATION_TAG.STATIC):
+	def arrow_pressed(self, type_: NoteType) -> None:
+		if self.static_arrows[1][type_].animation.has_tag(AnimationTag.STATIC):
 			self.static_arrows[1][type_].animation.play("pressed")
 
-	def arrow_confirm(self, type_: NOTE_TYPE) -> None:
+	def arrow_confirm(self, type_: NoteType) -> None:
 		self.static_arrows[1][type_].animation.play("confirm", True)

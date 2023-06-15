@@ -6,10 +6,10 @@ from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.base_game_pack import load_character_icon
 from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
+from pyday_night_funkin.core.pnf_text import TextAlignment, PNFText
 from pyday_night_funkin.core.scene import BaseScene
 from pyday_night_funkin.core.utils import to_rgba_tuple
-from pyday_night_funkin.enums import CONTROL, DIFFICULTY
+from pyday_night_funkin.enums import Control, Difficulty
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
 
@@ -42,7 +42,7 @@ class FreeplayScene(scenes.MusicBeatScene):
 			font_name = "VCR OSD Mono",
 			font_size = 32,
 			color = to_rgba_tuple(CNST.WHITE),
-			align = ALIGNMENT.RIGHT,
+			align = TextAlignment.RIGHT,
 		)
 		self.diff_text = self.create_object(
 			"textfg",
@@ -91,17 +91,17 @@ class FreeplayScene(scenes.MusicBeatScene):
 		)
 		self.diff_menu = Menu(
 			self.game.key_handler,
-			len(DIFFICULTY),
+			len(Difficulty),
 			self._on_diff_select,
 			ini_selection_index = 1,
-			fwd_control = CONTROL.RIGHT,
-			bkwd_control = CONTROL.LEFT,
+			fwd_control = Control.RIGHT,
+			bkwd_control = Control.LEFT,
 		)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
 
-		if self.game.key_handler.just_pressed(CONTROL.BACK):
+		if self.game.key_handler.just_pressed(Control.BACK):
 			self.game.set_scene(scenes.MainMenuScene)
 			return # Don't want any menu callbacks to trigger when this block runs
 
@@ -124,11 +124,11 @@ class FreeplayScene(scenes.MusicBeatScene):
 			self.game.set_scene(
 				self.displayed_songs[i].stage_type.get_kernel(
 					self.displayed_songs[i],
-					DIFFICULTY(self.diff_menu.selection_index),
+					Difficulty(self.diff_menu.selection_index),
 					FreeplayScene,
 				)
 			)
 
 	def _on_diff_select(self, i: int, state: bool) -> None:
 		if state:
-			self.diff_text.text = DIFFICULTY(i).name
+			self.diff_text.text = Difficulty(i).name

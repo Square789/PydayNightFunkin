@@ -6,20 +6,20 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
 
-class RATING(IntEnum):
+class Rating(IntEnum):
 	SICK = 0
 	GOOD = 1
 	BAD = 2
 	SHIT = 3
 
 
-class SUSTAIN_STAGE(IntEnum):
+class SustainStage(IntEnum):
 	NONE = 0
 	TRAIL = 1
 	END = 2
 
 
-class NOTE_TYPE(IntEnum):
+class NoteType(IntEnum):
 	LEFT = 0
 	DOWN = 1
 	UP = 2
@@ -44,9 +44,9 @@ class NOTE_TYPE(IntEnum):
 		"""
 		return _NOTE_TYPE_ORDER.get(self, -1)
 
-_NOTE_TYPE_ORDER = {NOTE_TYPE.LEFT: 0, NOTE_TYPE.DOWN: 1, NOTE_TYPE.UP: 2, NOTE_TYPE.RIGHT: 3}
+_NOTE_TYPE_ORDER = {NoteType.LEFT: 0, NoteType.DOWN: 1, NoteType.UP: 2, NoteType.RIGHT: 3}
 _NOTE_TYPE_SHEET_REMAP = {
-	NOTE_TYPE.LEFT: 1, NOTE_TYPE.DOWN: 2, NOTE_TYPE.UP: 4, NOTE_TYPE.RIGHT: 3
+	NoteType.LEFT: 1, NoteType.DOWN: 2, NoteType.UP: 4, NoteType.RIGHT: 3
 }
 
 class Note:
@@ -58,9 +58,9 @@ class Note:
 		self,
 		singer: int,
 		time: float,
-		type_: NOTE_TYPE,
+		type_: NoteType,
 		sustain: float,
-		sustain_stage: SUSTAIN_STAGE,
+		sustain_stage: SustainStage,
 	) -> None:
 		self.singer = singer
 		self.time = time
@@ -85,7 +85,7 @@ class Note:
 
 		if self.singer != 1:
 			if self.time <= current_time:
-				self.rating = RATING.SICK
+				self.rating = Rating.SICK
 		else:
 			if self.time < current_time - safe_zone:
 				self.playable = False
@@ -101,13 +101,13 @@ class Note:
 
 		discrepancy = abs(self.time - current_time)
 		if discrepancy > safe_zone * 0.9:
-			self.rating = RATING.SHIT
+			self.rating = Rating.SHIT
 		elif discrepancy > safe_zone * 0.75:
-			self.rating = RATING.BAD
+			self.rating = Rating.BAD
 		elif discrepancy > safe_zone * 0.2:
-			self.rating = RATING.GOOD
+			self.rating = Rating.GOOD
 		else:
-			self.rating = RATING.SICK
+			self.rating = Rating.SICK
 
 	def is_playable(self, current_time: float, safe_zone: float) -> bool:
 		"""

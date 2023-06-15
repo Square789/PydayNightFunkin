@@ -5,9 +5,9 @@ import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.base_game_pack import load_frames, load_week_header
 from pyday_night_funkin.core.asset_system import load_sound
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.core.pnf_text import ALIGNMENT, PNFText
+from pyday_night_funkin.core.pnf_text import TextAlignment, PNFText
 from pyday_night_funkin.core.utils import lerp, to_rgb_tuple, to_rgba_tuple
-from pyday_night_funkin.enums import CONTROL, DIFFICULTY
+from pyday_night_funkin.enums import Control, Difficulty
 from pyday_night_funkin.menu import Menu
 from pyday_night_funkin import scenes
 
@@ -116,13 +116,13 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.diff_arrow_left.animation.play("idle")
 
 		_diff_offset_map = {
-			DIFFICULTY.EASY: (20, 0),
-			DIFFICULTY.NORMAL: (70, 0),
-			DIFFICULTY.HARD: (20, 0),
+			Difficulty.EASY: (20, 0),
+			Difficulty.NORMAL: (70, 0),
+			Difficulty.HARD: (20, 0),
 		}
 		self.difficulty_indicator = self.create_object("bg", x=larrx + 130, y=larry)
 		self.difficulty_indicator.frames = ui_tex
-		for diff in DIFFICULTY:
+		for diff in Difficulty:
 			self.difficulty_indicator.animation.add_by_prefix(
 				str(diff.value), diff.to_atlas_prefix(), offset=_diff_offset_map[diff]
 			)
@@ -148,7 +148,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			font_size = 32,
 			color = to_rgba_tuple(0xE55777FF),
 			multiline = True,
-			align = ALIGNMENT.CENTER,
+			align = TextAlignment.CENTER,
 			width = 500,
 		)
 		self.week_title_txt = self.create_object(
@@ -168,11 +168,11 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		)
 		self.diff_menu = Menu(
 			self.game.key_handler,
-			len(DIFFICULTY),
+			len(Difficulty),
 			self._on_diff_select,
 			ini_selection_index = 1,
-			fwd_control = CONTROL.RIGHT,
-			bkwd_control = CONTROL.LEFT,
+			fwd_control = Control.RIGHT,
+			bkwd_control = Control.LEFT,
 		)
 
 	def _on_week_select(self, index: int, state: bool) -> None:
@@ -231,7 +231,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.game.set_scene(
 			level.stage_type.get_kernel(
 				level_data = level,
-				difficulty = DIFFICULTY(self.diff_menu.selection_index),
+				difficulty = Difficulty(self.diff_menu.selection_index),
 				follow_scene = StoryMenuScene,
 				remaining_week = week.levels[1:],
 			),
@@ -244,11 +244,11 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			wh.y = lerp(wh.y, (wh.target_y * 120) + 480, .17)
 
 		kh = self.game.key_handler
-		if kh.just_pressed(CONTROL.BACK):
+		if kh.just_pressed(Control.BACK):
 			self.game.set_scene(scenes.MainMenuScene)
 
 		self.week_menu.update()
 		self.diff_menu.update()
 
-		self.diff_arrow_left.animation.play("press" if kh[CONTROL.LEFT] else "idle")
-		self.diff_arrow_right.animation.play("press" if kh[CONTROL.RIGHT] else "idle")
+		self.diff_arrow_left.animation.play("press" if kh[Control.LEFT] else "idle")
+		self.diff_arrow_right.animation.play("press" if kh[Control.RIGHT] else "idle")
