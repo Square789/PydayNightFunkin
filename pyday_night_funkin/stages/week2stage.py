@@ -26,11 +26,10 @@ class Week2Stage(BaseGameBaseStage):
 			**kwargs,
 		)
 
-		# For whatever reason, they idle at odd beats.
 		# NOTE: This isolates behavior for them into this stage only with an id comp.
 		# Maybe make a CharacterData property for this?
 		if self.level_data.opponent_character == "skid_n_pump":
-			self.dancers[self.opponent].offset = 1
+			self.dancers[self.opponent].frequency = 1
 
 		self._next_lightning_thresh = 0
 		self._lightning_sounds = (
