@@ -30,4 +30,5 @@ class SuperScene:
 		"""
 		Draws the superscene.
 		"""
+		self._camera.maybe_update_ubo()
 		self.batch.draw(self._camera)
