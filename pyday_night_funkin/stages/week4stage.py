@@ -40,7 +40,7 @@ class Week4Stage(BaseGameBaseStage):
 		super().__init__(
 			kernel.fill(
 				layers = (
-					"sky", "limo_bg", "henchmen", "girlfriend", "limo", "stage", "car",
+					"sky", "limo_bg", "henchmen", "car", "girlfriend", "limo", "stage",
 					OrderedLayer("ui_combo"), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
 				),
 				default_cam_zoom = 0.9,
@@ -98,8 +98,31 @@ class Week4Stage(BaseGameBaseStage):
 
 	def _move_car(self) -> None:
 		self._allow_passing_car = False
-		self.sfx_ring.play(choice(self._car_sounds), 0.7)
-		# Originally used dt which is accessible in a global field in FlxG cause of course it is.
-		# Assume the sane default instead, i don't think it has much of an effect
-		self.car.start_movement(((randint(170, 220) / 0.016666) * 3.0, 0))
+		self.sfx_ring.play(choice(self._car_sounds), 1.0)
+		# The car starts at -12600 and the camera is typically pinning some point between
+		# 200-800-ish.
+		# The car pass sounds have their whoosh at 1.25 or 1.45; already quite some difference.
+		# So, the car has to make a distance of ~13000px in ~1.35 seconds.
+		# All logic dictates that the car needs a velocity of around 9000-10500px/s for that.
+		# This doesn't stop the base game from doing the calculation
+		# (FlxG.random.int(170, 220) / FlxG.elapsed) * 3
+		# ((Yes, that is the current frame's elapsed time making the thing go super slow if the
+		# frame lags behind)), which produces speeds in the ballpark of 80000 or even 100000px/s
+		# on static targets (dt ~0.006); while crawling behind at 18000 - 70000 on html5.
+		# The worst thing: IT WORKS. I think HF is posessed by some kind of super-diligent
+		# machine spirit that just... screws the velocity calculations so hard it makes
+		# it work? Or more likely, i really do not understand hf's time stepping.
+		# Well, whatever; i'm rolling a value more directly here ezpz B-)))
+		self.car.start_movement((randint(8900, 10600), 0))
+		print(self.car.movement.velocity.x)
 		self.clock.schedule_once(self._reset_car, 2.0)
+
+
+class MILFStage(Week4Stage):
+	def on_beat_hit(self) -> None:
+		# Constant repetition (1.35) is kinda icky, but this works so hey
+		if self.zoom_cams and self.main_cam.zoom < 1.35 and (168 <= self.cur_beat < 200):
+			self.main_cam.zoom += 0.015
+			self.hud_cam.zoom += 0.03
+
+		super().on_beat_hit()

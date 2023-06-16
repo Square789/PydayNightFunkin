@@ -562,7 +562,7 @@ def load() -> ContentPack:
 		Week1Stage, BopeeboStage, FreshStage,
 		Week2Stage, MonsterStage,
 		Week3Stage,
-		Week4Stage,
+		Week4Stage, MILFStage,
 	)
 
 	# Characters do not have IDs like gf; gf-pixel; gf-car; bf; bf-pixel; bf-car; mom; mom-car
@@ -693,7 +693,7 @@ def load() -> ContentPack:
 					LevelData(
 						"milf",
 						"MILF",
-						Week4Stage,
+						MILFStage,
 						"boyfriend_car",
 						"girlfriend_car",
 						"mommy_mearest",
