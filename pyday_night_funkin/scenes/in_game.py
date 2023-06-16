@@ -504,6 +504,9 @@ class InGameScene(scenes.MusicBeatScene):
 		reduces health.
 		"""
 		self.boyfriend.animation.play(f"miss_{type_.name.lower()}", True)
+		if self.combo > 5 and self.girlfriend.animation.exists("sad"):
+			self.girlfriend.animation.play("sad")
+
 		self.combo = 0
 		self.set_health(self.health - 0.04)
 

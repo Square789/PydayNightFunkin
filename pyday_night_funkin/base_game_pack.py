@@ -297,6 +297,7 @@ class Girlfriend(FlipIdleCharacter):
 		self.add_animation("sing_down", "GF Down Note", tags=(AnimationTag.SING,))
 		self.add_animation("sing_right", "GF Right Note", tags=(AnimationTag.SING,))
 		self.add_animation("sing_up", "GF Up Note", tags=(AnimationTag.SING,))
+		self.add_indexed_animation("sad", "gf sad", range(13), loop=True)
 		# Nice space at the end bro
 		self.add_animation("scared", "GF FEAR ")
 		self.add_indexed_animation(
