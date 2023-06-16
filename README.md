@@ -104,8 +104,8 @@ python3 -m pip install -r requirements_build.txt
 python3 setup.py build_ext -i
 ```
  **NOTE**: This step may fail in many unpredictable and nasty ways. If that happens, please
- send me a friend request on discord at `Square789#0486` (not too sure whether that actually
- works), or [open an issue](https://github.com/Square789/PydayNightFunkin/issues/new).  
+ send me a friend request on discord at `Square789#0486 / square789`, or
+ [open an issue](https://github.com/Square789/PydayNightFunkin/issues/new).  
  I'll try my best to help with anything.
 
 ### 4. Get the runtime dependencies
