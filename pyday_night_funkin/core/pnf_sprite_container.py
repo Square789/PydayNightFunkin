@@ -80,7 +80,7 @@ class PNFSpriteContainer(PNFSprite):
 	def delete(self) -> None:
 		for x in self._sprites:
 			x.delete()
-		self._sprites = None
+		del self._sprites
 		self._context = None
 
 	def update(self, dt: float) -> None:

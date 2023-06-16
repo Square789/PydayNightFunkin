@@ -334,8 +334,8 @@ class DrawList:
 
 		for gd in self._group_data.values():
 			gd.children.clear() # probably makes cyclic reference breakup easier
-		self._group_data = None
-		# self._top_groups = None
+		del self._group_data
+		# del self._top_groups
 
 	def dump_group_tree(self, gi: t.Iterable["PNFGroup"] = None, indent: int = 2) -> str:
 		r = ""

@@ -87,7 +87,7 @@ class WeekData:
 	menu.
 	"""
 
-	def __getitem__(self, idx: int) -> t.Hashable:
+	def __getitem__(self, idx: int) -> LevelData:
 		return self.levels[idx]
 
 

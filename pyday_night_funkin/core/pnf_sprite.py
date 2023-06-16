@@ -474,10 +474,10 @@ class PNFSprite(WorldObject):
 		Deletes this sprite's graphical resources.
 		"""
 		self._interfacer.delete()
-		self._interfacer = None
-		self._texture = None
-		self._context = None # GC speedup, probably
-		self.animation = None
+		del self._interfacer
+		del self._texture
+		del self._context # GC speedup, probably
+		del self.animation
 
 	# === Simple properties and private methods below === #
 

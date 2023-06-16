@@ -175,20 +175,20 @@ class SimpleCamera:
 		self._ubo_needs_update = True
 
 	@property
-	def x(self) -> int:
+	def x(self) -> float:
 		return self._x
 
 	@x.setter
-	def x(self, new_x: int) -> None:
+	def x(self, new_x: float) -> None:
 		self._x = new_x
 		self._ubo_needs_update = True
 
 	@property
-	def y(self) -> int:
+	def y(self) -> float:
 		return self._y
 
 	@y.setter
-	def y(self, new_y: int) -> None:
+	def y(self, new_y: float) -> None:
 		self._y = new_y
 		self._ubo_needs_update = True
 
@@ -362,8 +362,8 @@ class Camera(SimpleCamera):
 
 	def delete(self) -> None:
 		self.framebuffer.delete()
-		self.framebuffer = None
-		self.texture = None
+		del self.framebuffer
+		del self.texture
 		self.quad_vbo.delete()
-		self.quad_vbo = None
+		del self.quad_vbo
 		gl.glDeleteVertexArrays(1, ctypes.byref(self.quad_vao))

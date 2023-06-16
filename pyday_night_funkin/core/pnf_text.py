@@ -78,9 +78,9 @@ void main() {
 
 	// Camera transform and zoom scale
 	m_camera_trans_scale[3].xy = (
-		(camera.zoom * -camera.GAME_DIMENSIONS / 2) +
+		(camera.zoom * -camera.GAME_DIMENSIONS / 2.0) +
 		(camera.zoom * scroll_factor * -camera.position) +
-		(camera.GAME_DIMENSIONS / 2)
+		(camera.GAME_DIMENSIONS / 2.0)
 	);
 	m_camera_trans_scale[0][0] = camera.zoom;
 	m_camera_trans_scale[1][1] = camera.zoom;
@@ -303,8 +303,8 @@ class PNFText(WorldObject):
 	def delete(self) -> None:
 		super().delete()
 		self._interfacer.delete()
-		self._interfacer = None
-		self._font_tex = None
+		del self._interfacer
+		del self._font_tex
 
 	@property
 	def text(self) -> str:

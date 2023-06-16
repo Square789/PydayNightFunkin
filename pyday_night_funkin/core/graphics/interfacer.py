@@ -94,7 +94,7 @@ class PNFBatchInterfacer:
 
 		self.domain.deallocate(self.domain_position, self.size)
 		self.batch._remove_interfacer(self)
-		self.batch = None # Friendship ended
+		del self.batch # Friendship ended
 		self.deleted = True
 
 	def migrate(

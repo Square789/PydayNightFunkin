@@ -218,7 +218,7 @@ class NoteHandler(AbstractNoteHandler):
 			self.notes_playable.start += 1
 
 		# Input processing here
-		res_hit_map = {type_: None for type_ in pressed}
+		res_hit_map: t.Dict[NoteType, t.Optional[Note]] = {type_: None for type_ in pressed}
 		for note in self.notes_playable:
 			if (
 				note.playable and
