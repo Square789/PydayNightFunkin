@@ -408,8 +408,9 @@ class InGameScene(scenes.MusicBeatScene):
 				self._set_focused_character(to_follow)
 
 		if self.zoom_cams:
-			self.main_cam.zoom = lerp(self._default_cam_zoom, self.main_cam.zoom, 0.95)
-			self.hud_cam.zoom = lerp(1.0, self.hud_cam.zoom, 0.95)
+			# NOTE: Hardcoded FPS of 60
+			self.main_cam.zoom = lerp(self._default_cam_zoom, self.main_cam.zoom, 0.95 * 60.0 * dt)
+			self.hud_cam.zoom = lerp(1.0, self.hud_cam.zoom, 0.95 * 60.0 * dt)
 
 	def process_input(self, dt: float) -> None:
 		"""
