@@ -20,9 +20,6 @@ class BopeeboStage(Week1Stage):
 
 
 class FreshStage(Week1Stage):
-	def __init__(self, *args, **kwargs) -> None:
-		super().__init__(*args, **kwargs)
-
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
 

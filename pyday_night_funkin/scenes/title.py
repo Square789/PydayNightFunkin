@@ -10,7 +10,6 @@ from pyday_night_funkin.enums import Control
 from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.alphabet import AlphabetCharacter
 	from pyday_night_funkin.core.scene import SceneKernel
 
 
@@ -64,7 +63,7 @@ class TitleScene(scenes.MusicBeatScene):
 		self._intro_ended = False
 		self._leaving_scene = False
 
-		self.text_lines: t.List[t.List["AlphabetCharacter"]] = []
+		self.text_lines: t.List[TextLine] = []
 
 		self._BEAT_FUNCS = {
 			1: lambda: self._create_text("original game by"),
