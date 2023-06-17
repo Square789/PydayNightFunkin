@@ -38,7 +38,7 @@
    tightly timed input detection that doesn't risk lagging behind by up to 16ms.
 
 ## Boring! Show me a video!
- Soon™
+ [Here you go!](https://www.youtube.com/watch?v=vTG_HHTZ0gk) - [June 17 2023; v0.0.50]
 
 ## How to run?
  I'm honored you want to try this out, because there's really nothing revolutionary in here.
