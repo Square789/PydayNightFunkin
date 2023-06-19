@@ -46,7 +46,7 @@ class Week4Stage(BaseGameBaseStage):
 				default_cam_zoom = 0.9,
 				# car bf's height added; x adjusted as per base game
 				player_anchor = Anchor(Vec2(1030, 592), Al.BOTTOM_LEFT, "stage"),
-				# (100, 100) + mom's dimensions (450, 613)
+				# (100, 100) + mom's dimensions (459, 613)
 				opponent_anchor = Anchor(Vec2(559, 713), Al.BOTTOM_RIGHT, "stage"),
 			),
 			*args,
@@ -114,7 +114,6 @@ class Week4Stage(BaseGameBaseStage):
 		# it work? Or more likely, i really do not understand hf's time stepping.
 		# Well, whatever; i'm rolling a value more directly here ezpz B-)))
 		self.car.start_movement((randint(8900, 10600), 0))
-		print(self.car.movement.velocity.x)
 		self.clock.schedule_once(self._reset_car, 2.0)
 
 
