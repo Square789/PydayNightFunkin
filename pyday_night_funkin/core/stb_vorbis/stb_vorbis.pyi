@@ -39,6 +39,9 @@ class STBVorbis:
 		stb_vorbis library and at most `num_samples` shorts (16 bit) in
 		a bytes object for all channels on the stb_vorbis struct, less
 		if the data source is exhausted.
+
+		Note that not `samples_per_channel * 2 == len(data)`, but
+		`samples_per_channel * 2 * channel_count == len(data)`
 		"""
 
 	def get_sample_amount(self) -> int:

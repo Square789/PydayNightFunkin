@@ -86,13 +86,11 @@ cdef class STBVorbis:
 		if buf == NULL:
 			raise MemoryError()
 
-		cdef int samples_per_channel
-		samples_per_channel = stb_vorbis_get_samples_short_interleaved(
+		cdef int samples_per_channel = stb_vorbis_get_samples_short_interleaved(
 			self._stb_vorbis, self.channel_amount, buf, num_samples
 		)
 
-		cdef int read_samples = samples_per_channel * self.channel_amount
-		cdef int read_bytes = read_samples * sizeof(short)
+		cdef int read_bytes = samples_per_channel * self.channel_amount * sizeof(short)
 
 		cdef bytes ret_bytes
 		try:
@@ -102,7 +100,7 @@ cdef class STBVorbis:
 		finally:
 			free(buf)
 
-		return (read_samples, ret_bytes)
+		return (samples_per_channel, ret_bytes)
 
 	def get_sample_amount(self) -> int:
 		return stb_vorbis_stream_length_in_samples(self._stb_vorbis)

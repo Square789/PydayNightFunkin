@@ -39,12 +39,13 @@ class OggVorbisStreamingSource(StreamingSource):
 			logger.warning("Sample position is -1, using possibly inaccurate fallback value!")
 			sample_pos = self.fallback_sample_pos
 
-		read_samples, data = self._stbv.get_samples_short_interleaved(num_bytes // 2)
-		sample_rate = self._stbv.sample_rate
+		samples_per_channel, data = self._stbv.get_samples_short_interleaved(num_bytes // 2)
+		read_samples = samples_per_channel * self.audio_format.channels
+		rate = self.audio_format.sample_rate
 		if read_samples == 0:
 			return None
 
-		return AudioData(data, len(data), sample_pos / sample_rate, read_samples / sample_rate, [])
+		return AudioData(data, len(data), sample_pos / rate, samples_per_channel / rate, [])
 
 	def seek(self, timestamp: float) -> None:
 		target_sample = int(timestamp * self._stbv.sample_rate)
