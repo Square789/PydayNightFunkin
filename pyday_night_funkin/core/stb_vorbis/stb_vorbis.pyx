@@ -91,8 +91,8 @@ cdef class STBVorbis:
 			self._stb_vorbis, self.channel_amount, buf, num_samples
 		)
 
-		cdef int read_samples = samples_per_channel * self.channel_amount
-		cdef int read_bytes = read_samples * sizeof(short)
+		cdef int read_samples = samples_per_channel
+		cdef int read_bytes = read_samples * self.channel_amount * sizeof(short)
 
 		cdef bytes ret_bytes
 		try:
