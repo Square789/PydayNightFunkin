@@ -60,6 +60,8 @@
  - Ensure that Python can build C extensions; that is: you have a C compiler set up.
    - I am sorry to disappoint if you thought Python meant not having to deal with that. PNF gets
      some of its speed and capabilities from custom C extensions.
+     Delivering them prebuilt would eliminate this step, but not as long as this project is still
+     in alpha.
    - If on Windows, you will need Visual Studio; the required packages and versions are difficult
      to pinpoint and unlikely to remain stable over longer time periods. [This wiki entry](https://wiki.python.org/moin/WindowsCompilers#Compilers_Installation_and_configuration)
      seems to have somewhat up-to-date information on what you'll need.
