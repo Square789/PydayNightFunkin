@@ -1,0 +1,41 @@
+[project]
+name = "PydayNightFunkin"
+description = "Friday Night Funkin' except reimplemented in Python using pyglet."
+authors = [
+	{name = "Square789"},
+]
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.8"
+classifiers = [
+	"Development Status :: 3 - Alpha",
+	"Environment :: GPU",
+	"Environment :: Win32 (MS Windows)",
+	"Environment :: X11 Applications",
+	"Intended Audience :: End Users/Desktop",
+	"License :: OSI Approved :: Apache Software License",
+	"Natural Language :: English",
+	"Operating System :: Microsoft :: Windows",
+	"Operating System :: POSIX :: Linux",
+	"Programming Language :: Python",
+	"Topic :: Games/Entertainment",
+]
+
+dynamic = ["dependencies", "version"]
+
+
+[build-system]
+requires = ["setuptools", "cython"]
+build-backend = "setuptools.build_meta"
+
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+version = {attr = "pyday_night_funkin.main_game.__version__"}
+
+
+[tool.pyright]
+exclude = ["_*", "dev_notes"]
+
+reportOptionalMemberAccess = "none"
+reportOptionalSubscript = "none"
