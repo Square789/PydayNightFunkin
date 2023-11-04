@@ -333,6 +333,7 @@ class BaseScene(Container):
 		layer: t.Optional[str],
 		cameras: t.Optional[t.Union[str, t.Iterable[str]]],
 		object_class: t.Type[SceneObjectT],
+		/,
 		*args,
 		**kwargs,
 	) -> SceneObjectT:
@@ -344,6 +345,7 @@ class BaseScene(Container):
 		self,
 		layer: t.Optional[str] = None,
 		cameras: t.Optional[t.Union[str, t.Iterable[str]]] = None,
+		/,
 		**kwargs,
 	) -> PNFSprite:
 		...
