@@ -570,7 +570,6 @@ class InGameScene(scenes.MusicBeatScene):
 					next_level_data, self.difficulty, self.follow_scene, week_rest
 				)
 			)
-			return
 		else:
 			self.game.set_scene(self.follow_scene)
 
