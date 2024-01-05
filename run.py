@@ -33,13 +33,24 @@ def main():
 			"However, if something goes wrong while rendering, no one will ever know."
 		),
 	)
+
+	argparser.add_argument(
+		"--vsync",
+		"-v",
+		action = "store_true",
+		help = (
+			"Enable vsync. This may remove screentearing at the potential cost of "
+			"dropping frames, highly dependant on the intricacies of your system."
+		)
+	)
+
 	result = argparser.parse_args()
 
 	import pyglet
 	pyglet.options["debug_gl"] = result.no_gl_errcheck
 
 	from pyday_night_funkin.main_game import Game
-	Game(2 - result.less_debug).run()
+	Game(2 - result.less_debug, result.vsync).run()
 
 
 if __name__ == "__main__":

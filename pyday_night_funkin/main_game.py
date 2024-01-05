@@ -111,7 +111,7 @@ class _FPSData:
 
 
 class Game(SceneManager):
-	def __init__(self, debug_level: int) -> None:
+	def __init__(self, debug_level: int, vsync: bool) -> None:
 		super().__init__()
 
 		self.debug = debug_level > 0
@@ -174,7 +174,7 @@ class Game(SceneManager):
 			width = GAME_WIDTH,
 			height = GAME_HEIGHT,
 			resizable = True,
-			vsync = False,
+			vsync = vsync,
 			caption = f"PydayNightFunkin' v{__version__}",
 			config = pyglet.gl.Config(double_buffer=True, major_version=4, minor_version=5),
 		)
