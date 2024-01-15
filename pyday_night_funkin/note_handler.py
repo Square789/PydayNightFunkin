@@ -3,8 +3,7 @@ import math
 import typing as t
 
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.base_game_pack import load_frames
-from pyday_night_funkin.core.animation import AnimationController
+from pyday_night_funkin.core.asset_system import load_frames
 from pyday_night_funkin.core.utils import ListWindow
 from pyday_night_funkin.enums import Control
 from pyday_night_funkin.note import Note, NoteType, SustainStage

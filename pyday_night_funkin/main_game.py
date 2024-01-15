@@ -8,9 +8,9 @@ import typing as t
 from loguru import logger
 import pyglet
 
-from pyday_night_funkin.core import ogg_decoder
-from pyday_night_funkin.core.asset_system import load_font
+import pyday_night_funkin.core.asset_system
 from pyday_night_funkin.core.key_handler import KeyHandler, RawKeyHandler
+from pyday_night_funkin.core import ogg_decoder
 from pyday_night_funkin.core.pnf_window import PNFWindow
 from pyday_night_funkin.core.scene_manager import SceneManager
 from pyday_night_funkin.core.sound import SoundController
@@ -29,7 +29,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.superscene import SuperScene
 
 
-__version__ = "0.0.50"
+__version__ = "0.0.51"
 
 
 SOUND_GRANULARITY = 10
@@ -185,6 +185,8 @@ class Game(SceneManager):
 		cygl.initialize(gl)
 		logger.info("cygl module initialized.")
 
+		self.assets = pyday_night_funkin.core.asset_system.initialize(pyglet.clock.get_default())
+
 		self.volume_control = VolumeControlDropdown(SOUND_GRANULARITY)
 		self._superscenes.append(self.volume_control)
 
@@ -220,10 +222,12 @@ class Game(SceneManager):
 
 		# Load VCR OSD Mono before any labels are drawn and stuff.
 		# Don't do it in the base game, cause it feels more important than that.
-		load_font("fonts/vcr.ttf")
+		pyglet.font.load("fonts/vcr.ttf")
 
 		from pyday_night_funkin import base_game_pack
-		self.add_content_pack(base_game_pack.load())
+		self.add_content_pack(base_game_pack.load(self))
+		# NOTE: Can be omitted
+		self.assets.discover_libraries()
 
 		# Push initial scene
 		self.push_scene(TitleScene)
@@ -298,7 +302,45 @@ class Game(SceneManager):
 		# You can't really be perfect there, but it does suck since i'm pretty sure
 		# laying that label out takes significant time. Oh well!
 		if self.use_debug_pane:
-			self.debug_pane.update(self._fps.build_debug_string())
+			# import ctypes
+
+			# GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX         = 0x9047
+			# GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX   = 0x9048
+			# GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX = 0x9049
+			# GPU_MEMORY_INFO_EVICTION_COUNT_NVX           = 0x904A
+			# GPU_MEMORY_INFO_EVICTED_MEMORY_NVX           = 0x904B
+
+			# VBO_FREE_MEMORY_ATI          = 0x87FB
+			# TEXTURE_FREE_MEMORY_ATI      = 0x87FC
+			# RENDERBUFFER_FREE_MEMORY_ATI = 0x87FD
+
+			# vmem_used = None
+			# vmem_avail = None
+			# vmem_free = None
+			# a = (pyglet.gl.GLint * 4)()
+			# try:
+			# 	# (At least my nvidia GPU returns this in KiB, not KB)
+			# 	pyglet.gl.glGetIntegerv(GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, ctypes.cast(ctypes.byref(a), ctypes.POINTER(pyglet.gl.GLint)))
+			# 	vmem_avail = a[0]
+			# 	pyglet.gl.glGetIntegerv(GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, ctypes.cast(ctypes.byref(a), ctypes.POINTER(pyglet.gl.GLint)))
+			# 	vmem_used = a[0]
+			# 	vmem_free = vmem_avail - vmem_used
+			# except pyglet.gl.GLException:
+			# 	try:
+			# 		pyglet.gl.glGetIntegerv(TEXTURE_FREE_MEMORY_ATI, ctypes.cast(ctypes.byref(a), ctypes.POINTER(pyglet.gl.GLint)))
+			# 		vmem_free = a[0]
+			# 	except pyglet.gl.GLException:
+			# 		pass
+
+			s = self.assets.get_cache_stats()
+			sf = __import__("math").ceil(s.system_memory_used / 1024)
+			tf = __import__("math").ceil(s.gpu_memory_used / 1024)
+			cache_str = (
+				f"Objects in cache: {s.object_count}\n"
+				f"Approximate RAM usage: {sf:>3_}KiB\n"
+				f"Approximate VRAM usage: {tf:>3_}KiB"
+			)
+			self.debug_pane.update(self._fps.build_debug_string(), cache_str)
 
 	def draw(self) -> None:
 		stime = perf_counter()

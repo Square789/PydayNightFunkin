@@ -125,7 +125,8 @@ class SceneKernel:
 	) -> SceneKernelT:
 		"""
 		Fills in scene-specific defaults for this kernel to be used by
-		scenes during their initialization.
+		scenes during their initialization. If you get the idea that
+		this is a clumsy reinvention of kwargs, you'd be correct.
 
 		`"layers"`: A sequence of layer names to be used for this
 		scene. The layers can later be referenced by name in
@@ -170,12 +171,24 @@ class SceneKernel:
 
 		return self
 
-	def finalize(self):
+	def finalize(self) -> None:
 		if self._uninitialized_kernel_params:
 			logger.warning(
 				f"Uninitialized scene kernel parameter(s)! First one: "
 				f"{next(iter(self._uninitialized_kernel_params))}"
 			)
+
+	def get_loading_hints(
+		self,
+	) -> ...:
+		"""
+		Return a chunk [TODO: what does the returned stuff look like?]
+		of assets to load for this scene to start quickly.
+
+		The things returned by this function may be used by loading
+		screens leading into this scene
+		"""
+		raise NotImplementedError()
 
 	def create_scene(self, game: "Game") -> "BaseScene":
 		self.game = game
@@ -270,11 +283,10 @@ class BaseScene(Container):
 		for cam in self.cameras.values():
 			self.batch._get_draw_list(cam)
 
-		kt = kernel.transition
-		if isinstance(kt, tuple):
-			self._transition_in_cls, self._transition_out_cls = kt
+		if isinstance(kernel.transition, tuple):
+			self._transition_in_cls, self._transition_out_cls = kernel.transition
 		else:
-			self._transition_in_cls = self._transition_out_cls = kt
+			self._transition_in_cls = self._transition_out_cls = kernel.transition
 
 		self._transition_out_started: bool = False
 		self._transition_out_complete: bool = False

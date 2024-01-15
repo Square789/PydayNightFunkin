@@ -17,7 +17,7 @@ class LevelData:
 	song_name: str
 	"""
 	The level's song's identifying string.
-	A call to `load_song(song_name, ...)` will be made eventually.
+	Will be used to load it from disk.
 	"""
 
 	display_name: str
@@ -54,6 +54,12 @@ class LevelData:
 	The opponent sprite is expected to have the following
 	animations:
 	`sing_{x}` for x in (`left`, `down`, `right`, `up`).
+	"""
+
+	libraries: t.Optional[t.Sequence[str]] = ()
+	"""
+	A collection of libraries whose items should be loaded for this
+	level.
 	"""
 
 

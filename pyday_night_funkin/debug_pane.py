@@ -22,7 +22,7 @@ class DebugPane(SuperScene):
 	LINE_DIST = 2
 	PADDING = 8
 
-	def __init__(self, line_amount: int, message_queue: queue.Queue = None) -> None:
+	def __init__(self, line_amount: int, message_queue: queue.Queue) -> None:
 		super().__init__(CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
 
 		self.insert_index = 0
@@ -32,23 +32,7 @@ class DebugPane(SuperScene):
 		self.background = PNFGroup(order=0)
 		self.foreground = PNFGroup(order=1)
 		self.batch = PNFBatch()
-		self.labels = [
-			PNFText(
-				x = 10,
-				y = (self.FONT_SIZE * i + self.LINE_DIST * i),
-				font_name = "Consolas",
-				font_size = self.FONT_SIZE,
-				context = self.get_context(self.foreground),
-			) for i in range(line_amount)
-		]
-		self.timing_label = PNFText(
-			x = 10,
-			y = ((self.FONT_SIZE * (line_amount + 1)) + 4 + self.LINE_DIST * line_amount),
-			font_name = "Consolas",
-			font_size = self.FPS_FONT_SIZE,
-			multiline = True,
-			context = self.get_context(self.foreground),
-		)
+
 		self.debug_rect = PNFSprite(
 			x = self.PADDING,
 			y = 0,
@@ -64,25 +48,64 @@ class DebugPane(SuperScene):
 		bluegh = font.load("Consolas", self.FPS_FONT_SIZE).ascent
 		self.fps_rect = PNFSprite(
 			x = self.PADDING,
-			y = self.timing_label.y - self.LINE_DIST,
+			y = self.debug_rect.y + self.debug_rect.height + self.PADDING,
 			context = self.get_context(self.background),
 		)
 		self.fps_rect.make_rect(
-			to_rgba_tuple(0x7F7F7F7F),
-			CNST.GAME_WIDTH // 3,
-			(bluegh * 4) + self.LINE_DIST * 2,
+			to_rgba_tuple(0x7F7F7F7F), CNST.GAME_WIDTH // 3, (bluegh * 4) + 6,
 		)
 
-	def update(self, timing_label_string: str = "") -> None:
+		self.memory_rect = PNFSprite(
+			x = self.PADDING,
+			y = self.fps_rect.y + self.fps_rect.height + self.PADDING,
+			context = self.get_context(self.background),
+		)
+		self.memory_rect.make_rect(
+			to_rgba_tuple(0x4747477F), CNST.GAME_WIDTH // 3, (bluegh * 3) + 6
+		)
+
+		self.debug_labels = [
+			PNFText(
+				x = 10,
+				y = (self.FONT_SIZE * i + self.LINE_DIST * i),
+				font_name = "Consolas",
+				font_size = self.FONT_SIZE,
+				context = self.get_context(self.foreground),
+			) for i in range(line_amount)
+		]
+
+		self.timing_label = PNFText(
+			x = 10,
+			y = int(self.fps_rect.y),
+			font_name = "Consolas",
+			font_size = self.FPS_FONT_SIZE,
+			multiline = True,
+			context = self.get_context(self.foreground),
+		)
+
+		self.memory_label = PNFText(
+			x = 10,
+			y = int(self.memory_rect.y),
+			font_name = "Consolas",
+			font_size = self.FPS_FONT_SIZE,
+			multiline = True,
+			context = self.get_context(self.foreground),
+		)
+
+	def update(self, timing_label_string: str = "", cache_label_string: str = "") -> None:
 		"""
 		Updates the debug pane and writes all queued messages to
 		the labels, causing a possibly overflowing label's text to be
-		deleted and bumping up all other labels.
-		Call this when GL allows it, there have been weird threading
-		errors in the past.
+		deleted and bumping up all other labels, setting the timing
+		label to the specified string, which should contain three lines
+		of text, and configuring the memory usage label.
+		Call this when OpenGL allows it.
 		"""
 		if timing_label_string:
 			self.timing_label.text = timing_label_string
+
+		if cache_label_string:
+			self.memory_label.text = cache_label_string
 
 		if self._queue.empty():
 			return
@@ -93,10 +116,10 @@ class DebugPane(SuperScene):
 			except queue.Empty:
 				break
 
-			if self.insert_index == len(self.labels):
+			if self.insert_index == len(self.debug_labels):
 				self.insert_index -= 1
-				for i in range(len(self.labels) - 1):
-					self.labels[i].text = self.labels[i + 1].text
+				for i in range(len(self.debug_labels) - 1):
+					self.debug_labels[i].text = self.debug_labels[i + 1].text
 
-			self.labels[self.insert_index].text = message
+			self.debug_labels[self.insert_index].text = message
 			self.insert_index += 1

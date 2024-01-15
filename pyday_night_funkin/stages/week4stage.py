@@ -3,8 +3,7 @@ from random import choice, randint
 
 from pyglet.math import Vec2
 
-from pyday_night_funkin.base_game_pack import load_frames
-from pyday_night_funkin.core.asset_system import load_image, load_sound
+from pyday_night_funkin.core.asset_system import load_frames, load_image, load_sound
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.scene import OrderedLayer
 from pyday_night_funkin.scenes.in_game import (

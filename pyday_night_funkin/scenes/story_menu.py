@@ -2,8 +2,8 @@
 import typing as t
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.base_game_pack import load_frames, load_week_header
-from pyday_night_funkin.core.asset_system import load_sound
+from pyday_night_funkin.base_game_pack import fetch_week_header
+from pyday_night_funkin.core.asset_system import load_frames, load_sound
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.pnf_text import TextAlignment, PNFText
 from pyday_night_funkin.core.utils import lerp, to_rgb_tuple, to_rgba_tuple
@@ -97,7 +97,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 				object_class = _WeekHeader,
 				target_y = i,
 				y = yellow_stripe.y + yellow_stripe.height + 10,
-				image = load_week_header(week.header_filename),
+				image = fetch_week_header(week.header_filename),
 			)
 			header.y += (header.height + 20) * i
 			header.screen_center(CNST.GAME_DIMENSIONS, y=False)
@@ -228,7 +228,9 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 	def _set_ingame_scene(self, week: "WeekData") -> None:
 		level = week.levels[0]
-		self.game.set_scene(
+
+		scenes.LoadingScene.load_or_set(
+			self.game,
 			level.stage_type.get_kernel(
 				level_data = level,
 				difficulty = Difficulty(self.diff_menu.selection_index),

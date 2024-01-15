@@ -3,9 +3,8 @@ import random
 import typing as t
 
 from pyday_night_funkin.alphabet import TextLine
-from pyday_night_funkin.base_game_pack import load_frames
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.core.asset_system import load_image, load_sound, load_text
+from pyday_night_funkin.core.asset_system import load_frames, load_image, load_sound, load_text
 from pyday_night_funkin.enums import Control
 from pyday_night_funkin import scenes
 

@@ -7,7 +7,7 @@ import typing as t
 from loguru import logger
 from pyglet.math import Vec2
 
-from pyday_night_funkin.base_game_pack import SongResourceOptions, load_song
+from pyday_night_funkin.base_game_pack import fetch_song
 from pyday_night_funkin.character import Character, CharacterData
 from pyday_night_funkin.core.scene import BaseScene, SceneKernel, BaseSceneArgDict
 from pyday_night_funkin.core.utils import lerp
@@ -62,6 +62,7 @@ class _Dancer(t.Protocol):
 	def dance(self) -> t.Any:
 		...
 
+
 class DancerInfo:
 	__slots__ = ("frequency", "offset", "during_countdown")
 
@@ -107,8 +108,19 @@ class _InGameSceneArgDict(BaseSceneArgDict, total=False):
 
 
 class InGameSceneKernel(SceneKernel):
-	def __init__(self, scene_type: t.Type["InGameScene"], *args, **kwargs) -> None:
-		super().__init__(scene_type, *args, **kwargs)
+	def __init__(
+		self,
+		scene_type: t.Type["InGameScene"],
+		level_data: "LevelData",
+		difficulty: Difficulty,
+		follow_scene: t.Type["BaseScene"],
+		remaining_week: t.Optional[t.Sequence["LevelData"]] = None,
+	) -> None:
+		super().__init__(scene_type, level_data, difficulty, follow_scene, remaining_week)
+
+		self._level_data = level_data
+		self._difficulty = difficulty
+		self._remaining_week = remaining_week
 
 		self.default_cam_zoom: t.Optional[float] = None
 		self.player_anchor: t.Optional[Anchor] = None
@@ -117,6 +129,44 @@ class InGameSceneKernel(SceneKernel):
 
 		self.register_kernel_params(
 			"default_cam_zoom", "player_anchor", "girlfriend_anchor", "opponent_anchor"
+		)
+
+	def get_loading_hints(self) -> ...:
+		"""
+		Generates asset requests for a typical InGameScene.
+		This duplicates some code to load a level's character's
+		spritesheets as well as the song, nothing else.
+		"""
+		from pyday_night_funkin.core.asset_system import AssetRequest, LoadingRequest, load_pyobj
+
+		# TODO: Load songs/characters of an entire week
+
+		def _on_song_data_load(json_data):
+			song_dir = load_pyobj("PATH_SONGS") / self._level_data.song_name
+
+			return_hits = {"sound": [AssetRequest((song_dir / "Inst.ogg",))]}
+			if json_data["needsVoices"]:
+				return_hits["sound"].append(AssetRequest((song_dir / "Voices.ogg",),))
+
+			return LoadingRequest(return_hits)
+
+		# TODO: Make adjustments to characters so this method can request loading of
+		# their spritesheets.
+		# Also, get_loading_hints should probably take game as a parameter
+		# Or maybe kernels should just get it at initialization unconditionally.
+		# So much to do so much to see so much to do so much to see
+
+		return LoadingRequest(
+			{
+				"_pnf_song_data": (
+					AssetRequest(
+						(self._level_data.song_name, self._difficulty),
+						completion_tag = "song_data.0",
+					),
+				),
+			},
+			{"song_data": _on_song_data_load},
+			self._level_data.libraries or [],
 		)
 
 	def fill(self, arg_dict: t.Optional[_InGameSceneArgDict] = None, **kwargs):
@@ -294,11 +344,7 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		# TODO doc
 		"""
-		inst, voices, song_data = load_song(
-			self.level_data.song_name,
-			SongResourceOptions(self.difficulty),
-			cache = True,
-		)
+		inst, voices, song_data = fetch_song(self.level_data.song_name, self.difficulty)
 
 		self.pause_players()
 		self.inst_player.next_source()

@@ -84,11 +84,14 @@ class PNFPlayer(EventDispatcher):
 		`next_source` is called. Defaults to `False`.
 		"""
 
+		self.last_seek_time = 0.0
+
 		self.controller = controller
 
 	def __del__(self):
-		"""Releases the PNFPlayer's resources."""
-		self.delete()
+		# Do not free resources here. __del__ can not be trusted, leaking is preferrable
+		if self._audio_player is not None:
+			raise ResourceWarning("You're leaking a player!")
 
 	def queue(self, source: t.Union[Source, t.Iterable[Source]]) -> None:
 		"""
@@ -186,8 +189,9 @@ class PNFPlayer(EventDispatcher):
 		Releases the resources acquired by this player.
 		The internal audio player will be deleted.
 		"""
-		if self._source:
-			self.source.is_player_source = False
+		if self._source is not None:
+			self._source.is_player_source = False
+			self._source = None
 		if self._audio_player is not None:
 			self._audio_player.delete()
 			self._audio_player = None
@@ -244,9 +248,15 @@ class PNFPlayer(EventDispatcher):
 			return
 
 		timestamp = max(timestamp, 0.0)
+		if self._source.duration is not None:
+			# TODO: If the duration is reported as None and the source clamps anyways,
+			# this will have pretty bad effects.
+			# Maybe have seek methods return the timestamp they actually seeked to
+			timestamp = min(timestamp, self._source.duration)
 
 		self._timer.set_time(timestamp)
 		self._source.seek(timestamp)
+		self.last_seek_time = timestamp
 		if self._audio_player is not None:
 			# XXX: According to docstring in AbstractAudioPlayer this cannot
 			# be called when the player is not stopped
@@ -278,7 +288,7 @@ class PNFPlayer(EventDispatcher):
 		ap.set_cone_outer_gain(self._cone_outer_gain)
 
 	@property
-	def source(self) -> t.Union[Source, None]:
+	def source(self) -> t.Optional[Source]:
 		"""Returns the current `Source` or `None`."""
 		return self._source
 

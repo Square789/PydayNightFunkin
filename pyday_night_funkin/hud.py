@@ -4,8 +4,7 @@ from random import randint
 import typing as t
 
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.base_game_pack import load_frames
-from pyday_night_funkin.core.asset_system import load_image, load_sound
+from pyday_night_funkin.core.asset_system import load_frames, load_image, load_sound
 from pyday_night_funkin.core.pnf_text import TextAlignment, PNFText
 from pyday_night_funkin.core.tween_effects.eases import in_out_cubic, linear, out_cubic
 from pyday_night_funkin.enums import AnimationTag

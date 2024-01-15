@@ -1,10 +1,10 @@
 """
 Specifies the base game's assets and asset routers.
-This is meant to be expanded into some sort of modding system,
-but uuh, those plans are far in the future.
+
+Contains a good chunk of FNF logic implemented in various `load_` and
+`fetch_` methods.
 """
 
-import os
 from pathlib import Path
 import re
 from loguru import logger
@@ -14,11 +14,8 @@ from pyglet.math import Vec2
 from schema import Schema, SchemaError, And, Or, Optional
 
 from pyday_night_funkin.core.asset_system import (
-	AssetRouter, ComplexAssetRouter, PyobjRouter, AssetRouterEntry,
-	ImageResourceOptions, PostLoadProcessor, ResourceOptions, SoundResourceOptions,
-	add_asset_router, add_complex_asset_router, add_pyobj_router,
-	load_image, load_json, load_pyobj, load_sound, load_xml,
-	register_complex_asset_type,
+	AssetProvider, AssetRouter, AssetRouter, AssetRouterEntry, LibrarySpecPattern,
+	load_frames, load_image, load_json, load_pyobj, load_sound,
 )
 from pyday_night_funkin.content_pack import ContentPack, LevelData, WeekData
 from pyday_night_funkin.core.animation import FrameCollection
@@ -29,8 +26,9 @@ from pyday_night_funkin.enums import AnimationTag, Difficulty
 
 if t.TYPE_CHECKING:
 	from xml.etree.ElementTree import ElementTree
-	from pyglet.image import AbstractImage, Texture
+	from pyglet.image import Texture, TextureRegion
 	from pyglet.media import Source
+	from pyday_night_funkin.main_game import Game
 
 
 class SeqValidator:
@@ -86,9 +84,12 @@ SONG_SCHEMA = Schema(
 )
 
 
-def _load_character_icon(character: str) -> t.Tuple["Texture", "Texture"]:
+def fetch_character_icons(character: str) -> t.Tuple["TextureRegion", "TextureRegion"]:
 	"""
-	Loads an icon grid image and a character string into health icons.
+	Loads a 300x150 image of two character icons and returns its two
+	health icons as TextureRegions.
+	Images must be in ``preload/images/icons`` in a file named
+	``icon-{character}.png``
 
 	Returns two-element tuple of 150px x 150px textures, a character's
 	default and losing icon.
@@ -99,129 +100,64 @@ def _load_character_icon(character: str) -> t.Tuple["Texture", "Texture"]:
 	if icon_texture.width != 300 or icon_texture.height != 150:
 		raise ValueError("Icon texture has an invalid shape: Must be 300x150!")
 
-	return (
-		icon_texture.get_region(  0, 0, 150, 150).get_texture(),
-		icon_texture.get_region(150, 0, 150, 150).get_texture(),
-	)
-
-load_character_icon = register_complex_asset_type(
-	"character_icon", lambda c: c, _load_character_icon
-)
+	return (icon_texture.get_region(0, 0, 150, 150), icon_texture.get_region(150, 0, 150, 150))
 
 
-class SongResourceOptions(ResourceOptions):
-	def __init__(
-		self,
-		difficulty: t.Optional["Difficulty"] = None,
-		inst_opt: t.Optional[SoundResourceOptions] = None,
-		voice_opt: t.Optional[SoundResourceOptions] = None,
-	) -> None:
-		self.difficulty = Difficulty.NORMAL if difficulty is None else difficulty
-		self.inst_opt = SoundResourceOptions() if inst_opt is None else inst_opt
-		self.voice_opt = SoundResourceOptions() if voice_opt is None else voice_opt
-
-	def __eq__(self, o: object) -> bool:
-		if not isinstance(o, SongResourceOptions):
-			return NotImplemented
-		return (
-			self.inst_opt == o.inst_opt and
-			self.voice_opt == o.voice_opt and
-			self.difficulty is o.difficulty
-		)
-
-	def __hash__(self) -> int:
-		return hash((self.difficulty, self.inst_opt, self.voice_opt))
+def fetch_week_header(name: str) -> "Texture":
+	"""
+	Retrieves the week header image of the given name.
+	The directory this is loaded from is dependant on the
+	`"PATH_WEEK_HEADERS"` exposed by the current asset router stack.
+	"""
+	return load_image(load_pyobj("PATH_WEEK_HEADERS") / name)
 
 
-def _load_song_plain(
+def fetch_song(
 	song_name: str,
-	options: SongResourceOptions,
+	difficulty: "Difficulty",
 ) -> t.Tuple["Source", t.Optional["Source"], t.Dict]:
 	"""
-	Loads song data.
+	Loads song data for a standard FNF song.
 	Will load a three-tuple of (Source, Source | None, dict); being
 	the instrumental source, the voice source and the song data.
 	"""
-	chart_file = f"{song_name}{options.difficulty.to_song_json_suffix()}.json"
-	chart_path = os.path.join(load_pyobj("PATH_DATA"), song_name, chart_file)
-	raw_chart = load_json(chart_path, cache=False)
-	chart = SONG_SCHEMA.validate(raw_chart)["song"]
-
-	song_dir = os.path.join(load_pyobj("PATH_SONGS"), song_name)
-	inst = load_sound(os.path.join(song_dir, "Inst.ogg"), options.inst_opt, False)
+	data = load_song_data(song_name, difficulty)
+	song_dir = load_pyobj("PATH_SONGS") / song_name
+	inst = load_sound(song_dir / "Inst.ogg")
 	voic = None
-	if chart["needsVoices"]:
-		voic = load_sound(os.path.join(song_dir, "Voices.ogg"), options.voice_opt, False)
+	if data["needsVoices"]:
+		voic = load_sound(song_dir / "Voices.ogg")
 
-	return (inst, voic, chart)
-
-load_song = register_complex_asset_type("song", lambda sn, opt: (sn, opt), _load_song_plain)
+	return (inst, voic, data)
 
 
-def load_week_header(name: str) -> "Texture":
-	return load_image(os.path.join(load_pyobj("PATH_WEEK_HEADERS"), name))
-
-def _load_frames_plain(path: str) -> FrameCollection:
-	"""
-	Loads animation frames from path.
-	Will load a `FrameCollection`, which can directly be set to a
-	sprite's `frames` attribute.
-	"""
-	# Do not cache the xml, only needed for creating the FrameCollection once, really.
-	xml = load_xml(path, cache=False)
-	atlas_texture = load_image(str(Path(path).parent / xml.getroot().attrib["imagePath"]), False)
-	texture_region_cache: t.Dict[t.Tuple[int, int, int, int], "AbstractImage"] = {}
-	frame_collection = FrameCollection()
-
-	for sub_texture in xml.getroot():
-		if sub_texture.tag != "SubTexture":
-			logger.warning(f"Expected 'SubTexture' tag, got {sub_texture.tag!r}. Skipping.")
-			continue
-
-		if sub_texture.attrib.get("rotated") == "true":
-			raise NotImplementedError("Rotation isn't implemented, sorry")
-
-		name, x, y, w, h, fx, fy, fw, fh = (
-			sub_texture.attrib.get(k) for k in (
-				"name", "x", "y", "width", "height", "frameX", "frameY", "frameWidth",
-				"frameHeight"
-			)
+class SongDataAssetProvider(AssetProvider):
+	def load(self, song_name: str, difficulty: "Difficulty") -> t.Dict:
+		chart_path = (
+			load_pyobj("PATH_DATA") /
+			song_name /
+			f"{song_name}{difficulty.to_song_json_suffix()}.json"
 		)
-		region = (x, y, w, h)
-		frame_vars = (fx, fy, fw, fh)
+		raw = load_json(chart_path, cache=False)
 
-		if (
-			name is None or any(i is None for i in region) or (
-				any(i is None for i in frame_vars) and
-				any(i is not None for i in frame_vars)
-			) # this sucks; basically none of the first five fields may be None and either
-			#   all or none of the frame_vars must be None.
-		):
-			logger.warning(
-				f"{(name, region, frame_vars)} Invalid attributes for SubTexture entry. "
-				f"Skipping."
-			)
-			continue
+		return SONG_SCHEMA.validate(raw)["song"]
 
-		x, y, w, h = region = tuple(int(e) for e in region)
-		fx, fy, fw, fh = frame_vars = tuple(None if e is None else int(e) for e in frame_vars)
-		if region not in texture_region_cache:
-			texture_region_cache[region] = atlas_texture.get_region(
-				x, atlas_texture.height - h - y, w, h,
-			)
+	def create_cache_key(self, song_name: str, difficulty: "Difficulty") -> t.Hashable:
+		return (song_name, difficulty)
 
-		trimmed = frame_vars[0] is not None
 
-		frame_collection.add_frame(
-			texture_region_cache[region],
-			Vec2(fw, fh) if trimmed else Vec2(w, h),
-			Vec2(-fx, -fy) if trimmed else Vec2(0, 0),
-			name,
-		)
+_g_load_song_data = None
 
-	return frame_collection
-
-load_frames = register_complex_asset_type("frames", lambda path: path, _load_frames_plain)
+def load_song_data(song_name: str, difficulty: "Difficulty", *, cache: bool = True) -> t.Dict:
+	"""
+	Loads and validates the standard FNF chart of the given
+	difficutly for the given song.
+	The directory this is loaded from is dependant on the
+	`"PATH_DATA"` exposed by the current asset router stack.
+	"""
+	if _g_load_song_data is None:
+		raise RuntimeError("blegh")
+	return _g_load_song_data(song_name, difficulty, cache=cache)
 
 
 class Boyfriend(Character):
@@ -474,6 +410,7 @@ def note_arrow_frame_collection_post_load_hacker(fcol: FrameCollection) -> Frame
 			frame.offset -= Vec2(39, 39)
 	return fcol
 
+
 # HACK: This manipulates the main menu's xml's imagePath to point to `main_menu.png`,
 # as from the week 7 update it pointed to the old file name `FNF_main_menu_assets.png`.
 # Honestly i don't know how to handle this. HaxeFlixel simply ignores this the imagePath
@@ -483,77 +420,100 @@ def main_menu_path_post_load_hacker(et: "ElementTree") -> "ElementTree":
 	et.getroot().set("imagePath", "main_menu.png")
 	return et
 
-class BaseGameComplexAssetRouter(ComplexAssetRouter):
-	def has_asset(
-		self, asset_type_name: str, *args: t.Any, **kwargs: t.Any
-	) -> t.Optional[
-		t.Tuple[t.Tuple[t.Any, ...], t.Dict[str, t.Any], t.Optional[PostLoadProcessor]]
-	]:
-		if (
-			asset_type_name == "frames" and
-			len(args) == 1 and
-			args[0] == "preload/images/NOTE_assets.xml"
-		):
-			return (args, kwargs, note_arrow_frame_collection_post_load_hacker)
-
-		return None
 
 
 class BaseGameAssetRouter(AssetRouter):
-	def __init__(self,):
-		self._iro = ImageResourceOptions(0)
-
+	def __init__(self, asset_directory: t.Union[Path, str]) -> None:
 		# Throw most UI sprites into the same atlas, should improve rendering of it
 		# somewhat
-		_entry = AssetRouterEntry(None, ImageResourceOptions(0))
-		super().__init__({
-			"shared/images/sick.png":         _entry,
-			"shared/images/good.png":         _entry,
-			"shared/images/bad.png":          _entry,
-			"shared/images/shit.png":         _entry,
-			"shared/images/healthBar.png":    _entry,
-			"preload/images/NOTE_assets.png": _entry,
-			"preload/images/num0.png":        _entry,
-			"preload/images/num1.png":        _entry,
-			"preload/images/num2.png":        _entry,
-			"preload/images/num3.png":        _entry,
-			"preload/images/num4.png":        _entry,
-			"preload/images/num5.png":        _entry,
-			"preload/images/num6.png":        _entry,
-			"preload/images/num7.png":        _entry,
-			"preload/images/num8.png":        _entry,
-			"preload/images/num9.png":        _entry,
-			"preload/images/main_menu.xml":
-				AssetRouterEntry(post_load_processor=main_menu_path_post_load_hacker),
-		})
+		_entry = AssetRouterEntry(options={"atlas_hint": 0})
 
-	def has_asset(
-		self, path: str, asset_type_name: str, options: t.Optional[ResourceOptions]
-	) -> t.Optional[t.Tuple[str, t.Optional[ResourceOptions], t.Optional[PostLoadProcessor]]]:
-		sup = super().has_asset(path, asset_type_name, options)
-		if sup is not None:
-			return sup
+		super().__init__(
+			asset_directory,
+			{},
+			{
+				"image": {
+					"shared/images/sick.png":         _entry,
+					"shared/images/good.png":         _entry,
+					"shared/images/bad.png":          _entry,
+					"shared/images/shit.png":         _entry,
+					"shared/images/healthBar.png":    _entry,
+					"preload/images/NOTE_assets.png": _entry,
+					"preload/images/num0.png":        _entry,
+					"preload/images/num1.png":        _entry,
+					"preload/images/num2.png":        _entry,
+					"preload/images/num3.png":        _entry,
+					"preload/images/num4.png":        _entry,
+					"preload/images/num5.png":        _entry,
+					"preload/images/num6.png":        _entry,
+					"preload/images/num7.png":        _entry,
+					"preload/images/num8.png":        _entry,
+					"preload/images/num9.png":        _entry,
 
-		# Throw icons into the same atlas as combo sprites. This should work out nicely.
-		if path.startswith("preload/images/icons/"):
-			return (path, self._iro, None)
+					# Throw icons into the same atlas as combo sprites.
+					"//re:preload/images/icons/.*":   _entry,
+				},
+				"frames": {
+					"preload/images/NOTE_assets.xml": AssetRouterEntry(
+						post_load_processor = note_arrow_frame_collection_post_load_hacker,
+					),
+				},
+				"xml": {
+					"preload/images/main_menu.xml":
+						AssetRouterEntry(post_load_processor=main_menu_path_post_load_hacker),
+				},
+				"sound": {
+					# Install a short sound for loop testing
+					# "preload/music/freakyMenu.ogg": AssetRouterEntry("shared/sounds/thunder_2.ogg"),
+				},
+			},
+			{
+				"PATH_WEEK_HEADERS": Path("preload/images/storymenu/"),
+				"PATH_DATA":         Path("preload/data/"),
+				"PATH_SONGS":        Path("songs/"),
+			},
+			{
+				"shared": (
+					LibrarySpecPattern("shared/images/shit.png"),
+					LibrarySpecPattern("shared/images/bad.png"),
+					LibrarySpecPattern("shared/images/good.png"),
+					LibrarySpecPattern("shared/images/sick.png"),
+					LibrarySpecPattern("shared/images/healthBar.png"),
+					LibrarySpecPattern("shared/images/ready.png"),
+					LibrarySpecPattern("shared/images/set.png"),
+					LibrarySpecPattern("shared/images/go.png"),
+					LibrarySpecPattern("shared/sounds/intro?.ogg"),
+					LibrarySpecPattern("preload/images/num?.png"),
+				),
+				"week1": (
+					LibrarySpecPattern("shared/images/stageback.png"),
+					LibrarySpecPattern("shared/images/stagecurtains.png"),
+					LibrarySpecPattern("shared/images/stagefront.png"),
+				),
+				"week2": (LibrarySpecPattern("week2", exclude=("*.fla", "*.mp3")),),
+				"week3": (LibrarySpecPattern("week3", exclude=("*.fla", "*.mp3")),),
+				"week4": (LibrarySpecPattern("week4", exclude=("*.fla", "*.mp3")),),
+				# "week5": (LibrarySpecPattern("week5", exclude=("*.fla", "*.mp3")),),
+				# "week6": (LibrarySpecPattern("week6", exclude=("*.fla", "*.mp3")),),
+				# "week7": (LibrarySpecPattern("week7", exclude=("*.fla", "*.mp3")),),
+			},
+		)
 
-		return None
 
-
-def load() -> ContentPack:
+def load(game: "Game") -> ContentPack:
 	"""
 	Loads everything required to run the base game into the asset
 	system and returns the base game's content pack.
 	"""
+	global _g_load_song_data
 
-	add_asset_router(BaseGameAssetRouter())
-	add_complex_asset_router(BaseGameComplexAssetRouter())
-	add_pyobj_router(PyobjRouter({
-		"PATH_WEEK_HEADERS": "preload/images/storymenu/",
-		"PATH_DATA": "preload/data/",
-		"PATH_SONGS": "songs/",
-	}))
+	asset_dir = Path.cwd() / "assets"
+
+	_g_load_song_data = game.assets.register_complex_asset_provider(
+		"_pnf_song_data", SongDataAssetProvider
+	)
+	game.assets.set_default_asset_directory(asset_dir)
+	game.assets.add_asset_router(BaseGameAssetRouter(asset_dir))
 
 	# Deferred import, yuck! Quickest way to fix the circular import rn,
 	# could possibly split the levels and characters into a basegame submodule later.
@@ -605,6 +565,14 @@ def load() -> ContentPack:
 		(100.0, 200.0),
 	)
 
+	week1_libs = ("shared", "week1")
+	week2_libs = ("shared", "week2")
+	week3_libs = ("shared", "week3")
+	week4_libs = ("shared", "week4")
+	# week5_libs = ("shared", "week5")
+	# week6_libs = ("shared", "week6")
+	# week7_libs = ("shared", "week7")
+
 	return ContentPack(
 		pack_id = "_pnf_base",
 		characters = {
@@ -628,7 +596,13 @@ def load() -> ContentPack:
 				("daddy_dearest", "boyfriend", "girlfriend"),
 				(
 					LevelData(
-						"tutorial", "Tutorial", TutorialStage, "boyfriend", None, "girlfriend"
+						"tutorial",
+						"Tutorial",
+						TutorialStage,
+						"boyfriend",
+						None,
+						"girlfriend",
+						week1_libs,
 					),
 				),
 				"week0.png",
@@ -638,13 +612,31 @@ def load() -> ContentPack:
 				("daddy_dearest", "boyfriend", "girlfriend"),
 				(
 					LevelData(
-						"bopeebo", "Bopeebo", BopeeboStage, "boyfriend", "girlfriend", "daddy_dearest"
+						"bopeebo",
+						"Bopeebo",
+						BopeeboStage,
+						"boyfriend",
+						"girlfriend",
+						"daddy_dearest",
+						week1_libs,
 					),
 					LevelData(
-						"fresh", "Fresh", FreshStage, "boyfriend", "girlfriend", "daddy_dearest"
+						"fresh",
+						"Fresh",
+						FreshStage,
+						"boyfriend",
+						"girlfriend",
+						"daddy_dearest",
+						week1_libs,
 					),
 					LevelData(
-						"dadbattle", "Dadbattle", Week1Stage, "boyfriend", "girlfriend", "daddy_dearest"
+						"dadbattle",
+						"Dadbattle",
+						Week1Stage,
+						"boyfriend",
+						"girlfriend",
+						"daddy_dearest",
+						week1_libs,
 					),
 				),
 				"week1.png",
@@ -654,13 +646,31 @@ def load() -> ContentPack:
 				("skid_n_pump", "boyfriend", "girlfriend"),
 				(
 					LevelData(
-						"spookeez", "Spookeez", Week2Stage, "boyfriend", "girlfriend", "skid_n_pump"
+						"spookeez",
+						"Spookeez",
+						Week2Stage,
+						"boyfriend",
+						"girlfriend",
+						"skid_n_pump",
+						week2_libs,
 					),
 					LevelData(
-						"south", "South", Week2Stage, "boyfriend", "girlfriend", "skid_n_pump"
+						"south",
+						"South",
+						Week2Stage,
+						"boyfriend",
+						"girlfriend",
+						"skid_n_pump",
+						week2_libs,
 					),
 					LevelData(
-						"monster", "Monster", MonsterStage, "boyfriend", "girlfriend", "monster"
+						"monster",
+						"Monster",
+						MonsterStage,
+						"boyfriend",
+						"girlfriend",
+						"monster",
+						week2_libs,
 					),
 				),
 				"week2.png",
@@ -669,9 +679,33 @@ def load() -> ContentPack:
 				"PICO",
 				("pico", "boyfriend", "girlfriend"),
 				(
-					LevelData("pico", "Pico", Week3Stage, "boyfriend", "girlfriend", "pico"),
-					LevelData("philly", "Philly", Week3Stage, "boyfriend", "girlfriend", "pico"),
-					LevelData("blammed", "Blammed", Week3Stage, "boyfriend", "girlfriend", "pico"),
+					LevelData(
+						"pico",
+						"Pico",
+						Week3Stage,
+						"boyfriend",
+						"girlfriend",
+						"pico",
+						week3_libs,
+					),
+					LevelData(
+						"philly",
+						"Philly",
+						Week3Stage,
+						"boyfriend",
+						"girlfriend",
+						"pico",
+						week3_libs,
+					),
+					LevelData(
+						"blammed",
+						"Blammed",
+						Week3Stage,
+						"boyfriend",
+						"girlfriend",
+						"pico",
+						week3_libs,
+					),
 				),
 				"week3.png",
 			),
@@ -686,9 +720,16 @@ def load() -> ContentPack:
 						"boyfriend_car",
 						"girlfriend_car",
 						"mommy_mearest",
+						week4_libs,
 					),
 					LevelData(
-						"high", "High", Week4Stage, "boyfriend_car", "girlfriend_car", "mommy_mearest"
+						"high",
+						"High",
+						Week4Stage,
+						"boyfriend_car",
+						"girlfriend_car",
+						"mommy_mearest",
+						week4_libs,
 					),
 					LevelData(
 						"milf",
@@ -697,6 +738,7 @@ def load() -> ContentPack:
 						"boyfriend_car",
 						"girlfriend_car",
 						"mommy_mearest",
+						week4_libs,
 					),
 				),
 				"week4.png",

@@ -6,6 +6,7 @@ from .music_beat import MusicBeatScene
 from .in_game import InGameScene
 from .freeplay import FreeplayScene
 from .game_over import GameOverScene
+from .loading import LoadingScene
 from .main_menu import MainMenuScene
 from .pause import PauseScene
 from .settings import SettingsScene
@@ -15,7 +16,7 @@ from .title import TitleScene
 from .triangle import TriangleScene
 
 __all__ = [
-	"FNFTransitionScene", "FreeplayScene", "GameOverScene", "InGameScene", "MainMenuScene",
-	"MusicBeatScene", "PauseScene", "SettingsScene", "StoryMenuScene", "TestScene", "TitleScene",
-	"TriangleScene"
+	"FNFTransitionScene", "FreeplayScene", "GameOverScene", "InGameScene", "LoadingScene",
+	"MainMenuScene", "MusicBeatScene", "PauseScene", "SettingsScene", "StoryMenuScene",
+	"TestScene", "TitleScene", "TriangleScene"
 ]

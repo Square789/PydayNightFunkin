@@ -6,10 +6,10 @@ from pyglet.math import Vec2
 from pyglet.window.key import (
 	C, E, F, K, L, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 )
-from pyday_night_funkin.base_game_pack import Boyfriend, load_frames
+from pyday_night_funkin.base_game_pack import Boyfriend
 from pyday_night_funkin.character import CharacterData
+from pyday_night_funkin.core.asset_system import load_frames
 from pyday_night_funkin.core.pnf_text import PNFText
-from pyday_night_funkin.core.tween_effects.eases import linear
 from pyday_night_funkin.core.utils import to_rgba_tuple
 from pyday_night_funkin.note import NoteType
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene

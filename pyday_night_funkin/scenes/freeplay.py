@@ -3,11 +3,10 @@ import typing as t
 
 from pyday_night_funkin.alphabet import MenuTextLine
 from pyday_night_funkin import constants as CNST
-from pyday_night_funkin.base_game_pack import load_character_icon
+from pyday_night_funkin.base_game_pack import fetch_character_icons
 from pyday_night_funkin.core.asset_system import load_image, load_sound
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.pnf_text import TextAlignment, PNFText
-from pyday_night_funkin.core.scene import BaseScene
 from pyday_night_funkin.core.utils import to_rgba_tuple
 from pyday_night_funkin.enums import Control, Difficulty
 from pyday_night_funkin.menu import Menu
@@ -83,7 +82,7 @@ class FreeplayScene(scenes.MusicBeatScene):
 				"fg",
 				object_class = StickySprite,
 				stickee = m,
-				image = load_character_icon(opp_icon)[0],
+				image = fetch_character_icons(opp_icon)[0],
 			)
 
 		self.menu = Menu(

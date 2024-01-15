@@ -1,7 +1,7 @@
 
 import typing as t
 
-from pyday_night_funkin.base_game_pack import load_character_icon
+from pyday_night_funkin.base_game_pack import fetch_character_icons
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.asset_system import load_image
 from pyday_night_funkin.core.utils import clamp, to_rgba_tuple, get_pixel_tex
@@ -47,8 +47,8 @@ class HealthBar:
 		self.opponent_bar.origin = self.player_bar.origin = (0, 0)
 		self.opponent_bar.scale_y = self.player_bar.scale_y = bar_image.height - 8
 
-		self.opponent_icons = load_character_icon(opponent_icon_name)
-		self.player_icons = load_character_icon(player_icon_name)
+		self.opponent_icons = fetch_character_icons(opponent_icon_name)
+		self.player_icons = fetch_character_icons(player_icon_name)
 		# This assumes all opponent and player icons are of same height and width
 		# (Which they are, but hey)
 		icon_y = self.background.y + (bar_image.height - self.opponent_icons[0].height) // 2
