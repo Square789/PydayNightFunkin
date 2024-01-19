@@ -64,10 +64,11 @@ class SoundController:
 
 	def set_volume_direct(self, new_volume: float) -> None:
 		"""
-		Directly sets the global game volume.
+		Directly sets the global game volume to a value between ``0.0``
+		and ``1.0``.
 		Does not have any effect on the predefined volume steps.
 		"""
-		self.volume = new_volume
+		self.volume = clamp(new_volume, 0.0, 1.0)
 		for player in self._known_players:
 			# They're linked to this controller and will read `self.volume` via this.
 			player.volume = player.volume

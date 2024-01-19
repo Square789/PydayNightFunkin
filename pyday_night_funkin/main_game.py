@@ -202,6 +202,9 @@ class Game(SceneManager):
 		self.window.push_handlers(on_draw=self.draw, on_close=self.on_close)
 
 		self.sound = SoundController(SOUND_GRANULARITY)
+		if self.debug:
+			self.sound.change_volume(-SOUND_GRANULARITY // 2)
+
 		self.player = self.sound.create_player()
 		"""
 		A single global media player, similar to `FlxG.sound.music`.
