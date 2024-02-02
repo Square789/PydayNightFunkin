@@ -43,13 +43,12 @@ cdef extern from "c_src/stb_vorbis.c":
 		VORBIS_ogg_skeleton_not_supported
 
 
-	stb_vorbis *stb_vorbis_open_filename(char *file_name, int *error, stb_vorbis_alloc *alloc_buffer)
-	void stb_vorbis_close(stb_vorbis *self)
-	stb_vorbis_info stb_vorbis_get_info(stb_vorbis *self)
-	int stb_vorbis_get_error(stb_vorbis *self)
-	int stb_vorbis_get_sample_offset(stb_vorbis *self)
-	int stb_vorbis_get_samples_short_interleaved(stb_vorbis *self, int channels, short *buffer, int num_shorts)
-	unsigned int stb_vorbis_stream_length_in_samples(stb_vorbis *self)
-	float stb_vorbis_stream_length_in_seconds(stb_vorbis *self)
-	int stb_vorbis_seek(stb_vorbis *self, unsigned int sample_number)
-
+	stb_vorbis *stb_vorbis_open_filename(char *file_name, int *error, stb_vorbis_alloc *alloc_buffer) nogil
+	void stb_vorbis_close(stb_vorbis *self) nogil
+	stb_vorbis_info stb_vorbis_get_info(stb_vorbis *self) nogil
+	int stb_vorbis_get_error(stb_vorbis *self) nogil
+	int stb_vorbis_get_sample_offset(stb_vorbis *self) nogil
+	int stb_vorbis_get_samples_short_interleaved(stb_vorbis *self, int channels, short *buffer, int num_shorts) nogil
+	unsigned int stb_vorbis_stream_length_in_samples(stb_vorbis *self) nogil
+	float stb_vorbis_stream_length_in_seconds(stb_vorbis *self) nogil
+	int stb_vorbis_seek(stb_vorbis *self, unsigned int sample_number) nogil

@@ -82,15 +82,23 @@ cdef class STBVorbis:
 		return stb_vorbis_get_sample_offset(self._stb_vorbis)
 
 	def get_samples_short_interleaved(self, num_samples: int) -> tuple[int, bytes]:
-		cdef short *buf = <short *>malloc(sizeof(short) * num_samples)
-		if buf == NULL:
-			raise MemoryError()
+		cdef short *buf
+		cdef int samples_per_channel
+		cdef int read_bytes
+		cdef size_t num_samples_native = <size_t>num_samples
+		cdef int channel_amount_native = <int>self.channel_amount
 
-		cdef int samples_per_channel = stb_vorbis_get_samples_short_interleaved(
-			self._stb_vorbis, self.channel_amount, buf, num_samples
-		)
+		with nogil:
+			buf = <short *>malloc(num_samples_native * sizeof(short))
+			if buf == NULL:
+				with gil:
+					raise MemoryError()
 
-		cdef int read_bytes = samples_per_channel * self.channel_amount * sizeof(short)
+			samples_per_channel = stb_vorbis_get_samples_short_interleaved(
+				self._stb_vorbis, channel_amount_native, buf, num_samples_native
+			)
+
+			read_bytes = samples_per_channel * channel_amount_native * sizeof(short)
 
 		cdef bytes ret_bytes
 		try:
