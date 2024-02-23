@@ -936,6 +936,33 @@ class LoadingRequest:
 		self._asset_requests += other._asset_requests
 
 
+class _AssetRequestProgressInfo:
+	__slots__ = ("future", "asset", "loaded")
+
+	def __init__(self) -> None:
+		self.future: t.Optional[Future] = None
+		self.asset: t.Any = None
+		self.loaded: bool = False
+
+
+class _OnLoadCallbackInfo:
+	__slots__ = ("tags", "pending_tags", "called")
+
+	def __init__(self, tags: t.Sequence[str], completed_tags: t.Set[str]) -> None:
+		self.tags = tags
+		self.pending_tags = set(tags) - completed_tags
+		self.called = False
+
+
+class _CompletionTagInfo:
+	__slots__ = ("assets", "remaining", "dependant_callbacks")
+
+	def __init__(self, count: int) -> None:
+		self.assets: t.List[t.Any] = [None] * count
+		self.remaining = count
+		self.dependant_callbacks = set()
+
+
 class LoadingProcedureProgress:
 	def __init__(self, req: int, lod: int, f: bool, llod: str) -> None:
 		self.requested = req
@@ -986,17 +1013,17 @@ class LoadingProcedure:
 
 		self._request = LoadingRequest({})
 
-		self._completion_tags: t.Dict[str, t.Dict] = {}
-		self._on_load_callbacks = {}
-		self._libraries = {}
+		self._completion_tags: t.Dict[str, _CompletionTagInfo] = {}
+		self._on_load_callbacks: t.Dict[t.Callable[..., t.Any], _OnLoadCallbackInfo] = {}
+		self._libraries: t.Dict[str, bool] = {}
 
-		self._asset_requests = {}
+		self._asset_requests: t.Dict[_ProcessedAssetRequest, _AssetRequestProgressInfo] = {}
 		"""
 		Map asset requests to their completion state
 		"""
 
-		self._unreported_libraries = []
-		self._unreported_asset_requests = []
+		self._unreported_libraries: t.List[str] = []
+		self._unreported_asset_requests: t.List[_ProcessedAssetRequest] = []
 
 		self._lock = threading.Lock()
 
@@ -1019,8 +1046,8 @@ class LoadingProcedure:
 		raise NotImplementedError()
 
 		for f in self._asset_requests.values():
-			if f["future"] is not None:
-				f["future"].cancel()
+			if f.future is not None:
+				f.future.cancel()
 		self._executor.shutdown(wait=False)
 
 	def get_progress(self) -> LoadingProcedureProgress:
@@ -1054,13 +1081,16 @@ class LoadingProcedure:
 			self._add_more_requests((new_request,))
 
 	def _call_on_load_callback(self, cb: t.Callable) -> LoadingRequest:
+		assert not self._on_load_callbacks[cb].pending_tags
+		assert not self._on_load_callbacks[cb].called
+
 		args = []
-		assert not self._on_load_callbacks[cb]["pending"]
-		for tag in self._on_load_callbacks[cb]["tags"]:
-			assert self._completion_tags[tag]["remaining"] == 0
-			args.extend(self._completion_tags[tag]["assets"])
+		for tag in self._on_load_callbacks[cb].tags:
+			assert self._completion_tags[tag].remaining == 0
+			args.extend(self._completion_tags[tag].assets)
+
 		# TODO: should probably errorcheck
-		self._on_load_callbacks[cb]["called"] = True
+		self._on_load_callbacks[cb].called = True
 		return cb(*args)
 
 	def _add_more_requests(self, new_requests: t.Iterable[LoadingRequest]) -> None:
@@ -1079,35 +1109,23 @@ class LoadingProcedure:
 
 			for cb, areqs in new_request._completion_tags.items():
 				if cb not in self._completion_tags:
-					l = len(areqs)
-					self._completion_tags[cb] = {
-						"assets": [None] * l,
-						"size": l,
-						"remaining": l,
-						"dependant_callbacks": set(),
-					}
+					self._completion_tags[cb] = _CompletionTagInfo(len(areqs))
 
-			_completed_completion_tags = {
-				tag for tag, i in self._completion_tags.items() if i["remaining"] == 0
-			}
-			for cb, reqd in new_request._on_load_callbacks.items():
-				self._on_load_callbacks[cb] = {
-					"tags": reqd,
-					"pending": set(reqd) - _completed_completion_tags,
-					"called": False,
-				}
-				if not self._on_load_callbacks[cb]["pending"]:
+			completed_tags = {tag for tag, i in self._completion_tags.items() if i.remaining == 0}
+			for cb, required_tags in new_request._on_load_callbacks.items():
+				self._on_load_callbacks[cb] = _OnLoadCallbackInfo(required_tags, completed_tags)
+				if not self._on_load_callbacks[cb].pending_tags:
 					self._call_on_load_callback(cb)
 				else:
-					for pending_ct in self._on_load_callbacks[cb]["pending"]:
-						self._completion_tags[pending_ct]["dependant_callbacks"].add(cb)
+					for pending_ct in self._on_load_callbacks[cb].pending_tags:
+						self._completion_tags[pending_ct].dependant_callbacks.add(cb)
 
 			for areq in new_request._asset_requests:
 				if areq.completion_tag is not None:
 					assert areq.completion_tag in self._completion_tags
 
 				self._requested += 1
-				self._asset_requests[areq] = {"future": None, "asset": None, "loaded": False}
+				self._asset_requests[areq] = _AssetRequestProgressInfo()
 				self._unreported_asset_requests.append(areq)
 
 			for lib_name in new_request.libraries:
@@ -1121,7 +1139,7 @@ class LoadingProcedure:
 		if not self._requested_final:
 			if (
 				all(self._libraries.values()) and
-				all(x["called"] for x in self._on_load_callbacks.values())
+				all(x.called for x in self._on_load_callbacks.values())
 			):
 				self._requested_final = True
 
@@ -1130,7 +1148,7 @@ class LoadingProcedure:
 		Submit the future of an asset request being loaded to the
 		``LoadingProcedure``.
 		"""
-		self._asset_requests[asset_request]["future"] = future
+		self._asset_requests[asset_request].future = future
 
 	def _asset_available(self, asset_request: _ProcessedAssetRequest, asset: t.Any) -> None:
 		"""
@@ -1152,8 +1170,8 @@ class LoadingProcedure:
 			# NOTE: THIS WILL ALL RUN FROM SOME RANDOM-ASS THREAD
 			# Lock could possibly be made more granular
 			ar_info = self._asset_requests[asset_request]
-			ar_info["asset"] = asset
-			ar_info["loaded"] = True
+			ar_info.asset = asset
+			ar_info.loaded = True
 
 			self._loaded += 1
 			self._last_loaded_asset = f"{asset_request.asset_type_name}:{name}"
@@ -1162,15 +1180,15 @@ class LoadingProcedure:
 			if comp_tag is None:
 				return
 
-			self._completion_tags[comp_tag]["assets"][asset_request.completion_tag_idx] = asset
-			self._completion_tags[comp_tag]["remaining"] -= 1
-			if self._completion_tags[comp_tag]["remaining"] != 0:
+			self._completion_tags[comp_tag].assets[asset_request.completion_tag_idx] = asset
+			self._completion_tags[comp_tag].remaining -= 1
+			if self._completion_tags[comp_tag].remaining != 0:
 				return
 
 			to_call = []
-			for cb in self._completion_tags[comp_tag]["dependant_callbacks"]:
-				self._on_load_callbacks[cb]["pending"].remove(comp_tag)
-				if not self._on_load_callbacks[cb]["pending"]:
+			for cb in self._completion_tags[comp_tag].dependant_callbacks:
+				self._on_load_callbacks[cb].pending_tags.remove(comp_tag)
+				if not self._on_load_callbacks[cb].pending_tags:
 					to_call.append(cb)
 
 			new_requests = []
@@ -1382,6 +1400,10 @@ class AssetSystemManager:
 		lproc: LoadingProcedure,
 		lib_name: str,
 	) -> None:
+		if (exc := future.exception()) is not None:
+			logger.error(f"Threaded library load: {exc}")
+			return
+
 		lproc._library_available(lib_name, self._libraries_to_subrequest((lib_name,)))
 		self._drain_loading_procedure(lproc)
 
