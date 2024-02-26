@@ -222,7 +222,7 @@ class Game(SceneManager):
 
 		# Load VCR OSD Mono before any labels are drawn and stuff.
 		# Don't do it in the base game, cause it feels more important than that.
-		pyglet.font.load("fonts/vcr.ttf")
+		pyglet.font.add_file("assets/fonts/vcr.ttf")
 
 		from pyday_night_funkin import base_game_pack
 		self.add_content_pack(base_game_pack.load(self))
