@@ -13,7 +13,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.types import Ctype
 
 
-RE_VERTEX_FORMAT = re.compile("(.*)(\d)(.)(n?)(?:/(static|dynamic|stream))?")
+RE_VERTEX_FORMAT = re.compile(r"(.*)(\d)(.)(n?)(?:/(static|dynamic|stream))?")
 
 #########################################################################################
 # ! Check the entire codebase for "PNF_OPEN_GL_TYPE_DEFINITIONS" when modifiying this ! #
