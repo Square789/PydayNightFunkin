@@ -197,7 +197,7 @@ class _RouteInfo:
 class AssetRouter(BaseAssetRouter):
 	"""
 	An asset router with some convenience builtin.
-	See ``__init__``.
+	See ``__init__``. TODO: maybe actually write something in __init__ lol
 	"""
 
 	def __init__(
@@ -238,7 +238,7 @@ class AssetRouter(BaseAssetRouter):
 			if k.startswith("//re:"):
 				regexes.append((re.compile(k[5:]), e))
 			elif k.startswith("//"):
-				raise ValueError("Bad special path specifier. Must be one of '//re:'")
+				raise ValueError("Bad special path specifier. Must be '//re:'")
 			else:
 				r_router_map[k] = e
 
@@ -802,6 +802,22 @@ class CacheStats:
 		The amount of distinct assets present in the cache.
 		"""
 
+	def copy(self) -> "CacheStats":
+		c = CacheStats()
+		c.system_memory_used = self.system_memory_used
+		c.gpu_memory_used = self.gpu_memory_used
+		c.object_count = self.object_count
+		return c
+
+	def __eq__(self, o: object) -> bool:
+		if isinstance(o, CacheStats):
+			return (
+				o.system_memory_used == self.system_memory_used and
+				o.gpu_memory_used == self.system_memory_used and
+				o.object_count == self.object_count
+			)
+		return NotImplemented
+
 
 class AssetRequest:
 	def __init__(
@@ -844,9 +860,7 @@ class LoadingRequest:
 	def __init__(
 		self,
 		asset_requests: t.Dict[str, t.Sequence[AssetRequest]],
-		on_load_callbacks: t.Optional[
-			t.Dict[str, t.Callable[..., t.Sequence["LoadingRequest"]]]
-		] = None,
+		on_load_callbacks: t.Optional[t.Dict[str, t.Callable[..., "LoadingRequest"]]] = None,
 		libraries: t.Optional[t.Sequence[str]] = None,
 	) -> None:
 		self._asset_requests: t.List[_ProcessedAssetRequest] = []
@@ -1268,7 +1282,7 @@ class AssetSystemManager:
 		Returns the guessed amount of system memory the cached assets
 		are currently taking up, as well as the amount of them.
 		"""
-		return self._memory_usage_stats
+		return self._memory_usage_stats.copy()
 
 	def _lookup_cache_key(self, asset_type_name: str, key: t.Hashable) -> t.Any:
 		return self.asset_type_registry[asset_type_name].cache.get(key)
@@ -1899,7 +1913,7 @@ class AssetSystemManager:
 
 		# TODO there is no way to remove elements from cache, as there
 		# is no way of clearing the asset cache in general, do that
-		# for 0.0.52
+		# for 0.0.53
 
 		The steps have to communicate by returning 2-element tuples of
 		args and kwargs which are then unpacked into the next step.

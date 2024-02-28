@@ -1,4 +1,5 @@
 
+from math import ceil
 from platform import python_version
 import queue
 import sys
@@ -29,7 +30,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.superscene import SuperScene
 
 
-__version__ = "0.0.51"
+__version__ = "0.0.52"
 
 
 SOUND_GRANULARITY = 10
@@ -37,77 +38,83 @@ SOUND_GRANULARITY = 10
 
 class _FPSData:
 	def __init__(self) -> None:
-		self.last_second_timestamp = perf_counter() * 1000
+		self._debug_pane = None
+
+		self.last_second_timestamp = perf_counter()
+
 		self._reset_measurements()
-		self.fmt_fps = 0
-		self.last_draw_time = \
-		self.last_update_time = \
-		self.fmt_avg_frame_time = \
-		self.fmt_max_frame_time = \
-		self.fmt_avg_draw_time = \
-		self.fmt_avg_update_time = \
-		self.fmt_max_draw_time = \
-		self.fmt_max_update_time = float("nan")
+
+		self.fmt_ups = 0
+		self.fmt_dps = 0
+		self.fmt_last_timeslice_update_avg = "?"
+		self.fmt_last_timeslice_update_max = "?"
+		self.fmt_last_timeslice_draw_avg = "?"
+		self.fmt_last_timeslice_draw_max = "?"
+
+	def disconnect_debug_pane(self) -> None:
+		self._debug_pane = None
+
+	def connect_debug_pane(self, debug_pane: DebugPane):
+		self._debug_pane = debug_pane
 
 	def _reset_measurements(self) -> None:
-		self.last_seconds_frames = 0
-		self.last_seconds_frame_time = 0
-		self.last_seconds_spent_draw_time = 0.0
-		self.last_seconds_max_draw_time = -1.0
-		self.last_seconds_spent_update_time = 0.0
-		self.last_seconds_max_update_time = -1.0
+		self.cur_timeslice_update_time = 0.0
+		self.cur_timeslice_max_update_time = -1.0
+		self.cur_timeslice_draw_time = 0.0
+		self.cur_timeslice_max_draw_time = -1.0
+		self._updates_cur_timeslice = 0
+		self._draws_cur_timeslice = 0
 
-	def bump(self, draw_time: float, update_time: float) -> None:
-		self.last_draw_time = draw_time
-		self.last_update_time = update_time
-		self.last_seconds_frames += 1
-		self.last_seconds_frame_time += draw_time + update_time
-		self.last_seconds_spent_draw_time += draw_time
-		self.last_seconds_spent_update_time += update_time
-		self.last_seconds_max_draw_time = max(self.last_seconds_max_draw_time, draw_time)
-		self.last_seconds_max_update_time = max(self.last_seconds_max_update_time, update_time)
+	def bump_draw(self, draw_time: float) -> None:
+		self.cur_timeslice_draw_time += draw_time
+		self.cur_timeslice_max_draw_time = max(self.cur_timeslice_max_draw_time, draw_time)
+		self._draws_cur_timeslice += 1
+		if self._debug_pane is not None:
+			self._debug_pane.bump_draw_graph(draw_time)
 
-		t = perf_counter() * 1000
-		if t - self.last_second_timestamp < 1000:
+	def bump_update(self, update_time: float) -> None:
+		self.cur_timeslice_update_time += update_time
+		self.cur_timeslice_max_update_time = max(self.cur_timeslice_max_update_time, update_time)
+		self._updates_cur_timeslice += 1
+		if self._debug_pane is not None:
+			self._debug_pane.bump_update_graph(update_time)
+
+		_ts = perf_counter()
+		if _ts - self.last_second_timestamp < 1.0:
 			return
 
-		self.fmt_fps = self.last_seconds_frames
-		self.last_second_timestamp = t
-		self.fmt_avg_draw_time = (
-			self.last_seconds_spent_draw_time / self.last_seconds_frames
-			if self.last_seconds_frames != 0 else float("nan")
-		)
-		self.fmt_avg_update_time = (
-			self.last_seconds_spent_update_time / self.last_seconds_frames
-			if self.last_seconds_frames != 0 else float("nan")
-		)
-		self.fmt_max_draw_time = (
-			self.last_seconds_max_draw_time if self.last_seconds_max_draw_time >= 0
-			else "?"
-		)
-		self.fmt_max_update_time = (
-			self.last_seconds_max_update_time if self.last_seconds_max_update_time >= 0
-			else "?"
-		)
-		tmp = self.last_seconds_max_update_time + self.last_seconds_max_draw_time
-		self.fmt_max_frame_time = tmp if tmp >= 0 else "?"
-		self.fmt_avg_frame_time = (self.fmt_avg_update_time + self.fmt_avg_draw_time) * 0.5
-		self._reset_measurements()
+		# A second has passed, recalculate our averages
+		# Do it in update, since sanely it'd be called more often than draw
+		self.fmt_ups = self._updates_cur_timeslice
+		self.fmt_dps = self._draws_cur_timeslice
+		self.last_second_timestamp = _ts
 
-	def build_debug_string(self) -> str:
-		"""
-		Returns a debug string built from the fps, average and last
-		times.
-		"""
-		return (
-			f"FPS:    {self.fmt_fps:>3}\n"
-			f"FRAME:  avg {self.fmt_avg_frame_time:>4.1f}, max {self.fmt_max_frame_time:>5.1f}, "
-			f"cur {self.last_update_time + self.last_draw_time:>5.1f}\n"
-			f"UPDATE: avg {self.fmt_avg_update_time:>4.1f}, max {self.fmt_max_update_time:>5.1f}, "
-			f"cur {self.last_update_time:>5.1f}\n"
-			f"DRAW:   avg {self.fmt_avg_draw_time:>4.1f}, max {self.fmt_max_draw_time:>5.1f}, "
-			f"cur {self.last_draw_time:>5.1f}"
+		self.fmt_last_timeslice_draw_avg = (
+			f"{self.cur_timeslice_draw_time / self._draws_cur_timeslice:>4.1f}"
+			if self._draws_cur_timeslice != 0 else "?"
 		)
+		self.fmt_last_timeslice_update_avg = (
+			f"{self.cur_timeslice_update_time / self._updates_cur_timeslice:>4.1f}"
+			if self._updates_cur_timeslice != 0 else "?"
+		)
+		self.fmt_last_timeslice_draw_max = (
+			f"{self.cur_timeslice_max_draw_time:>5.1f}"
+			if self.cur_timeslice_max_draw_time >= 0.0 else "?"
+		)
+		self.fmt_last_timeslice_update_max = (
+			f"{self.cur_timeslice_max_update_time:>5.1f}"
+			if self.cur_timeslice_max_update_time >= 0.0 else "?"
+		)
+		self._debug_pane.update_averages(
+			self.fmt_ups,
+			self.fmt_dps,
+			self.fmt_last_timeslice_update_avg,
+			self.fmt_last_timeslice_update_max,
+			self.fmt_last_timeslice_draw_avg,
+			self.fmt_last_timeslice_draw_max,
+		)
+
+		self._reset_measurements()
 
 
 class Game(SceneManager):
@@ -186,13 +193,15 @@ class Game(SceneManager):
 		logger.info("cygl module initialized.")
 
 		self.assets = pyday_night_funkin.core.asset_system.initialize(pyglet.clock.get_default())
+		self._most_recent_cache_stats = self.assets.get_cache_stats()
 
 		self.volume_control = VolumeControlDropdown(SOUND_GRANULARITY)
 		self._superscenes.append(self.volume_control)
 
 		if self.use_debug_pane:
-			self.debug_pane = DebugPane(8, self._debug_queue)
+			self.debug_pane = DebugPane(8, self._debug_queue, 140, 140)
 			self._superscenes.append(self.debug_pane)
+			self._fps.connect_debug_pane(self.debug_pane)
 
 		self.save_data = SaveData.load()
 
@@ -270,14 +279,14 @@ class Game(SceneManager):
 				0.0,
 			)
 
-		pyglet.clock.schedule_interval(self.update, 1 / 60.0)
-		pyglet.app.run()
+		pyglet.clock.schedule_interval(self.update, 1 / 60)
+		pyglet.clock.schedule_interval(self.window.draw, 1 / 60)
+		pyglet.app.run(None)
 
 	def update(self, dt: float) -> None:
 		stime = perf_counter()
 
 		if dt > self.dt_limit:
-			# logger.warning(f"dt exceeding limit ({dt:.4f} > {self.dt_limit:.4f}), capping.")
 			dt = self.dt_limit
 
 		for scene in self._scenes_to_update:
@@ -297,50 +306,22 @@ class Game(SceneManager):
 		self.raw_key_handler.post_update()
 
 		if self.debug:
-			self._fps.bump(self._last_draw_time, (perf_counter() - stime) * 1000.0)
+			self._fps.bump_update((perf_counter() - stime) * 1000.0)
+
 		# NOTE: This causes a lie; the debug pane update is not taken into account.
 		# You can't really be perfect there, but it does suck since i'm pretty sure
-		# laying that label out takes significant time. Oh well!
+		# laying labels out takes significant time. Oh well!
 		if self.use_debug_pane:
-			# import ctypes
-
-			# GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX         = 0x9047
-			# GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX   = 0x9048
-			# GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX = 0x9049
-			# GPU_MEMORY_INFO_EVICTION_COUNT_NVX           = 0x904A
-			# GPU_MEMORY_INFO_EVICTED_MEMORY_NVX           = 0x904B
-
-			# VBO_FREE_MEMORY_ATI          = 0x87FB
-			# TEXTURE_FREE_MEMORY_ATI      = 0x87FC
-			# RENDERBUFFER_FREE_MEMORY_ATI = 0x87FD
-
-			# vmem_used = None
-			# vmem_avail = None
-			# vmem_free = None
-			# a = (pyglet.gl.GLint * 4)()
-			# try:
-			# 	# (At least my nvidia GPU returns this in KiB, not KB)
-			# 	pyglet.gl.glGetIntegerv(GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, ctypes.cast(ctypes.byref(a), ctypes.POINTER(pyglet.gl.GLint)))
-			# 	vmem_avail = a[0]
-			# 	pyglet.gl.glGetIntegerv(GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, ctypes.cast(ctypes.byref(a), ctypes.POINTER(pyglet.gl.GLint)))
-			# 	vmem_used = a[0]
-			# 	vmem_free = vmem_avail - vmem_used
-			# except pyglet.gl.GLException:
-			# 	try:
-			# 		pyglet.gl.glGetIntegerv(TEXTURE_FREE_MEMORY_ATI, ctypes.cast(ctypes.byref(a), ctypes.POINTER(pyglet.gl.GLint)))
-			# 		vmem_free = a[0]
-			# 	except pyglet.gl.GLException:
-			# 		pass
-
+			self.debug_pane.update()
 			s = self.assets.get_cache_stats()
-			sf = __import__("math").ceil(s.system_memory_used / 1024)
-			tf = __import__("math").ceil(s.gpu_memory_used / 1024)
-			cache_str = (
-				f"Objects in cache: {s.object_count}\n"
-				f"Approximate RAM usage: {sf:>3_}KiB\n"
-				f"Approximate VRAM usage: {tf:>3_}KiB"
-			)
-			self.debug_pane.update(self._fps.build_debug_string(), cache_str)
+			if s != self._most_recent_cache_stats:
+				# No need to update the label that often
+				self.debug_pane.memory_label.text = (
+					f"Objects in cache: {s.object_count}\n"
+					f"Approximate RAM usage: {ceil(s.system_memory_used / 1024):>3_}KiB\n"
+					f"Approximate VRAM usage: {ceil(s.gpu_memory_used / 1024):>3_}KiB"
+				)
+				self._most_recent_cache_stats = s
 
 	def draw(self) -> None:
 		stime = perf_counter()
@@ -353,4 +334,4 @@ class Game(SceneManager):
 		for superscene in self._superscenes:
 			superscene.draw()
 
-		self._last_draw_time = (perf_counter() - stime) * 1000
+		self._fps.bump_draw((perf_counter() - stime) * 1000.0)
