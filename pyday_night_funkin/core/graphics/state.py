@@ -65,8 +65,8 @@ class UniformStatePart(StatePart):
 
 	def concretize(self, program_sp: ProgramStatePart) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
 		# NOTE: Ye olde private pyglet access
-		uniform = program_sp.program.uniforms[self._name]
-		gl_type, gl_func, _, _, count = shader._uniform_setters[uniform.type]
+		uniform = program_sp.program._uniforms[self._name]
+		gl_type, gl_func, _, count = shader._uniform_setters[uniform.type]
 		loc = uniform.location
 		self._c_array = (gl_type * uniform.length)()
 		if uniform.length == 1:
