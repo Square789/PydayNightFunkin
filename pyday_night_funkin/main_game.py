@@ -105,14 +105,16 @@ class _FPSData:
 			f"{self.cur_timeslice_max_update_time:>5.1f}"
 			if self.cur_timeslice_max_update_time >= 0.0 else "?"
 		)
-		self._debug_pane.update_averages(
-			self.fmt_ups,
-			self.fmt_dps,
-			self.fmt_last_timeslice_update_avg,
-			self.fmt_last_timeslice_update_max,
-			self.fmt_last_timeslice_draw_avg,
-			self.fmt_last_timeslice_draw_max,
-		)
+
+		if self._debug_pane is not None:
+			self._debug_pane.update_averages(
+				self.fmt_ups,
+				self.fmt_dps,
+				self.fmt_last_timeslice_update_avg,
+				self.fmt_last_timeslice_update_max,
+				self.fmt_last_timeslice_draw_avg,
+				self.fmt_last_timeslice_draw_max,
+			)
 
 		self._reset_measurements()
 
