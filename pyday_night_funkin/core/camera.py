@@ -363,6 +363,7 @@ class Camera(SimpleCamera):
 	def delete(self) -> None:
 		self.framebuffer.delete()
 		del self.framebuffer
+		self.texture.delete()
 		del self.texture
 		self.quad_vbo.delete()
 		del self.quad_vbo

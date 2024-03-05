@@ -72,8 +72,7 @@ class GradientSprite(PNFSprite):
 
 	def delete(self):
 		super().delete()
-		# Probably hopefully calls python destructor?
-		# I don't think textures can be deleted explicitly.
+		self._gradient_texture.delete()
 		del self._gradient_texture
 
 
@@ -89,7 +88,6 @@ class FNFTransitionScene(TransitionScene):
 		# Values originated from original game's "region" for the TransitionData.
 		# r_y just gets overwritten completely, so that one's irrelevant.
 		r_x = -200
-		# r_y = -200
 		r_w = int(self.game.dimensions[0] * 1.4)
 		r_h = int(self.game.dimensions[1] * 1.4)
 
