@@ -15,7 +15,6 @@ modding scene's lifetime.
 # https://github.com/python/mypy/issues/16120
 # https://discuss.python.org/t/unpacking-typedicts-for-specifying-more-complex-paramspecs/34234
 
-
 import abc
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, Future
@@ -449,6 +448,35 @@ class LoadResult(t.Generic[T]):
 		self.estimated_size_gpu = estimated_size_gpu
 
 
+import abc
+from collections import defaultdict
+import inspect
+import json
+from pathlib import Path
+import sys
+import typing as t
+from xml.etree.ElementTree import ElementTree
+
+from loguru import logger
+from pyglet import image
+from pyglet.image.atlas import TextureBin
+from pyglet.math import Vec2
+from pyglet import media
+from pyglet.media.codecs.base import Source, StaticSource
+
+from pyday_night_funkin.core.animation import FrameCollection
+from pyday_night_funkin.core.almost_xml_parser import AlmostXMLParser
+from pyday_night_funkin.core import ogg_decoder
+
+if t.TYPE_CHECKING:
+	from pyglet.image import AbstractImage, ImageData, Texture
+	from pyglet.media.codecs import MediaDecoder
+	from pyday_night_funkin.core.asset_system import AssetSystemManager
+
+
+T = t.TypeVar("T")
+
+
 class BaseAssetProvider(abc.ABC, t.Generic[T]):
 	def __init__(self, asm: "AssetSystemManager") -> None:
 		self._asm = asm
@@ -664,6 +692,14 @@ class ImageAssetProvider(CacheAwareAssetProvider[Texture]):
 		path: str,
 		atlas_hint: t.Hashable = None,
 	):
+		# NOTE: Not really worth it due to private access, but possibly saves work
+		# that would otherwise be done in the main thread.
+		# data_format = image_data.format
+		# fmt, _ = image_data._get_gl_format_and_type(data_format)
+		# if fmt is None:
+		# 	data_format = {1: 'R', 2: 'RG', 3: 'RGB', 4: 'RGBA'}.get(len(data_format))
+		# image_data._convert(data_format, abs(image_data._current_pitch))
+
 		return (load_image_data(path, cache=False), cache, cache_key, atlas_hint), {}
 
 	def get_cache_usage(self) -> t.Tuple[int, int]:
@@ -702,7 +738,8 @@ class ImageAssetProvider(CacheAwareAssetProvider[Texture]):
 		return LoadResult(texture, 0, unbinned_size)
 
 	def create_cache_key(self, path: str, atlas_hint: t.Hashable = None) -> t.Hashable:
-		return _path_to_string(path)  # NOTE: Really ugly, complex assets need to ensure this
+		# NOTE: Really ugly, but complex assets need to ensure this
+		return _path_to_string(path)
 
 
 class FramesAssetProvider(AssetProvider[FrameCollection]):
@@ -950,33 +987,6 @@ class LoadingRequest:
 		self._asset_requests += other._asset_requests
 
 
-class _AssetRequestProgressInfo:
-	__slots__ = ("future", "asset", "loaded")
-
-	def __init__(self) -> None:
-		self.future: t.Optional[Future] = None
-		self.asset: t.Any = None
-		self.loaded: bool = False
-
-
-class _OnLoadCallbackInfo:
-	__slots__ = ("tags", "pending_tags", "called")
-
-	def __init__(self, tags: t.Sequence[str], completed_tags: t.Set[str]) -> None:
-		self.tags = tags
-		self.pending_tags = set(tags) - completed_tags
-		self.called = False
-
-
-class _CompletionTagInfo:
-	__slots__ = ("assets", "remaining", "dependant_callbacks")
-
-	def __init__(self, count: int) -> None:
-		self.assets: t.List[t.Any] = [None] * count
-		self.remaining = count
-		self.dependant_callbacks = set()
-
-
 class LoadingProcedureProgress:
 	def __init__(self, req: int, lod: int, f: bool, llod: str) -> None:
 		self.requested = req
@@ -1008,6 +1018,41 @@ class LoadingProcedureProgress:
 		"""
 
 
+class _AssetRequestProgressInfo:
+	__slots__ = ("future", "asset", "loaded")
+
+	def __init__(self) -> None:
+		self.future: t.Optional[Future] = None
+		self.asset: t.Any = None
+		self.loaded: bool = False
+
+
+class _LibraryRequestProgressInfo:
+	__slots__ = ("future", "loaded")
+
+	def __init__(self) -> None:
+		self.future: t.Optional[Future] = None
+		self.loaded: bool = False
+
+
+class _OnLoadCallbackInfo:
+	__slots__ = ("tags", "pending_tags", "called")
+
+	def __init__(self, tags: t.Sequence[str], completed_tags: t.Set[str]) -> None:
+		self.tags = tags
+		self.pending_tags = set(tags) - completed_tags
+		self.called = False
+
+
+class _CompletionTagInfo:
+	__slots__ = ("assets", "remaining", "dependant_callbacks")
+
+	def __init__(self, count: int) -> None:
+		self.assets: t.List[t.Any] = [None] * count
+		self.remaining = count
+		self.dependant_callbacks = set()
+
+
 class LoadingProcedure:
 	"""
 	Represents a running AssetSystemManager's loading procedure.
@@ -1029,17 +1074,35 @@ class LoadingProcedure:
 
 		self._completion_tags: t.Dict[str, _CompletionTagInfo] = {}
 		self._on_load_callbacks: t.Dict[t.Callable[..., t.Any], _OnLoadCallbackInfo] = {}
-		self._libraries: t.Dict[str, bool] = {}
+
+		self._library_requests: t.Dict[str, _LibraryRequestProgressInfo] = {}
+		"""
+		Maps library requests to their completion state.
+		"""
 
 		self._asset_requests: t.Dict[_ProcessedAssetRequest, _AssetRequestProgressInfo] = {}
 		"""
-		Map asset requests to their completion state
+		Maps asset requests to their completion state.
 		"""
 
+		# These two contain all keys of [library/asset]_requests that have not yet been
+		# reported by `_get_new_[asset/library]_requests`.
 		self._unreported_libraries: t.List[str] = []
 		self._unreported_asset_requests: t.List[_ProcessedAssetRequest] = []
 
-		self._lock = threading.Lock()
+		self._lock = threading.RLock()
+		# Some notes on this lock:
+		# It needs to be an RLock in the event that a few `on_done_callback`s run
+		# immediately
+		# It is sometimes intentionally not taken when checking for `_cancelled`
+
+		self._cancelled = False
+		self._cancelled_pending_return = 0
+		"""
+		How many futures still need to finish before the request is
+		truly cancelled.
+		Valid only when `self._cancelled` is True.
+		"""
 
 		self._requested = 0
 		self._requested_final = False
@@ -1051,18 +1114,52 @@ class LoadingProcedure:
 	def cancel(self) -> None:
 		"""
 		Cancel this ``LoadingProcedure``.
-		This does not immediately stop all running loading tasks.
-		You must wait until this procedure returns ``True`` for
-		``is_done`` until it is safe to start new ones.
+		This does not immediately stop all running loading threads.
+		You must wait until calls to ``is_done`` return ``True`` until
+		it is safe to start new ones.
 		"""
-		# TODO lkfedmfam aaaaa
-		# Future completion callbacks need to properly do errchecks and whatnot
-		raise NotImplementedError()
+		with self._lock:
+			self._cancelled = True
+			for f in self._asset_requests.values():
+				if not f.future.cancel():
+					# Future failed cancelling, meaning it's either done or running.
+					# We cannot add check logic in `_asset_available` or `_library_available`,
+					# as a finished callback won't call those anymore and it's impossible to safely
+					# determine whether it's running or not by making another call here (Without
+					# copy-pasting internals and grabbing the future's `_condition` yourself).
+					# So, just tack on another callback, which will run in both cases,
+					# decrementing the counter immediately or later.
+					self._cancelled_pending_return += 1
+					f.future.add_done_callback(self._on_cancellation_doorstopper_done)
+			for f in self._library_requests.values():
+				if not f.future.cancel():
+					self._cancelled_pending_return += 1
+					f.future.add_done_callback(self._on_cancellation_doorstopper_done)
+			self._executor.shutdown(wait=False)
 
-		for f in self._asset_requests.values():
-			if f.future is not None:
-				f.future.cancel()
-		self._executor.shutdown(wait=False)
+	def _on_cancellation_doorstopper_done(self, future: Future) -> None:
+		with self._lock:
+			self._cancelled_pending_return -= 1
+
+	def _submit_asset_loading_job(self, asset_request: _ProcessedAssetRequest, f, *args, **kwargs) -> t.Optional[Future]:
+		with self._lock:
+			if self._cancelled:
+				# I guess we could get rid of none checks by introducing some kind of dummy
+				# "always cancelled" future, but that's be really ugly, so no
+				return None
+
+			future = self._executor.submit(f, *args, **kwargs)
+			self._asset_requests[asset_request].future = future
+			return future
+
+	def _submit_library_loading_job(self, library_name: str, f, *args, **kwargs) -> t.Optional[Future]:
+		with self._lock:
+			if self._cancelled:
+				return None
+
+			future = self._executor.submit(f, *args, **kwargs)
+			self._library_requests[library_name].future = future
+			return future
 
 	def get_progress(self) -> LoadingProcedureProgress:
 		with self._lock:
@@ -1079,10 +1176,16 @@ class LoadingProcedure:
 		No more threads for it are running and it is safe to start
 		new ones.
 		"""
-		if self._unreported_asset_requests or self._unreported_libraries:
-			return False
+		with self._lock:
+			if self._cancelled:
+				# A cancelled LoadingProcedure can be considered done only once
+				# none of its futures are left running.
+				return self._cancelled_pending_return == 0
 
-		return self._requested == self._loaded
+			if self._unreported_asset_requests or self._unreported_libraries:
+				return False
+
+			return self._requested == self._loaded
 
 	def schedule(self, new_request: LoadingRequest) -> None:
 		"""
@@ -1129,7 +1232,7 @@ class LoadingProcedure:
 			for cb, required_tags in new_request._on_load_callbacks.items():
 				self._on_load_callbacks[cb] = _OnLoadCallbackInfo(required_tags, completed_tags)
 				if not self._on_load_callbacks[cb].pending_tags:
-					self._call_on_load_callback(cb)
+					req_queue.append(self._call_on_load_callback(cb))
 				else:
 					for pending_ct in self._on_load_callbacks[cb].pending_tags:
 						self._completion_tags[pending_ct].dependant_callbacks.add(cb)
@@ -1143,26 +1246,19 @@ class LoadingProcedure:
 				self._unreported_asset_requests.append(areq)
 
 			for lib_name in new_request.libraries:
-				if lib_name not in self._libraries:
+				if lib_name not in self._library_requests:
 					self._unreported_libraries.append(lib_name)
-					self._libraries[lib_name] = False
+					self._library_requests[lib_name] = _LibraryRequestProgressInfo()
 
 		# Finality can be guaranteed once there's no more pending completion callbacks
 		# and all the libraries have been loaded
 		# Kindof relies on the logic of the AssetSystemManager, but that's fine
 		if not self._requested_final:
 			if (
-				all(self._libraries.values()) and
+				all(x.loaded for x in self._library_requests.values()) and
 				all(x.called for x in self._on_load_callbacks.values())
 			):
 				self._requested_final = True
-
-	def _submit_future(self, asset_request: _ProcessedAssetRequest, future: Future) -> None:
-		"""
-		Submit the future of an asset request being loaded to the
-		``LoadingProcedure``.
-		"""
-		self._asset_requests[asset_request].future = future
 
 	def _asset_available(self, asset_request: _ProcessedAssetRequest, asset: t.Any) -> None:
 		"""
@@ -1181,8 +1277,6 @@ class LoadingProcedure:
 			name = str(id(asset_request))
 
 		with self._lock:
-			# NOTE: THIS WILL ALL RUN FROM SOME RANDOM-ASS THREAD
-			# Lock could possibly be made more granular
 			ar_info = self._asset_requests[asset_request]
 			ar_info.asset = asset
 			ar_info.loaded = True
@@ -1217,7 +1311,7 @@ class LoadingProcedure:
 		has been resolved and is now available.
 		"""
 		with self._lock:
-			self._libraries[lib_name] = True
+			self._library_requests[lib_name].loaded = True
 			self._last_loaded_asset = f"lib:{lib_name}"
 			self._add_more_requests((lib_request,))
 
@@ -1228,6 +1322,9 @@ class LoadingProcedure:
 		a call to this method.
 		To be used by internal code that schedules the loads.
 		"""
+		if self._cancelled:
+			return []
+
 		with self._lock:
 			l = self._unreported_asset_requests
 			self._unreported_asset_requests = []
@@ -1239,6 +1336,9 @@ class LoadingProcedure:
 		Returns all library names that have not yet been returned by a
 		call to this method.
 		"""
+		if self._cancelled:
+			return []
+
 		with self._lock:
 			l = self._unreported_libraries
 			self._unreported_libraries = []
@@ -1264,6 +1364,16 @@ class AssetSystemManager:
 		self._library_specs: t.Dict[str, t.Tuple[LibrarySpecPattern, ...]] = {}
 
 		self._threadloc = threading.local()
+		"""
+		Thread-local data. Contains:
+			`loading_stack`: Aids in tracking of dependent assets.
+
+			`threaded_load`: Whether the thread is primary or operates
+				for a threaded loading procedure.
+
+			`relay_queue`: A one-element queue used to communicate between
+				stages of a fragmented loading procedure
+		"""
 		self._threadloc.loading_stack = []
 		self._threadloc.threaded_load = False
 		self._threadloc.relay_queue = queue.Queue(1)
@@ -1340,7 +1450,10 @@ class AssetSystemManager:
 			self._threadloc.loading_stack = []
 			self._threadloc.threaded_load = True
 			self._threadloc.relay_queue = queue.Queue()
-		executor = ThreadPoolExecutor(8, "AssetLoader", _tinit)
+		# 4 threads max since they're all still pretty likely to run a good amount of
+		# python bytecode in the generated loader methods.
+		# Don't want them to starve the main or media thread too much.
+		executor = ThreadPoolExecutor(4, "AssetLoader", _tinit)
 
 		lproc = LoadingProcedure(executor, self, request)
 
@@ -1377,14 +1490,14 @@ class AssetSystemManager:
 
 		asset_type = self.asset_type_registry[asset_request.asset_type_name]
 
-		done = (
-			lambda future, lproc=lproc, asset_request=asset_request:
-			self._on_threaded_asset_request_load_complete(future, lproc, asset_request)
-		)
-		future = lproc._executor.submit(asset_type.loader, *args, **kwargs)
-		future.add_done_callback(done)
-		# TODO: CONSIDER THIS; Future can finish before the lproc is aware of it
-		lproc._submit_future(asset_request, future)
+		# Prevents the future running finishing callbacks before the request is aware of them, or
+		# Or any bad race conds involving cancellation
+		future = lproc._submit_asset_loading_job(asset_request, asset_type.loader, *args, **kwargs)
+		if future is not None:
+			future.add_done_callback(
+				lambda future, lproc=lproc, asset_request=asset_request:
+					self._on_threaded_asset_request_load_complete(future, lproc, asset_request)
+			)
 
 	def _on_threaded_asset_request_load_complete(
 		self,
@@ -1393,20 +1506,25 @@ class AssetSystemManager:
 		asset_request: _ProcessedAssetRequest,
 	) -> None:
 		if (exc := future.exception()) is not None:
+			# TODO: Failure will cause the loading procedure to never finish,
+			# figure this out
 			logger.error(f"Threaded asset load: {exc}")
+			return
+
+		if future.cancelled():
+			# Twitter got to us, no asset available, return
 			return
 
 		lproc._asset_available(asset_request, future.result())
 		self._drain_loading_procedure(lproc)
 
 	def _start_threaded_library_load(self, lproc: LoadingProcedure, library_name: str) -> None:
-		future = lproc._executor.submit(self.load_library, library_name)
-		
-		done = (
-			lambda future, lproc=lproc, lib_name=library_name:
-			self._on_threaded_library_load_complete(future, lproc, lib_name)
-		)
-		future.add_done_callback(done)
+		future = lproc._submit_library_loading_job(library_name, self.load_library, library_name)
+		if future is not None:
+			future.add_done_callback(
+				lambda future, lproc=lproc, lib_name=library_name:
+					self._on_threaded_library_load_complete(future, lproc, lib_name)
+			)
 
 	def _on_threaded_library_load_complete(
 		self,
@@ -1416,6 +1534,9 @@ class AssetSystemManager:
 	) -> None:
 		if (exc := future.exception()) is not None:
 			logger.error(f"Threaded library load: {exc}")
+			return
+
+		if future.cancelled():
 			return
 
 		lproc._library_available(lib_name, self._libraries_to_subrequest((lib_name,)))
@@ -1741,7 +1862,9 @@ class AssetSystemManager:
 						args, kwargs = f(*args, **kwargs)
 					else:
 						def relay_loader(_, relay_queue: queue.Queue, *args, **kwargs):
+							# stime = __import__("time").perf_counter()
 							relay_queue.put(f(*args, **kwargs))
+							# print("relay loader stalled for", __import__("time").perf_counter() - stime, "s")
 						self._clock.schedule_once(relay_loader, 0.0, relay_queue, *args, **kwargs)
 						args, kwargs = relay_queue.get()
 
@@ -1749,7 +1872,9 @@ class AssetSystemManager:
 					return last_step[0](*args, **kwargs)
 				else:
 					def relay_loader(_, relay_queue: queue.Queue, *args, **kwargs):
+						# stime = __import__("time").perf_counter()
 						relay_queue.put(last_step[0](*args, **kwargs))
+						# print("relay loader stalled for", __import__("time").perf_counter() - stime, "s")
 					self._clock.schedule_once(relay_loader, 0.0, relay_queue, *args, **kwargs)
 					return relay_queue.get()
 
