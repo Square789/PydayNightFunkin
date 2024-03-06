@@ -448,35 +448,6 @@ class LoadResult(t.Generic[T]):
 		self.estimated_size_gpu = estimated_size_gpu
 
 
-import abc
-from collections import defaultdict
-import inspect
-import json
-from pathlib import Path
-import sys
-import typing as t
-from xml.etree.ElementTree import ElementTree
-
-from loguru import logger
-from pyglet import image
-from pyglet.image.atlas import TextureBin
-from pyglet.math import Vec2
-from pyglet import media
-from pyglet.media.codecs.base import Source, StaticSource
-
-from pyday_night_funkin.core.animation import FrameCollection
-from pyday_night_funkin.core.almost_xml_parser import AlmostXMLParser
-from pyday_night_funkin.core import ogg_decoder
-
-if t.TYPE_CHECKING:
-	from pyglet.image import AbstractImage, ImageData, Texture
-	from pyglet.media.codecs import MediaDecoder
-	from pyday_night_funkin.core.asset_system import AssetSystemManager
-
-
-T = t.TypeVar("T")
-
-
 class BaseAssetProvider(abc.ABC, t.Generic[T]):
 	def __init__(self, asm: "AssetSystemManager") -> None:
 		self._asm = asm
