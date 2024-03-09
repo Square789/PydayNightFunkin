@@ -229,6 +229,8 @@ class StoryMenuScene(scenes.MusicBeatScene):
 	def _set_ingame_scene(self, week: "WeekData") -> None:
 		level = week.levels[0]
 
+		self.game.assets.advance_age()
+
 		scenes.LoadingScene.load_or_set(
 			self.game,
 			level.stage_type.get_kernel(

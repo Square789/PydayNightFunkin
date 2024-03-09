@@ -82,6 +82,8 @@ When to unload?
 It would of course be cool to always keep assets such as the alphabet and main menu background.
 Main problem child really are characters boasting spritesheets of 8192**2 etc. Maybe a limit of 1GB
 of acceptable VRAM usage before some kind of hybrid of unused/largest is deleted.
+I could tack on cache eviction parameter control with asset systems, which could inform the asset
+system to keep menu sprites/alphabet forever.
 
 We could create a doomqueue of assets that are unused. The more loading screens pass, the closer
 assets move to its head. Whenever the memory limit is exceeded, the doomqueue is emptied until it
@@ -91,16 +93,96 @@ For this, the AssetSystemManager needs to be aware of everything cached. For thi
 AssetProviders capable of caching things, but only secondarily. The AssetSystemManager will always
 keep a basic dict cache.
 
+Assets might refer to other assets. This needs to be considered, so now i have to go build a
+reference overseer in there. We can probably track this per loader thread thanks to
+`threading.local`. load_a -> load_b -> load_a will cause an infinite loop, good thing we don't have
+assets that look like that. You could probably make a logical argument this isn't really a scheme
+they'd be ever structured after anyways, so error out whenever we detect this early before having
+python blow up with a RecursionError.
+Need to count how many times a given asset refers to another one, we can simply do that by checking
+the referee's count before and after the load. Seriously locking this into refcounts.
+
+Now, when to remove an asset?
+If it's not used, of course.
+This is the case when its refcount is some kind of isolation refcount, which needs to be measured
+once it's in the cache and updated when another asset loads it or such an asset is itself unloaded.
+Imagine a cached texture also referenced by a cached frame collection. We can not delete an
+asset without deleting all of the assets depending on it. In this case however, the base asset
+wouldn't have a refcount of 1, unless the reference happens through a weakref (why) or
+intransparently by storing something like a pointer. These things should absolutely not be
+done, but imma protect against them anyways.
+Thing is: textures/cache-aware assets are the only assets where this step needs to be taken,
+python object-only assets can be uncached and will be kept alive by their dependencies.
+But hey, i need to take care of the complex case, so i'm gonna do that for all of them:
+
+Once an asset is loaded, we can record that to a thread-local list, allowing us to keep a stack
+of the loading dependency. Non-cached assets don't need to be considered, they're never introduced
+to the cache. The isolation refcount needs to be incremented as soon as the dependant asset is
+built, so when it's encached? Problem with that: the refcount can only be determined by subtracting
+the begin refcount and end refcount, but then you'd have to lock the dependency while the dependant
+loads and that is stupid.
+
+Drop the ideas in the previous two paragraphs. After all: Messing with refcounts isn't what we want,
+we just want to know whether the asset is being used by other assets. A 「Directed Acyclic Graph」
+can ultimately be formed by tracing the nesting of the generated loader methods.
+At the end there'll be an asset with no dependants. Any reference to that one implies its usage,
+making everything in the graph for sure unevictable.
+Unfortunately, not using refcounts makes it impossible to confidently evict anything but the top
+asset, if it has a refcount of 1, it can be removed, but its dependencies might be exposed
+themselves and without a refcount to subtract, we can not ascertain whether they are used.
+Another negative effect might be an asset that loads a cached asset and then proceeds to not use
+it, which would cause a pointless dependency, so i'll go and say: don't do that then.
+However, it's technically impossible right now to take advantage of the cache as in:
+"Get it from the cache if it's available, else load it, i promise i won't create a reference to it",
+so to avoid such a pointless dependency you HAVE to load it completely.
+Considering the existing confusing patterns around writing an AssetProvider already, it probably
+won't hurt too badly adding that on somehow as well.
+
+Assume a bad case: someone loads two fat songs back-to-back. The system needs to have enough
+memory to have one loaded at a time, so take that for granted, but it may crap out halfway
+through loading the second.
+There is no way of knowing the system will be overstrained before loading the stuff.
+The only real solution is to check for a limit overrun each time an asset is encached.
+With the right amount of grace limits around the limit and maybe a time-based (okay maybe not
+actually) eviction scheme, this won't be too bad, probably.
+
+It is possible to shave off the dependency trees top-down, but we will require the gc to collect
+the top assets' references to bump the refcount of their dependencies down.
+This might require forced repeated gc.collect calls, which is quite nasty.
+We could create an urgency limit of like 3GB at which point the collection+deletion loop is
+invariably entered, while otherwise the eviction process just runs through one layer.
+
+eviction aggressiveness:
+  hypomermeric (look i smushed an old greek dictionary lookup into hypochondriac):
+    run a gc and full eviction of everything not referenced on every asset loaded
+  somewhat
+    run evictions when applicable on every asset loaded, gc only according to more complex gc
+    configuration options
+  light:
+    run evictions when applicable on some assets loaded, based on a backoff (eviction fails ->
+    try again in 3 assets / raise limit), gc according to gc configuration options
+  only manual:
+    eviction has to be ran manually at certain points, gc according to gc configuration options
+
+These should be made user-accessible options when i finally get to that, but i think a manual call
+at the end of loading screens and a mix of "light" set to an extreme like 3GB VRAM and 2GB RAM is
+pretty good
+
+Help: Atlas fragmentation kinda gets rid of all the positives of atlases.
+We could get around it by giving an asset provider a list of unused assets and telling it:
+"hey you can rearrange those all you like", but when would you do that?
+
 Image cache:
- measure (allocated, used) from texture atlases/bins. Possibly copy-paste from pyglet.
+  measure (allocated, used) from texture atlases/bins. Possibly copy-paste from pyglet.
 Snd cache:
- measure (allocated, used=allocated) from StaticSources.
- Do not cache streaming sources.
+  measure (allocated, used=allocated) from StaticSources.
+  Do not cache streaming sources.
 bytes:
- measure (allocated, used=allocated) from bytes objects via sys.getsizeof
+  measure (allocated, used=allocated) from bytes objects via sys.getsizeof
 json:
- measure (allocated, used=allocated) from dicts via recursive sys.getsizeof
- Note that modifications of dicts should not be respected since that's the user's fault.
+  measure (allocated, used=allocated) from dicts via recursive sys.getsizeof
+  Note that modifications of dicts should not be respected since that's the user's fault.
+  (Like yeah obviously. I'm not gonna start respecting assets that change their size)
 
 assume consistency. as long as the asset router stack is never changed, load_xyz(asdf, ghjk)
 should always return the same thing.
@@ -186,15 +268,6 @@ Calling into other loading functions from threads may be detrimental. Let's go t
 
 So, since load functions MIGHT call other load functions, those locks should probably be RLocks.
 Don't like using them since they're that bit more expensive but whatever, this is python
-
-Assets might refer to other assets. This needs to be considered, so now i have to go build a
-reference overseer in there. We can probably track this per loader thread thanks to
-`threading.local`. load_a -> load_b -> load_a will cause an infinite loop, good thing we don't have
-assets that look like that. You could probably make a logical argument this isn't really a scheme
-they'd be ever structured after anyways, so error out whenever we detect this early before having
-python blow up with a RecursionError.
-Need to count how many times a given asset refers to another one, we can simply do that by checking
-the referee's count before and after the load. Seriously locking this into refcounts.
 
 Asset manifests
 Flixel asset manifests map to an asset library called "default" by default.

@@ -1,4 +1,5 @@
 
+import gc
 from math import ceil
 from platform import python_version
 import queue
@@ -21,7 +22,7 @@ from pyday_night_funkin.enums import Control
 from pyday_night_funkin.volume_control_dropdown import VolumeControlDropdown
 from pyday_night_funkin.save_data import SaveData
 from pyday_night_funkin.registry import Registry
-from pyday_night_funkin.scenes import FreeplayScene, TestScene, TitleScene, TriangleScene
+from pyday_night_funkin.scenes import FreeplayScene, StoryMenuScene, TestScene, TitleScene, TriangleScene
 
 if t.TYPE_CHECKING:
 	from loguru import Record
@@ -30,7 +31,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.superscene import SuperScene
 
 
-__version__ = "0.0.52"
+__version__ = "0.0.53"
 
 
 SOUND_GRANULARITY = 10
@@ -129,7 +130,7 @@ class Game(SceneManager):
 		self._debug_queue = None
 		self.dt_limit = 0.1
 
-		self._last_draw_time = 0.0
+		self._last_gc_start = 0.0
 		self._fps = _FPSData()
 		self._superscenes: t.List["SuperScene"] = []
 
@@ -154,7 +155,7 @@ class Game(SceneManager):
 					"<cyan>{name}</cyan>:<cyan>{function}</cyan>@<cyan>{line}</cyan> - "
 					"<level>{message}</level>"
 				)
-				logger.add(sys.stderr, format=_stderr_fmt)
+				logger.add(sys.stderr, format=_stderr_fmt, level="TRACE")
 
 			if self.use_debug_pane:
 				self._debug_queue = queue.Queue()
@@ -167,6 +168,18 @@ class Game(SceneManager):
 					"{level:<8} | {name}:{function}@{line} - {message}"
 				)
 				logger.add(self._debug_queue.put, format=_debug_pane_fmt, colorize=False)
+
+			# def _on_gc_callback(phase, info):
+			# 	if phase == "start":
+			# 		self._last_gc_start = perf_counter()
+			# 	elif phase == "stop":
+			# 		if info['generation'] > 0:
+			# 			logger.trace(
+			# 				f"Generation ({info['generation']}) collected in "
+			# 				f"{perf_counter() - self._last_gc_start:.6f} seconds"
+			# 			)
+
+			# gc.callbacks.append(_on_gc_callback)
 
 		if ogg_decoder not in pyglet.media.codecs.get_decoders():
 			pyglet.media.codecs.add_decoders(ogg_decoder)
@@ -241,8 +254,9 @@ class Game(SceneManager):
 		self.assets.discover_libraries()
 
 		# Push initial scene
-		self.push_scene(TitleScene)
+		#self.push_scene(TitleScene)
 		#self.push_scene(FreeplayScene)
+		self.push_scene(StoryMenuScene)
 		#self.push_scene(TestScene)
 		#self.push_scene(TriangleScene)
 
@@ -253,6 +267,12 @@ class Game(SceneManager):
 		# 	self.save_data.save()
 		# except OSError as e:
 		# 	logger.exception(f"Failed writing savedata", e)
+
+		# Threaded loading procedures might hang on shutdown, waiting
+		# on some lock that's never released.
+		# Terminate them here
+		# self.assets.shutdown()
+		# return pyglet.event.EVENT_HANDLED
 
 	# The method below is subject to extremely heavy change
 	def add_content_pack(self, pack: "ContentPack") -> None:
@@ -274,7 +294,7 @@ class Game(SceneManager):
 
 		if self.debug:
 			pyglet.clock.schedule_once(
-				lambda _: logger.info(
+				lambda _: logger.success(
 					f"Game started (v{__version__}), pyglet v{pyglet.version}, "
 					f"Python v{python_version()}"
 				),
@@ -332,6 +352,8 @@ class Game(SceneManager):
 
 		for scene in self._scenes_to_draw:
 			scene.draw()
+			# if (perf_counter() - stime) > 0.2:
+			# 	print("Drawing", scene, "took unexpectedly long")
 
 		for superscene in self._superscenes:
 			superscene.draw()

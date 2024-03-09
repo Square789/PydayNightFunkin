@@ -14,7 +14,7 @@ from pyglet.math import Vec2
 from schema import Schema, SchemaError, And, Or, Optional
 
 from pyday_night_funkin.core.asset_system import (
-	AssetProvider, AssetRouter, AssetRouter, AssetRouterEntry, LibrarySpecPattern,
+	AssetProvider, AssetRouter, AssetRouter, AssetRouterEntry, LibrarySpecPattern, JSONAssetProvider,
 	load_frames, load_image, load_json, load_pyobj, load_sound,
 )
 from pyday_night_funkin.content_pack import ContentPack, LevelData, WeekData
@@ -145,6 +145,8 @@ class SongDataAssetProvider(AssetProvider):
 	def create_cache_key(self, song_name: str, difficulty: "Difficulty") -> t.Hashable:
 		return (song_name, difficulty)
 
+	def get_estimated_asset_size(self, item) -> int:
+		return JSONAssetProvider.get_estimated_asset_size(self, item)
 
 _g_load_song_data = None
 

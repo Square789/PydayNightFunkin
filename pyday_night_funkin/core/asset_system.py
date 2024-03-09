@@ -20,15 +20,18 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, Future
 import fnmatch
 import functools
+import gc
 import glob
 import inspect
 import json
+from math import exp, tau, sqrt
 import os
 from pathlib import Path
 import queue
 import re
 import sys
 import threading
+from time import perf_counter
 import typing as t
 from xml.etree.ElementTree import ElementTree
 
@@ -36,7 +39,6 @@ from loguru import logger
 from pyglet import clock
 from pyglet import image
 from pyglet.image import AbstractImage, Texture
-from pyglet.image.atlas import TextureBin
 from pyglet.math import Vec2
 from pyglet import media
 from pyglet.media.codecs.base import Source, StaticSource
@@ -44,6 +46,7 @@ from pyglet.media.codecs.base import Source, StaticSource
 from pyday_night_funkin.core.animation import FrameCollection
 from pyday_night_funkin.core.almost_xml_parser import AlmostXMLParser
 from pyday_night_funkin.core import ogg_decoder
+from pyday_night_funkin.core.texture_atlas import TextureBin
 
 if t.TYPE_CHECKING:
 	from pyglet.image import AbstractImage, ImageData, Texture
@@ -57,8 +60,8 @@ CacheT = t.TypeVar("CacheT", bound="Cache")
 BaseAssetProviderT = t.TypeVar("BaseAssetProviderT", bound="BaseAssetProvider")
 
 PostLoadProcessor = t.Callable[[T], T]
-
 ParameterTuple = t.Tuple[t.Tuple[t.Any, ...], t.Dict[str, t.Any]]
+AssetIdentifier = t.Tuple[str, t.Hashable]
 
 
 _BUILTIN_EXTENSION_MAP = {
@@ -75,8 +78,22 @@ _BUILTIN_EXTENSION_MAP = {
 }
 
 
-def _path_to_string(path: t.Union[str, Path]) -> str:
+def path_to_string(path: t.Union[str, Path]) -> str:
+	"""
+	Possibly stringifies a path.
+	This method is used internally to ensure regular asset routers
+	as well as their `has_asset` method always receive strings.
+	"""
 	return path if isinstance(path, str) else str(path)
+
+
+_SQRT_TAU = sqrt(tau)
+def ndist_1(x: float, sigma: float) -> float:
+	"""
+	Normal distribution with standard deviation hardcoded to 1
+	(aka curve peaks at 1.0)
+	"""
+	return exp(-0.5 * ((x - 1.0)/sigma)**2.0) / (sigma * _SQRT_TAU)
 
 
 class AssetNotFoundError(KeyError):
@@ -207,7 +224,7 @@ class AssetRouter(BaseAssetRouter):
 		pyobj_map: t.Optional[t.Dict[t.Hashable, t.Any]] = None,
 		library_specs: t.Optional[t.Dict[str, t.Tuple[LibrarySpecPattern, ...]]] = None,
 	) -> None:
-		self._dir = _path_to_string(asset_directory)
+		self._dir = path_to_string(asset_directory)
 
 		self._pyobj_map = {} if pyobj_map is None else pyobj_map
 
@@ -309,7 +326,7 @@ class AssetRouter(BaseAssetRouter):
 			return None
 
 		# TODO: may intransparently make path a string, document this
-		path = _path_to_string(options["path"])
+		path = path_to_string(options["path"])
 
 		if (at_specific_map := self._asset_maps.get(asset_type_name)):
 			if (entry := at_specific_map.paths.get(path)) is not None:
@@ -395,57 +412,45 @@ class AssetRouter(BaseAssetRouter):
 		return res
 
 
-class CacheEntry(t.Generic[T]):
-	"""An cache entry for an asset."""
-
-	def __init__(self, item: T) -> None:
-		self.item = item
-		self.last_requested = 0
-		self.hits = 0
-		self.estimated_size_system = 0
-		self.estimated_size_gpu = 0
-
-
-class Cache(t.Generic[T]):
-	"""A cache for assets of a certain type."""
-
-	def __init__(self) -> None:
-		self._dict: t.Dict[t.Hashable, CacheEntry[T]] = {}
-		self._estimated_memory_usage = 0
-
-	def get_memory_usage(self) -> int:
-		return self._estimated_memory_usage
-
-	def add(self, key: t.Hashable, item: T, *_a, **_k) -> T:  # P.args/kwargs retracted
-		if key in self._dict:
-			raise ValueError(f"Cache entry for {key!r} exists already")
-		self._dict[key] = CacheEntry(item)
-		self._estimated_memory_usage += self._get_size_of(item)
-		return item
-
-	def pass_by(self, item: T, *_a, **_k) -> T:  # P.args/kwargs retracted
-		return item
-
-	def _get_size_of(self, item: T) -> int:
-		return sys.getsizeof(item)
-
-	def get(self, key: t.Hashable) -> t.Tuple[bool, t.Optional[T]]:
-		if key in self._dict:
-			return (True, self._dict[key].item)
-		return (False, None)
-
-	def clear(self) -> None:
-		self._dict.clear()
-		self._estimated_memory_usage = 0
-
-
 class LoadResult(t.Generic[T]):
-	__slots__ = ("item", "estimated_size_system", "estimated_size_gpu")
+	__slots__ = (
+		"item",
+		"estimated_size_system",
+		"estimated_size_gpu",
+		"provider_internal_size_system",
+		"provider_internal_size_gpu",
+	)
 
-	def __init__(self, item: T, estimated_size_system = 0, estimated_size_gpu = 0) -> None:
+	def __init__(
+		self,
+		item: T,
+		estimated_size_system = 0,
+		estimated_size_gpu = 0,
+		provider_internal_size_system = 0,
+		provider_internal_size_gpu = 0,
+	) -> None:
 		self.item = item
 		self.estimated_size_system = estimated_size_system
+		"""
+		The amount of system memory directly occupied by ``item``.
+		"""
+
 		self.estimated_size_gpu = estimated_size_gpu
+		"""
+		The amount of graphics memory directly occupied by ``item``.
+		"""
+
+		self.provider_internal_size_system = provider_internal_size_system
+		"""
+		The amount of memory ``item`` takes up inside of a RAM cache
+		owned by its provider.
+		"""
+
+		self.provider_internal_size_gpu = provider_internal_size_gpu
+		"""
+		The amount of memory ``item`` takes up inside of a VRAM cache
+		owned by its provider.
+		"""
 
 
 class BaseAssetProvider(abc.ABC, t.Generic[T]):
@@ -462,6 +467,10 @@ class BaseAssetProvider(abc.ABC, t.Generic[T]):
 
 	@abc.abstractmethod
 	def load(self, *_a, **_k) -> t.Any:  # P.args/kwargs retracted
+		raise NotImplementedError()
+
+	@abc.abstractmethod
+	def unload(self, key: t.Hashable, item: T) -> None:
 		raise NotImplementedError()
 
 	@abc.abstractmethod
@@ -482,7 +491,7 @@ class AssetProvider(BaseAssetProvider[T]):
 		)
 
 	def get_estimated_asset_size(self, item: T) -> int:
-		return 0
+		return 1
 
 	@t.final
 	def get_cache_usage(self) -> t.Tuple[int, int]:
@@ -495,6 +504,10 @@ class AssetProvider(BaseAssetProvider[T]):
 	@abc.abstractmethod
 	def load(self, path: str, *_a, **_k) -> T:
 		raise NotImplementedError()
+
+	@t.final
+	def unload(self, key: t.Hashable, item: T) -> None:
+		pass
 
 	@abc.abstractmethod
 	def create_cache_key(self, path: str, *_a, **_k) -> t.Hashable:
@@ -522,7 +535,7 @@ class BytesAssetProvider(OptionlessAssetProvider[bytes]):
 		try:
 			return sys.getsizeof(item)
 		except TypeError:
-			return len(item)
+			return 8 + len(item)
 
 
 class TextAssetProvider(AssetProvider[str]):
@@ -538,17 +551,17 @@ class TextAssetProvider(AssetProvider[str]):
 			return sys.getsizeof(item)
 		except TypeError:
 			# Definitely undershooting when unicode comes into play
-			return len(item)
+			return 8 + len(item)
 
 
-def _recursive_size_of(item: object) -> int:
+def _recursive_json_size(item: object) -> int:
 	if isinstance(item, dict):
 		return (
-			sum(_recursive_size_of(k) + _recursive_size_of(v) for k, v in item.items()) +
+			sum(_recursive_json_size(k) + _recursive_json_size(v) for k, v in item.items()) +
 			sys.getsizeof(item)
 		)
 	elif isinstance(item, list):
-		return sum(_recursive_size_of(i) for i in item) + sys.getsizeof(item)
+		return sum(_recursive_json_size(i) for i in item) + sys.getsizeof(item)
 	return sys.getsizeof(item)
 
 
@@ -562,9 +575,9 @@ class JSONAssetProvider(AssetProvider[t.Dict]):
 
 	def get_estimated_asset_size(self, item: t.Dict) -> int:
 		try:
-			return _recursive_size_of(item)
+			return _recursive_json_size(item)
 		except TypeError:
-			return 0
+			return 8
 
 
 class XMLAssetProvider(OptionlessAssetProvider[ElementTree]):
@@ -591,9 +604,12 @@ class XMLAssetProvider(OptionlessAssetProvider[ElementTree]):
 				size += sum(sys.getsizeof(k) + sys.getsizeof(v) for k, v in element.attrib.items())
 			return size
 		except TypeError:
-			return 0
+			return 8
 
 
+# TODO: StaticSources produce StaticMemorySources, causing them to not be reported
+# as in-use when their data is still referenced by the StaticMemorySource.
+# Might want to roll some kind of custom solution that fixes that
 class SoundAssetProvider(AssetProvider[Source]):
 	_ogg_decoder = ogg_decoder.get_decoders()[0]
 
@@ -622,7 +638,7 @@ class SoundAssetProvider(AssetProvider[Source]):
 				return sys.getsizeof(item) + sys.getsizeof(item._data)
 			except TypeError:
 				return len(item._data) if item._data is not None else 0
-		return 0
+		return 8
 
 
 class ImageDataAssetProvider(AssetProvider["ImageData"]):
@@ -633,7 +649,7 @@ class ImageDataAssetProvider(AssetProvider["ImageData"]):
 		return path
 
 	def get_estimated_asset_size(self, item: "ImageData") -> int:
-		size = sys.getsizeof(item, 0)
+		size = sys.getsizeof(item, 8)
 		if isinstance(item._current_data, bytes):
 			try:
 				size += sys.getsizeof(item._current_data)
@@ -649,12 +665,17 @@ class ImageAssetProvider(CacheAwareAssetProvider[Texture]):
 		self.tex_bin_size = 4096
 		make_tex_bin = lambda: TextureBin(self.tex_bin_size, self.tex_bin_size)
 		self._hinted_tex_bins: t.Dict[t.Hashable, TextureBin] = defaultdict(make_tex_bin)
-		self._tex_bin = make_tex_bin()
+		self._hinted_tex_bins[None]
+
+		self._cache_key_to_bin_key_map = {}
 
 		self._texture_cache_size = 0
 
 	def get_loading_steps(self) -> t.Tuple[t.Tuple[t.Callable, bool], ...]:
 		return ((self.load, True), (self.load_create_texture, False))
+
+	def get_cache_usage(self) -> t.Tuple[int, int]:
+		return (0, self._texture_cache_size)
 
 	def load(
 		self,
@@ -673,9 +694,6 @@ class ImageAssetProvider(CacheAwareAssetProvider[Texture]):
 
 		return (load_image_data(path, cache=False), cache, cache_key, atlas_hint), {}
 
-	def get_cache_usage(self) -> t.Tuple[int, int]:
-		return (0, self._texture_cache_size)
-
 	def load_create_texture(
 		self,
 		img_data: "ImageData",
@@ -683,34 +701,54 @@ class ImageAssetProvider(CacheAwareAssetProvider[Texture]):
 		cache_key: t.Hashable,
 		atlas_hint: t.Hashable,
 	) -> LoadResult[Texture]:
-		unbinned_size = 0
 		texture = None
+		bin_key = None
 
 		if cache and img_data.width <= self.tex_bin_size and img_data.height <= self.tex_bin_size:
-			target_bin = (
-				self._tex_bin if atlas_hint is None else
-				self._hinted_tex_bins[atlas_hint]
-			)
-			try:
-				texture = target_bin.add(img_data)
-			except Exception as e:
-				logger.warning(f"Failed storing image {img_data} in atlas {atlas_hint}: {e}")
-			else:
-				self._texture_cache_size = 0
-				for bin in (self._tex_bin, *self._hinted_tex_bins.values()):
-					for atlas in bin.atlases:
-						# Textures are rather hardwired to use RGBA8
-						self._texture_cache_size += atlas.texture.width * atlas.texture.height * 4
+			target_bin = self._hinted_tex_bins[atlas_hint]
 
+			bin_size_prev = target_bin.get_area()
+			add_result = target_bin.add(img_data)
+			if add_result is None:
+				logger.warning(f"Failed storing image {img_data} in atlas {atlas_hint}")
+			else:
+				texture = add_result[0]
+				bin_key = (atlas_hint, add_result[1])
+
+				# Textures are rather hardwired to use RGBA8, classic multiply by 4
+				self._texture_cache_size += (target_bin.get_area() - bin_size_prev) * 4
+
+		tex_size = img_data.width * img_data.height * 4
 		if texture is None:
-			unbinned_size = img_data.width * img_data.height * 4
+			bin_key = None
 			texture = img_data.get_texture()
 
-		return LoadResult(texture, 0, unbinned_size)
+		self._cache_key_to_bin_key_map[cache_key] = bin_key
+
+		return LoadResult(
+			texture, 0, tex_size * (bin_key is None), 0, tex_size * (bin_key is not None)
+		)
+
+	def unload(self, key: t.Hashable, item: Texture) -> None:
+		assert key in self._cache_key_to_bin_key_map
+
+		bin_key = self._cache_key_to_bin_key_map.pop(key)
+
+		if bin_key is None:
+			# Texture is not atlased, delete directly.
+			item.delete()
+			return
+
+		# Remove texture from the bin it's allocated in.
+		# Might change the bin's size, so update it as well
+		bin_ = self._hinted_tex_bins[bin_key[0]]
+		bin_size_prev = bin_.get_area()
+		bin_.remove(bin_key[1])
+		self._texture_cache_size += (bin_.get_area() - bin_size_prev) * 4
 
 	def create_cache_key(self, path: str, atlas_hint: t.Hashable = None) -> t.Hashable:
 		# NOTE: Really ugly, but complex assets need to ensure this
-		return _path_to_string(path)
+		return path_to_string(path)
 
 
 class FramesAssetProvider(AssetProvider[FrameCollection]):
@@ -728,6 +766,9 @@ class FramesAssetProvider(AssetProvider[FrameCollection]):
 				continue
 
 			if sub_texture.attrib.get("rotated") == "true":
+				# TODO: Rotated frames must be rotated CCW by 90°.
+				# Possible by just cycling the texture coordinates and
+				# then lying about width and height. I think.
 				raise NotImplementedError("Rotation isn't implemented, sorry")
 
 			name, x, y, w, h, fx, fy, fw, fh = (
@@ -774,19 +815,11 @@ class FramesAssetProvider(AssetProvider[FrameCollection]):
 		return path
 
 
-class AssetType(t.Generic[T]):
-	def __init__(self, name: str, is_complex: bool, is_cache_aware: bool) -> None:
-		self.name = name
-		self.is_complex = is_complex
-		self.is_cache_aware = is_cache_aware
-		self.cache: t.Optional[Cache] = None
-		self.provider: t.Optional[BaseAssetProvider[T]] = None
-		self.loader: t.Optional[t.Callable[..., T]] = None
-		self.current_provider_cache_memory_usage_system = 0
-		self.current_provider_cache_memory_usage_gpu = 0
-
-
 class CacheStats:
+	"""
+	Cheap dataclass for generic attributes relating to a cache.
+	"""
+
 	__slots__ = ("system_memory_used", "gpu_memory_used", "object_count")
 
 	def __init__(self) -> None:
@@ -1061,11 +1094,13 @@ class LoadingProcedure:
 		self._unreported_libraries: t.List[str] = []
 		self._unreported_asset_requests: t.List[_ProcessedAssetRequest] = []
 
-		self._lock = threading.RLock()
 		# Some notes on this lock:
 		# It needs to be an RLock in the event that a few `on_done_callback`s run
-		# immediately
-		# It is sometimes intentionally not taken when checking for `_cancelled`
+		# immediately.
+		# It is sometimes intentionally not taken when checking for `_cancelled` since
+		# cancelled can only move one way and attempts to submit loaders when cancelled
+		# just returns None which needs to be checked for.
+		self._lock = threading.RLock()
 
 		self._cancelled = False
 		self._cancelled_pending_return = 0
@@ -1223,7 +1258,7 @@ class LoadingProcedure:
 
 		# Finality can be guaranteed once there's no more pending completion callbacks
 		# and all the libraries have been loaded
-		# Kindof relies on the logic of the AssetSystemManager, but that's fine
+		# Kind of relies on the logic of the AssetSystemManager, but that's fine
 		if not self._requested_final:
 			if (
 				all(x.loaded for x in self._library_requests.values()) and
@@ -1316,6 +1351,96 @@ class LoadingProcedure:
 			return l
 
 
+class _CacheEntry(t.Generic[T]):
+	"""An cache entry for an asset."""
+
+	__slots__ = (
+		"item", "first_requested", "last_requested", "cache_hits", "required_by", "dependencies",
+		"estimated_size_system", "estimated_size_gpu", "estimated_provider_usage_system",
+		"estimated_provider_usage_gpu"
+	)
+
+	def __init__(self, item: T, dependencies: t.List[AssetIdentifier]) -> None:
+		self.item = item
+		self.first_requested = 0
+		self.last_requested = 0
+		self.cache_hits = 0
+		self.required_by: t.Set[AssetIdentifier] = set()
+		self.dependencies = dependencies
+		self.estimated_size_system = 0
+		self.estimated_size_gpu = 0
+		self.estimated_provider_usage_system = 0
+		self.estimated_provider_usage_gpu = 0
+
+
+class _AssetType(t.Generic[T]):
+	def __init__(
+		self,
+		name: str,
+		is_complex: bool,
+		is_cache_aware: bool,
+		provider: BaseAssetProvider[T],
+		loader: t.Callable[..., T],
+	) -> None:
+		self.name = name
+		"""This asset type's name."""
+
+		self.is_complex = is_complex
+		"""
+		Whether this asset type is complex.
+		See ``AssetSystemManager.register_complex_asset_provider``.
+		"""
+
+		self.is_cache_aware = is_cache_aware
+		"""
+		Whether this asset (its provider) is cache-aware.
+		See ``AssetSystemManager.register_cache_aware_complex_asset_provider``.
+		"""
+
+		self.cache: t.Dict[t.Hashable, _CacheEntry[T]] = {}
+		"""
+		The asset type's cache. Contains all items created through the
+		loader method when ``cache=True``. Hands off, this is managed by
+		the ``AssetSystemManager``.
+		"""
+
+		self.provider: BaseAssetProvider[T] = provider
+		"""The asset type's provider."""
+
+		self.current_provider_cache_memory_usage_system = 0
+		"""
+		The most recently known amount of memory this provider occupies
+		in RAM, as reported by its ``get_cache_usage`` method.
+		"""
+
+		self.current_provider_cache_memory_usage_gpu = 0
+		"""
+		The most recently known amount of GPU memory this provider
+		occupies, as reported by its ``get_cache_usage`` method.
+		"""
+
+		self.loader: t.Optional[t.Callable[..., T]] = loader
+		"""
+		The generated loader function for this asset type.
+		"""
+
+
+class EvictionProcessState:
+	def __init__(
+		self,
+		sys_memory_target: t.Optional[int],
+		gpu_memory_target: t.Optional[int],
+		gc_less_attempts: int,
+	) -> None:
+		self.sys_memory_target = sys_memory_target
+		self.gpu_memory_target = gpu_memory_target
+		self.memory_targets_required = (
+			int(sys_memory_target is not None) + int(gpu_memory_target is not None)
+		)
+		self.gc_less_attempts_remaining = gc_less_attempts
+		self.completed = False
+
+
 class AssetSystemManager:
 	"""
 	# TODO
@@ -1323,13 +1448,111 @@ class AssetSystemManager:
 
 	def __init__(self, pyglet_clock: clock.Clock) -> None:
 		self._clock = pyglet_clock
-		self.asset_router_stack: t.List[BaseAssetRouter] = []
-		self.asset_type_registry: t.Dict[str, AssetType] = {}
-		self._pyobj_cache: t.Dict[t.Hashable, t.Any] = {}
+
 		self._cwd = Path.cwd()
-		self.age = 0
+
+		self.asset_router_stack: t.List[BaseAssetRouter] = []
+		self.asset_type_registry: t.Dict[str, _AssetType] = {}
+		self._pyobj_cache: t.Dict[t.Hashable, t.Any] = {}
+
 		self._memory_usage_stats = CacheStats()
+
+		self.age = 0
+
 		self._cache_lock = threading.Lock()
+		"""
+		A lock that must be held when manipulating the asset cache, or
+		the memory usage statistics object, or just anything that may
+		cause a race condition between loader threads.
+		"""
+
+		self._enable_automatic_eviction = False
+
+		self._eviction_gate = threading.Event()
+		"""
+		All generated loaders will have to "pass" this gate.
+		This serves as not much more than a bandaid, but i guess it
+		doesn't hurt: If an eviction is scheduled/running, the cache has
+		filled up and in order to prevent memory peaking out by yet more
+		loaders getting data and holding onto it before they can interact
+		with the cache, the gate is closed.
+		"""
+		self._eviction_gate.set()
+
+		# TODO: Make configurable
+		self._gpu_memory_limit = 2**30 # 1GiB
+		"""
+		At which point of gpu memory usage to attempt an eviction.
+		"""
+
+		self._sys_memory_limit = 2**29 # 512MiB
+		"""
+		At which point of system memory usage to attempt an eviction.
+		"""
+
+		self._eviction_shrink_factor = 0.9
+		"""
+		An eviction will attempt to get usage of the triggering memory
+		type down to the triggering memory's limit, multiplied by this
+		factor.
+		"""
+
+		self._optimistic_sweep_stop_factor = 0.9
+		"""
+		An eviction sweep will be stopped if - assuming the best case
+		of all asset trees whose top-level assets have been removed
+		being successfully evicted in their entirety - the amount of
+		memory that would be then occupied is less or equal to
+		``self._x_memory_limit * self._eviction_shrink_factor * \
+		  self._optimistic_sweep_stop_factor``.
+
+		Set to 0.0 to easily ruin chances of retaining low-burden
+		assets in cache.
+		Set to 1.0 to frequently stop sweeps. Preserves cache, but
+		might be a bit more processing-intensive and also tend to run
+		more garbage collections.
+		Try ``self._bring_gc_closer_on_optimistic_sweep_stop``.
+		"""
+
+		self._eviction_safe_burden = 4096.0
+		"""
+		Assets with a burden score of less than this value will never
+		be evicted.
+		Theoretically, this allows to clog the asset cache up with
+		thousands of extremely small assets as long as they are somewhat
+		frequently used, but practically it's super-duper unrealistic.
+		"""
+
+		self._eviction_gc_less_sweeps = 3
+
+		# TODO: guess what, implement
+		self._bring_gc_closer_on_optimistic_sweep_stop = False
+
+		self.eviction_consideration_age = 1
+		"""
+		How many generations an asset has to be unused for to be
+		considerable for eviction.
+
+		By default, this is ``1``, meaning assets from the current
+		generation will never be evicted.
+		Setting to zero is inadvisable, as eviction might happen too
+		quickly, especially in the context of a threaded loading
+		procedure.
+		"""
+
+		self.eviction_stale_age = 5
+		"""
+		An asset will be considered stale and be evicted with high
+		likelihood if it has not been requested for this many
+		generations.
+		"""
+
+		self._eviction_process_state = EvictionProcessState(0, 0, self._eviction_gc_less_sweeps)
+		self._eviction_process_flag = threading.Event()
+		"""
+		Used to communicate between the eviction and main thread, as
+		actual asset eviction has to happen on the main one.
+		"""
 
 		self._resolved_libraries: t.Dict[str, t.Dict[str, t.Sequence[ParameterTuple]]] = {}
 		self._library_specs: t.Dict[str, t.Tuple[LibrarySpecPattern, ...]] = {}
@@ -1337,7 +1560,7 @@ class AssetSystemManager:
 		self._threadloc = threading.local()
 		"""
 		Thread-local data. Contains:
-			`loading_stack`: Aids in tracking of dependent assets.
+			`loading_stack`: Aids in tracking of assets dependencies.
 
 			`threaded_load`: Whether the thread is primary or operates
 				for a threaded loading procedure.
@@ -1365,42 +1588,400 @@ class AssetSystemManager:
 		"""
 		return self._memory_usage_stats.copy()
 
-	def _lookup_cache_key(self, asset_type_name: str, key: t.Hashable) -> t.Any:
-		return self.asset_type_registry[asset_type_name].cache.get(key)
+	def _lookup_cache_key(
+		self, asset_type_name: str, key: t.Hashable, bump: bool = True
+	) -> t.Tuple[bool, t.Any]:
+		# My hope is the cache lock ensures that the item cannot be evicted as the reference
+		# created by building the tuple will make the sys.getrefcount call fail afterwards.
+		with self._cache_lock:
+			c = self.asset_type_registry[asset_type_name].cache
+			if key in c:
+				if bump:
+					c[key].last_requested = self.age
+					c[key].cache_hits += 1
+				return (True, c[key].item)
 
-	def _encache(self, asset_type_name: str, key: t.Hashable, value: LoadResult) -> None:
+		return (False, None)
+
+	def _encache(self, asset_type_name: str, key: t.Hashable, load_result: LoadResult) -> None:
+		# print("Encaching", asset_type_name, key)
+
 		asset_type = self.asset_type_registry[asset_type_name]
 
-		asset_type.cache.add(key, value.item)
+		identifier = (asset_type_name, key)
+
+		ce = _CacheEntry(load_result.item, self._threadloc.loading_stack[-1][1])
+		# print(f"Dependencies of {identifier} are {ce.dependencies}")
+		ce.first_requested = self.age
+		ce.last_requested = self.age
+		ce.estimated_size_system = load_result.estimated_size_system
+		ce.estimated_size_gpu = load_result.estimated_size_gpu
+		ce.estimated_provider_usage_system = load_result.provider_internal_size_system
+		ce.estimated_provider_usage_gpu = load_result.provider_internal_size_gpu
+
+		assert (
+			ce.estimated_size_system + ce.estimated_provider_usage_system +
+			ce.estimated_size_gpu + ce.estimated_provider_usage_gpu
+		) > 0
+
+		if len(self._threadloc.loading_stack) > 1:
+			# print(f"Noted {self._threadloc.loading_stack[-2][0]} as dependant on {identifier}.")
+			ce.required_by.add(self._threadloc.loading_stack[-2][0])
+			self._threadloc.loading_stack[-2][1].append(identifier)
+
+		with self._cache_lock:
+			asset_type.cache[key] = ce
+
+			# The provider (only cache-aware ones) may have different memory usage stats now, so
+			# go ahead and update them, merging into the total memory usage.
+			# Ignore provider_internal memory usage, as a provider may allocate larger pools of
+			# memory for the assets interned there.
+			pcs, pcg = asset_type.provider.get_cache_usage()
+			self._memory_usage_stats.object_count += 1
+			self._memory_usage_stats.system_memory_used += (
+				ce.estimated_size_system +
+				(pcs - asset_type.current_provider_cache_memory_usage_system)
+			)
+			self._memory_usage_stats.gpu_memory_used += (
+				ce.estimated_size_gpu +
+				(pcg - asset_type.current_provider_cache_memory_usage_gpu)
+			)
+
+			asset_type.current_provider_cache_memory_usage_system = pcs
+			asset_type.current_provider_cache_memory_usage_gpu = pcg
+
+		if not self._enable_automatic_eviction:
+			return
+
+		evict_sys_ram = (
+			(ce.estimated_size_system > 0 or ce.estimated_provider_usage_system > 0) and
+			self._memory_usage_stats.system_memory_used > self._sys_memory_limit
+		)
+		evict_vram = (
+			(ce.estimated_size_gpu > 0 or ce.estimated_provider_usage_gpu > 0) and
+			self._memory_usage_stats.gpu_memory_used > self._gpu_memory_limit
+		)
+
+		l = []
+		if evict_sys_ram:
+			l.append("RAM")
+		if evict_vram:
+			l.append("VRAM")
+		if l:
+			logger.info(f"Exceeding {'+'.join(l)} limit, starting eviction")
+			self._evict(evict_sys_ram, evict_vram)
+
+	def _remove_from_cache(self, asset_type_name: str, key: t.Hashable) -> None:
+		# print("Evicting ", asset_type_name, key)
+		asset_type = self.asset_type_registry[asset_type_name]
+
+		removed_entry = asset_type.cache.pop(key)
+		removed_ident = (asset_type_name, key)
+		asset_type.provider.unload(key, removed_entry.item)
+
+		for n, k in removed_entry.dependencies:
+			self.asset_type_registry[n].cache[k].required_by.remove(removed_ident)
+
 		pcs, pcg = asset_type.provider.get_cache_usage()
-		self._memory_usage_stats.object_count += 1
-		self._memory_usage_stats.system_memory_used += (
-			value.estimated_size_system +
-			(pcs - asset_type.current_provider_cache_memory_usage_system)
+
+		# Provider should now report equal or less memory than what was
+		# recorded in the AssetType
+
+		# Adjust metrics based on memory occupied by the item itself and provider difference
+		freed_sys = (
+			removed_entry.estimated_size_system +
+			(asset_type.current_provider_cache_memory_usage_system - pcs)
 		)
-		self._memory_usage_stats.gpu_memory_used += (
-			value.estimated_size_gpu +
-			(pcg - asset_type.current_provider_cache_memory_usage_gpu)
+		freed_gpu = (
+			removed_entry.estimated_size_gpu +
+			(asset_type.current_provider_cache_memory_usage_gpu - pcg)
 		)
+		self._memory_usage_stats.object_count -= 1
+		self._memory_usage_stats.system_memory_used -= freed_sys
+		self._memory_usage_stats.gpu_memory_used -= freed_gpu
+
+		# print(
+		# 	f"  That freed up {freed_sys}B real RAM / "
+		# 	f"{removed_entry.estimated_provider_usage_system}B provider-owned RAM, "
+		# 	f"{freed_gpu}B real VRAM, {removed_entry.estimated_provider_usage_gpu}B "
+		# 	f"provider-owned VRAM"
+		# )
 
 		asset_type.current_provider_cache_memory_usage_system = pcs
 		asset_type.current_provider_cache_memory_usage_gpu = pcg
 
-		# ce = CacheEntry(value)
-		# ce.last_requested = self.age
-		# ce.estimated_size_system = value.estimated_size_system
-		# ce.estimated_size_gpu = value.estimated_size_gpu
+	def _calculate_burden_dict(self, asset_type_name: str, ck: t.Hashable):
+		# Trees out of multiple elements (pretty rare) will have their eviction parameters
+		# treated as a compound of their nodes.
 
-	def _remove_from_cache(self, asset_type_name: str, key: t.Hashable) -> None:
-		pass
+		entry = self.asset_type_registry[asset_type_name].cache[ck]
+		burden_dict = {
+			"size_sys": entry.estimated_size_system + entry.estimated_provider_usage_system,
+			"size_gpu": entry.estimated_size_gpu + entry.estimated_provider_usage_gpu,
+			"last_requested": entry.last_requested,
+			"immediate_dependencies": 0,
+			"full_dependencies": 0,
+		}
+
+		# Not propagating last_requested. We don't as you can easily consider a top-level
+		# asset the sole interface to its dependencies. If it falls away, no point in
+		# keeping its dependencies alive if it was the only thing that ever accessed them.
+		# (Plus, less code that way)
+
+		for dep_ident in self.asset_type_registry[asset_type_name].cache[ck].dependencies:
+			dep_burden_dict = self._calculate_burden_dict(*dep_ident)
+			burden_dict["immediate_dependencies"] += 1
+			# TODO: This will duplicate counts on diamond dependencies
+			# We don't have those right now, but it's really bad nonetheless
+			burden_dict["full_dependencies"] += dep_burden_dict["full_dependencies"]
+			burden_dict["size_sys"] += dep_burden_dict["size_sys"]
+			burden_dict["size_gpu"] += dep_burden_dict["size_gpu"]
+
+		return burden_dict
+
+	def _weigh_burden(self, b):
+		unused_for = self.age - b["last_requested"]
+		assert unused_for >= 1
+
+		size_factor = 1.0
+		if unused_for == 1:
+			size_factor = 1.0
+		elif unused_for > self.eviction_stale_age:
+			size_factor = 999999999999.0
+		else:
+			# Make Euler spin in his grave and completely misuse the fancy normal distribution
+			# curve between 1..unused_cutoff
+			# sigma found by guessing, it's 1.7
+			q = ndist_1(1.0, 1.7)
+			v = ndist_1(float(unused_for), 1.7)
+			# TODO: These numbers explode pretty quickly, so quickly that they might overshadow
+			# the burden factor given by the stale generation limit.
+			# Might look into expanding the comparison key into a tuple that has 0 as first
+			# element for non-stale assets, but their respective age for others.
+			if v == 0.0:
+				# who knows what those floats are up to
+				v = 0.000000000001
+			# size_factor = 1.0 / ((1.0/q) * v)
+			size_factor = min(q / v, 999999999999.0)
+
+		# Calculate how much of a burden an asset is
+		# Larger assets should be more targeted for eviction simply cause they fill a lot of
+		# memory, but even more so ones that have not been used for some time
+		# `size_factor` should explode to pretty high values after an asset was unused for 4
+		# generations or so
+
+		return size_factor
+
+	def _evict(self, evict_sys_ram: bool, evict_vram: bool) -> None:
+		"""
+		Run and complete a cache eviction. May be called from any
+		thread, should be called from within a generated loader.
+		"""
+		# TODO: that's a silly limitation, it makes sense to hand control
+		# over to manual eviction. look into something like that.
+		if not evict_sys_ram and not evict_vram:
+			return
+
+		self._eviction_gate.set()
+
+		_start_time = perf_counter()
+
+		self._eviction_process_state = EvictionProcessState(
+			int(self._sys_memory_limit * self._eviction_shrink_factor) if evict_sys_ram else None,
+			int(self._gpu_memory_limit * self._eviction_shrink_factor) if evict_vram else None,
+			self._eviction_gc_less_sweeps,
+		)
+
+		# Because i'm not implementing a manual refcounter, we can only reliably process top-level
+		# assets per sweep.
+
+		# NOTE: By creative usage of lambdas and the likes, scenes can live longer than they
+		# should, which might make them hold on to heavy resources that aren't being used
+		# anymore. Running a full garbage collection feels like overkill, but it is in fact
+		# capable of getting rid of references to expensive images and the like.
+		# We start running those after two cycles that haven't yielded sufficient cleanup.
+
+		# Evict until we understepped all values we care about.
+		# Eviction scheme goes:
+		# - Get the eviction list and sort them depending on which memory types to clear.
+		# - Throw out the most undesirable assets
+		#   - In case of a tree, act optimistically! This prevents top-level tiny items from
+		#     being evicted in the first sweep: Stop the sweep once a tree would in theory
+		#     satisfy eviction requirements. (See `_optimistic_sweep_stop_factor`.)
+		#   - Stop the sweep if we're absolutely done clearing out all the memory needed.
+		# - The sweep is done.
+		#   - If everything's been cleared out and that wasn't enough, tough luck. Done.
+		#   - If there have been trees that only just had a bit off the top, retry.
+		#   - If we've been through this two times already, start running an expensive GC.
+
+		# TODO: Building the trees all the time can definitely be avoided, but in the end
+		# some linear operations and a sort across 200 objects max are just not that much.
+
+		while not self._eviction_process_state.completed:
+			if self._eviction_process_state.gc_less_attempts_remaining == 0:
+				logger.info("Running garbage collection for asset eviction. This may stall.")
+				gc.collect()  # generation=2
+			else:
+				self._eviction_process_state.gc_less_attempts_remaining -= 1
+
+			with self._cache_lock:
+				evictable_toplevel_assets = set()
+				for at in self.asset_type_registry.values():
+					for ck, ce in at.cache.items():
+						if any(a == (at.name, ck) for a, _ in self._threadloc.loading_stack):
+							# The eviction process may be run by an asset which is being loaded as
+							# a dependency of another asset.
+							# Since this asset will have an incomplete dependency tree (the asset
+							# being loaded does not exist yet), ignore it
+							# print(
+							# 	"not considering", at.name, ck, "for eviction: in loading stack"
+							# )
+							continue
+
+						# TODO: could probably prevent full iteration by storing toplevel assets
+						if ce.required_by:  # Not a toplevel asset
+							# print("not considering", at.name, ck, "for eviction: not top-level")
+							continue
+
+						if (
+							self.eviction_consideration_age > (self.age - ce.last_requested) or
+							sys.getrefcount(ce.item) - 1 != 1
+						):
+							# print(
+							# 	"not considering", at.name, ck, "for eviction: in use or used "
+							# 	"too recently"
+							# )
+							continue
+
+						evictable_toplevel_assets.add((at.name, ck))
+
+				eviction_list = []
+				for identifier in evictable_toplevel_assets:
+					d = self._calculate_burden_dict(*identifier)
+					relevant_size = d["size_sys"] * evict_sys_ram + d["size_gpu"] * evict_vram
+
+					# When we should clean up only ram, don't care about vram of course, and
+					# vice-versa.
+					# If there's assets that occupy space in both (somehow?), there's no real
+					# point in protecting the memory type that isn't used, just judge them by
+					# combined sizes.
+					# However, it's possible a sweep goes too far and then evicts a bunch of RAM
+					# objects simply because VRAM is overcrowded. We exclude objects based on
+					# that, which is the primary reason their size may not be 0.
+					if relevant_size == 0:
+						# print(f"not considering {identifier} for eviction: relevant size == 0")
+						continue
+
+					burden_score = relevant_size * self._weigh_burden(d)
+					if burden_score <= self._eviction_safe_burden:
+						# print(f"not considering {identifier} for eviction: below safe burden score")
+						continue
+
+					eviction_list.append((identifier, d, burden_score))
+
+				if not eviction_list:
+					logger.info("No more evictable cache items, eviction complete.")
+					break
+
+				eviction_list.sort(key = lambda x: x[2], reverse=True)
+
+				# self._dump_eviction_list(eviction_list)
+
+				if self._threadloc.threaded_load:
+					self._eviction_process_flag.clear()
+					self._clock.schedule_once(self._run_eviction_sweep, 0.0, eviction_list)
+					self._eviction_process_flag.wait()
+				else:
+					self._run_eviction_sweep(None, eviction_list)
+
+		self._eviction_gate.set()
+
+		logger.info(f"Eviction took {perf_counter() - _start_time:>.4f}s")
+
+	def _run_eviction_sweep(
+		self, _, list_: t.Iterable[t.Tuple[AssetIdentifier, t.Dict, float]]
+	) -> None:
+		memory_targets_required = self._eviction_process_state.memory_targets_required
+
+		sys_mem_target = self._eviction_process_state.sys_memory_target
+		gpu_mem_target = self._eviction_process_state.gpu_memory_target
+		f = self._optimistic_sweep_stop_factor
+		opt_sys_mem_target = None if sys_mem_target is None else int(sys_mem_target * f)
+		opt_gpu_mem_target = None if gpu_mem_target is None else int(gpu_mem_target * f)
+
+		optimistic_sys_usage = self._memory_usage_stats.system_memory_used
+		optimistic_gpu_usage = self._memory_usage_stats.gpu_memory_used
+
+		had_trees = False
+
+		for ident, bd, _ in list_:
+			if bd["immediate_dependencies"] > 0:
+				had_trees = True
+
+			self._remove_from_cache(*ident)
+
+			# This may be a tree, subtract all of its size.
+			# Helps to prevent clearing of low-burden assets in case the entire tree can be taken
+			# down over the next sweeps.
+			# Problem: We don't want to stop the sweep too fast (in case the tree's subresources
+			# actually turn out to not be evictable) and also not run over too many low-burden
+			# assets.
+			optimistic_sys_usage -= bd["size_sys"]
+			optimistic_gpu_usage -= bd["size_gpu"]
+
+			targets_completed = 0
+			targets_completed_opt = 0
+			if sys_mem_target is not None:
+				if self._memory_usage_stats.system_memory_used <= sys_mem_target:
+					targets_completed += 1
+				if optimistic_sys_usage <= opt_sys_mem_target:
+					targets_completed_opt += 1
+
+			if gpu_mem_target is not None:
+				if self._memory_usage_stats.gpu_memory_used <= gpu_mem_target:
+					targets_completed += 1
+				if optimistic_gpu_usage <= opt_gpu_mem_target:
+					targets_completed_opt += 1
+
+			if targets_completed == memory_targets_required:
+				self._eviction_process_state.completed = True
+				logger.info("Eviction completed, enough memory freed")
+				break
+
+			if targets_completed_opt == memory_targets_required:
+				logger.trace("Eviction sweep stopped, optimistic target fulfilled")
+				break
+		else:
+			if self._eviction_process_state.gc_less_attempts_remaining > 0:
+				if self._eviction_process_state.gc_less_attempts_remaining == 1:
+					logger.trace("Enabling garbage collection for next eviction sweeps")
+				self._eviction_process_state.gc_less_attempts_remaining -= 1
+
+			if had_trees:
+				logger.trace("Eviction sweep done, going for another one due to trees")
+			else:
+				if self._eviction_process_state.gc_less_attempts_remaining > 0:
+					logger.trace("Eviction sweep done, enabling garbage collection.")
+					self._eviction_process_state.gc_less_attempts_remaining = 0
+				else:
+					self._eviction_process_state.completed = True
+					logger.info("Eviction completed, could not evict enough memory")
+
+		self._eviction_process_flag.set()
+
+	def _dump_eviction_list(self, el) -> None:
+		print("===== Up for eviction (burden score, type, cache key):")
+		for (at_name, ck), _, burden_score in el:
+			print(f"{burden_score:>14.2f} {at_name:<16} # {ck}")
+		print("=====")
 
 	def advance_age(self) -> None:
 		"""
 		Advances the age of the AssetSystemManager. This should be called at
 		points where the underlying program undergoes a significant change in
 		loaded assets, such as leaving a gameworld in favor of another with
-		wildly different assets. This aids in considerations for which assets
-		to unload.
+		wildly different assets, before starting to load the new assets.
+		This aids in considerations for which assets to unload.
 		"""
 		self.age += 1
 
@@ -1421,15 +2002,13 @@ class AssetSystemManager:
 			self._threadloc.loading_stack = []
 			self._threadloc.threaded_load = True
 			self._threadloc.relay_queue = queue.Queue()
-		# 4 threads max since they're all still pretty likely to run a good amount of
+		# NOTE: 4 threads max since they're all still pretty likely to run a good amount of
 		# python bytecode in the generated loader methods.
 		# Don't want them to starve the main or media thread too much.
 		executor = ThreadPoolExecutor(4, "AssetLoader", _tinit)
 
 		lproc = LoadingProcedure(executor, self, request)
-
 		self._drain_loading_procedure(lproc)
-
 		return lproc
 
 	def _drain_loading_procedure(self, lproc: LoadingProcedure) -> None:
@@ -1456,14 +2035,12 @@ class AssetSystemManager:
 		lproc: LoadingProcedure,
 		asset_request: _ProcessedAssetRequest,
 	) -> None:
-		args = asset_request.args
-		kwargs = asset_request.kwargs
-
-		asset_type = self.asset_type_registry[asset_request.asset_type_name]
-
-		# Prevents the future running finishing callbacks before the request is aware of them, or
-		# Or any bad race conds involving cancellation
-		future = lproc._submit_asset_loading_job(asset_request, asset_type.loader, *args, **kwargs)
+		future = lproc._submit_asset_loading_job(
+			asset_request,
+			self.asset_type_registry[asset_request.asset_type_name].loader,
+			*asset_request.args,
+			**asset_request.kwargs,
+		)
 		if future is not None:
 			future.add_done_callback(
 				lambda future, lproc=lproc, asset_request=asset_request:
@@ -1477,8 +2054,7 @@ class AssetSystemManager:
 		asset_request: _ProcessedAssetRequest,
 	) -> None:
 		if (exc := future.exception()) is not None:
-			# TODO: Failure will cause the loading procedure to never finish,
-			# figure this out
+			# TODO: Failure will cause the loading procedure to never finish, figure this out
 			logger.error(f"Threaded asset load: {exc}")
 			return
 
@@ -1514,6 +2090,10 @@ class AssetSystemManager:
 		self._drain_loading_procedure(lproc)
 
 	def _asset_request_check_cache(self, request: _ProcessedAssetRequest) -> t.Tuple[bool, t.Any]:
+		"""
+		Test whether fulfilling the given asset request would hit the
+		cache.
+		"""
 		asset_type = self.asset_type_registry[request.asset_type_name]
 
 		# This `path` stringification is the worst
@@ -1522,12 +2102,16 @@ class AssetSystemManager:
 		if not asset_type.is_complex:
 			if "path" in request.kwargs:
 				kwargs = request.kwargs.copy()
-				kwargs["path"] = _path_to_string(kwargs["path"])
+				kwargs["path"] = path_to_string(kwargs["path"])
 			else:
 				if len(args) >= 1:  # Otherwise invalid probably
-					args = (_path_to_string(args[0]),) + args[1:]
+					args = (path_to_string(args[0]),) + args[1:]
 
-		return asset_type.cache.get(asset_type.provider.create_cache_key(*args, **kwargs))
+		return self._lookup_cache_key(
+			asset_type.name,
+			asset_type.provider.create_cache_key(*args, **kwargs),
+			False,
+		)
 
 	def _libraries_to_subrequest(self, library_names: t.Iterable[str]) -> LoadingRequest:
 		"""
@@ -1711,22 +2295,6 @@ class AssetSystemManager:
 
 		return self._resolved_libraries[name]
 
-	def _check_and_add_asset_type(
-		self,
-		at: AssetType,
-		provider_cls: t.Type[BaseAssetProviderT],
-	) -> BaseAssetProviderT:
-		if at.name in self.asset_type_registry:
-			raise ValueError(f"Asset of name {at.name} already exists")
-
-		provider = provider_cls(self)
-
-		self.asset_type_registry[at.name] = at
-		at.cache = Cache()
-		at.provider = provider
-
-		return provider
-
 	def remove_asset_type(self, name: str) -> None:
 		if name not in self.asset_type_registry:
 			raise KeyError(f"Cannot remove unknown asset type {name}")
@@ -1744,15 +2312,18 @@ class AssetSystemManager:
 		asset_type_name: str,
 		provider_cls: t.Type[BaseAssetProvider[T]],
 		is_complex: bool,
-		cache_aware: bool,
+		is_cache_aware: bool,
 	) -> t.Callable[..., T]:
 		# TODO: The is_complex and cache_aware vars do not change.
 		# Untangle into copy-paste methods once this stuff is stable.
 
-		assert cache_aware <= is_complex
+		if is_cache_aware > is_complex:
+			raise ValueError("Cache aware asset providers must be complex")
 
-		at = AssetType(asset_type_name, is_complex, cache_aware)
-		provider = self._check_and_add_asset_type(at, provider_cls)
+		if asset_type_name in self.asset_type_registry:
+			raise ValueError(f"Asset type of name {asset_type_name!r} already exists")
+
+		provider = provider_cls(self)
 
 		# Verify signature
 		sig = inspect.signature(provider.load)
@@ -1766,7 +2337,7 @@ class AssetSystemManager:
 				raise TypeError("First parameter must be 'path' for a SingleFileAssetProvider")
 
 		# Make signature without cache args, will help us later
-		if cache_aware:
+		if is_cache_aware:
 			sig_nocache = inspect.Signature(
 				[p for n, p in sig.parameters.items() if n not in ("cache", "cache_key")],
 				return_annotation = sig.return_annotation,
@@ -1853,14 +2424,14 @@ class AssetSystemManager:
 		# cache interaction
 		@functools.wraps(provider.load)
 		def gen_loader(*args, cache: bool = True, **kwargs) -> T:
-			if cache_aware:
+			if is_cache_aware:
 				ba = sig_nocache.bind(*args, **kwargs)
 			else:
 				ba = sig.bind(*args, **kwargs)
 			ba.apply_defaults()
 
 			if not is_complex:
-				ba.arguments["path"] = _path_to_string(ba.arguments["path"])
+				ba.arguments["path"] = path_to_string(ba.arguments["path"])
 
 			cache_key = None
 			if cache:
@@ -1869,57 +2440,72 @@ class AssetSystemManager:
 				else:
 					# Use ba to get the modified path in there
 					cache_key = provider.create_cache_key(*ba.args, **ba.kwargs)
+
 				if (r := self._lookup_cache_key(asset_type_name, cache_key))[0]:
 					# print(f"Cache hit on {asset_type_name}, {cache_key=}")
 					return r[1]
 
+				# If we're at this point, the asset will need to be loaded.
+
+				self._threadloc.loading_stack.append([(asset_type_name, cache_key), []])
+			else:
+				self._threadloc.loading_stack.append("<uncached>")
+
+			self._eviction_gate.wait()
+
 			faked_kwargs = ba.arguments
 
-			if is_complex:
-				rp = None
-				ro, rpr = self._route_complex_asset(asset_type_name, faked_kwargs)
-			else:
-				p = faked_kwargs.pop("path")
-				rp, ro, rpr = self._route_asset(p, asset_type_name, faked_kwargs)
-
-			if ro is not None:
-				faked_kwargs.update(ro)
-
-			if not is_complex:
-				faked_kwargs["path"] = rp
-
-			if cache_aware:
-				if self._threadloc.threaded_load:
-					load_result = threaded_loader_func(
-						self._threadloc.relay_queue, cache, cache_key, **faked_kwargs
-					)
+			try:
+				if is_complex:
+					rp = None
+					ro, rpr = self._route_complex_asset(asset_type_name, faked_kwargs)
 				else:
-					load_result = regular_loader_func(cache, cache_key, **faked_kwargs)
-				asset = load_result.item
-			else:
-				if self._threadloc.threaded_load:
-					asset = threaded_loader_func(self._threadloc.relay_queue, **faked_kwargs)
+					p = faked_kwargs.pop("path")
+					rp, ro, rpr = self._route_asset(p, asset_type_name, faked_kwargs)
+
+				if ro is not None:
+					faked_kwargs.update(ro)
+
+				if not is_complex:
+					faked_kwargs["path"] = rp
+
+				if is_cache_aware:
+					if self._threadloc.threaded_load:
+						load_result = threaded_loader_func(
+							self._threadloc.relay_queue, cache, cache_key, **faked_kwargs
+						)
+					else:
+						load_result = regular_loader_func(cache, cache_key, **faked_kwargs)
+					asset = load_result.item
 				else:
-					asset = regular_loader_func(**faked_kwargs)
-				load_result = LoadResult(asset, provider.get_estimated_asset_size(asset))
+					if self._threadloc.threaded_load:
+						asset = threaded_loader_func(self._threadloc.relay_queue, **faked_kwargs)
+					else:
+						asset = regular_loader_func(**faked_kwargs)
+					load_result = LoadResult(asset, provider.get_estimated_asset_size(asset))
 
-			for f in rpr:
-				asset = f(asset)
+				for f in rpr:
+					asset = f(asset)
 
-			load_result.item = asset
+				load_result.item = asset
 
-			if cache:
-				self._encache(asset_type_name, cache_key, load_result)
+				if cache:
+					self._encache(asset_type_name, cache_key, load_result)
 
-			# print(
-			# 	("[T] " if self._threadloc.threaded_load else "") + "loaded " +
-			# 	("and encached " * cache) + asset_type_name + f"; {cache_key}; {faked_kwargs}"
-			# )
+				# print(
+				# 	("[T] " if self._threadloc.threaded_load else "") + ("[C] " if cache else "") +
+				# 	asset_type_name + f"; {cache_key}; {faked_kwargs}; {self._threadloc.loading_stack}"
+				# )
+
+			finally:
+				self._threadloc.loading_stack.pop()
 
 			return asset
 
-		# Don't forget to make the loader known here
-		self.asset_type_registry[asset_type_name].loader = gen_loader
+		# Finally introduce asset type
+		self.asset_type_registry[asset_type_name] = _AssetType(
+			asset_type_name, is_complex, is_cache_aware, provider, gen_loader
+		)
 
 		return gen_loader
 
@@ -1945,12 +2531,13 @@ class AssetSystemManager:
 
 		``get_estimated_asset_size`` may report a size, in bytes, for
 		an object returned by this provider's ``load`` method.
-		By default, or if this is not possible, it should just return
-		zero.
+		By default, it returns one. If otherwise not possible, return
+		a rough estimate or one. This method may never return zero or
+		negative values.
 
 		Returns a loader function that can simply be used from your
 		game's code like `load_image("assets/img/player.png")` or
-		`load_sound("assets/snd/bg.ogg", options=None, cache=False)`.
+		`load_sound("assets/snd/bg.ogg", stream=True, cache=False)`.
 		"""
 		assert issubclass(provider_cls, AssetProvider)
 
@@ -1991,8 +2578,8 @@ class AssetSystemManager:
 		``get_estimated_asset_size`` does not need to be implemented,
 		as it will never be used.
 
-		Their providers must expose the ``get_cache_usage`` and
-		``get_loading_steps`` methods. Their load procedure may be
+		Their providers must expose the ``get_cache_usage``, ``unload``
+		and ``get_loading_steps`` methods. Their load procedure may be
 		scattered across multiple implementing methods, where methods
 		are reported to be suitable for threaded loading or not via the
 		boolean in the tuples returned by ``get_loading_steps``.
@@ -2007,15 +2594,20 @@ class AssetSystemManager:
 		This complexity can be used to influence the loading behavior
 		of assets.
 
-		# TODO there is no way to remove elements from cache, as there
-		# is no way of clearing the asset cache in general, do that
-		# for 0.0.53
-
 		The steps have to communicate by returning 2-element tuples of
 		args and kwargs which are then unpacked into the next step.
 
 		Further, the load procedure may not return assets directly, but
 		must wrap them in appropiate ``LoadResult`` objects.
+
+		A cache-aware asset provider must implement ``unload``, which
+		must free up any asset previously returned through its loading
+		procedure. ``unload`` will receive the a key previously
+		returned by the provider and the item to be unloaded as
+		parameters.
+		``unload`` will be called on the main thread. It also will be
+		called while the asset system manager's cache lock is held,
+		so should finish somewhat quickly.
 
 		``get_cache_usage`` must return a two-element tuple which may
 		hint at the provider's estimated memory usage; the first element

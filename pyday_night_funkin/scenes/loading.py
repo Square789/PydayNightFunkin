@@ -1,5 +1,8 @@
 
+from time import perf_counter
 import typing as t
+
+from loguru import logger
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.core.asset_system import load_image
@@ -32,7 +35,6 @@ class LoadingScene(BaseScene):
 		super().__init__(kernel)
 
 		self.target_kernel = target_kernel
-		self._started_exiting = False
 
 		self.default_camera.clear_color = (0.792, 1.0, 0.302, 1.0)
 
@@ -54,6 +56,12 @@ class LoadingScene(BaseScene):
 		self.loading_bar = self.create_object("fg", x=10, y=CNST.GAME_HEIGHT - 28)
 		self.loading_bar.make_rect((0xFF, 0x16, 0xD2, 0xFF), 2, 18)
 		self.loading_bar.origin = self.loading_bar.origin[0] - 0.5, self.loading_bar.origin[1]
+
+		self._started_exiting = False
+
+		# Initiate the actual load
+
+		self._start_time = perf_counter()
 
 		loading_request = self.target_kernel.get_loading_hints()
 		self.loading_tracker = self.game.assets.start_threaded_load(loading_request)
@@ -101,5 +109,6 @@ class LoadingScene(BaseScene):
 		self.loading_bar.scale_x = lerp(self.loading_bar.scale_x, bar_width, 1.0 - 0.5**(dt * 10.0))
 
 		if self.loading_tracker.is_done() and not self._started_exiting:
+			logger.trace(f"Loading finished in {perf_counter() - self._start_time:>.4f}s")
 			self._started_exiting = True
 			self.game.set_scene(self.target_kernel)

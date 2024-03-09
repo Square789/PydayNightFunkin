@@ -18,13 +18,16 @@
 
 ## Why would you want this?
  A good question! The answer is: You probably don't! Here's some pros and cons:
-### Pros
+### Pros and Features
  - **Starts quickly**; Changes to Python files are visible far more quickly than changes
    made to Haxe as Python bytecode typically beats html5/hxcpp compilation times.
  - **Significantly cleaner code** than most engines i have seen so far due to an attempt at
    documentation and logically separating stages instead of mashing them together into a
    5000 line long PlayState file.
-### Cons
+ - **Homegrown batch implementation**: Gets by with a small amount of draw calls per frame,
+   deals well with strict ordering. Strumline, arrows and combo sprites only take a single
+   draw call!
+### Cons and Disadvantages
  - **Runs slowly**; due to Python's interpreted nature, PNF runs ~20-50 times slower than
    FNF's compiled C++ code and ~1-4 times as slow as html5 builds, though this is still fast
    enough to not scrape the fabled 16ms 60FPS ceiling.
@@ -33,8 +36,8 @@
    - There have been experiments, but those will definitely remain experiments for the foreseeable
      future.
  - This is a **complete hobby project** that's still in development and rapidly breaks stuff.
- - **Still lacks many many things** such as: Save data, asset cache clearing, a loading screen,
-   options, a chart editor, any kind of comprehensive modding frontend, an accuracy system and
+ - **Still lacks many many things** such as: Save data, options, a chart editor (not planned
+   tbh, use another engine's), any kind of comprehensive modding frontend, an accuracy system and
    tightly timed input detection that doesn't risk lagging behind by up to 16ms.
 
 ## Boring! Show me a video!

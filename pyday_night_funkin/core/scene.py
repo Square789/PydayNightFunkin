@@ -17,6 +17,7 @@ from pyday_night_funkin.core.tween_effects import EffectController
 from pyday_night_funkin.core.utils import to_rgba_tuple
 
 if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.asset_system import LoadingRequest
 	from pyday_night_funkin.main_game import Game
 
 SceneObjectT = t.TypeVar("SceneObjectT", bound=SceneObject)
@@ -178,9 +179,7 @@ class SceneKernel:
 				f"{next(iter(self._uninitialized_kernel_params))}"
 			)
 
-	def get_loading_hints(
-		self,
-	) -> ...:
+	def get_loading_hints(self) -> "LoadingRequest":
 		"""
 		Return a chunk [TODO: what does the returned stuff look like?]
 		of assets to load for this scene to start quickly.

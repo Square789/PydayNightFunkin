@@ -131,7 +131,7 @@ class InGameSceneKernel(SceneKernel):
 			"default_cam_zoom", "player_anchor", "girlfriend_anchor", "opponent_anchor"
 		)
 
-	def get_loading_hints(self) -> ...:
+	def get_loading_hints(self) -> "LoadingRequest":
 		"""
 		Generates asset requests for a typical InGameScene.
 		This duplicates some code to load a level's character's
@@ -164,6 +164,11 @@ class InGameSceneKernel(SceneKernel):
 						completion_tag = "song_data.0",
 					),
 				),
+				# "frames": (
+				# 	AssetRequest(("shared/images/characters/Monster_Assets.xml",)),
+				# 	AssetRequest(("shared/images/characters/GF_assets.xml",)),
+				# 	AssetRequest(("shared/images/characters/BOYFRIEND.xml",)),
+				# ),
 			},
 			{"song_data": _on_song_data_load},
 			self._level_data.libraries or [],
