@@ -1480,12 +1480,12 @@ class AssetSystemManager:
 		self._eviction_gate.set()
 
 		# TODO: Make configurable
-		self._gpu_memory_limit = 2**30 # 1GiB
+		self._gpu_memory_limit = 2**31 # 2048MiB
 		"""
 		At which point of gpu memory usage to attempt an eviction.
 		"""
 
-		self._sys_memory_limit = 2**29 # 512MiB
+		self._sys_memory_limit = 2**30 # 1024MiB
 		"""
 		At which point of system memory usage to attempt an eviction.
 		"""
@@ -1525,7 +1525,8 @@ class AssetSystemManager:
 
 		self._eviction_gc_less_sweeps = 3
 
-		# TODO: guess what, implement
+		# TODO: not implemented, might be pointless/can be changed into some other method
+		# FA&FO, there's no right answers
 		self._bring_gc_closer_on_optimistic_sweep_stop = False
 
 		self.eviction_consideration_age = 1
@@ -1741,10 +1742,8 @@ class AssetSystemManager:
 
 	def _weigh_burden(self, b):
 		unused_for = self.age - b["last_requested"]
-		assert unused_for >= 1
-
 		size_factor = 1.0
-		if unused_for == 1:
+		if unused_for <= 1:
 			size_factor = 1.0
 		elif unused_for > self.eviction_stale_age:
 			size_factor = 999999999999.0
@@ -1839,7 +1838,7 @@ class AssetSystemManager:
 							continue
 
 						# TODO: could probably prevent full iteration by storing toplevel assets
-						if ce.required_by:  # Not a toplevel asset
+						if ce.required_by:
 							# print("not considering", at.name, ck, "for eviction: not top-level")
 							continue
 
