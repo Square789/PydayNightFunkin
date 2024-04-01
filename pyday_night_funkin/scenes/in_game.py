@@ -150,7 +150,20 @@ class InGameSceneKernel(SceneKernel):
 
 			return LoadingRequest(return_hits)
 
+		# TODO: hardcoded path, maybe improve later (TM)
+		frame_collection_requests = []
+		for c_id in (
+			self._level_data.player_character,
+			self._level_data.girlfriend_character,
+			self._level_data.opponent_character,
+		):
+			if c_id is None:
+				continue
 
+			ssn = self.game.character_registry[c_id].sprite_sheet_name
+			frame_collection_requests.append(
+				AssetRequest((f"shared/images/characters/{ssn}.xml",))
+			)
 
 		return LoadingRequest(
 			{
@@ -160,11 +173,7 @@ class InGameSceneKernel(SceneKernel):
 						completion_tag = "song_data.0",
 					),
 				),
-				# "frames": (
-				# 	AssetRequest(("shared/images/characters/Monster_Assets.xml",)),
-				# 	AssetRequest(("shared/images/characters/GF_assets.xml",)),
-				# 	AssetRequest(("shared/images/characters/BOYFRIEND.xml",)),
-				# ),
+				"frames": tuple(frame_collection_requests),
 			},
 			{"song_data": _on_song_data_load},
 			self._level_data.libraries or [],
@@ -270,9 +279,9 @@ class InGameScene(scenes.MusicBeatScene):
 			self.player_anchor, level_data.player_character
 		)
 		if (gf_char_id := level_data.girlfriend_character) is None:
-			# HACK: Feeding `CharacterData()` here is probably a gross violation of something
+			# HACK: Feeding `CharacterData` here is probably a gross violation of something
 			self.girlfriend = self.create_object(
-				"girlfriend", "main", _ThrowawayGf, self, CharacterData(_ThrowawayGf)
+				"girlfriend", "main", _ThrowawayGf, self, CharacterData(_ThrowawayGf, "", "")
 			)
 		else:
 			self.girlfriend = self.create_character(self.girlfriend_anchor, gf_char_id)

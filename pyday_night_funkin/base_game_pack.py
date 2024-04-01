@@ -166,7 +166,7 @@ class Boyfriend(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("shared/images/characters/BOYFRIEND.xml")
+		self.load_frames()
 		self.load_offsets()
 
 		self.add_animation("idle", "BF idle dance", tags=(AnimationTag.IDLE,))
@@ -221,7 +221,7 @@ class Girlfriend(FlipIdleCharacter):
 
 		self.scroll_factor = (0.95, 0.95)
 
-		self.frames = load_frames("shared/images/characters/GF_assets.xml")
+		self.load_frames()
 		self.load_offsets()
 
 		self.add_animation("cheer", "GF Cheer", tags=(AnimationTag.SPECIAL,))
@@ -264,7 +264,7 @@ class DaddyDearest(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("shared/images/characters/DADDY_DEAREST.xml")
+		self.load_frames()
 		self.load_offsets()
 
 		self.add_animation("idle", "Dad idle dance", tags=(AnimationTag.IDLE,))
@@ -280,7 +280,7 @@ class SkidNPump(FlipIdleCharacter):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("shared/images/characters/spooky_kids_assets.xml")
+		self.load_frames()
 		self.load_offsets()
 
 		self.add_animation("sing_up", "spooky UP NOTE", tags=(AnimationTag.SING,))
@@ -302,7 +302,7 @@ class Monster(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("shared/images/characters/Monster_Assets.xml")
+		self.load_frames()
 		self.load_offsets()
 
 		# It's like they're trying to win a naming inconsistency award
@@ -318,7 +318,7 @@ class Pico(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("shared/images/characters/Pico_FNF_assetss.xml")
+		self.load_frames()
 		self.load_offsets()
 
 		self.add_animation("idle", "Pico Idle Dance", tags=(AnimationTag.IDLE,))
@@ -350,7 +350,7 @@ class BoyfriendCar(HairLoopMixin, Boyfriend):
 		# Skip Boyfriend.__init__
 		super(Boyfriend, self).__init__(*args, **kwargs)
 
-		self.frames = load_frames("shared/images/characters/bfCar.xml")
+		self.load_frames()
 		self.load_offsets()
 
 		self.add_animation("idle", "BF idle dance", tags=(AnimationTag.IDLE,))
@@ -371,7 +371,7 @@ class GirlfriendCar(HairLoopMixin, FlipIdleCharacter):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("shared/images/characters/gfCar.xml")
+		self.load_frames()
 		self.load_offsets()
 
 		self.add_indexed_animation("idle_left", "GF Dancing Beat Hair blowing CAR", range(15))
@@ -389,8 +389,9 @@ class MommyMearest(HairLoopMixin, Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
-		self.frames = load_frames("shared/images/characters/momCar.xml")
+		self.load_frames()
 		self.load_offsets()
+
 		self.add_animation("idle", "Mom Idle", tags=(AnimationTag.IDLE,))
 		self.add_animation("sing_up", "Mom Up Pose", tags=(AnimationTag.SING,))
 		self.add_animation("sing_down", "MOM DOWN POSE", tags=(AnimationTag.SING,))
@@ -578,18 +579,26 @@ def load(game: "Game") -> ContentPack:
 	return ContentPack(
 		pack_id = "_pnf_base",
 		characters = {
-			"boyfriend":      CharacterData(Boyfriend, "bf", story_menu_data=bf_smcd),
-			"girlfriend":     CharacterData(Girlfriend, "gf", story_menu_data=gf_smcd),
-			"daddy_dearest":  CharacterData(DaddyDearest, "dad", 6.1, story_menu_data=dad_smcd),
-			"skid_n_pump":    CharacterData(SkidNPump, "spooky", story_menu_data=snp_smcd),
-			"monster":        CharacterData(Monster, "monster"),
-			"pico":           CharacterData(Pico, "pico", story_menu_data=pico_smcd),
-			"boyfriend_car":  CharacterData(
-				BoyfriendCar, "bf", game_over_fallback="boyfriend", offset_id="bf-car"
+			"boyfriend":      CharacterData(Boyfriend, "bf", "BOYFRIEND", story_menu_data=bf_smcd),
+			"girlfriend":     CharacterData(
+				Girlfriend, "gf", "GF_assets", story_menu_data=gf_smcd
 			),
-			"girlfriend_car": CharacterData(GirlfriendCar, "gf", offset_id="gf-car"),
+			"daddy_dearest":  CharacterData(
+				DaddyDearest, "dad", "DADDY_DEAREST", 6.1, story_menu_data=dad_smcd
+			),
+			"skid_n_pump":    CharacterData(
+				SkidNPump, "spooky", "spooky_kids_assets", story_menu_data=snp_smcd
+			),
+			"monster":        CharacterData(Monster, "monster", "Monster_Assets"),
+			"pico":           CharacterData(
+				Pico, "pico", "Pico_FNF_assetss", story_menu_data=pico_smcd
+			),
+			"boyfriend_car":  CharacterData(
+				BoyfriendCar, "bf", "bfCar", game_over_fallback="boyfriend", offset_id="bf-car"
+			),
+			"girlfriend_car": CharacterData(GirlfriendCar, "gf", "gfCar", offset_id="gf-car"),
 			"mommy_mearest":  CharacterData(
-				MommyMearest, "mom", story_menu_data=mom_smcd, offset_id="mom-car"
+				MommyMearest, "mom", "momCar", story_menu_data=mom_smcd, offset_id="mom-car"
 			),
 		},
 		weeks = (

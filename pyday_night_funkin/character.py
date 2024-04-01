@@ -5,10 +5,9 @@ import typing as t
 
 from pyglet.math import Vec2
 
-from pyday_night_funkin.core.asset_system import load_text
+from pyday_night_funkin.core.asset_system import load_frames, load_text
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.enums import AnimationTag
-from pyday_night_funkin.registry import Registry
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.scene import BaseScene
@@ -73,9 +72,14 @@ class CharacterData:
 	This character's Python class/type.
 	"""
 
-	icon_name: str = "face"
+	icon_name: str
 	"""
 	Name of this character's health icon.
+	"""
+
+	sprite_sheet_name: str
+	"""
+	Name of this character's sprite sheet name.
 	"""
 
 	hold_timeout: float = 4.0
@@ -136,6 +140,7 @@ _ANIMATION_NAME_REMAP = {
 	"hairFall": "hair_fall",
 }
 
+
 class Character(PNFSprite):
 	"""
 	A beloved character that moves, sings and... well I guess that's
@@ -148,9 +153,9 @@ class Character(PNFSprite):
 		super().__init__(*args, **kwargs)
 
 		self.scene = scene
-		self.hold_timer = 0.0
 		self.character_data = data
 		self._hold_timeout = data.hold_timeout
+		self.hold_timer = 0.0
 		self.animation_offsets: t.Dict[str, t.Tuple[float, float]] = {}
 		"""
 		Animation offsets for this character, used by `add_animation`.
@@ -208,6 +213,13 @@ class Character(PNFSprite):
 		"""
 		if force or self.should_dance():
 			self.animation.play("idle")
+
+	def load_frames(self) -> None:
+		ssn = self.character_data.sprite_sheet_name
+		if "\\" in ssn or "/" in ssn:
+			raise RuntimeError(">:(")
+
+		self.frames = load_frames(f"shared/images/characters/{ssn}.xml")
 
 	def load_offsets(self, remapper: t.Optional[t.Dict[str, str]] = None) -> None:
 		"""

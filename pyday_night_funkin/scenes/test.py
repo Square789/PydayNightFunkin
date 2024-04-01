@@ -54,7 +54,13 @@ class TestScene(MusicBeatScene):
 			self.arrows.append(s)
 
 		self.boyfriend = self.create_object(
-			"ye_olde_layer", "main", Boyfriend, self, CharacterData(Boyfriend, "bf"), x=770, y=250
+			"ye_olde_layer",
+			"main",
+			Boyfriend,
+			self,
+			CharacterData(Boyfriend, "bf", "BOYFRIEND"),
+			x = 770,
+			y = 250,
 		)
 		self.boyfriend.animation._animations["idle"].loop = True # HACK
 		self.boyfriend.animation.play("idle")
