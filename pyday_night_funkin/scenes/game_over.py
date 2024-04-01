@@ -8,6 +8,7 @@ from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
+	from pyday_night_funkin.main_game import Game
 
 
 class GameOverScene(scenes.MusicBeatScene):
@@ -33,8 +34,8 @@ class GameOverScene(scenes.MusicBeatScene):
 		self.sync_conductor_from_player(self.game.player)
 
 	@classmethod
-	def get_kernel(cls, bf: "PNFSprite") -> SceneKernel:
-		return SceneKernel(cls, bf)
+	def get_kernel(cls, game: "Game", bf: "PNFSprite") -> SceneKernel:
+		return SceneKernel(cls, game, bf)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)

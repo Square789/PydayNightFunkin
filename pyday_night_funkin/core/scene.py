@@ -97,7 +97,7 @@ class SceneKernel:
 	arguments can be written in, overridable by newer subclasses.
 	"""
 
-	def __init__(self, scene_type: t.Type["BaseScene"], *args, **kwargs) -> None:
+	def __init__(self, scene_type: t.Type["BaseScene"], game: "Game", *args, **kwargs) -> None:
 		self._scene_type = scene_type
 		self._scene_args = args
 		self._scene_kwargs = kwargs
@@ -105,7 +105,7 @@ class SceneKernel:
 		self._uninitialized_kernel_params: t.Set[str] = set()
 		self._kernel_params: t.Set[str] = set()
 
-		self.game: t.Optional["Game"] = None
+		self.game: "Game" = game
 
 		self.layers: t.Optional[t.Sequence[t.Union[t.Hashable, OrderedLayer]]] = None
 		self.cameras: t.Optional[t.Sequence[t.Hashable]] = None
@@ -189,8 +189,7 @@ class SceneKernel:
 		"""
 		raise NotImplementedError()
 
-	def create_scene(self, game: "Game") -> "BaseScene":
-		self.game = game
+	def create_scene(self) -> "BaseScene":
 		return self._scene_type(self, *self._scene_args, **self._scene_kwargs)
 
 
@@ -313,13 +312,13 @@ class BaseScene(Container):
 		"""
 
 	@classmethod
-	def get_kernel(cls) -> SceneKernel:
+	def get_kernel(cls, game: "Game") -> SceneKernel:
 		"""
 		Creates a `SceneKernel` for this scene, which is necessary to
 		delay its creation. See the SceneKernel's class docstring for
 		more info.
 		"""
-		return SceneKernel(cls)
+		return SceneKernel(cls, game)
 
 	def _get_elapsed_time(self) -> float:
 		return self._passed_time
@@ -590,7 +589,7 @@ class BaseScene(Container):
 		"""
 		if self._transition_in_cls is not None:
 			self.game.push_scene(
-				self._transition_in_cls.get_kernel(True, self.on_transition_in_complete)
+				self._transition_in_cls.get_kernel(self.game, True, self.on_transition_in_complete)
 			)
 
 	def start_transition_out(self, new_scene_kernel: SceneKernel) -> None:
@@ -601,7 +600,7 @@ class BaseScene(Container):
 			return
 
 		self.game.push_scene(
-			self._transition_out_cls.get_kernel(False, self.on_transition_out_complete)
+			self._transition_out_cls.get_kernel(self.game, False, self.on_transition_out_complete)
 		)
 		self._transition_out_next_scene = new_scene_kernel
 		self._transition_out_started = True
@@ -663,10 +662,11 @@ class TransitionScene(BaseScene):
 	@classmethod
 	def get_kernel(
 		cls,
+		game: "Game",
 		is_in: bool,
 		on_end: t.Optional[t.Callable[["TransitionScene"], t.Any]] = None,
 	) -> SceneKernel:
-		return SceneKernel(cls, is_in, on_end)
+		return SceneKernel(cls, game, is_in, on_end)
 
 	def create_transition_effect(self, is_in: bool, on_end: t.Callable[[], t.Any]) -> None:
 		"""

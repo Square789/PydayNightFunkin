@@ -46,7 +46,7 @@ class SceneManager:
 		# Iterate like this as scenes may push more scenes during initialization
 		while self._pending_scene_stack_additions:
 			kernel = self._pending_scene_stack_additions.pop(0)
-			self._scene_stack.append(kernel.create_scene(self))
+			self._scene_stack.append(kernel.create_scene())
 			if full_wipe and self._scene_stack:
 				full_wipe = False
 				self._scene_stack[0].start_transition_in()
@@ -57,7 +57,7 @@ class SceneManager:
 		self, scene_type_or_kernel: t.Union[t.Type[BaseScene], SceneKernel]
 	) -> SceneKernel:
 		if isinstance(scene_type_or_kernel, type) and issubclass(scene_type_or_kernel, BaseScene):
-			return scene_type_or_kernel.get_kernel()
+			return scene_type_or_kernel.get_kernel(self)
 		else:
 			return scene_type_or_kernel
 

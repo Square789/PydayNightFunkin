@@ -9,6 +9,7 @@ from pyglet.math import Vec2
 
 from pyday_night_funkin.base_game_pack import fetch_song
 from pyday_night_funkin.character import Character, CharacterData
+from pyday_night_funkin.core.asset_system import AssetRequest, LoadingRequest, load_pyobj
 from pyday_night_funkin.core.scene import BaseScene, SceneKernel, BaseSceneArgDict
 from pyday_night_funkin.core.utils import lerp
 from pyday_night_funkin.enums import AnimationTag, Control, Difficulty
@@ -111,12 +112,13 @@ class InGameSceneKernel(SceneKernel):
 	def __init__(
 		self,
 		scene_type: t.Type["InGameScene"],
+		game: "Game",
 		level_data: "LevelData",
 		difficulty: Difficulty,
 		follow_scene: t.Type["BaseScene"],
 		remaining_week: t.Optional[t.Sequence["LevelData"]] = None,
 	) -> None:
-		super().__init__(scene_type, level_data, difficulty, follow_scene, remaining_week)
+		super().__init__(scene_type, game, level_data, difficulty, follow_scene, remaining_week)
 
 		self._level_data = level_data
 		self._difficulty = difficulty
@@ -137,8 +139,6 @@ class InGameSceneKernel(SceneKernel):
 		This duplicates some code to load a level's character's
 		spritesheets as well as the song, nothing else.
 		"""
-		from pyday_night_funkin.core.asset_system import AssetRequest, LoadingRequest, load_pyobj
-
 		# TODO: Load songs/characters of an entire week
 
 		def _on_song_data_load(json_data):
@@ -150,11 +150,7 @@ class InGameSceneKernel(SceneKernel):
 
 			return LoadingRequest(return_hits)
 
-		# TODO: Make adjustments to characters so this method can request loading of
-		# their spritesheets.
-		# Also, get_loading_hints should probably take game as a parameter
-		# Or maybe kernels should just get it at initialization unconditionally.
-		# So much to do so much to see so much to do so much to see
+
 
 		return LoadingRequest(
 			{
@@ -177,8 +173,8 @@ class InGameSceneKernel(SceneKernel):
 	def fill(self, arg_dict: t.Optional[_InGameSceneArgDict] = None, **kwargs):
 		return super().fill(arg_dict, **kwargs)
 
-	def create_scene(self, game: "Game") -> "InGameScene":
-		scene = super().create_scene(game) # type: InGameScene
+	def create_scene(self) -> "InGameScene":
+		scene = super().create_scene() # type: InGameScene
 		scene.load_song()
 		scene.ready()
 		return scene
@@ -303,6 +299,7 @@ class InGameScene(scenes.MusicBeatScene):
 	@classmethod
 	def get_kernel(
 		cls,
+		game: "Game",
 		level_data: "LevelData",
 		difficulty: Difficulty,
 		follow_scene: t.Type["BaseScene"],
@@ -324,7 +321,7 @@ class InGameScene(scenes.MusicBeatScene):
 		whether the story mode should be considered active at all.
 		Freeplay/non-story mode is assumed when it's `None`.
 		"""
-		return InGameSceneKernel(cls, level_data, difficulty, follow_scene, remaining_week)
+		return InGameSceneKernel(cls, game, level_data, difficulty, follow_scene, remaining_week)
 
 	def create_note_handler(self) -> "AbstractNoteHandler":
 		raise NotImplementedError("Subclass this!")
@@ -617,7 +614,7 @@ class InGameScene(scenes.MusicBeatScene):
 			next_level_data, *week_rest = self.remaining_week
 			self.game.set_scene(
 				next_level_data.stage_type.get_kernel(
-					next_level_data, self.difficulty, self.follow_scene, week_rest
+					self.game, next_level_data, self.difficulty, self.follow_scene, week_rest
 				)
 			)
 		else:
@@ -646,7 +643,7 @@ class InGameScene(scenes.MusicBeatScene):
 		# glimpse of a bf-less dead stage is weird
 		self.skip_transition_out = True
 
-		self.game.push_scene(scenes.GameOverScene.get_kernel(game_over_bf))
+		self.game.push_scene(scenes.GameOverScene.get_kernel(self.game, game_over_bf))
 
 	def on_subscene_removal(self, subscene, end_game=None, reset=False, *_, **__) -> None:
 		super().on_subscene_removal(subscene)
@@ -665,7 +662,11 @@ class InGameScene(scenes.MusicBeatScene):
 				self.allow_pausing = False
 				self.game.set_scene(
 					self.get_kernel(
-						self.level_data, self.difficulty, self.follow_scene, self.remaining_week
+						self.game,
+						self.level_data,
+						self.difficulty,
+						self.follow_scene,
+						self.remaining_week,
 					)
 				)
 			else:

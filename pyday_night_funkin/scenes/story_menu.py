@@ -234,6 +234,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		scenes.LoadingScene.load_or_set(
 			self.game,
 			level.stage_type.get_kernel(
+				self.game,
 				level_data = level,
 				difficulty = Difficulty(self.diff_menu.selection_index),
 				follow_scene = StoryMenuScene,

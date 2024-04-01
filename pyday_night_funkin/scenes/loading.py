@@ -19,9 +19,10 @@ class LoadingKernel(SceneKernel):
 	def __init__(
 		self,
 		scene_type: t.Type["LoadingScene"],
+		game: "Game",
 		target_kernel: SceneKernel,
 	) -> None:
-		super().__init__(scene_type, target_kernel)
+		super().__init__(scene_type, game, target_kernel)
 
 
 class LoadingScene(BaseScene):
@@ -59,24 +60,19 @@ class LoadingScene(BaseScene):
 
 		self._started_exiting = False
 
-		# Initiate the actual load
-
 		self._start_time = perf_counter()
 
 		loading_request = self.target_kernel.get_loading_hints()
 		self.loading_tracker = self.game.assets.start_threaded_load(loading_request)
 
 	@classmethod
-	def get_kernel(
-		cls,
-		target_kernel: SceneKernel,
-	) -> LoadingKernel:
-		return LoadingKernel(cls, target_kernel)
+	def get_kernel(cls, game: "Game", target_kernel: SceneKernel) -> LoadingKernel:
+		return LoadingKernel(cls, game, target_kernel)
 
 	@classmethod
 	def load_or_set(cls, game: "Game", target_kernel: SceneKernel):
 		if game.assets.requires_loading_process(target_kernel.get_loading_hints()):
-			game.set_scene(cls.get_kernel(target_kernel))
+			game.set_scene(cls.get_kernel(game, target_kernel))
 		else:
 			game.set_scene(target_kernel)
 

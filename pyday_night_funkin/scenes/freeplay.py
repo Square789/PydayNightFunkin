@@ -119,14 +119,16 @@ class FreeplayScene(scenes.MusicBeatScene):
 			self._text_lines[i].opacity = 153
 
 	def _on_confirm(self, i: int, selected: bool) -> None:
-		if selected:
-			self.game.set_scene(
-				self.displayed_songs[i].stage_type.get_kernel(
-					self.displayed_songs[i],
-					Difficulty(self.diff_menu.selection_index),
-					FreeplayScene,
-				)
-			)
+		if not selected:
+			return
+
+		target_kernel = self.displayed_songs[i].stage_type.get_kernel(
+			self.game,
+			self.displayed_songs[i],
+			Difficulty(self.diff_menu.selection_index),
+			FreeplayScene,
+		)
+		scenes.LoadingScene.load_or_set(self.game, target_kernel)
 
 	def _on_diff_select(self, i: int, state: bool) -> None:
 		if state:
