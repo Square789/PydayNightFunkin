@@ -1130,11 +1130,11 @@ class LoadingProcedure:
 				if not f.future.cancel():
 					# Future failed cancelling, meaning it's either done or running.
 					# We cannot add check logic in `_asset_available` or `_library_available`,
-					# as a finished callback won't call those anymore and it's impossible to safely
-					# determine whether it's running or not by making another call here (Without
-					# copy-pasting internals and grabbing the future's `_condition` yourself).
-					# So, just tack on another callback, which will run in both cases,
-					# decrementing the counter immediately or later.
+					# as a finished callback won't call those anymore and it's impossible to
+					# safely determine whether it's running or not by making another call here
+					# (Without copy-pasting internals/grabbing the future's `_condition` yourself.)
+					# So, just tack on another callback, which will run in both cases, decrementing
+					# the counter immediately or later.
 					self._cancelled_pending_return += 1
 					f.future.add_done_callback(self._on_cancellation_doorstopper_done)
 			for f in self._library_requests.values():
@@ -1147,7 +1147,13 @@ class LoadingProcedure:
 		with self._lock:
 			self._cancelled_pending_return -= 1
 
-	def _submit_asset_loading_job(self, asset_request: _ProcessedAssetRequest, f, *args, **kwargs) -> t.Optional[Future]:
+	def _submit_asset_loading_job(
+		self,
+		asset_request: _ProcessedAssetRequest,
+		f: t.Callable[..., t.Any],
+		*args,
+		**kwargs,
+	) -> t.Optional[Future]:
 		with self._lock:
 			if self._cancelled:
 				# I guess we could get rid of none checks by introducing some kind of dummy
@@ -1158,12 +1164,14 @@ class LoadingProcedure:
 			self._asset_requests[asset_request].future = future
 			return future
 
-	def _submit_library_loading_job(self, library_name: str, f, *args, **kwargs) -> t.Optional[Future]:
+	def _submit_library_loading_job(
+		self, library_name: str, f: t.Callable[[str], t.Any]
+	) -> t.Optional[Future]:
 		with self._lock:
 			if self._cancelled:
 				return None
 
-			future = self._executor.submit(f, *args, **kwargs)
+			future = self._executor.submit(f, library_name)
 			self._library_requests[library_name].future = future
 			return future
 
@@ -2065,7 +2073,7 @@ class AssetSystemManager:
 		self._drain_loading_procedure(lproc)
 
 	def _start_threaded_library_load(self, lproc: LoadingProcedure, library_name: str) -> None:
-		future = lproc._submit_library_loading_job(library_name, self.load_library, library_name)
+		future = lproc._submit_library_loading_job(library_name, self.load_library)
 		if future is not None:
 			future.add_done_callback(
 				lambda future, lproc=lproc, lib_name=library_name:
