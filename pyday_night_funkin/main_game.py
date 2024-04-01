@@ -256,9 +256,9 @@ class Game(SceneManager):
 		self.assets.discover_libraries()
 
 		# Push initial scene
-		#self.push_scene(TitleScene)
+		self.push_scene(TitleScene)
 		#self.push_scene(FreeplayScene)
-		self.push_scene(StoryMenuScene)
+		#self.push_scene(StoryMenuScene)
 		#self.push_scene(TestScene)
 		#self.push_scene(TriangleScene)
 
