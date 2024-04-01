@@ -56,7 +56,6 @@ class TitleScene(scenes.MusicBeatScene):
 
 		self.conductor.bpm = 102 #420
 		self.game.player.set(load_sound("preload/music/freakyMenu.ogg"))
-		self.game.player.loop = True
 		self.sync_conductor_from_player(self.game.player)
 
 		self._intro_ended = False

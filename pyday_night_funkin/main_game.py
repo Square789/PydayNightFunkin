@@ -234,7 +234,9 @@ class Game(SceneManager):
 		self.player = self.sound.create_player()
 		"""
 		A single global media player, similar to `FlxG.sound.music`.
+		Loops by default.
 		"""
+		self.player.loop = True
 
 		self.character_registry: Registry["CharacterData"] = Registry()
 		self.weeks: t.List["WeekData"] = []
