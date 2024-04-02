@@ -31,7 +31,7 @@ import queue
 import re
 import sys
 import threading
-from time import perf_counter
+from time import perf_counter, sleep
 import typing as t
 from xml.etree.ElementTree import ElementTree
 
@@ -684,15 +684,23 @@ class ImageAssetProvider(CacheAwareAssetProvider[Texture]):
 		path: str,
 		atlas_hint: t.Hashable = None,
 	):
-		# NOTE: Not really worth it due to private access, but possibly saves work
-		# that would otherwise be done in the main thread.
-		# data_format = image_data.format
-		# fmt, _ = image_data._get_gl_format_and_type(data_format)
-		# if fmt is None:
-		# 	data_format = {1: 'R', 2: 'RG', 3: 'RGB', 4: 'RGBA'}.get(len(data_format))
-		# image_data._convert(data_format, abs(image_data._current_pitch))
+		image_data = load_image_data(path, cache=False)
 
-		return (load_image_data(path, cache=False), cache, cache_key, atlas_hint), {}
+		# HACK: Private access / implementation-copypaste, but saves conversion work that
+		# would otherwise stall the main thread for like 300ms at worst.
+		target_format_str = image_data.format
+		target_pitch = abs(image_data._current_pitch)
+		# Second parameter always ends up as GL_UNSIGNED_BYTE, probably safe to not worry about it
+		gl_fmt, _ = image_data._get_gl_format_and_type(target_format_str)
+		if gl_fmt is None:
+			target_format_str = {1: 'R', 2: 'RG', 3: 'RGB', 4: 'RGBA'}[len(target_format_str)]
+			gl_fmt, _ = image_data._get_gl_format_and_type(target_format_str)
+
+		new_data = image_data._convert(target_format_str, target_pitch)
+		image_data.set_data(target_format_str, target_pitch, new_data)
+		# HACK: Remove everything between these two "HACK" comments if it causes problems
+
+		return (image_data, cache, cache_key, atlas_hint), {}
 
 	def load_create_texture(
 		self,
@@ -1125,27 +1133,38 @@ class LoadingProcedure:
 		it is safe to start new ones.
 		"""
 		with self._lock:
+			if self._cancelled:
+				return
+
 			self._cancelled = True
 			for f in self._asset_requests.values():
+				if f.future is None or f.future.done():
+					continue
+
 				if not f.future.cancel():
-					# Future failed cancelling, meaning it's either done or running.
-					# We cannot add check logic in `_asset_available` or `_library_available`,
-					# as a finished callback won't call those anymore and it's impossible to
-					# safely determine whether it's running or not by making another call here
-					# (Without copy-pasting internals/grabbing the future's `_condition` yourself.)
-					# So, just tack on another callback, which will run in both cases, decrementing
-					# the counter immediately or later.
+					# Future failed cancelling, meaning it's running or just completed because
+					# the other thread ran inbetween the last few statements.
+					# However, the last case is fine cause that future's thread is now stuck
+					# in the callback waiting for this lock, which is why we can safely increment.
 					self._cancelled_pending_return += 1
-					f.future.add_done_callback(self._on_cancellation_doorstopper_done)
+
 			for f in self._library_requests.values():
+				if f.future is None or f.future.done():
+					continue
+
 				if not f.future.cancel():
+					# See above
 					self._cancelled_pending_return += 1
-					f.future.add_done_callback(self._on_cancellation_doorstopper_done)
+
 			self._executor.shutdown(wait=False)
 
-	def _on_cancellation_doorstopper_done(self, future: Future) -> None:
+	def _on_future_done(self, future: Future) -> None:
 		with self._lock:
-			self._cancelled_pending_return -= 1
+			if self._cancelled and not future.cancelled():
+				# Decrement only if this future was one the procedure had to wait for after
+				# being cancelled.
+				# Ones that got cancelled normally are fine and not included in the count.
+				self._cancelled_pending_return -= 1
 
 	def _submit_asset_loading_job(
 		self,
@@ -1161,6 +1180,7 @@ class LoadingProcedure:
 				return None
 
 			future = self._executor.submit(f, *args, **kwargs)
+			future.add_done_callback(self._on_future_done)
 			self._asset_requests[asset_request].future = future
 			return future
 
@@ -1172,6 +1192,7 @@ class LoadingProcedure:
 				return None
 
 			future = self._executor.submit(f, library_name)
+			future.add_done_callback(self._on_future_done)
 			self._library_requests[library_name].future = future
 			return future
 
@@ -1230,7 +1251,8 @@ class LoadingProcedure:
 		while req_queue:
 			new_request = req_queue.pop(0)
 			if self._requested_final:
-				logger.warning("LoadingProcedure finality violated")
+				logger.warning("LoadingProcedure finality violated, ignoring request.")
+				continue
 
 			try:
 				self._request.add_subrequest(new_request)
@@ -1265,8 +1287,8 @@ class LoadingProcedure:
 					self._library_requests[lib_name] = _LibraryRequestProgressInfo()
 
 		# Finality can be guaranteed once there's no more pending completion callbacks
-		# and all the libraries have been loaded
-		# Kind of relies on the logic of the AssetSystemManager, but that's fine
+		# and all the libraries have been loaded.
+		# Kind of relies on the logic of the AssetSystemManager, but that's fine.
 		if not self._requested_final:
 			if (
 				all(x.loaded for x in self._library_requests.values()) and
@@ -1474,6 +1496,10 @@ class AssetSystemManager:
 		cause a race condition between loader threads.
 		"""
 
+		# Tbh i think this lock is really pointless
+		self.loading_procedure_management_lock = threading.Lock()
+		self._running_loading_procedures: t.List[LoadingProcedure] = []
+
 		self._enable_automatic_eviction = False
 
 		self._eviction_gate = threading.Event()
@@ -1600,6 +1626,15 @@ class AssetSystemManager:
 	def _lookup_cache_key(
 		self, asset_type_name: str, key: t.Hashable, bump: bool = True
 	) -> t.Tuple[bool, t.Any]:
+		"""
+		Looks up the given asset identifier and returns a two-element
+		tuple where [0] denotes whether the asset is encached and [1]
+		contains the asset, if it was cached.
+
+		``bump`` specifies whether to update eviction parameters,
+		acting as if the asset was retrieved by a standard load call.
+		``True`` by default.
+		"""
 		# My hope is the cache lock ensures that the item cannot be evicted as the reference
 		# created by building the tuple will make the sys.getrefcount call fail afterwards.
 		with self._cache_lock:
@@ -1996,8 +2031,8 @@ class AssetSystemManager:
 		"""
 		Start loading a multitude of items.
 
-		By the end of it, all specified items will be in the cache and should be
-		available quickly via their respective ``load`` methods.
+		By the end of it, all specified items will be in the cache and should
+		be available quickly via their respective ``load`` methods.
 
 		vvv NOT IMPLEMENTED vvv
 		As part of such a loading process, the AssetSystemManager will
@@ -2014,11 +2049,24 @@ class AssetSystemManager:
 		# Don't want them to starve the main or media thread too much.
 		executor = ThreadPoolExecutor(4, "AssetLoader", _tinit)
 
-		lproc = LoadingProcedure(executor, self, request)
+		with self.loading_procedure_management_lock:
+			lproc = LoadingProcedure(executor, self, request)
+			self._running_loading_procedures.append(lproc)
+
 		self._drain_loading_procedure(lproc)
 		return lproc
 
 	def _drain_loading_procedure(self, lproc: LoadingProcedure) -> None:
+		"""
+		Given a ``LoadingProcedure``, asks it for all pending library
+		and asset requests and, depending on whether they're
+		discovered/cached, immediately passes them to it or starts new
+		loading threads on its executor which pass them once they're
+		done.
+
+		If the procedure is done by the end of this call, removes it
+		from ``_running_loading_procedures``.
+		"""
 		for lib_name in lproc._get_new_libraries():
 			if lib_name in self._resolved_libraries:
 				lproc._library_available(lib_name, self._libraries_to_subrequest((lib_name,)))
@@ -2036,6 +2084,10 @@ class AssetSystemManager:
 					lproc._asset_available(asset_request, asset)
 				else:
 					self._start_threaded_asset_request_load(lproc, asset_request)
+
+		if lproc.is_done():
+			with self.loading_procedure_management_lock:
+				self._running_loading_procedures.remove(lproc)
 
 	def _start_threaded_asset_request_load(
 		self,
@@ -2060,15 +2112,17 @@ class AssetSystemManager:
 		lproc: LoadingProcedure,
 		asset_request: _ProcessedAssetRequest,
 	) -> None:
+		if future.cancelled():
+			# Twitter got to us, no asset available, return
+			return
+
 		if (exc := future.exception()) is not None:
 			# TODO: Failure will cause the loading procedure to never finish, figure this out
 			logger.error(f"Threaded asset load: {exc}")
 			return
 
-		if future.cancelled():
-			# Twitter got to us, no asset available, return
-			return
-
+		# Tell the LoadingProcedure of the asset, then get possibly new ones and schedule
+		# loading for them as well.
 		lproc._asset_available(asset_request, future.result())
 		self._drain_loading_procedure(lproc)
 
@@ -2086,11 +2140,11 @@ class AssetSystemManager:
 		lproc: LoadingProcedure,
 		lib_name: str,
 	) -> None:
-		if (exc := future.exception()) is not None:
-			logger.error(f"Threaded library load: {exc}")
+		if future.cancelled():
 			return
 
-		if future.cancelled():
+		if (exc := future.exception()) is not None:
+			logger.error(f"Threaded library load: {exc}")
 			return
 
 		lproc._library_available(lib_name, self._libraries_to_subrequest((lib_name,)))
@@ -2098,7 +2152,7 @@ class AssetSystemManager:
 
 	def _asset_request_check_cache(self, request: _ProcessedAssetRequest) -> t.Tuple[bool, t.Any]:
 		"""
-		Test whether fulfilling the given asset request would hit the
+		Tests whether fulfilling the given asset request would hit the
 		cache.
 		"""
 		asset_type = self.asset_type_registry[request.asset_type_name]
@@ -2117,7 +2171,6 @@ class AssetSystemManager:
 		return self._lookup_cache_key(
 			asset_type.name,
 			asset_type.provider.create_cache_key(*args, **kwargs),
-			False,
 		)
 
 	def _libraries_to_subrequest(self, library_names: t.Iterable[str]) -> LoadingRequest:
@@ -2363,7 +2416,7 @@ class AssetSystemManager:
 			if loading_steps[0][1]:
 				# Function suited for thread, just forward to it
 				def threaded_loader_func(relay_queue: queue.Queue, *args, **kwargs):
-					# __import__("time").sleep(0.1)  # fancy loading screen slowdown
+					# sleep(0.1)  # fancy loading screen slowdown
 					return regular_loader_func(*args, **kwargs)
 			else:
 				# Function not suited for thread, schedule and wait for it
@@ -2371,7 +2424,7 @@ class AssetSystemManager:
 					relay_queue.put(regular_loader_func(*args, **kwargs))
 
 				def threaded_loader_func(relay_queue: queue.Queue, *args, **kwargs):
-					# __import__("time").sleep(0.1)  # fancy loading screen slowdown
+					# sleep(0.1)  # fancy loading screen slowdown
 					self._clock.schedule_once(augmented_loader, 0.0, relay_queue, *args, **kwargs)
 					return relay_queue.get()
 		else:
@@ -2405,15 +2458,15 @@ class AssetSystemManager:
 
 			# NOTE: Creates functions every call, but what can you do
 			def threaded_loader_func(relay_queue: queue.Queue, *args, **kwargs):
-				# __import__("time").sleep(0.1)  # fancy loading screen slowdown
+				# sleep(0.1)  # fancy loading screen slowdown
 				for f, thread_suited in inter_steps:
 					if thread_suited:
 						args, kwargs = f(*args, **kwargs)
 					else:
 						def relay_loader(_, relay_queue: queue.Queue, *args, **kwargs):
-							# stime = __import__("time").perf_counter()
+							# stime = perf_counter()
 							relay_queue.put(f(*args, **kwargs))
-							# print("relay loader stalled for", __import__("time").perf_counter() - stime, "s")
+							# print("relay loader stalled for", perf_counter() - stime, "s")
 						self._clock.schedule_once(relay_loader, 0.0, relay_queue, *args, **kwargs)
 						args, kwargs = relay_queue.get()
 
@@ -2421,9 +2474,9 @@ class AssetSystemManager:
 					return last_step[0](*args, **kwargs)
 				else:
 					def relay_loader(_, relay_queue: queue.Queue, *args, **kwargs):
-						# stime = __import__("time").perf_counter()
+						# stime = perf_counter()
 						relay_queue.put(last_step[0](*args, **kwargs))
-						# print("relay loader stalled for", __import__("time").perf_counter() - stime, "s")
+						# print("relay loader stalled for", perf_counter() - stime, "s")
 					self._clock.schedule_once(relay_loader, 0.0, relay_queue, *args, **kwargs)
 					return relay_queue.get()
 
@@ -2591,8 +2644,8 @@ class AssetSystemManager:
 		are reported to be suitable for threaded loading or not via the
 		boolean in the tuples returned by ``get_loading_steps``.
 		Steps not suitable are guaranteed to be scheduled on the main
-		thread via ``pyglet.clock.schedule_once``. Useful for images and
-		the like.
+		thread via this ``AssetSystemManager``'s ``pyglet.Clock``.
+		Useful and necessary for images and the like.
 
 		The input signature for the first loading step will receive two
 		extra arguments before what is passed into the loader:
@@ -2623,6 +2676,29 @@ class AssetSystemManager:
 		assert issubclass(provider_cls, CacheAwareAssetProvider)
 
 		return self._register_asset_provider(asset_type_name, provider_cls, True, True)
+
+	def shutdown(self) -> None:
+		"""
+		Cancels all threaded operations this `AssetSystemManager`
+		is aware of and then stalls until they have completed.
+
+		This should be called when exiting the game, otherwise there's
+		a chance of worker threads waiting on queues that will never
+		receive a response.
+
+		Will not function properly if new ``LoadingProcedures`` are
+		started while this is running. (Just don't do that™)
+		"""
+		with self.loading_procedure_management_lock:
+			if not self._running_loading_procedures:
+				return
+
+			for p in self._running_loading_procedures:
+				p.cancel()
+
+		while self._running_loading_procedures:
+			self._clock.call_scheduled_functions(self._clock.update_time())
+			sleep(0.02)
 
 	def clear_caches(self) -> None:
 		"""
@@ -2665,7 +2741,6 @@ def initialize(clock: clock.Clock) -> AssetSystemManager:
 	_g_load_image = _asm.register_cache_aware_complex_asset_provider("image", ImageAssetProvider)
 	_g_load_image_data = _asm.register_asset_provider("image_data", ImageDataAssetProvider)
 	_g_load_frames = _asm.register_complex_asset_provider("frames", FramesAssetProvider)
-
 	_g_load_pyobj = _asm.load_pyobj
 
 	return _asm

@@ -31,7 +31,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.superscene import SuperScene
 
 
-__version__ = "0.0.53"
+__version__ = "0.0.54"
 
 
 SOUND_GRANULARITY = 10
@@ -207,7 +207,8 @@ class Game(SceneManager):
 		cygl.initialize(gl)
 		logger.info("cygl module initialized.")
 
-		self.assets = pyday_night_funkin.core.asset_system.initialize(pyglet.clock.get_default())
+		self._asset_system_clock = pyglet.clock.Clock()
+		self.assets = pyday_night_funkin.core.asset_system.initialize(self._asset_system_clock)
 		self._most_recent_cache_stats = self.assets.get_cache_stats()
 
 		self.volume_control = VolumeControlDropdown(SOUND_GRANULARITY)
@@ -262,8 +263,10 @@ class Game(SceneManager):
 		#self.push_scene(TestScene)
 		#self.push_scene(TriangleScene)
 
+	def _tick_asset_system_clock(self, _):
+		self._asset_system_clock.tick()
+
 	def on_close(self) -> None:
-		pass
 		# NOTE: Not yet.
 		# try:
 		# 	self.save_data.save()
@@ -271,10 +274,10 @@ class Game(SceneManager):
 		# 	logger.exception(f"Failed writing savedata", e)
 
 		# Threaded loading procedures might hang on shutdown, waiting
-		# on some lock that's never released.
-		# Terminate them here
-		# self.assets.shutdown()
-		# return pyglet.event.EVENT_HANDLED
+		# on some lock that's never released. Wait for them here.
+		# Unschedule is unnecessary, but still lol
+		pyglet.clock.unschedule(self._tick_asset_system_clock)
+		self.assets.shutdown()
 
 	# The method below is subject to extremely heavy change
 	def add_content_pack(self, pack: "ContentPack") -> None:
@@ -305,6 +308,7 @@ class Game(SceneManager):
 
 		pyglet.clock.schedule_interval(self.update, 1 / 60)
 		pyglet.clock.schedule_interval(self.window.draw, 1 / 60)
+		pyglet.clock.schedule(self._tick_asset_system_clock)
 		pyglet.app.run(None)
 
 	def update(self, dt: float) -> None:
