@@ -4,12 +4,12 @@ import typing as t
 
 from pyglet.gl import gl
 from pyglet.image import Framebuffer, Texture
-from pyglet.math import Vec2
 
 from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
 from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
 from pyday_night_funkin.core.graphics.shared import GL_TYPE_SIZES
 from pyday_night_funkin.core.shaders import ShaderContainer
+from pyday_night_funkin.core.types import CoordIndexable
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import ShaderProgram
@@ -145,7 +145,7 @@ class SimpleCamera:
 
 		self.maybe_update_ubo()
 
-	def look_at(self, where: Vec2) -> None:
+	def look_at(self, where: CoordIndexable) -> None:
 		"""
 		Immediatedly sets the camera's target position to look at the
 		given point.
@@ -156,7 +156,7 @@ class SimpleCamera:
 		self._y = where[1] - (self._height / 2)
 		self._ubo_needs_update = True
 
-	def set_follow_target(self, tgt: t.Optional[Vec2], lerp: float = 1.0):
+	def set_follow_target(self, tgt: t.Optional[CoordIndexable], lerp: float = 1.0) -> None:
 		self._follow_target = tgt
 		self._follow_lerp = lerp
 
@@ -227,18 +227,7 @@ class Camera(SimpleCamera):
 		"""True pixel height of the camera's display quad."""
 
 		self._rotation = 0
-		"""Rotation of the camera's display quad."""
-
-		# self._view_width = self._width
-		# """
-		# Width of the world area displayed by the camera.
-		# Affected by zoom.
-		# """
-		# self._view_height = self._height
-		# """
-		# Height of the world area displayed by the camera.
-		# Affected by zoom.
-		# """
+		"""Rotation of the camera's display quad. TODO: NOT IMPLEMENTED."""
 
 		self._effect_shaders: t.List["ShaderProgram"] = []
 		"""
@@ -328,7 +317,7 @@ class Camera(SimpleCamera):
 		gl.glVertexArrayAttribBinding(self.quad_vao, 1, 1)
 		gl.glVertexArrayAttribBinding(self.quad_vao, 2, 2)
 
-		self._init_vbo()
+		self._vbo_needs_update = True
 
 	def draw_framebuffer(self) -> None:
 		"""
@@ -336,6 +325,9 @@ class Camera(SimpleCamera):
 		This changes the active program, the texture bound
 		to `TEXTURE_2D` and the blend func.
 		"""
+		if self._vbo_needs_update:
+			self._update_vbo()
+
 		self.program.use()
 		# self.program["camera_texture"] = 0
 		gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA)
@@ -345,7 +337,7 @@ class Camera(SimpleCamera):
 		gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 		gl.glBindVertexArray(0)
 
-	def _init_vbo(self) -> None:
+	def _update_vbo(self) -> None:
 		x1 = self._screen_x
 		y1 = self._screen_y + self._height
 		x2 = self._screen_x + self._width
@@ -359,6 +351,43 @@ class Camera(SimpleCamera):
 		# Not going through the trouble of indexing (yet)
 		data = (ctypes.c_float * 12)(*v[0], *v[2], *v[1], *v[0], *v[2], *v[3])
 		self.quad_vbo.set_data_array(0, _QUAD_VBO_POSITION_SEGMENT_SIZE, data)
+		self._vbo_needs_update = False
+
+	@property
+	def screen_x(self) -> float:
+		return self._screen_x
+
+	@screen_x.setter
+	def screen_x(self, new_x: float) -> None:
+		self._screen_x = new_x
+		self._vbo_needs_update = True
+
+	@property
+	def screen_y(self) -> float:
+		return self._screen_y
+
+	@screen_y.setter
+	def screen_y(self, new_y: float) -> None:
+		self._screen_y = new_y
+		self._vbo_needs_update = True
+
+	@property
+	def width(self) -> float:
+		return self._width
+
+	@width.setter
+	def width(self, new_width: float) -> None:
+		self._width = new_width
+		self._vbo_needs_update = True
+
+	@property
+	def height(self) -> float:
+		return self._height
+
+	@height.setter
+	def height(self, new_height: float) -> None:
+		self._height = new_height
+		self._vbo_needs_update = True
 
 	def delete(self) -> None:
 		self.framebuffer.delete()
