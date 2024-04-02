@@ -273,9 +273,10 @@ class Game(SceneManager):
 		# except OSError as e:
 		# 	logger.exception(f"Failed writing savedata", e)
 
-		# Threaded loading procedures might hang on shutdown, waiting
-		# on some lock that's never released. Wait for them here.
-		# Unschedule is unnecessary, but still lol
+		# Closing the window means exiting the event loop soon after. Threaded loading
+		# procedures might then hang, waiting on some result that's never delivered.
+		# Stop those procedures here.
+		# Unschedule is unnecessary, but still doing it lol
 		pyglet.clock.unschedule(self._tick_asset_system_clock)
 		self.assets.shutdown()
 
