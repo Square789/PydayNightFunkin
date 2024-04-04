@@ -260,14 +260,13 @@ class Camera(SimpleCamera):
 		# Below is largely stolen from
 		# https://learnopengl.com/Advanced-OpenGL/Framebuffers
 
-		# These should be totally wrong, but it works. Don't ask.
 		tex_coords = (ctypes.c_float * 12)(
 			 0., 0.,
-			 1., 1.,
 			 1., 0.,
-			 0., 0.,
+			 0., 1.,
 			 1., 1.,
 			 0., 1.,
+			 1., 0.,
 		)
 		self.quad_vbo.set_data_array(
 			_QUAD_VBO_TEX_COORD_SEGMENT_START,
@@ -345,11 +344,11 @@ class Camera(SimpleCamera):
 		v = [
 			(x1, y1), #0
 			(x2, y1), #1
-			(x2, y2), #2
-			(x1, y2), #3
+			(x1, y2), #2
+			(x2, y2), #3
 		]
 		# Not going through the trouble of indexing (yet)
-		data = (ctypes.c_float * 12)(*v[0], *v[2], *v[1], *v[0], *v[2], *v[3])
+		data = (ctypes.c_float * 12)(*v[0], *v[1], *v[2], *v[3], *v[2], *v[1])
 		self.quad_vbo.set_data_array(0, _QUAD_VBO_POSITION_SEGMENT_SIZE, data)
 		self._vbo_needs_update = False
 
