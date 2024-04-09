@@ -128,6 +128,9 @@ class FreeplayScene(scenes.MusicBeatScene):
 			Difficulty(self.diff_menu.selection_index),
 			FreeplayScene,
 		)
+
+		self.game.assets.advance_age()
+
 		scenes.LoadingScene.load_or_set(self.game, target_kernel)
 
 	def _on_diff_select(self, i: int, state: bool) -> None:
