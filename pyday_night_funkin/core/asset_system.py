@@ -18,6 +18,7 @@ modding scene's lifetime.
 import abc
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, Future
+import enum
 import fnmatch
 import functools
 import gc
@@ -1513,8 +1514,6 @@ class _EvictionResult:
 		self.ran_for_gpu = succeeded_gpu is not None
 		self.succeeded_gpu = succeeded_gpu
 
-
-import enum
 
 class _EvictionSweepStopReason(enum.IntEnum):
 	EXHAUSTED = 0
