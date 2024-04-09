@@ -25,9 +25,9 @@
    documentation and logically separating stages instead of mashing them together into a
    5000 line long file.
  - **Smart\* asset eviction**: Most FNF engines' memory management is "wipe all unused assets
-   on PlayState creation". PNF unloads unused assets once a memory usage limit overstepped,
+   on PlayState creation". PNF unloads unused assets once a memory usage limit is overstepped,
    starting with a hybrid of least-recently used and largest.  
-   This leads to lower loading times between songs that reuse large background/character
+   This leads to lower loading times between songs that reuse large backgrounds/character
    sheets and tries to strike an okay balance between memory usage and staring at a black screen.  
    *(\* about as smart as a paperclip)*
  - **Homegrown batch implementation**: Fancy sprite batching that deals well with strict
