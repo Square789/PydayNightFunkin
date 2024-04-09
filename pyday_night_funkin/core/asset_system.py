@@ -662,6 +662,9 @@ class ImageAssetProvider(CacheAwareAssetProvider[Texture]):
 	def __init__(self, asm: "AssetSystemManager") -> None:
 		super().__init__(asm)
 
+		# TODO: Atlases may fragment. Possibly add yet another function to Cache-aware asset
+		# providers so that they may defragment them. Would require the asset system to pass in
+		# all unused textures. Not impossible, just annoying
 		self.tex_bin_size = 4096
 		make_tex_bin = lambda: TextureBin(self.tex_bin_size, self.tex_bin_size)
 		self._hinted_tex_bins: t.Dict[t.Hashable, TextureBin] = defaultdict(make_tex_bin)
@@ -1390,17 +1393,19 @@ class _CacheEntry(t.Generic[T]):
 		"estimated_provider_usage_gpu"
 	)
 
-	def __init__(self, item: T, dependencies: t.List[AssetIdentifier]) -> None:
-		self.item = item
-		self.first_requested = 0
-		self.last_requested = 0
+	def __init__(
+		self, load_result: LoadResult[T], dependencies: t.List[AssetIdentifier], age: int
+	) -> None:
+		self.item = load_result.item
+		self.first_requested = age
+		self.last_requested = age
 		self.cache_hits = 0
 		self.required_by: t.Set[AssetIdentifier] = set()
 		self.dependencies = dependencies
-		self.estimated_size_system = 0
-		self.estimated_size_gpu = 0
-		self.estimated_provider_usage_system = 0
-		self.estimated_provider_usage_gpu = 0
+		self.estimated_size_system = load_result.estimated_size_system
+		self.estimated_size_gpu = load_result.estimated_size_gpu
+		self.estimated_provider_usage_system = load_result.provider_internal_size_system
+		self.estimated_provider_usage_gpu = load_result.provider_internal_size_gpu
 
 
 class _AssetType(t.Generic[T]):
@@ -1456,19 +1461,65 @@ class _AssetType(t.Generic[T]):
 
 
 class EvictionProcessState:
-	def __init__(
+	def __init__(self) -> None:
+		self.sys_memory_target = 0
+		self.gpu_memory_target = 0
+		self.opt_sys_mem_target = 0
+		self.opt_gpu_mem_target = 0
+		self.memory_targets_required = 0
+		self.gc_less_attempts_remaining = 0
+		self.completed = True
+
+	def reset(
 		self,
 		sys_memory_target: t.Optional[int],
 		gpu_memory_target: t.Optional[int],
 		gc_less_attempts: int,
+		optimistic_sweep_stop_factor: float,
 	) -> None:
 		self.sys_memory_target = sys_memory_target
 		self.gpu_memory_target = gpu_memory_target
-		self.memory_targets_required = (
-			int(sys_memory_target is not None) + int(gpu_memory_target is not None)
-		)
+		self.opt_sys_mem_target = None
+		self.gpu_sys_mem_target = None
+
+		self.memory_targets_required = 0
+
+		if sys_memory_target is not None:
+			self.memory_targets_required += 1
+			self.opt_sys_mem_target = sys_memory_target * optimistic_sweep_stop_factor
+
+		if gpu_memory_target is not None:
+			self.memory_targets_required += 1
+			self.opt_gpu_mem_target = gpu_memory_target * optimistic_sweep_stop_factor
+
 		self.gc_less_attempts_remaining = gc_less_attempts
 		self.completed = False
+
+	def get_result(self, sys_mem_used: int, gpu_mem_used: int) -> "_EvictionResult":
+		if not self.completed:  # Shouldnt be called in this state
+			raise RuntimeError("Can't get result if the eviction is still going")
+
+		return _EvictionResult(
+			None if self.sys_memory_target is None else sys_mem_used <= self.sys_memory_target,
+			None if self.gpu_memory_target is None else gpu_mem_used <= self.gpu_memory_target,
+		)
+
+
+class _EvictionResult:
+	def __init__(self, succeeded_sys: t.Optional[bool], succeeded_gpu: t.Optional[bool]) -> None:
+		self.succeeded = not any(i is False for i in (succeeded_sys, succeeded_gpu))
+		self.ran_for_sys = succeeded_sys is not None
+		self.succeeded_sys = succeeded_sys
+		self.ran_for_gpu = succeeded_gpu is not None
+		self.succeeded_gpu = succeeded_gpu
+
+
+import enum
+
+class _EvictionSweepStopReason(enum.IntEnum):
+	EXHAUSTED = 0
+	OPTIMISTIC = 1
+	SUCCEEDED = 2
 
 
 class AssetSystemManager:
@@ -1496,11 +1547,17 @@ class AssetSystemManager:
 		cause a race condition between loader threads.
 		"""
 
+		# TODO: make configurable
+		# NOTE: 4 threads max since they're all still pretty likely to run a good amount of
+		# python bytecode in the generated loader methods.
+		# Don't want them to starve the main or media thread too much.
+		self._loader_thread_count = 4
+
 		# Tbh i think this lock is really pointless
 		self.loading_procedure_management_lock = threading.Lock()
 		self._running_loading_procedures: t.List[LoadingProcedure] = []
 
-		self._enable_automatic_eviction = False
+		self._eviction_lock = threading.Lock()
 
 		self._eviction_gate = threading.Event()
 		"""
@@ -1513,10 +1570,36 @@ class AssetSystemManager:
 		"""
 		self._eviction_gate.set()
 
-		# TODO: Make configurable
-		self._gpu_memory_limit = 2**31 # 2048MiB
+		self._raised_limit_gpu = 0
+		self._raised_limit_sys = 0
+
+		# TODO: Make everything below this comment configurable
+		self._enable_automatic_eviction = True
+
+		self._eviction_limit_extension_sys = 2**26
 		"""
-		At which point of gpu memory usage to attempt an eviction.
+		If an eviction fails to clear memory to the demanded target,
+		the eviction limit is temporarily raised to the amount of
+		occupied memory plus this value.
+
+		This helps to reduce frequent eviction attemps that are all
+		doomed to fail in the event that a large amount of assets have
+		to be loaded that simply exceed the cache size limit.
+
+		The limit extension will decay in
+		``self._eviction_limit_extension_decay`` clean steps for each
+		newly loaded asset.
+		"""
+
+		self._eviction_limit_extension_gpu = 2**26
+		"""
+		See ``self._eviction_limit_extension_sys``, same deal here.
+		"""
+
+		self._eviction_limit_extension_decay = 8
+		"""
+		Usage of this is explained in
+		``self._eviction_limit_extension_sys``.
 		"""
 
 		self._sys_memory_limit = 2**30 # 1024MiB
@@ -1524,7 +1607,12 @@ class AssetSystemManager:
 		At which point of system memory usage to attempt an eviction.
 		"""
 
-		self._eviction_shrink_factor = 0.9
+		self._gpu_memory_limit = 2**31 # 2048MiB
+		"""
+		At which point of gpu memory usage to attempt an eviction.
+		"""
+
+		self._eviction_shrink_factor = 0.85
 		"""
 		An eviction will attempt to get usage of the triggering memory
 		type down to the triggering memory's limit, multiplied by this
@@ -1542,10 +1630,11 @@ class AssetSystemManager:
 
 		Set to 0.0 to easily ruin chances of retaining low-burden
 		assets in cache.
-		Set to 1.0 to frequently stop sweeps. Preserves cache, but
-		might be a bit more processing-intensive and also tend to run
-		more garbage collections.
-		Try ``self._bring_gc_closer_on_optimistic_sweep_stop``.
+
+		Set to 1.0 to frequently stop sweeps. Preserves cached items
+		the best, but might be a bit more processing-intensive and also
+		tend to run more garbage collections.
+		Also see ``self._bring_gc_closer_on_optimistic_sweep_stop``.
 		"""
 
 		self._eviction_safe_burden = 4096.0
@@ -1554,10 +1643,23 @@ class AssetSystemManager:
 		be evicted.
 		Theoretically, this allows to clog the asset cache up with
 		thousands of extremely small assets as long as they are somewhat
-		frequently used, but practically it's super-duper unrealistic.
+		frequently used, but that is a super-duper unrealistic scenario.
+		"""
+
+		self._eviction_use_gc = True
+		"""
+		Whether to use garbage collections as part of an eviction.
+		Very much recommended, otherwise uncollected scenes hogging
+		large resources are frequent.
 		"""
 
 		self._eviction_gc_less_sweeps = 3
+		"""
+		Evictions will start running a collection after this many sweeps
+		have passed without eviction success.
+		Note that they will also activate GC when the eviction is otherwise
+		failing.
+		"""
 
 		# TODO: not implemented, might be pointless/can be changed into some other method
 		# FA&FO, there's no right answers
@@ -1568,8 +1670,8 @@ class AssetSystemManager:
 		How many generations an asset has to be unused for to be
 		considerable for eviction.
 
-		By default, this is ``1``, meaning assets from the current
-		generation will never be evicted.
+		``1`` by default, meaning assets from the current generation
+		will never be evicted.
 		Setting to zero is inadvisable, as eviction might happen too
 		quickly, especially in the context of a threaded loading
 		procedure.
@@ -1581,13 +1683,17 @@ class AssetSystemManager:
 		likelihood if it has not been requested for this many
 		generations.
 		"""
+		# TODO: make everything above this comment configurable
 
-		self._eviction_process_state = EvictionProcessState(0, 0, self._eviction_gc_less_sweeps)
+		self._eviction_process_state = EvictionProcessState()
 		self._eviction_process_flag = threading.Event()
 		"""
 		Used to communicate between the eviction and main thread, as
 		actual asset eviction has to happen on the main one.
 		"""
+
+		self._eviction_cur_limit_extensions_sys: t.List[int] = []
+		self._eviction_cur_limit_extensions_gpu: t.List[int] = []
 
 		self._resolved_libraries: t.Dict[str, t.Dict[str, t.Sequence[ParameterTuple]]] = {}
 		self._library_specs: t.Dict[str, t.Tuple[LibrarySpecPattern, ...]] = {}
@@ -1654,14 +1760,8 @@ class AssetSystemManager:
 
 		identifier = (asset_type_name, key)
 
-		ce = _CacheEntry(load_result.item, self._threadloc.loading_stack[-1][1])
+		ce = _CacheEntry(load_result, self._threadloc.loading_stack[-1][1], self.age)
 		# print(f"Dependencies of {identifier} are {ce.dependencies}")
-		ce.first_requested = self.age
-		ce.last_requested = self.age
-		ce.estimated_size_system = load_result.estimated_size_system
-		ce.estimated_size_gpu = load_result.estimated_size_gpu
-		ce.estimated_provider_usage_system = load_result.provider_internal_size_system
-		ce.estimated_provider_usage_gpu = load_result.provider_internal_size_gpu
 
 		assert (
 			ce.estimated_size_system + ce.estimated_provider_usage_system +
@@ -1697,26 +1797,98 @@ class AssetSystemManager:
 		if not self._enable_automatic_eviction:
 			return
 
-		evict_sys_ram = (
-			(ce.estimated_size_system > 0 or ce.estimated_provider_usage_system > 0) and
-			self._memory_usage_stats.system_memory_used > self._sys_memory_limit
-		)
-		evict_vram = (
-			(ce.estimated_size_gpu > 0 or ce.estimated_provider_usage_gpu > 0) and
-			self._memory_usage_stats.gpu_memory_used > self._gpu_memory_limit
-		)
+		# Determine whether to start an eviction.
+		# Reduce possibly existing limit extensions beforehand and obey that.
 
-		l = []
-		if evict_sys_ram:
-			l.append("RAM")
-		if evict_vram:
-			l.append("VRAM")
-		if l:
+		# NOTE: This lock might be applied way too broadly, but the eviction is a heavily
+		# bottlenecking process anyways so who cares
+		with self._eviction_lock:
+			effective_memory_limit_sys = self._sys_memory_limit
+			if self._eviction_cur_limit_extensions_sys:
+				effective_memory_limit_sys += self._eviction_cur_limit_extensions_sys.pop()
+				logger.trace(
+					f"Reduced RAM limit to {(effective_memory_limit_sys) // 1024} KiB"
+				)
+
+			effective_memory_limit_gpu = self._gpu_memory_limit
+			if self._eviction_cur_limit_extensions_gpu:
+				effective_memory_limit_gpu += self._eviction_cur_limit_extensions_gpu.pop()
+				logger.trace(
+					f"Reduced VRAM limit to {(effective_memory_limit_gpu) // 1024} KiB"
+				)
+
+			evict_sys_ram = (
+				(ce.estimated_size_system > 0 or ce.estimated_provider_usage_system > 0) and
+				self._memory_usage_stats.system_memory_used > effective_memory_limit_sys
+			)
+			evict_vram = (
+				(ce.estimated_size_gpu > 0 or ce.estimated_provider_usage_gpu > 0) and
+				self._memory_usage_stats.gpu_memory_used > effective_memory_limit_gpu
+			)
+
+			l = []
+			if evict_sys_ram:
+				l.append("RAM")
+			if evict_vram:
+				l.append("VRAM")
+			if not l:
+				return
+
 			logger.info(f"Exceeding {'+'.join(l)} limit, starting eviction")
-			self._evict(evict_sys_ram, evict_vram)
+
+			_start_time = perf_counter()
+			self._eviction_gate.clear()
+
+			eviction_res = self._evict(evict_sys_ram, evict_vram)
+
+			self._eviction_gate.set()
+			logger.info(
+				f"Eviction {'succeeded' if eviction_res.succeeded else 'failed'} after "
+				f"{perf_counter() - _start_time:>.4f}s"
+			)
+
+			if eviction_res.succeeded:
+				return
+
+			# Eviction failed (but may have freed something), add limit.
+			# Existing limit extension will be replaced with the new one.
+			if eviction_res.succeeded_sys is False:
+				new_limit = (
+					max(self._memory_usage_stats.system_memory_used, effective_memory_limit_sys) +
+					self._eviction_limit_extension_sys
+				)
+				diff = new_limit - self._sys_memory_limit
+				assert diff > 0
+
+				self._eviction_cur_limit_extensions_sys = [
+					int(diff * (i / self._eviction_limit_extension_decay))
+					for i in range(1, self._eviction_limit_extension_decay + 1)
+				]
+				self._eviction_cur_limit_extensions_sys.append(new_limit)
+				logger.trace(
+					f"RAM eviction limit raised to "
+					f"{(self._sys_memory_limit + new_limit) // 1024} KiB"
+				)
+
+			if eviction_res.succeeded_gpu is False:
+				new_limit = (
+					max(self._memory_usage_stats.gpu_memory_used, effective_memory_limit_gpu) +
+					self._eviction_limit_extension_gpu
+				)
+				diff = new_limit - self._gpu_memory_limit
+				assert diff > 0
+
+				self._eviction_cur_limit_extensions_gpu = [
+					int(diff * (i / self._eviction_limit_extension_decay))
+					for i in range(1, self._eviction_limit_extension_decay + 1)
+				]
+				self._eviction_cur_limit_extensions_gpu.append(new_limit)
+				logger.trace(
+					f"VRAM eviction limit raised to "
+					f"{(self._gpu_memory_limit + new_limit) // 1024} KiB"
+				)
 
 	def _remove_from_cache(self, asset_type_name: str, key: t.Hashable) -> None:
-		# print("Evicting ", asset_type_name, key)
 		asset_type = self.asset_type_registry[asset_type_name]
 
 		removed_entry = asset_type.cache.pop(key)
@@ -1745,6 +1917,7 @@ class AssetSystemManager:
 		self._memory_usage_stats.gpu_memory_used -= freed_gpu
 
 		# print(
+		# 	f"Evicted {asset_type_name} {key}\n"
 		# 	f"  That freed up {freed_sys}B real RAM / "
 		# 	f"{removed_entry.estimated_provider_usage_system}B provider-owned RAM, "
 		# 	f"{freed_gpu}B real VRAM, {removed_entry.estimated_provider_usage_gpu}B "
@@ -1784,6 +1957,10 @@ class AssetSystemManager:
 		return burden_dict
 
 	def _weigh_burden(self, b):
+		# TODO: May want to use cache_hits as well to prefer assets not requested as much.
+		# Considering that can be falsified easily by just having poor code that calls load_x
+		# often and relies on the cache though, make its impact minimal
+
 		unused_for = self.age - b["last_requested"]
 		size_factor = 1.0
 		if unused_for <= 1:
@@ -1814,7 +1991,7 @@ class AssetSystemManager:
 
 		return size_factor
 
-	def _evict(self, evict_sys_ram: bool, evict_vram: bool) -> None:
+	def _evict(self, evict_sys_ram: bool, evict_vram: bool) -> _EvictionResult:
 		"""
 		Run and complete a cache eviction. May be called from any
 		thread, should be called from within a generated loader.
@@ -1822,16 +1999,13 @@ class AssetSystemManager:
 		# TODO: that's a silly limitation, it makes sense to hand control
 		# over to manual eviction. look into something like that.
 		if not evict_sys_ram and not evict_vram:
-			return
+			return _EvictionResult(None, None)
 
-		self._eviction_gate.set()
-
-		_start_time = perf_counter()
-
-		self._eviction_process_state = EvictionProcessState(
+		self._eviction_process_state.reset(
 			int(self._sys_memory_limit * self._eviction_shrink_factor) if evict_sys_ram else None,
 			int(self._gpu_memory_limit * self._eviction_shrink_factor) if evict_vram else None,
 			self._eviction_gc_less_sweeps,
+			self._optimistic_sweep_stop_factor,
 		)
 
 		# Because i'm not implementing a manual refcounter, we can only reliably process top-level
@@ -1861,10 +2035,8 @@ class AssetSystemManager:
 
 		while not self._eviction_process_state.completed:
 			if self._eviction_process_state.gc_less_attempts_remaining == 0:
-				logger.info("Running garbage collection for asset eviction. This may stall.")
+				logger.trace("Running garbage collection for asset eviction. This may stall.")
 				gc.collect()  # generation=2
-			else:
-				self._eviction_process_state.gc_less_attempts_remaining -= 1
 
 			with self._cache_lock:
 				evictable_toplevel_assets = set()
@@ -1885,13 +2057,17 @@ class AssetSystemManager:
 							# print("not considering", at.name, ck, "for eviction: not top-level")
 							continue
 
-						if (
-							self.eviction_consideration_age > (self.age - ce.last_requested) or
-							sys.getrefcount(ce.item) - 1 != 1
-						):
+						if self.eviction_consideration_age > (self.age - ce.last_requested):
 							# print(
-							# 	"not considering", at.name, ck, "for eviction: in use or used "
-							# 	"too recently"
+							# 	"not considering", at.name, ck, "for eviction: used too recently"
+							# )
+							continue
+
+						rc = sys.getrefcount(ce.item) - 1
+						if rc != 1:
+							# print(
+							# 	"not considering", at.name, ck, "for eviction: in use. "
+							# 	"refcount ==", rc
 							# )
 							continue
 
@@ -1902,7 +2078,7 @@ class AssetSystemManager:
 					d = self._calculate_burden_dict(*identifier)
 					relevant_size = d["size_sys"] * evict_sys_ram + d["size_gpu"] * evict_vram
 
-					# When we should clean up only ram, don't care about vram of course, and
+					# When we should clean up only RAM, don't care about VRAM of course, and
 					# vice-versa.
 					# If there's assets that occupy space in both (somehow?), there's no real
 					# point in protecting the memory type that isn't used, just judge them by
@@ -1916,14 +2092,21 @@ class AssetSystemManager:
 
 					burden_score = relevant_size * self._weigh_burden(d)
 					if burden_score <= self._eviction_safe_burden:
-						# print(f"not considering {identifier} for eviction: below safe burden score")
+						# print(
+						# 	f"not considering {identifier} for eviction: below safe burden score"
+						# )
 						continue
 
 					eviction_list.append((identifier, d, burden_score))
 
 				if not eviction_list:
-					logger.info("No more evictable cache items, eviction complete.")
-					break
+					if self._eviction_process_state.gc_less_attempts_remaining > 0:
+						logger.trace("Out of evictable items, retrying with gc")
+						self._eviction_process_state.gc_less_attempts_remaining = 0
+					else:
+						logger.trace("Out of evictable items, eviction unsuccessful.")
+						self._eviction_process_state.completed = True
+					continue
 
 				eviction_list.sort(key = lambda x: x[2], reverse=True)
 
@@ -1936,9 +2119,9 @@ class AssetSystemManager:
 				else:
 					self._run_eviction_sweep(None, eviction_list)
 
-		self._eviction_gate.set()
-
-		logger.info(f"Eviction took {perf_counter() - _start_time:>.4f}s")
+		return self._eviction_process_state.get_result(
+			self._memory_usage_stats.system_memory_used, self._memory_usage_stats.gpu_memory_used
+		)
 
 	def _run_eviction_sweep(
 		self, _, list_: t.Iterable[t.Tuple[AssetIdentifier, t.Dict, float]]
@@ -1947,14 +2130,14 @@ class AssetSystemManager:
 
 		sys_mem_target = self._eviction_process_state.sys_memory_target
 		gpu_mem_target = self._eviction_process_state.gpu_memory_target
-		f = self._optimistic_sweep_stop_factor
-		opt_sys_mem_target = None if sys_mem_target is None else int(sys_mem_target * f)
-		opt_gpu_mem_target = None if gpu_mem_target is None else int(gpu_mem_target * f)
+		opt_sys_mem_target = self._eviction_process_state.opt_sys_mem_target
+		opt_gpu_mem_target = self._eviction_process_state.opt_gpu_mem_target
 
 		optimistic_sys_usage = self._memory_usage_stats.system_memory_used
 		optimistic_gpu_usage = self._memory_usage_stats.gpu_memory_used
 
 		had_trees = False
+		stop_reason: t.Optional[_EvictionSweepStopReason] = None
 
 		for ident, bd, _ in list_:
 			if bd["immediate_dependencies"] > 0:
@@ -1986,28 +2169,46 @@ class AssetSystemManager:
 					targets_completed_opt += 1
 
 			if targets_completed == memory_targets_required:
-				self._eviction_process_state.completed = True
-				logger.info("Eviction completed, enough memory freed")
+				stop_reason = _EvictionSweepStopReason.SUCCEEDED
 				break
 
 			if targets_completed_opt == memory_targets_required:
-				logger.trace("Eviction sweep stopped, optimistic target fulfilled")
+				# logger.trace("Eviction sweep stopped, optimistic target fulfilled")
+				stop_reason = _EvictionSweepStopReason.OPTIMISTIC
 				break
 		else:
-			if self._eviction_process_state.gc_less_attempts_remaining > 0:
-				if self._eviction_process_state.gc_less_attempts_remaining == 1:
-					logger.trace("Enabling garbage collection for next eviction sweeps")
-				self._eviction_process_state.gc_less_attempts_remaining -= 1
+			stop_reason = _EvictionSweepStopReason.EXHAUSTED
 
+		logger.trace(f"Eviction sweep done: {stop_reason.name}")
+
+		decrement_gc = False
+		if stop_reason is _EvictionSweepStopReason.SUCCEEDED:
+			self._eviction_process_state.completed = True
+
+		elif stop_reason is _EvictionSweepStopReason.OPTIMISTIC:
+			assert had_trees
+			if self._bring_gc_closer_on_optimistic_sweep_stop:
+				decrement_gc = True
+
+		elif stop_reason is _EvictionSweepStopReason.EXHAUSTED:
 			if had_trees:
-				logger.trace("Eviction sweep done, going for another one due to trees")
+				decrement_gc = True
 			else:
 				if self._eviction_process_state.gc_less_attempts_remaining > 0:
-					logger.trace("Eviction sweep done, enabling garbage collection.")
+					logger.trace(
+						"Eviction sweep done and no more trees, enabling garbage collection "
+						"now for final sweep."
+					)
 					self._eviction_process_state.gc_less_attempts_remaining = 0
 				else:
 					self._eviction_process_state.completed = True
-					logger.info("Eviction completed, could not evict enough memory")
+		else:
+			raise RuntimeError("unreachable")
+
+		if decrement_gc and self._eviction_process_state.gc_less_attempts_remaining > 0:
+			if self._eviction_process_state.gc_less_attempts_remaining == 1:
+				logger.trace("Enabling garbage collection for next eviction sweeps")
+			self._eviction_process_state.gc_less_attempts_remaining -= 1
 
 		self._eviction_process_flag.set()
 
@@ -2044,10 +2245,7 @@ class AssetSystemManager:
 			self._threadloc.loading_stack = []
 			self._threadloc.threaded_load = True
 			self._threadloc.relay_queue = queue.Queue()
-		# NOTE: 4 threads max since they're all still pretty likely to run a good amount of
-		# python bytecode in the generated loader methods.
-		# Don't want them to starve the main or media thread too much.
-		executor = ThreadPoolExecutor(4, "AssetLoader", _tinit)
+		executor = ThreadPoolExecutor(self._loader_thread_count, "AssetLoader", _tinit)
 
 		with self.loading_procedure_management_lock:
 			lproc = LoadingProcedure(executor, self, request)
@@ -2202,7 +2400,9 @@ class AssetSystemManager:
 			for lib_name in new_libs:
 				if lib_name in self._resolved_libraries:
 					did_something = True
-					fake_proc._library_available(lib_name, self._libraries_to_subrequest((lib_name,)))
+					fake_proc._library_available(
+						lib_name, self._libraries_to_subrequest((lib_name,))
+					)
 				else:
 					return True
 
@@ -2554,7 +2754,8 @@ class AssetSystemManager:
 
 				# print(
 				# 	("[T] " if self._threadloc.threaded_load else "") + ("[C] " if cache else "") +
-				# 	asset_type_name + f"; {cache_key}; {faked_kwargs}; {self._threadloc.loading_stack}"
+				# 	asset_type_name +
+				# 	f"; {cache_key}; {faked_kwargs}; {self._threadloc.loading_stack}"
 				# )
 
 			finally:
@@ -2696,7 +2897,7 @@ class AssetSystemManager:
 			for p in self._running_loading_procedures:
 				p.cancel()
 
-		while self._running_loading_procedures:
+		while self._running_loading_procedures or not self._eviction_process_state.completed:
 			self._clock.call_scheduled_functions(self._clock.update_time())
 			sleep(0.02)
 
@@ -2741,6 +2942,7 @@ def initialize(clock: clock.Clock) -> AssetSystemManager:
 	_g_load_image = _asm.register_cache_aware_complex_asset_provider("image", ImageAssetProvider)
 	_g_load_image_data = _asm.register_asset_provider("image_data", ImageDataAssetProvider)
 	_g_load_frames = _asm.register_complex_asset_provider("frames", FramesAssetProvider)
+
 	_g_load_pyobj = _asm.load_pyobj
 
 	return _asm

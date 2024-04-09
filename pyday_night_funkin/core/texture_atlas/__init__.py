@@ -101,6 +101,7 @@ class TextureBin:
 		if not atlas._allocator.is_empty():
 			return
 
+		# print("deleted texture atlas thank you very much")
 		atlas.delete()
 		self._atlases[identifier.atlas_idx] = None
 		self._free_atlas_list_indices.append(identifier.atlas_idx)
