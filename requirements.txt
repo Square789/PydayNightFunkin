@@ -1,3 +1,3 @@
 loguru
-pyglet==2.0.12
+pyglet==2.0.15
 schema
