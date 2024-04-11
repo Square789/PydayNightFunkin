@@ -8,7 +8,7 @@ from pyday_night_funkin.core.graphics import allocation
 from pyday_night_funkin.core.graphics.shared import (
 	GL_TYPE_SIZES, RE_VERTEX_FORMAT, TYPECHAR_TO_GL_TYPE_MAP, USAGE_MAP
 )
-from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject, RAMBackedBufferObject
+from pyday_night_funkin.core.graphics.vertexbuffer import RAMBackedBufferObject
 from pyday_night_funkin.core.utils import dump_id
 
 if t.TYPE_CHECKING:

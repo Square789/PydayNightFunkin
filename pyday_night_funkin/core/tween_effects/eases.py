@@ -1,5 +1,5 @@
 
-from math import asin, sin, pi, tau
+from math import sin, pi, tau
 
 eta = pi * 0.5
 

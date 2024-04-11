@@ -1,5 +1,4 @@
 
-from math import pi, sin
 import typing as t
 
 from loguru import logger
@@ -14,7 +13,7 @@ import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.scene_context import SceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
-from pyday_night_funkin.core.utils import clamp, get_error_tex, get_pixel_tex
+from pyday_night_funkin.core.utils import get_error_tex, get_pixel_tex
 
 if t.TYPE_CHECKING:
 	from pyglet.graphics.shader import UniformBufferObject

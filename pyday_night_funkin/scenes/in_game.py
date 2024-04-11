@@ -12,7 +12,7 @@ from pyday_night_funkin.character import Character, CharacterData
 from pyday_night_funkin.core.asset_system import AssetRequest, LoadingRequest, load_pyobj
 from pyday_night_funkin.core.scene import BaseScene, SceneKernel, BaseSceneArgDict
 from pyday_night_funkin.core.utils import lerp
-from pyday_night_funkin.enums import AnimationTag, Control, Difficulty
+from pyday_night_funkin.enums import Control, Difficulty
 from pyday_night_funkin.hud import HUD
 from pyday_night_funkin.note import NoteType, SustainStage, Note
 from pyday_night_funkin import scenes

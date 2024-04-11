@@ -5,7 +5,6 @@ import typing as t
 from pyglet.image import ImageData, Texture
 
 import pyday_night_funkin.constants as CNST
-from pyday_night_funkin.core.camera import SimpleCamera
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.superscene import SuperScene

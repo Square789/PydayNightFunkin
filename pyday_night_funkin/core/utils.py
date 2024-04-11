@@ -8,7 +8,6 @@ from pyglet.image import CheckerImagePattern, ImageData, Texture
 
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 	from pyday_night_funkin.core.types import Numeric
 
 T = t.TypeVar("T")

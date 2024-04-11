@@ -8,11 +8,9 @@ from pyglet.gl import gl
 from pyday_night_funkin.core.graphics.interfacer import PNFBatchInterfacer
 from pyday_night_funkin.core.graphics.pnf_group import PNFGroup
 from pyday_night_funkin.core.graphics.pnf_vertex_domain import PNFVertexDomain
-from pyday_night_funkin.core.graphics.shared import (
-	GL_TO_C_TYPE_MAP, GL_TYPE_SIZES, RE_VERTEX_FORMAT
-)
+from pyday_night_funkin.core.graphics.shared import GL_TYPE_SIZES, RE_VERTEX_FORMAT
 from pyday_night_funkin.core.graphics.state import GLState
-from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject, RAMBackedBufferObject
+from pyday_night_funkin.core.graphics.vertexbuffer import RAMBackedBufferObject
 from pyday_night_funkin.core.utils import dump_id
 
 if t.TYPE_CHECKING:

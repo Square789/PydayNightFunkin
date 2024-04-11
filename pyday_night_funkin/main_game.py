@@ -1,5 +1,4 @@
 
-import gc
 from math import ceil
 from platform import python_version
 import queue
@@ -168,18 +167,6 @@ class Game(SceneManager):
 					"{level:<8} | {name}:{function}@{line} - {message}"
 				)
 				logger.add(self._debug_queue.put, format=_debug_pane_fmt, colorize=False)
-
-			# def _on_gc_callback(phase, info):
-			# 	if phase == "start":
-			# 		self._last_gc_start = perf_counter()
-			# 	elif phase == "stop":
-			# 		if info['generation'] > 0:
-			# 			logger.trace(
-			# 				f"Generation ({info['generation']}) collected in "
-			# 				f"{perf_counter() - self._last_gc_start:.6f} seconds"
-			# 			)
-
-			# gc.callbacks.append(_on_gc_callback)
 
 		if ogg_decoder not in pyglet.media.codecs.get_decoders():
 			pyglet.media.codecs.add_decoders(ogg_decoder)

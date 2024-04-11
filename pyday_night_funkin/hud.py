@@ -6,7 +6,7 @@ import typing as t
 from pyday_night_funkin import constants as CNST
 from pyday_night_funkin.core.asset_system import load_frames, load_image, load_sound
 from pyday_night_funkin.core.pnf_text import TextAlignment, PNFText
-from pyday_night_funkin.core.tween_effects.eases import in_out_cubic, linear, out_cubic
+from pyday_night_funkin.core.tween_effects.eases import in_out_cubic, out_cubic
 from pyday_night_funkin.enums import AnimationTag
 from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.note import NoteType, Rating

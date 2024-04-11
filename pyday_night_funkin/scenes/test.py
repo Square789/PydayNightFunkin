@@ -17,7 +17,6 @@ from pyday_night_funkin.scenes.music_beat import MusicBeatScene
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.scene import SceneKernel
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
-	from pyday_night_funkin.main_game import Game
 
 
 class TestScene(MusicBeatScene):
