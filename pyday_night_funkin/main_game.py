@@ -239,6 +239,12 @@ class Game(SceneManager):
 		"""
 		self.player.loop = True
 
+		self.sfx_ring = self.sound.create_sfx_ring()
+		"""
+		A global SFXRing, for the elusive case where you want to play
+		sounds independent of scenes.
+		"""
+
 		self.character_registry: Registry["CharacterData"] = Registry()
 		self.weeks: t.List["WeekData"] = []
 		self._registered_packs: t.Dict[t.Hashable, t.List[int]] = {}
