@@ -357,7 +357,7 @@ class PNFText(WorldObject):
 	@rotation.setter
 	def rotation(self, new_rotation: float) -> None:
 		self._rotation = new_rotation
-		self._interfacer.set_data("rotation", (new_rotation,) * 4)
+		self._interfacer.set_data("rotation", (new_rotation,) * self._interfacer.size)
 
 	# Scale
 
