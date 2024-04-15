@@ -7,7 +7,7 @@ from pyday_night_funkin.core.scene_context import SceneContext
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.camera import SimpleCamera
-	from pyday_night_funkin.core.types import Numeric
+	from pyday_night_funkin.core.types import CoordIndexable, Numeric
 
 
 class SceneObject:
@@ -91,7 +91,7 @@ class WorldObject(SceneObject):
 	def height(self) -> "Numeric":
 		return self._height
 
-	def screen_center(self, screen_dims: Vec2, x: bool = True, y: bool = True) -> None:
+	def screen_center(self, screen_dims: CoordIndexable, x: bool = True, y: bool = True) -> None:
 		"""
 		Sets the WorldObject's world position so that it is centered
 		on screen. (Ignoring camera and scroll factors)
