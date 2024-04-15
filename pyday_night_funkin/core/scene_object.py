@@ -91,7 +91,7 @@ class WorldObject(SceneObject):
 	def height(self) -> "Numeric":
 		return self._height
 
-	def screen_center(self, screen_dims: CoordIndexable, x: bool = True, y: bool = True) -> None:
+	def screen_center(self, screen_dims: "CoordIndexable", x: bool = True, y: bool = True) -> None:
 		"""
 		Sets the WorldObject's world position so that it is centered
 		on screen. (Ignoring camera and scroll factors)
