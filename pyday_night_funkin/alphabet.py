@@ -1,7 +1,7 @@
 
 import typing as t
 
-from pyday_night_funkin.base_game_pack import load_frames
+from pyday_night_funkin.core.asset_system import load_frames
 from pyday_night_funkin.core.pnf_sprite import (
 	PNFSprite, PNFSpriteFragmentShader, PNFSpriteVertexShader
 )
