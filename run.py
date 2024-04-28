@@ -39,9 +39,10 @@ def main():
 		"-v",
 		action = "store_true",
 		help = (
-			"Enable vsync. This may remove screentearing at the potential cost of "
-			"dropping frames, highly dependant on the intricacies of your system."
-		)
+			"Enables vsync. This may remove screentearing at the potential cost of "
+			"dropping frames, or do absolutely nothing. Highly dependant on the intricacies "
+			"of your system."
+		),
 	)
 
 	result = argparser.parse_args()
