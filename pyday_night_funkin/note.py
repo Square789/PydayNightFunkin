@@ -2,6 +2,8 @@
 from enum import IntEnum
 import typing as t
 
+from pyday_night_funkin.core.utils import dump_id
+
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 
@@ -148,6 +150,6 @@ class Note:
 
 	def __repr__(self) -> str:
 		return (
-			f"<{self.__class__.__name__} at {id(self):>08X} (type={self.type.name} "
+			f"<{self.__class__.__name__} at {dump_id(self)} (type={self.type.name} "
 			f"time={self.time})>"
 		)
