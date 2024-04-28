@@ -292,9 +292,9 @@ class BaseScene(Container):
 		self.skip_transition_out: bool = False
 		"""
 		A simple attribute that will cause the scene's default
-		`start_transition_out` implementation to just skip the out
-		transition and immediatedly call `set_scene` with the
-		passed scene kernel.
+		``on_imminent_replacement`` implementation to just skip the out
+		transition and immediatedly call `set_scene` with the passed
+		scene kernel.
 		"""
 
 		self._passed_time = 0.0
