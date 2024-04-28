@@ -54,8 +54,8 @@ uniform WindowBlock {
 layout(std140) uniform CameraAttrs {
 	float zoom;
 	vec2  position;
-	vec2  GAME_DIMENSIONS;
 	vec2  dimensions;
+	vec2  focus_center;
 } camera;
 
 
@@ -78,9 +78,9 @@ void main() {
 
 	// Camera transform and zoom scale
 	m_camera_trans_scale[3].xy = (
-		(camera.zoom * -camera.GAME_DIMENSIONS / 2.0) +
+		(camera.zoom * -(camera.dimensions * 0.5)) +
 		(camera.zoom * scroll_factor * -camera.position) +
-		(camera.GAME_DIMENSIONS / 2.0)
+		(camera.dimensions * 0.5)
 	);
 	m_camera_trans_scale[0][0] = camera.zoom;
 	m_camera_trans_scale[1][1] = camera.zoom;

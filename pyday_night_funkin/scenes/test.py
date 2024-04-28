@@ -4,12 +4,13 @@ import typing as t
 
 from pyglet.math import Vec2
 from pyglet.window.key import (
-	C, E, F, K, L, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
+	C, E, F, J, K, L, O, P, W, A, S, D, I, M, PLUS, MINUS, LEFT, DOWN, UP, RIGHT, X, Z
 )
 from pyday_night_funkin.base_game_pack import Boyfriend
 from pyday_night_funkin.character import CharacterData
 from pyday_night_funkin.core.asset_system import load_frames
 from pyday_night_funkin.core.pnf_text import PNFText
+from pyday_night_funkin.core.tween_effects.eases import out_cubic
 from pyday_night_funkin.core.utils import to_rgba_tuple
 from pyday_night_funkin.note import NoteType
 from pyday_night_funkin.scenes.music_beat import MusicBeatScene
@@ -22,6 +23,15 @@ if t.TYPE_CHECKING:
 class TestScene(MusicBeatScene):
 	def __init__(self, kernel: "SceneKernel") -> None:
 		super().__init__(kernel.fill(layers=("ye_olde_layer", "fore"), cameras=("main",)))
+
+		self.main_cam = self.create_camera()
+		self.second_cam = self.create_camera(
+			427, 240, self.game.dimensions[0] - 427, self.game.dimensions[1] - 240
+		)
+		center = Vec2(*self.game.dimensions) / 2.0
+		self.second_cam.focus_center = center
+		self.second_cam.zoom = 1/3
+		self.second_cam.look_at(center)
 
 		self.scroll_factor_tests = []
 		for i in range(5):
@@ -85,9 +95,9 @@ class TestScene(MusicBeatScene):
 		rkh = self.game.raw_key_handler
 
 		if rkh[PLUS]:
-			self.test_sprite.scale += 0.01
+			self.test_sprite.scale += 0.04
 		if rkh[MINUS]:
-			self.test_sprite.scale -= 0.01
+			self.test_sprite.scale -= 0.04
 		if rkh[W]:
 			self.test_sprite.y -= 1
 		if rkh[A]:
@@ -139,6 +149,8 @@ class TestScene(MusicBeatScene):
 		if rkh[X]:
 			main_cam.zoom -= .01
 
+		if rkh[J]:
+			self.label.rotation += .1
 		if rkh[K]:
 			self.label.x -= 1
 			# self.label.text = self.label.text[:-1]

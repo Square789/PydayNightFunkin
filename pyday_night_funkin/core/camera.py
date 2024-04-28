@@ -50,8 +50,8 @@ uniform WindowBlock {
 layout (std140) uniform CameraAttrs {
 	float zoom;
 	vec2  position;
-	vec2  GAME_DIMENSIONS;
 	vec2  dimensions;
+	vec2  focus_center;
 } camera;
 
 void main() {
@@ -117,6 +117,9 @@ class SimpleCamera:
 		self._width = w
 		self._height = h
 
+		self._focus_center_x = self._width * 0.5
+		self._focus_center_y = self._height * 0.5
+
 		self._zoom = 1.0
 
 		self._follow_target = None
@@ -130,8 +133,8 @@ class SimpleCamera:
 		with self.ubo as ubo:
 			ubo.zoom = self._zoom
 			ubo.position[:] = (self._x, self._y)
-			ubo.GAME_DIMENSIONS[:] = (GAME_WIDTH, GAME_HEIGHT)
 			ubo.dimensions[:] = (self._width, self._height)
+			ubo.focus_center[:] = (self._focus_center_x, self._focus_center_y)
 
 	def maybe_update_ubo(self) -> None:
 		"""If needed, uploads new data to the camera's UBO."""
@@ -150,8 +153,6 @@ class SimpleCamera:
 		Immediatedly sets the camera's target position to look at the
 		given point.
 		"""
-		# This may not respect zoom. Or, it may, and I am completely
-		# forgetting something.
 		self._x = where[0] - (self._width / 2)
 		self._y = where[1] - (self._height / 2)
 		self._ubo_needs_update = True
@@ -172,6 +173,24 @@ class SimpleCamera:
 
 		self._x += (tgt_x - self._x) * self._follow_lerp
 		self._y += (tgt_y - self._y) * self._follow_lerp
+		self._ubo_needs_update = True
+
+	@property
+	def focus_center(self) -> t.Tuple[float, float]:
+		"""
+		The location the camera considers its center. If the camera looks
+		at this point (meaning its position is actually half its width and
+		height to the top-left), the scroll factor of all drawables drawn
+		through it are irrelevant.
+
+		Defaults to half the camera's width and height.
+		"""
+		return (self._focus_center_x, self._focus_center_y)
+
+	@focus_center.setter
+	def focus_center(self, new_focus_center: CoordIndexable) -> None:
+		self._focus_center_x = new_focus_center[0]
+		self._focus_center_y = new_focus_center[1]
 		self._ubo_needs_update = True
 
 	@property
@@ -236,7 +255,7 @@ class Camera(SimpleCamera):
 		TODO: NOT IMPLEMENTED.
 		"""
 
-		self.clear_color = (0, 0, 0, 0)
+		self.clear_color = (0.0, 0.0, 0.0, 0.0)
 		"""Color the camera's frame buffer is cleared with."""
 
 		self.framebuffer = Framebuffer()

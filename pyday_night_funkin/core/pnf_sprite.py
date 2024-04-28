@@ -53,8 +53,8 @@ uniform WindowBlock {{
 layout(std140) uniform CameraAttrs {{
 	float zoom;
 	vec2  position;
-	vec2  GAME_DIMENSIONS;
 	vec2  dimensions;
+	vec2  focus_center;
 }} camera;
 
 
@@ -98,11 +98,14 @@ void main() {{
 
 	// Applies the translation caused by the camera and the sprite's
 	// scroll factor as well as the scaling caused by the camera's zoom.
+	vec2 half_dimensions = camera.dimensions * 0.5;
 	m_camera_trans_scale[3].xy = (
-		(camera.zoom * -camera.GAME_DIMENSIONS / 2.0) +
+		(camera.zoom * -half_dimensions) +
 		(camera.zoom * scroll_factor * -camera.position) +
-		(camera.GAME_DIMENSIONS / 2.0)
+		(camera.zoom * (scroll_factor - 1.0) * (camera.focus_center - half_dimensions)) +
+		(half_dimensions)
 	);
+
 	m_camera_trans_scale[0][0] = camera.zoom;
 	m_camera_trans_scale[1][1] = camera.zoom;       // 6TH
 

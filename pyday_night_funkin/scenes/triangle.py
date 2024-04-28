@@ -35,21 +35,21 @@ uniform WindowBlock {
 layout(std140) uniform CameraAttrs {
 	float zoom;
 	vec2  position;
-	vec2  GAME_DIMENSIONS;
 	vec2  dimensions;
+	vec2  focus_center;
 } camera;
 
 mat4 m_camera_trans_scale = mat4(1.0);
 mat4 m_camera_pre_trans = mat4(1.0);
 
 void main() {
-	m_camera_trans_scale[3][0] = (camera.zoom * -camera.position.x) + (camera.GAME_DIMENSIONS.x / 2);
-	m_camera_trans_scale[3][1] = (camera.zoom * -camera.position.y) + (camera.GAME_DIMENSIONS.y / 2);
+	m_camera_trans_scale[3][0] = (camera.zoom * -camera.position.x) + (camera.dimensions.x / 2);
+	m_camera_trans_scale[3][1] = (camera.zoom * -camera.position.y) + (camera.dimensions.y / 2);
 	m_camera_trans_scale[0][0] = camera.zoom;
 	m_camera_trans_scale[1][1] = camera.zoom;
 
-	m_camera_pre_trans[3][0] = -camera.GAME_DIMENSIONS.x / 2;
-	m_camera_pre_trans[3][1] = -camera.GAME_DIMENSIONS.y / 2;
+	m_camera_pre_trans[3][0] = -camera.dimensions.x / 2;
+	m_camera_pre_trans[3][1] = -camera.dimensions.y / 2;
 
 	color_vo = color;
 	gl_Position =

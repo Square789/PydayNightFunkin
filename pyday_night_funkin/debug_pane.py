@@ -34,8 +34,8 @@ uniform WindowBlock {
 layout (std140) uniform CameraAttrs {
 	float zoom;
 	vec2  position;
-	vec2  GAME_DIMENSIONS;
 	vec2  dimensions;
+	vec2  focus_center;
 } camera;
 
 void main() {
