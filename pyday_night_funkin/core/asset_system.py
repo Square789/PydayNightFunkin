@@ -2383,8 +2383,8 @@ class AssetSystemManager:
 
 	def requires_loading_process(self, loading_request: LoadingRequest) -> bool:
 		"""
-		Returns whether a LoadingRequest needs to make calls to load
-		assets, so if any of its requested assets/libraries or and of
+		Returns whether a LoadingRequest needs to make calls to load assets,
+		which is the case if any of its requested assets/libraries or any of
 		its subrequest's assets/libraries are not cached.
 		"""
 		request = loading_request.copy()

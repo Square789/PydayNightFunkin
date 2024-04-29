@@ -181,11 +181,9 @@ class SceneKernel:
 
 	def get_loading_hints(self) -> "LoadingRequest":
 		"""
-		Return a chunk [TODO: what does the returned stuff look like?]
-		of assets to load for this scene to start quickly.
-
-		The things returned by this function may be used by loading
-		screens leading into this scene
+		Returns a ``LoadingRequest``, describing assets that, when loaded
+		into the asset system cache will have the scene start without stalling
+		the main thread for too long.
 		"""
 		raise NotImplementedError()
 
