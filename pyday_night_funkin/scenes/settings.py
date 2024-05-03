@@ -12,12 +12,15 @@ if t.TYPE_CHECKING:
 class SettingsScene(MusicBeatScene):
 	def __init__(self, kernel: "SceneKernel") -> None:
 		super().__init__(kernel)
+
+		self.main_camera = self.create_camera()
+
 		text = PNFText(
 			text = "Under construction. Press back to go back.",
 			font_size = 24,
 			font_name = "VCR OSD Mono",
 		)
-		text.screen_center((self.default_camera._width, self.default_camera._height))
+		text.screen_center((self.main_camera.width, self.main_camera.height))
 		self.add(text)
 
 	def update(self, dt: float) -> None:

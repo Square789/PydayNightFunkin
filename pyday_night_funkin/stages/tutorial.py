@@ -9,14 +9,16 @@ from pyday_night_funkin.stages.common import BaseGameBaseStage
 class TutorialStage(BaseGameBaseStage):
 	def __init__(self, kernel: InGameSceneKernel, *args, **kwargs) -> None:
 		super().__init__(
-			kernel.fill(
-				opponent_anchor = Anchor(Vec2(400, 787), Al.BOTTOM_LEFT, "girlfriend")
-			),
+			kernel.fill(opponent_anchor=Anchor(Vec2(400, 787), Al.BOTTOM_LEFT)),
 			*args,
 			**kwargs,
 		)
 
 		self.spawn_default_base_game_arena()
+
+	def get_character_scene_parameters(self):
+		a, b, (_, c) = super().get_character_scene_parameters()
+		return a, b, (self.lyr_girlfriend, c)
 
 	def ready(self) -> None:
 		super().ready()

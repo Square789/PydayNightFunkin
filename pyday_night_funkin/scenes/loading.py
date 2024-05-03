@@ -31,30 +31,37 @@ class LoadingScene(BaseScene):
 		kernel: SceneKernel,
 		target_kernel: SceneKernel,
 	) -> None:
-		kernel.fill(layers=("bg", "fg", "fg2"))
-
 		super().__init__(kernel)
+
+		self.main_camera = self.create_camera()
+		self.lyr_bg = self.create_layer()
+		self.lyr_fg = self.create_layer()
+		self.lyr_fg2 = self.create_layer()
 
 		self.target_kernel = target_kernel
 
-		self.default_camera.clear_color = (0.792, 1.0, 0.302, 1.0)
+		self.main_camera.clear_color = (0.792, 1.0, 0.302, 1.0)
 
-		self.bg_image = self.create_object("bg", image=load_image("preload/images/funkay.png"))
-		self.bg_image.set_scale_and_repos(CNST.GAME_HEIGHT / self.bg_image.get_current_frame_dimensions()[1])
-		self.bg_image.screen_center(CNST.GAME_DIMENSIONS)
+		self.bg_image = self.create_object(
+			self.lyr_bg, image=load_image("preload/images/funkay.png")
+		)
+		self.bg_image.set_scale_and_repos(
+			self.game.dimensions[1] / self.bg_image.get_current_frame_dimensions()[1]
+		)
+		self.bg_image.screen_center(self.game.dimensions)
 
 		self.loading_text = self.create_object(
-			"fg2",
-			object_class=PNFText,
+			self.lyr_fg2,
+			object_class = PNFText,
 			x = 10,
-			y = CNST.GAME_HEIGHT - 28,
+			y = self.game.dimensions[1] - 28,
 			font_size = 12,
 			color = (0x07, 0x07, 0x00, 0xFF),
 			font_name = "VCR OSD Mono",
 			width = CNST.GAME_WIDTH - 20,
 			align = TextAlignment.CENTER,
 		)
-		self.loading_bar = self.create_object("fg", x=10, y=CNST.GAME_HEIGHT - 28)
+		self.loading_bar = self.create_object(self.lyr_fg, x=10, y=self.game.dimensions[1] - 28)
 		self.loading_bar.make_rect((0xFF, 0x16, 0xD2, 0xFF), 2, 18)
 		self.loading_bar.origin = self.loading_bar.origin[0] - 0.5, self.loading_bar.origin[1]
 

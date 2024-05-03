@@ -7,6 +7,8 @@ from pyday_night_funkin.core.asset_system import load_image
 from pyday_night_funkin.core.utils import clamp, to_rgba_tuple, get_pixel_tex
 
 if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.camera import Camera
+	from pyday_night_funkin.core.scene_container import SceneLayer
 	from pyday_night_funkin.scenes import InGameScene
 
 
@@ -18,21 +20,19 @@ class HealthBar:
 	def __init__(
 		self,
 		scene: "InGameScene",
-		camera: str,
+		camera: "Camera",
 		opponent_icon_name: str,
 		player_icon_name: str,
-		layers: t.Tuple[str, str, str],
+		layer: "SceneLayer",
 		ded_icon_threshold: float = 0.2,
 		opponent_color: int = 0xFF0000FF,
 		player_color: int = 0x66FF33FF,
 	) -> None:
 		self.ded_icon_threshold = ded_icon_threshold
 
-		bg_layer, bar_layer, icon_layer = layers
-
 		bar_image = load_image("shared/images/healthBar.png")
 		self.background = scene.create_object(
-			bg_layer,
+			layer,
 			camera,
 			x = (CNST.GAME_WIDTH - bar_image.width) // 2,
 			y = int(CNST.GAME_HEIGHT * 0.9),
@@ -40,9 +40,9 @@ class HealthBar:
 		)
 
 		bar_y = self.background.y + 4
-		self.opponent_bar = scene.create_object(bar_layer, camera, y=bar_y, image=get_pixel_tex())
+		self.opponent_bar = scene.create_object(layer, camera, y=bar_y, image=get_pixel_tex())
 		self.opponent_bar.rgba = to_rgba_tuple(opponent_color)
-		self.player_bar = scene.create_object(bar_layer, camera, y=bar_y, image=get_pixel_tex())
+		self.player_bar = scene.create_object(layer, camera, y=bar_y, image=get_pixel_tex())
 		self.player_bar.rgba = to_rgba_tuple(player_color)
 		self.opponent_bar.origin = self.player_bar.origin = (0, 0)
 		self.opponent_bar.scale_y = self.player_bar.scale_y = bar_image.height - 8
@@ -53,10 +53,10 @@ class HealthBar:
 		# (Which they are, but hey)
 		icon_y = self.background.y + (bar_image.height - self.opponent_icons[0].height) // 2
 		self.opponent_sprite = scene.create_object(
-			icon_layer, camera, x=0, y=icon_y, image=self.opponent_icons[0]
+			layer, camera, x=0, y=icon_y, image=self.opponent_icons[0]
 		)
 		self.player_sprite = scene.create_object(
-			icon_layer, camera, x=0, y=icon_y, image=self.player_icons[0]
+			layer, camera, x=0, y=icon_y, image=self.player_icons[0]
 		)
 		self.player_sprite.flip_x = True
 

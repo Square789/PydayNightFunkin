@@ -7,15 +7,14 @@ Contains a good chunk of FNF logic implemented in various `load_` and
 
 from pathlib import Path
 import re
-from loguru import logger
 import typing as t
 
 from pyglet.math import Vec2
 from schema import Schema, SchemaError, And, Or, Optional
 
 from pyday_night_funkin.core.asset_system import (
-	AssetProvider, AssetRouter, AssetRouter, AssetRouterEntry, LibrarySpecPattern, JSONAssetProvider,
-	load_frames, load_image, load_json, load_pyobj, load_sound,
+	AssetProvider, AssetRouter, AssetRouterEntry, LibrarySpecPattern, JSONAssetProvider,
+	load_image, load_json, load_pyobj, load_sound,
 )
 from pyday_night_funkin.content_pack import ContentPack, LevelData, WeekData
 from pyday_night_funkin.core.animation import FrameCollection
@@ -148,7 +147,9 @@ class SongDataAssetProvider(AssetProvider):
 	def get_estimated_asset_size(self, item) -> int:
 		return JSONAssetProvider.get_estimated_asset_size(self, item)
 
+
 _g_load_song_data = None
+
 
 def load_song_data(song_name: str, difficulty: "Difficulty", *, cache: bool = True) -> t.Dict:
 	"""

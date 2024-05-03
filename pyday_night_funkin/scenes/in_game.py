@@ -19,6 +19,8 @@ from pyday_night_funkin import scenes
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.content_pack import LevelData
+	from pyday_night_funkin.core.camera import Camera
+	from pyday_night_funkin.core.scene_container import SceneLayer
 	from pyday_night_funkin.main_game import Game
 	from pyday_night_funkin.note_handler import AbstractNoteHandler
 
@@ -37,13 +39,9 @@ class Anchor:
 		self,
 		position: Vec2,
 		alignment: t.Optional[Vec2] = None,
-		layer: t.Optional[str] = None,
-		cameras: t.Optional[t.Union[str, t.Iterable[str]]] = None,
 	) -> None:
 		self.position = position
 		self.alignment = AnchorAlignment.TOP_LEFT if alignment is None else alignment
-		self.layer = layer
-		self.cameras = cameras
 
 
 class _ThrowawayGf(Character):
@@ -184,7 +182,7 @@ class InGameSceneKernel(SceneKernel):
 
 	def create_scene(self) -> "InGameScene":
 		scene = super().create_scene() # type: InGameScene
-		scene.load_song()
+		scene.init_basic_fnf_stuff()
 		scene.ready()
 		return scene
 
@@ -212,14 +210,17 @@ class InGameScene(scenes.MusicBeatScene):
 		super().__init__(
 			kernel.fill(
 				default_cam_zoom = 1.05,
-				cameras = ("main", "hud"),
 			)
 		)
+
+		self.main_cam = self.create_camera()
+		self.hud_cam = self.create_camera()
 
 		self.level_data = level_data
 		self.difficulty = difficulty
 		self.follow_scene = follow_scene
 		"""The scene type that should be set once all songs are exhausted."""
+
 		self.remaining_week = remaining_week
 		self.in_story_mode = remaining_week is not None
 
@@ -255,6 +256,15 @@ class InGameScene(scenes.MusicBeatScene):
 		illegal.
 		"""
 
+		self.do_focus = True
+		"""
+		Whether to focus the cameras on targets.
+		Useful to disable when you want to play a cutscene or something.
+
+		This doesn't stop the camera itself from moving around, but
+		does stop any ``InGameScene``'s methods from setting a focus target.
+		"""
+
 		self.focus_targets: t.List[FocusTargetInfo] = []
 		"""
 		Stuff that can be focussed by cameras. Realistically, just a
@@ -275,35 +285,12 @@ class InGameScene(scenes.MusicBeatScene):
 		if self.game.player.playing:
 			self.game.player.pause()
 
-		self.boyfriend = self.create_character(
-			self.player_anchor, level_data.player_character
-		)
-		if (gf_char_id := level_data.girlfriend_character) is None:
-			# HACK: Feeding `CharacterData` here is probably a gross violation of something
-			self.girlfriend = self.create_object(
-				"girlfriend", "main", _ThrowawayGf, self, CharacterData(_ThrowawayGf, "", "")
-			)
-		else:
-			self.girlfriend = self.create_character(self.girlfriend_anchor, gf_char_id)
-		self.opponent = self.create_character(
-			self.opponent_anchor, level_data.opponent_character
-		)
+		self.boyfriend: t.Optional[Character] = None
+		self.girlfriend: t.Optional[Character] = None
+		self.opponent: t.Optional[Character] = None
 
-		self.dancers[self.opponent] = DancerInfo(2, 0)
-		self.dancers[self.boyfriend] = DancerInfo(2, 0)
-		self.dancers[self.girlfriend] = DancerInfo(1, 0)
-
-		self.focus_targets.append(FocusTargetInfo(self.opponent))
-		self.focus_targets.append(FocusTargetInfo(self.boyfriend))
-
-		self.main_cam = self.cameras["main"]
-		self.hud_cam = self.cameras["hud"]
-
-		self.note_handler = self.create_note_handler()
-
-		self.hud = self.create_hud()
-		self.hud.update_score(0)
-		self.hud.update_health(0.5)
+		self.note_handler: t.Optional["AbstractNoteHandler"] = None
+		self.hud: t.Optional["HUD"] = None
 
 	@classmethod
 	def get_kernel(
@@ -332,15 +319,92 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		return InGameSceneKernel(cls, game, level_data, difficulty, follow_scene, remaining_week)
 
+	def init_basic_fnf_stuff(self) -> None:
+		"""
+		Initializes the ``InGameScene``'s standard FNF components.
+
+		This method will:
+		  - create a player, girlfriend and opponent character.
+		  - create a note handler
+		  - create a HUD
+		  - load the scene's song and supply the note handler with it.
+
+		This method returns without doing anything if ``self.boyfriend``
+		is not ``None``. This may be helpful if custom code in an overridden
+		``__init__`` method relies on some of the characters, so it may be
+		called from an overridden ``__init__`` method.
+
+		Otherwise, it is called from the ``InGameSceneKernel``'s
+		``create_scene`` implementation.
+		"""
+		if self.boyfriend is not None:
+			return
+
+		lev = self.level_data
+		bf_p, gf_p, op_p = self.get_character_scene_parameters()
+
+		self.boyfriend = self.create_character(lev.player_character, self.player_anchor, *bf_p)
+
+		if (gf_char_id := lev.girlfriend_character) is None:
+			# HACK: Feeding `CharacterData` here is probably a gross violation of something
+			self.girlfriend = self.create_object(
+				None, None, _ThrowawayGf, self, CharacterData(_ThrowawayGf, "", "")
+			)
+		else:
+			self.girlfriend = self.create_character(gf_char_id, self.girlfriend_anchor, *gf_p)
+
+		self.opponent = self.create_character(lev.opponent_character, self.opponent_anchor, *op_p)
+
+		self.dancers[self.opponent] = DancerInfo(2, 0)
+		self.dancers[self.boyfriend] = DancerInfo(2, 0)
+		self.dancers[self.girlfriend] = DancerInfo(1, 0)
+
+		if self.focus_targets:
+			logger.trace("expect nonstandard focus targets")
+		self.focus_targets.append(FocusTargetInfo(self.opponent))
+		self.focus_targets.append(FocusTargetInfo(self.boyfriend))
+
+		self.hud = self.create_hud()
+		self.hud.update_score(self.score)
+		self.hud.update_health(self.health)
+
+		self.note_handler = self.create_note_handler()
+
+		inst, voices, song_data = fetch_song(self.level_data.song_name, self.difficulty)
+
+		self.pause_players()
+		self.inst_player.set(inst, play=False)
+		if voices is not None:
+			self.voice_player.set(voices, play=False)
+
+		self.conductor.bpm = song_data["bpm"]
+		self.conductor.load_bpm_changes(song_data)
+		self.note_handler.set_song_data(song_data)
+
+		self.song_data = song_data
+
 	def create_note_handler(self) -> "AbstractNoteHandler":
 		raise NotImplementedError("Subclass this!")
 
 	def create_hud(self) -> "HUD":
 		raise NotImplementedError("Subclass this!")
 
-	def create_character(self, anchor: Anchor, char_id: t.Hashable) -> Character:
+	def get_character_scene_parameters(self) -> t.Tuple[
+		t.Tuple[t.Optional["SceneLayer"], t.Optional[t.Union[t.Iterable["Camera"], "Camera"]]],
+		t.Tuple[t.Optional["SceneLayer"], t.Optional[t.Union[t.Iterable["Camera"], "Camera"]]],
+		t.Tuple[t.Optional["SceneLayer"], t.Optional[t.Union[t.Iterable["Camera"], "Camera"]]],
+	]:
+		return ((None, None), (None, None), (None, None))
+
+	def create_character(
+		self,
+		char_id: t.Hashable,
+		anchor: Anchor,
+		layer: t.Optional["SceneLayer"],
+		cameras: t.Optional[t.Union[t.Iterable["Camera"], "Camera"]],
+	) -> Character:
 		data = self.game.character_registry[char_id]
-		char = self.create_object(anchor.layer, anchor.cameras, data.type, self, data)
+		char = self.create_object(layer, cameras, data.type, self, data)
 		char.position = (
 			anchor.position.x + char.width * anchor.alignment.x,
 			anchor.position.y + char.height * anchor.alignment.y,
@@ -351,43 +415,32 @@ class InGameScene(scenes.MusicBeatScene):
 		# )
 		return char
 
-	def load_song(self) -> None:
-		"""
-		# TODO doc
-		"""
-		inst, voices, song_data = fetch_song(self.level_data.song_name, self.difficulty)
-
-		self.pause_players()
-		self.inst_player.next_source()
-		self.inst_player.queue(inst)
-		if voices is not None:
-			self.voice_player.next_source()
-			self.voice_player.queue(voices)
-
-		self.conductor.bpm = song_data["bpm"]
-		self.conductor.load_bpm_changes(song_data)
-		self.note_handler.feed_song_data(song_data)
-
-		self.song_data = song_data
-
 	def ready(self) -> None:
 		"""
 		Called after `setup` and `load_song` have been called.
 		Starts the level by setting the main camera's zoom as well as
-		view targets and initializing the countdown.
+		view targets and then calls ``start_countdown``.
 		"""
 		# NOTE: Typically, characters play an animation when you create them, which then goes on
 		# to subtly influence camera focussing.
 		# (Or maybe not so subtly, depends on the spritesheet.)
 		self.main_cam.zoom = self._default_cam_zoom
 		self.main_cam.look_at(
-			self.opponent.get_current_frame_dimensions() * 0.5 +
-			Vec2(100.0, 100.0)
+			self.opponent.get_current_frame_dimensions() * 0.5 + Vec2(100.0, 100.0)
 		)
 
 		if self.song_data["notes"]:
 			self._set_focused_character(int(self.song_data["notes"][0]["mustHitSection"]))
 
+		self.start_countdown()
+
+	def start_countdown(self) -> None:
+		"""
+		Starts the countdown. Sets the scene's state to
+		``GameState.COUNTDOWN``, the song position to 5 beats from zero,
+		syncs the conductor from dt/elapsed and schedules
+		``self.countdown`` to be called each beat.
+		"""
 		self._countdown_stage = 0
 		self.state = GameState.COUNTDOWN
 		self.conductor.song_position = self.conductor.beat_duration * -5
@@ -447,6 +500,9 @@ class InGameScene(scenes.MusicBeatScene):
 		return self.song_data["notes"][sec]
 
 	def _set_focused_character(self, focus_target: int) -> None:
+		if not self.do_focus:
+			return
+
 		self._last_focused_character = focus_target
 		target = self.focus_targets[focus_target]
 		self.main_cam.set_follow_target(target.get_focus_point(), 0.04)

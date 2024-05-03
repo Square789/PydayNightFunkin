@@ -95,42 +95,41 @@ class PNFBatchInterfacer:
 		self.domain.deallocate(self.domain_position, self.size)
 		self.batch._remove_interfacer(self)
 		del self.batch # Friendship ended
+		del self._group
 		self.deleted = True
 
-	def migrate(
+	def change_batch(
 		self,
 		new_batch: "PNFBatch",
-		new_group: "PNFGroup",
-		states: t.Dict[t.Hashable, "GLState"],
+		new_group: t.Optional["PNFGroup"] = None,
+		states: t.Optional[t.Dict[t.Hashable, "GLState"]] = None,
 	) -> None:
 		"""
 		Migrates the interfacer into a new batch and a new domain,
 		deallocating its used space in the old one and occupying new
 		space in the new one.
-		Also changes some internal values of the interfacer to suit
-		its new owners.
-		"""
-		if new_batch != self.batch:
-			self.batch._remove_interfacer(self)
-			self._migrate_domain(new_batch._get_vertex_domain(self.domain.attribute_bundle))
-			self._draw_lists.clear()
-			self.batch = new_batch
-			self._group = new_group
-			self.batch._introduce_interfacer(self, states) # calls set_states
-		elif new_group != self._group:
-			for dl_id in self._draw_lists:
-				state = self.get_state(dl_id)
-				self.batch.remove_group(dl_id, self._group)
-				self.batch.add_group(dl_id, self, new_group, state)
-			self._group = new_group
 
-	def get_state(self, dl_id: t.Hashable) -> "GLState":
+		A new batch and state dict may also be supplied at the same time.
+
+		If the batch is unchanged, this method does nothing.
+		If you want to change only the group or this interfacer's states,
+		use ``change_group_and_or_gl_state`` instead.
 		"""
-		Returns the GLState the interfacer's vertices are being drawn
-		with in the given draw list.
-		The draw list must exist.
-		"""
-		return self.batch._draw_lists[dl_id]._group_data[self._group].state
+		if new_batch is self.batch:
+			return
+
+		if new_group is None:
+			new_group = self._group
+
+		if states is None:
+			states = {x: self.get_state(x) for x in self._draw_lists}
+
+		self.batch._remove_interfacer(self)
+		self._migrate_domain(new_batch._get_vertex_domain(self.domain.attribute_bundle))
+		self._draw_lists.clear()
+		self.batch = new_batch
+		self._group = new_group
+		self.batch._introduce_interfacer(self, states)
 
 	def _migrate_domain(self, new_domain: "PNFVertexDomain") -> None:
 		"""
@@ -151,25 +150,49 @@ class PNFBatchInterfacer:
 		self.domain_position = new_start
 		self.indices = tuple(i + index_shift for i in self.indices)
 
-	def set_states(self, new_states: t.Dict[t.Hashable, "GLState"]) -> None:
+	def change_group_and_or_gl_state(
+		self,
+		new_group: t.Optional["PNFGroup"] = None,
+		new_states: t.Optional[t.Dict[t.Hashable, "GLState"]] = None,
+	) -> None:
 		"""
-		Modifies the draw lists and the states
-		that the interfacer's vertices should be drawn in/with.
+		This method is used to change the interfacer's draw states, its
+		group within the batch it's currently in, or both at the same time.
 		"""
-		pending_dls = set(self._draw_lists)
-		for dl_id, state in new_states.items():
-			if dl_id in pending_dls:
-				# self.batch.modify_group(dl_id, self._group, state)
+		if new_group is None:
+			new_group = self._group
+
+		if new_states is None:
+			if new_group != self._group:
+				for dl_id in self._draw_lists:
+					state = self.get_state(dl_id)
+					self.batch.remove_group(dl_id, self._group)
+					self.batch.add_group(dl_id, self, new_group, state)
+		else:
+			pending_dls = set(self._draw_lists)
+			for dl_id, state in new_states.items():
+				if dl_id in pending_dls:
+					# self.batch.modify_group(dl_id, self._group, state)
+					self.batch.remove_group(dl_id, self._group)
+					pending_dls.remove(dl_id)
+				else:
+					self.domain.ensure_vao(state.program, self.batch._get_draw_list(dl_id))
+				self.batch.add_group(dl_id, self, new_group, state)
+
+			for dl_id in pending_dls:
 				self.batch.remove_group(dl_id, self._group)
-				pending_dls.remove(dl_id)
-			else:
-				self.domain.ensure_vao(state.program, self.batch._get_draw_list(dl_id))
-			self.batch.add_group(dl_id, self, self._group, state)
 
-		for dl_id in pending_dls:
-			self.batch.remove_group(dl_id, self._group)
+			self._draw_lists = list(new_states.keys())
 
-		self._draw_lists = list(new_states.keys())
+		self._group = new_group
+
+	def get_state(self, dl_id: t.Hashable) -> "GLState":
+		"""
+		Returns the GLState the interfacer's vertices are being drawn
+		with in the given draw list.
+		The draw list must exist.
+		"""
+		return self.batch._draw_lists[dl_id]._group_data[self._group].state
 
 	def set_visibility(self, new_visibility: bool) -> None:
 		"""
@@ -179,11 +202,11 @@ class PNFBatchInterfacer:
 		if self._visible == new_visibility:
 			return
 
+		self._visible = new_visibility
+
 		# TODO this is kinda hackish, but works well enough
 		for dl_id in self._draw_lists:
 			self.batch._draw_lists[dl_id]._dirty = True
-
-		self._visible = new_visibility
 
 	def set_data(self, name: str, value: t.Collection) -> None:
 		"""

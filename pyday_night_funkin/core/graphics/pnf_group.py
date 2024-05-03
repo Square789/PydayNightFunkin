@@ -9,7 +9,7 @@ class PNFGroup:
 	Groups are extremely simple ordered objects used in the batch to
 	define a tree which dictates element draw order.
 	Changing their parent or order while they are in a batch will cause
-	weirdness, so don't do it.
+	weirdness, so don't do that.
 	"""
 
 	__slots__ = ("parent", "order")

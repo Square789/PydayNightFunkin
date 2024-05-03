@@ -341,7 +341,7 @@ class DrawList:
 			gi = [self._top_group]
 		for g in gi:
 			gd = self._group_data[g]
-			r += f"{' ' * indent}Group {g}"
+			r += f"{' ' * indent}{g}{' (Top)' if g is self._top_group else ''}"
 			if gd.interfacer is not None:
 				r += (
 					f", Interfacer {dump_id(gd.interfacer)}, state hash "
@@ -451,7 +451,7 @@ class PNFBatch:
 		Introduces an interfacer and the draw lists its vertices
 		should occupy to the batch's draw lists.
 		"""
-		interfacer.set_states(states)
+		interfacer.change_group_and_or_gl_state(None, states)
 		self._interfacers.add(interfacer)
 
 	def _remove_interfacer(self, interfacer: "PNFBatchInterfacer") -> None:

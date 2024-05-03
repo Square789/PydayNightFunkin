@@ -47,6 +47,9 @@ class SceneManager:
 		while self._pending_scene_stack_additions:
 			kernel = self._pending_scene_stack_additions.pop(0)
 			self._scene_stack.append(kernel.create_scene())
+			# TODO:
+			# shouldn't this be if full_wipe: self._scene_stack[0].start_transition_in() after the loop?
+			# test later when you dont have 26 modified files lol
 			if full_wipe and self._scene_stack:
 				full_wipe = False
 				self._scene_stack[0].start_transition_in()

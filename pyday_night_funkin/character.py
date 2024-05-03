@@ -10,7 +10,6 @@ from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.enums import AnimationTag
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.core.scene import BaseScene
 	from pyday_night_funkin.scenes import MusicBeatScene
 
 # This could be replaced with `Self`, but that's a 3.11 thing
@@ -215,10 +214,13 @@ class Character(PNFSprite):
 			self.animation.play("idle")
 
 	def load_frames(self) -> None:
+		"""
+		Load this character's spritesheet via a call to ``load_frames``.
+		Uses the ``sprite_sheet_name`` attribute of ``self.character_data``,
+		prepending `"shared/images/characters/"` and appending the extension
+		`".xml"`.
+		"""
 		ssn = self.character_data.sprite_sheet_name
-		if "\\" in ssn or "/" in ssn:
-			raise RuntimeError(">:(")
-
 		self.frames = load_frames(f"shared/images/characters/{ssn}.xml")
 
 	def load_offsets(self, remapper: t.Optional[t.Dict[str, str]] = None) -> None:

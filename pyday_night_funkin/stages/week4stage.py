@@ -5,7 +5,6 @@ from pyglet.math import Vec2
 
 from pyday_night_funkin.core.asset_system import load_frames, load_image, load_sound
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
-from pyday_night_funkin.core.scene import OrderedLayer
 from pyday_night_funkin.scenes.in_game import (
 	Anchor, AnchorAlignment as Al, DancerInfo, InGameSceneKernel
 )
@@ -38,31 +37,30 @@ class Week4Stage(BaseGameBaseStage):
 	def __init__(self, kernel: InGameSceneKernel, *args, **kwargs) -> None:
 		super().__init__(
 			kernel.fill(
-				layers = (
-					"sky", "limo_bg", "henchmen", "car", "girlfriend", "limo", "stage",
-					OrderedLayer("ui_combo"), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
-				),
 				default_cam_zoom = 0.9,
 				# car bf's height added; x adjusted as per base game
-				player_anchor = Anchor(Vec2(1030, 592), Al.BOTTOM_LEFT, "stage"),
+				player_anchor = Anchor(Vec2(1030, 592), Al.BOTTOM_LEFT),
 				# (100, 100) + mom's dimensions (459, 613)
-				opponent_anchor = Anchor(Vec2(559, 713), Al.BOTTOM_RIGHT, "stage"),
+				opponent_anchor = Anchor(Vec2(559, 713), Al.BOTTOM_RIGHT),
 			),
 			*args,
 			**kwargs,
 		)
 
-		self.focus_targets[1].additional_offset = Vec2(-300, 0)
+		self.lyr_limo = self.create_layer(after=self.lyr_girlfriend)
 
 		self._allow_passing_car = False
 		self._car_sounds = [load_sound(f"shared/sounds/carPass{i}.ogg") for i in range(2)]
 
 		sky = self.create_object(
-			"sky", x=-120, y=-50, image=load_image("week4/images/limo/limoSunset.png")
+			self.lyr_background,
+			x = -120,
+			y = -50,
+			image = load_image("week4/images/limo/limoSunset.png"),
 		)
 		sky.scroll_factor = (0.1, 0.1)
 
-		bg_limo = self.create_object("limo_bg", x=-200, y=480)
+		bg_limo = self.create_object(self.lyr_background, x=-200, y=480)
 		bg_limo.scroll_factor = (0.4, 0.4)
 		bg_limo.frames = load_frames("week4/images/limo/bgLimo.xml")
 		bg_limo.animation.add_by_prefix("drive", "background limo pink")
@@ -71,18 +69,25 @@ class Week4Stage(BaseGameBaseStage):
 		# Original game spawns 5, but the last one is never seen so this works too
 		for i in range(4):
 			chad = self.create_object(
-				"henchmen", None, Henchman, x=(370*i) + 130, y=bg_limo.y - 400
+				self.lyr_background, None, Henchman, x=(370*i) + 130, y=bg_limo.y - 400
 			)
 			chad.scroll_factor = (0.4, 0.4)
 			self.dancers[chad] = DancerInfo(1, 0, False)
 
-		limo = self.create_object("limo", x=-120, y=550)
+		self.car = self.create_object(
+			self.lyr_background, image=load_image("week4/images/limo/fastCarLol.png")
+		)
+
+		limo = self.create_object(self.lyr_limo, x=-120, y=550)
 		limo.frames = load_frames("week4/images/limo/limoDrive.xml")
 		limo.animation.add_by_prefix("drive", "Limo stage")
 		limo.animation.play("drive")
 
-		self.car = self.create_object("car", image=load_image("week4/images/limo/fastCarLol.png"))
 		self._reset_car()
+
+	def init_basic_fnf_stuff(self) -> None:
+		super().init_basic_fnf_stuff()
+		self.focus_targets[1].additional_offset = Vec2(-300, 0)
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()

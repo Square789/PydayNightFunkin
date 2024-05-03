@@ -1,9 +1,8 @@
 
 import typing as t
 
-from pyday_night_funkin.core.graphics import PNFGroup
 from pyday_night_funkin.core.pnf_sprite import Movement, PNFSprite
-from pyday_night_funkin.core.scene_context import SceneContext
+from pyday_night_funkin.core.scene_context import CamSceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.utils import clamp
 
@@ -17,7 +16,8 @@ class PNFSpriteContainer(PNFSprite):
 	"""
 	Sprite container.
 	Tries to be similar to a FlxSpriteGroup by copying the Container
-	API, while not inheriting from it, but from PNFSprite instead.
+	API [# TODO yeah see how that one worked out lol, maybe fix later (TM)],
+	while not inheriting from it, but from PNFSprite instead.
 	Yep, this thing breaks the LSP.
 	It's important to note that the Container itself should never
 	have any sort of graphical representation, does not own an
@@ -30,7 +30,7 @@ class PNFSpriteContainer(PNFSprite):
 		sprites: t.Sequence[PNFSprite] = (),
 		x: "Numeric" = 0,
 		y: "Numeric" = 0,
-		context: t.Optional[SceneContext] = None,
+		context: t.Optional[CamSceneContext] = None,
 	) -> None:
 		"""
 		Initializes a PNFSpriteContainer with all given sprites added
@@ -46,18 +46,18 @@ class PNFSpriteContainer(PNFSprite):
 		self._opacity = 255
 		self._color = (255, 255, 255)
 
-		self._context = context or SceneContext()
+		self._context = context or CamSceneContext.create_empty()
 
 		self._sprites: t.Set[PNFSprite] = set()
 		for spr in sprites:
 			self.add(spr)
 
-	def set_context(self, parent_context: SceneContext) -> None:
-		self._context.batch = parent_context.batch
-		self._context.group = PNFGroup(parent_context.group)
-		self._context.cameras = parent_context.cameras
+	def set_cam_context(self, new_context: CamSceneContext) -> None:
+		self._context.batch = new_context.batch
+		self._context.group = new_context.group
+		self._context.cameras = new_context.cameras
 		for x in self._sprites:
-			x.set_context(self._context)
+			x.set_cam_context(self._context.inherit(0))
 
 	def add(self, sprite: PNFSprite) -> None:
 		"""
@@ -67,7 +67,7 @@ class PNFSpriteContainer(PNFSprite):
 		"""
 		sprite.position = (sprite.x + self._x, sprite.y + self._y)
 		self._sprites.add(sprite)
-		sprite.set_context(self._context)
+		sprite.set_cam_context(self._context.inherit(0))
 
 	def remove(self, sprite: PNFSprite) -> None:
 		"""
@@ -81,7 +81,7 @@ class PNFSpriteContainer(PNFSprite):
 		for x in self._sprites:
 			x.delete()
 		del self._sprites
-		self._context = None
+		del self._context
 
 	def update(self, dt: float) -> None:
 		for x in self._sprites:

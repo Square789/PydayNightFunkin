@@ -5,7 +5,6 @@ from random import choice, randint
 from pyglet.math import Vec2
 
 from pyday_night_funkin.core.asset_system import load_frames, load_sound
-from pyday_night_funkin.core.scene import OrderedLayer
 from pyday_night_funkin.scenes.in_game import Anchor, AnchorAlignment as Al, InGameSceneKernel
 from pyday_night_funkin.stages.common import BaseGameBaseStage
 
@@ -14,21 +13,12 @@ class Week2Stage(BaseGameBaseStage):
 	def __init__(self, kernel: InGameSceneKernel, *args, **kwargs) -> None:
 		super().__init__(
 			kernel.fill(
-				layers = (
-					"background", "girlfriend", "stage", OrderedLayer("ui_combo"), "ui_arrows",
-					"ui_notes", "ui0", "ui1", "ui2"
-				),
 				default_cam_zoom = 1.05,
-				opponent_anchor = Anchor(Vec2(664, 831), Al.BOTTOM_RIGHT, "stage"),
+				opponent_anchor = Anchor(Vec2(664, 831), Al.BOTTOM_RIGHT),
 			),
 			*args,
 			**kwargs,
 		)
-
-		# NOTE: This isolates behavior for them into this stage only with an id comp.
-		# Maybe make a CharacterData property for this?
-		if self.level_data.opponent_character == "skid_n_pump":
-			self.dancers[self.opponent].frequency = 1
 
 		self._next_lightning_thresh = 0
 		self._lightning_sounds = (
@@ -36,7 +26,7 @@ class Week2Stage(BaseGameBaseStage):
 			load_sound("shared/sounds/thunder_2.ogg"),
 		)
 
-		self.background = self.create_object("background", "main", x=-200, y=-100)
+		self.background = self.create_object(self.lyr_background, x=-200, y=-100)
 		self.background.frames = load_frames("week2/images/halloween_bg.xml")
 		# The masculine urge to steal the toothbrush of whoever names animations like that
 		self.background.animation.add_by_prefix("idle", "halloweem bg0")
@@ -44,6 +34,13 @@ class Week2Stage(BaseGameBaseStage):
 			"lightning", "halloweem bg lightning strike", 24, False
 		)
 		self.background.animation.play("idle")
+
+	def init_basic_fnf_stuff(self) -> None:
+		super().init_basic_fnf_stuff()
+		# NOTE: This isolates behavior for them into this stage only with an id comp.
+		# Maybe make a CharacterData property for this?
+		if self.level_data.opponent_character == "skid_n_pump":
+			self.dancers[self.opponent].frequency = 1
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
@@ -62,9 +59,7 @@ class Week2Stage(BaseGameBaseStage):
 class MonsterStage(Week2Stage):
 	def __init__(self, kernel: InGameSceneKernel, *args, **kwargs) -> None:
 		super().__init__(
-			kernel.fill(
-				opponent_anchor = Anchor(Vec2(481, 921), Al.BOTTOM_RIGHT, "stage"),
-			),
+			kernel.fill(opponent_anchor=Anchor(Vec2(481, 921), Al.BOTTOM_RIGHT)),
 			*args,
 			**kwargs,
 		)

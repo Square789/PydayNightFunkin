@@ -55,7 +55,11 @@ class _WeekChar(PNFSprite):
 
 class StoryMenuScene(scenes.MusicBeatScene):
 	def __init__(self, kernel: "SceneKernel") -> None:
-		super().__init__(kernel.fill(layers=("bg", "mid", "fg")))
+		super().__init__(kernel)
+
+		self.lyr_bg = self.create_layer()
+		self.lyr_mid = self.create_layer()
+		self.lyr_fg = self.create_layer()
 
 		self._weeks = self.game.weeks # same list, who cares, we're only reading it.
 		if not self._weeks:
@@ -65,9 +69,9 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		if not self.game.player.playing:
 			self.game.player.set(load_sound("preload/music/freakyMenu.ogg"))
 
-		black_bar = self.create_object("mid")
+		black_bar = self.create_object(self.lyr_mid)
 		black_bar.make_rect(to_rgba_tuple(0x000000FF), CNST.GAME_WIDTH, 56)
-		yellow_stripe = self.create_object("mid", x=0, y=56)
+		yellow_stripe = self.create_object(self.lyr_mid, x=0, y=56)
 		yellow_stripe.make_rect(to_rgba_tuple(0xF9CF51FF), CNST.GAME_WIDTH, 400)
 
 		# Week character setup (these get modified later)
@@ -75,7 +79,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		for i in range(3):
 			char_id = self._weeks[0].story_menu_chars[i]
 			spr = self.create_object(
-				"fg",
+				self.lyr_fg,
 				object_class = _WeekChar,
 				displayed_char = None if char_id == self._weeks[0].story_menu_chars[0] else char_id,
 				x = (CNST.GAME_WIDTH * 0.25 * (i + 1)) - 150 - (80 * (i == 1)),
@@ -93,7 +97,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.week_headers: t.List[_WeekHeader] = []
 		for i, week in enumerate(self._weeks):
 			header = self.create_object(
-				"bg",
+				self.lyr_bg,
 				object_class = _WeekHeader,
 				target_y = i,
 				y = yellow_stripe.y + yellow_stripe.height + 10,
@@ -109,7 +113,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		larrx = self.week_headers[0].x + self.week_headers[0].width + 10
 		larry = self.week_headers[0].y + 10
 
-		self.diff_arrow_left = self.create_object("bg", x=larrx, y=larry)
+		self.diff_arrow_left = self.create_object(self.lyr_bg, x=larrx, y=larry)
 		self.diff_arrow_left.frames = ui_tex
 		self.diff_arrow_left.animation.add_by_prefix("idle", "arrow left")
 		self.diff_arrow_left.animation.add_by_prefix("press", "arrow push left")
@@ -120,7 +124,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			Difficulty.NORMAL: (70, 0),
 			Difficulty.HARD: (20, 0),
 		}
-		self.difficulty_indicator = self.create_object("bg", x=larrx + 130, y=larry)
+		self.difficulty_indicator = self.create_object(self.lyr_bg, x=larrx + 130, y=larry)
 		self.difficulty_indicator.frames = ui_tex
 		for diff in Difficulty:
 			self.difficulty_indicator.animation.add_by_prefix(
@@ -129,7 +133,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.difficulty_indicator.animation.play("0")
 
 		self.diff_arrow_right = self.create_object(
-			"bg",
+			self.lyr_bg,
 			x=self.difficulty_indicator.x + self.difficulty_indicator.width + 50,
 			y=larry,
 		)
@@ -139,7 +143,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 		self.diff_arrow_right.animation.play("idle")
 
 		self.tracklist_txt = self.create_object(
-			"bg",
+			self.lyr_bg,
 			object_class = PNFText,
 			x = (CNST.GAME_WIDTH - 500) * .5 - CNST.GAME_WIDTH * .35,
 			y = yellow_stripe.height + 100,
@@ -152,7 +156,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			width = 500,
 		)
 		self.week_title_txt = self.create_object(
-			"fg",
+			self.lyr_fg,
 			object_class = PNFText,
 			x = CNST.GAME_WIDTH * 0.7,
 			y = 10,

@@ -8,9 +8,8 @@ from pyglet.math import Vec2
 
 from pyday_night_funkin.core.animation import AnimationController
 from pyday_night_funkin.core.animation.frames import AnimationFrame, FrameCollection
-from pyday_night_funkin.core.graphics import PNFGroup
 import pyday_night_funkin.core.graphics.state as s
-from pyday_night_funkin.core.scene_context import SceneContext
+from pyday_night_funkin.core.scene_context import CamSceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 from pyday_night_funkin.core.utils import get_error_tex, get_pixel_tex
@@ -216,11 +215,11 @@ class PNFSprite(WorldObject):
 		y: "Numeric" = 0,
 		blend_src = gl.GL_SRC_ALPHA,
 		blend_dest = gl.GL_ONE_MINUS_SRC_ALPHA,
-		context: t.Optional[SceneContext] = None,
 		usage: t.Literal["dynamic", "stream", "static"] = "dynamic",
 		subpixel: bool = False,
+		context: t.Optional[CamSceneContext] = None,
 	) -> None:
-		super().__init__(x, y)
+		super().__init__(x, y, CamSceneContext.create_empty() if context is None else context)
 
 		image = get_error_tex() if image is None else image
 
@@ -260,7 +259,6 @@ class PNFSprite(WorldObject):
 		self._blend_src = blend_src
 		self._blend_dest = blend_dest
 
-		self._context = SceneContext() if context is None else context.inherit()
 		self._create_interfacer()
 
 		self.image = image
@@ -276,7 +274,7 @@ class PNFSprite(WorldObject):
 			s.EnableStatePart(gl.GL_BLEND),
 			s.SeparateBlendFuncStatePart(
 				self._blend_src, self._blend_dest, gl.GL_ONE, self._blend_dest
-			)
+			),
 		)
 
 	def _create_interfacer(self):
@@ -310,33 +308,46 @@ class PNFSprite(WorldObject):
 		)
 		self._update_vertex_positions()
 
-	def set_context(self, parent_context: SceneContext) -> None:
+	def set_cam_context(self, new_context: CamSceneContext) -> None:
 		"""
-		This function actually doesn't set a context, it just
-		modifies the existing one and takes all necessary steps for
-		the sprite to be displayed in the new context.
+		Modifies the existing sprite context and takes all necessary
+		steps for the sprite to be displayed in the new context.
 		"""
-		new_batch = parent_context.batch
-		new_group = parent_context.group
-		new_cams = parent_context.cameras
-		old_batch = self._context.batch
+		new_batch = new_context.batch
+		new_group = new_context.group
+		new_cams = new_context.cameras
 		old_group = self._context.group
 		old_cams = self._context.cameras
 
-		change_batch = new_batch != old_batch
-		rebuild_group = new_cams != old_cams or new_group != old_group.parent
+		change_batch = new_batch is not self._context.batch
+		rebuild_group = new_group != old_group or new_cams != old_cams
 
 		new_states = None
 		if change_batch:
 			self._context.batch = new_batch
+
+		if new_group != old_group:
+			self._context.group = new_group
+
+		if new_cams != old_cams:
+			self._context.cameras = new_cams
 			new_states = {cam: self._build_gl_state(cam.ubo) for cam in new_cams}
 
-		if rebuild_group:
-			self._context.cameras = new_cams
-			self._context.group = PNFGroup(new_group)
+		if change_batch:
+			self._interfacer.change_batch(self._context.batch, self._context.group, new_states)
+		elif rebuild_group:
+			self._interfacer.change_group_and_or_gl_state(new_group, new_states)
 
-		if change_batch or rebuild_group:
-			self._interfacer.migrate(self._context.batch, self._context.group, new_states)
+	def set_context_cameras(self, new_cameras) -> None:
+		self._context.cameras = new_cameras
+		self._interfacer.change_group_and_or_gl_state(
+			None,
+			{cam: self._build_gl_state(cam.ubo) for cam in new_cameras},
+		)
+
+	def set_context_group(self, new_group) -> None:
+		self._context.group = new_group
+		self._interfacer.change_group_and_or_gl_state(new_group)
 
 	def start_movement(
 		self,
@@ -442,7 +453,8 @@ class PNFSprite(WorldObject):
 		prev_h, prev_w = self._texture.height, self._texture.width
 		if texture.id is not self._texture.id:
 			self._texture = texture
-			self._interfacer.set_states(
+			self._interfacer.change_group_and_or_gl_state(
+				None,
 				{camera: self._build_gl_state(camera.ubo) for camera in self._context.cameras}
 			)
 		else:

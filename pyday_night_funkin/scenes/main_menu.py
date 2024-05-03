@@ -15,23 +15,29 @@ if t.TYPE_CHECKING:
 
 class MainMenuScene(scenes.MusicBeatScene):
 	def __init__(self, kernel) -> None:
-		super().__init__(kernel.fill(layers=("bg", "bg_mag", "fg")))
+		super().__init__(kernel)
+
+		self.main_camera = self.create_camera()
+
+		self.lyr_bg = self.create_layer()
+		self.lyr_bg_flicker = self.create_layer()
+		self.lyr_fg = self.create_layer()
 
 		self.scroll_sound = load_sound("preload/sounds/scrollMenu.ogg")
 		self.confirm_sound = load_sound("preload/sounds/confirmMenu.ogg")
 
-		self.bg = self.create_object("bg", image=load_image("preload/images/menuBG.png"))
-		self.bg_magenta = self.create_object(
-			"bg_mag", image=load_image("preload/images/menuDesat.png")
+		self.bg = self.create_object(self.lyr_bg, image=load_image("preload/images/menuBG.png"))
+		self.bg_flicker = self.create_object(
+			self.lyr_bg_flicker, image=load_image("preload/images/menuDesat.png")
 		)
 
-		for bg in (self.bg, self.bg_magenta):
+		for bg in (self.bg, self.bg_flicker):
 			bg.scroll_factor = (0.0, 0.18)
 			bg.set_scale_and_repos(1.1)
 			bg.screen_center(CNST.GAME_DIMENSIONS)
 
-		self.bg_magenta.visible = False
-		self.bg_magenta.color = to_rgb_tuple(0xFD719BFF)
+		self.bg_flicker.visible = False
+		self.bg_flicker.color = to_rgb_tuple(0xFD719BFF)
 
 		menu_item_assets = load_frames("preload/images/main_menu.xml")
 		self._menu_items: t.List[t.Tuple[str, t.Callable[[], t.Any], "PNFSprite"]] = []
@@ -40,7 +46,7 @@ class MainMenuScene(scenes.MusicBeatScene):
 			("freeplay", self._sel_freeplay),
 			("options", self._sel_options),
 		)):
-			sprite = self.create_object("fg", y=60 + i*160)
+			sprite = self.create_object(self.lyr_fg, y=60 + i*160)
 			sprite.frames = menu_item_assets
 			sprite.animation.add_by_prefix("idle", f"{name} idle", 24, True)
 			sprite.animation.add_by_prefix("selected", f"{name} selected", 24, True)
@@ -59,14 +65,14 @@ class MainMenuScene(scenes.MusicBeatScene):
 		s.screen_center(CNST.GAME_DIMENSIONS, y=False)
 		if state:
 			self.sfx_ring.play(self.scroll_sound)
-			self.default_camera.set_follow_target(s.get_midpoint(), 0.06)
+			self.main_camera.set_follow_target(s.get_midpoint(), 0.06)
 
 	def _on_confirm(self, i: int, selected: bool) -> None:
 		_, callback, sprite = self._menu_items[i]
 		if selected:
 			self.sfx_ring.play(self.confirm_sound)
 			self.effects.flicker(sprite, 1.0, 0.06, False, lambda _, c=callback: c())
-			self.effects.flicker(self.bg_magenta, 1.1, 0.15, False)
+			self.effects.flicker(self.bg_flicker, 1.1, 0.15, False)
 		else:
 			self.effects.tween(
 				sprite,

@@ -6,7 +6,6 @@ from pyglet.math import Vec2
 
 from pyday_night_funkin.constants import GAME_WIDTH
 from pyday_night_funkin.core.asset_system import load_image, load_sound
-from pyday_night_funkin.core.scene import OrderedLayer
 from pyday_night_funkin.stages.common import BaseGameBaseStage
 from pyday_night_funkin.scenes.in_game import Anchor, AnchorAlignment as Al, InGameSceneKernel
 
@@ -18,13 +17,9 @@ class Week3Stage(BaseGameBaseStage):
 	def __init__(self, kernel: InGameSceneKernel, *args, **kwargs) -> None:
 		super().__init__(
 			kernel.fill(
-				layers = (
-					"sky", "city", "lights", OrderedLayer("train"), "girlfriend", "stage",
-					OrderedLayer("ui_combo"), "ui_arrows", "ui_notes", "ui0", "ui1", "ui2"
-				),
 				default_cam_zoom = 1.05,
 				# (100, 400) + pico's dimensions (736, 392)
-				opponent_anchor = Anchor(Vec2(836, 792), Al.BOTTOM_RIGHT, "stage"),
+				opponent_anchor = Anchor(Vec2(836, 792), Al.BOTTOM_RIGHT),
 			),
 			*args,
 			**kwargs,
@@ -46,34 +41,42 @@ class Week3Stage(BaseGameBaseStage):
 		self.train_sound_player = self.game.sound.create_player()
 
 		bg = self.create_object(
-			"sky", "main", x=-100, image=load_image("week3/images/philly/sky.png")
+			self.lyr_background, x=-100, image=load_image("week3/images/philly/sky.png")
 		)
 		bg.scroll_factor = (.1, .1)
 
 		city = self.create_object(
-			"city", "main", x=-10, image=load_image("week3/images/philly/city.png")
+			self.lyr_background, x=-10, image=load_image("week3/images/philly/city.png")
 		)
 		city.scroll_factor = (.3, .3)
 		city.set_scale_and_repos(.85)
 
 		for i in range(5):
 			light = self.create_object(
-				"lights", "main", x=city.x, image=load_image(f"week3/images/philly/win{i}.png")
+				self.lyr_background, x=city.x, image=load_image(f"week3/images/philly/win{i}.png")
 			)
 			light.scroll_factor = (.3, .3)
 			light.visible = False
 			light.set_scale_and_repos(.85)
 			self.city_lights.append(light)
 
-		sokagrafie = self.create_object(
-			"train", "main", x=-40, y=50, image=load_image("week3/images/philly/behindTrain.png")
+		archs_btw = self.create_object(
+			self.lyr_background,
+			x = -40,
+			y = 50,
+			image = load_image("week3/images/philly/behindTrain.png"),
 		)
 		self.train = self.create_object(
-			"train", "main", x=2000, y=360, image=load_image("week3/images/philly/train.png")
+			self.lyr_background,
+			x = 2000,
+			y = 360,
+			image = load_image("week3/images/philly/train.png"),
 		)
 		self.create_object(
-			"train", "main",
-			x=-40, y=sokagrafie.y, image=load_image("week3/images/philly/street.png")
+			self.lyr_background,
+			x = -40,
+			y = archs_btw.y,
+			image = load_image("week3/images/philly/street.png"),
 		)
 
 	def ready(self) -> None:

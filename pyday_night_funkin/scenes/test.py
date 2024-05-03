@@ -22,7 +22,11 @@ if t.TYPE_CHECKING:
 
 class TestScene(MusicBeatScene):
 	def __init__(self, kernel: "SceneKernel") -> None:
-		super().__init__(kernel.fill(layers=("ye_olde_layer", "fore"), cameras=("main",)))
+		super().__init__(kernel)
+
+		self.lyr_background = self.create_layer()
+		self.lyr_foreground = self.create_layer()
+		self.lyr_forestground = self.create_layer()
 
 		self.main_cam = self.create_camera()
 		self.second_cam = self.create_camera(
@@ -36,8 +40,8 @@ class TestScene(MusicBeatScene):
 		self.scroll_factor_tests = []
 		for i in range(5):
 			spr = self.create_object(
-				"ye_olde_layer",
-				"main",
+				self.lyr_background,
+				(self.main_cam, self.second_cam),
 				x = 800 + i*25,
 				y = 100,
 			)
@@ -45,7 +49,7 @@ class TestScene(MusicBeatScene):
 			spr.scroll_factor = (0.25 * i, 0.25 * i)
 			self.scroll_factor_tests.append(spr)
 
-		self.test_sprite = self.create_object("ye_olde_layer", "main", y=200)
+		self.test_sprite = self.create_object(self.lyr_background, y=200)
 		self.test_sprite.scale = 4
 
 		self.conductor.bpm = 123
@@ -54,7 +58,7 @@ class TestScene(MusicBeatScene):
 		self.arrows: t.List["PNFSprite"] = []
 		for i, note_type in enumerate(NoteType):
 			atlas_names = note_type.get_atlas_names()
-			s = self.create_object("ye_olde_layer", "main", x=300, y=50 + i*200)
+			s = self.create_object(self.lyr_background, x=300, y=50 + i*200)
 			s.frames = note_sprites
 			for anim_name, atlas_name in zip(("static", "pressed", "confirm"), atlas_names):
 				s.animation.add_by_prefix(anim_name, atlas_name, 24, False)
@@ -62,9 +66,10 @@ class TestScene(MusicBeatScene):
 			s.animation.play("static")
 			self.arrows.append(s)
 
+		self._bf_camera = 1
 		self.boyfriend = self.create_object(
-			"ye_olde_layer",
-			"main",
+			self.lyr_background,
+			self.main_cam,
 			Boyfriend,
 			self,
 			CharacterData(Boyfriend, "bf", "BOYFRIEND"),
@@ -79,8 +84,7 @@ class TestScene(MusicBeatScene):
 		# self.boyfriend.animation.play("ok")
 
 		self.label = self.create_object(
-			"ye_olde_layer",
-			"main",
+			self.lyr_background,
 			object_class = PNFText,
 			x = 10,
 			y = 200,
@@ -89,8 +93,61 @@ class TestScene(MusicBeatScene):
 			font_size = 12,
 		)
 
+		self.speen = self.create_object(self.lyr_background, x=256, y=386)
+		self.wheee = self.create_object(self.lyr_background, (self.main_cam, self.second_cam))
+		self.wheee.scale = 3.0
+		self._wheee()
+
+		self.instruction_label = self.create_object(
+			self.lyr_foreground,
+			object_class = PNFText,
+			x = 8,
+			y = 500,
+			text = (
+				"WASD+- to interact with the test sprite\n"
+				"Hold C to spam smaller test sprites\n"
+				"Hold P and WASDFMI to interact with Boyfriend\n"
+				"           O to jump through cameras\n"
+				"Arrow keys and ZX to move/zoom camera\n"
+				"Arrow keys will push down strumline arrows. Hold E to make them glow instead\n"
+				"JKL to interact with text\n"
+			),
+			multiline = True,
+			font_name = "Consolas",
+			font_size = 10,
+		)
+
+		self.live_reaction_w = self.create_object(self.lyr_background, self.second_cam)
+		self.live_reaction_r = self.create_object(self.lyr_foreground, self.second_cam)
+		self.live_reaction_t = self.create_object(
+			self.lyr_forestground,
+			self.second_cam,
+			PNFText,
+			text = "Live 2ND CAMERA reaction",
+			font_name = "Consolas",
+			font_size = 42,
+		)
+		self.live_reaction_w.make_rect(to_rgba_tuple(0xDFDFD3FF), 1280, 96)
+		self.live_reaction_r.make_rect(to_rgba_tuple(0xA4051EFF), 1260, 84)
+		self.live_reaction_r.position = (10, 6)
+		self.live_reaction_t.position = (18, 8)
+		self.live_reaction_t.scale_x = 1.5
+
+	def _wheee(self) -> None:
+		d = randint(30, 100) / 100
+		self.effects.tween(
+			self.wheee,
+			{"x": randint(0, 1260)},
+			d,
+			out_cubic,
+			lambda _: self.clock.schedule_once((lambda _: self._wheee()), randint(20, 50) / 50),
+		)
+		self.effects.tween(self.wheee, {"y": randint(0, 700)}, d, out_cubic)
+
 	def update(self, dt: float) -> None:
 		super().update(dt)
+
+		self.speen.rotation += 0.6
 
 		rkh = self.game.raw_key_handler
 
@@ -122,6 +179,14 @@ class TestScene(MusicBeatScene):
 				self.boyfriend.animation.play("miss_down")
 			if rkh[I]:
 				self.boyfriend.animation.play("idle")
+			if rkh.just_pressed(O):
+				c = []
+				self._bf_camera = (self._bf_camera + 1) % 4
+				if self._bf_camera & 1:
+					c.append(self.main_cam)
+				if self._bf_camera & 2:
+					c.append(self.second_cam)
+				self.boyfriend.set_context_cameras(c)
 
 		confirm = rkh[E]
 		for k, i in ((LEFT, 0), (DOWN, 1), (UP, 2), (RIGHT, 3)):
@@ -131,23 +196,22 @@ class TestScene(MusicBeatScene):
 			)
 
 		if rkh[C]:
-			sprite = self.create_object("fore", "main", x=randint(0, 100), y=randint(0, 100))
+			sprite = self.create_object(self.lyr_foreground, x=randint(0, 100), y=randint(0, 100))
 			sprite.start_movement(Vec2(10, 5))
 			self.effects.tween(sprite, {"opacity": 0}, 2.0, on_complete=self.remove)
 
-		main_cam = self.cameras["main"]
 		if rkh[LEFT]:
-			main_cam.x -= 10
+			self.main_cam.x -= 10
 		if rkh[RIGHT]:
-			main_cam.x += 10
+			self.main_cam.x += 10
 		if rkh[DOWN]:
-			main_cam.y += 10
+			self.main_cam.y += 10
 		if rkh[UP]:
-			main_cam.y -= 10
+			self.main_cam.y -= 10
 		if rkh[Z]:
-			main_cam.zoom += .01
+			self.main_cam.zoom += .01
 		if rkh[X]:
-			main_cam.zoom -= .01
+			self.main_cam.zoom -= .01
 
 		if rkh[J]:
 			self.label.rotation += .1

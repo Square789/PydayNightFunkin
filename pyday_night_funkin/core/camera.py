@@ -5,7 +5,6 @@ import typing as t
 from pyglet.gl import gl
 from pyglet.image import Framebuffer, Texture
 
-from pyday_night_funkin.constants import GAME_HEIGHT, GAME_WIDTH
 from pyday_night_funkin.core.graphics.vertexbuffer import BufferObject
 from pyday_night_funkin.core.graphics.shared import GL_TYPE_SIZES
 from pyday_night_funkin.core.shaders import ShaderContainer

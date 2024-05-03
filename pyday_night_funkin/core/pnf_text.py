@@ -21,7 +21,7 @@ from pyglet.font import load as load_font
 from pyglet.gl import gl
 
 from pyday_night_funkin.core.graphics import state
-from pyday_night_funkin.core.scene import SceneContext
+from pyday_night_funkin.core.scene_context import CamSceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 
@@ -158,11 +158,10 @@ class PNFText(WorldObject):
 		multiline: bool = False,
 		width: int = 0,
 		align: TextAlignment = TextAlignment.LEFT,
-		context: t.Optional[SceneContext] = None,
+		context: t.Optional[CamSceneContext] = None,
 	) -> None:
-		super().__init__(x, y)
+		super().__init__(x, y, CamSceneContext.create_empty() if context is None else context)
 
-		self._context = SceneContext() if context is None else context.inherit()
 		self._text = text
 		self._font_name = font_name
 		self._font_size = font_size
@@ -295,8 +294,8 @@ class PNFText(WorldObject):
 		)
 		self._width = max(l.width for l in self.lines)
 
-	def set_context(self, parent_context: "SceneContext") -> None:
-		self._context = parent_context.inherit()
+	def set_cam_context(self, new_context: CamSceneContext) -> None:
+		self._context = new_context
 		self._interfacer.delete()
 		self._create_interfacer()
 
@@ -369,7 +368,7 @@ class PNFText(WorldObject):
 	def scale_x(self, new_scale_x: "Numeric") -> None:
 		self._scale_x = new_scale_x
 		self._interfacer.set_data(
-			"scale", (self._scale * new_scale_x, self._scale * self._scale_y) * 4
+			"scale", (self._scale * new_scale_x, self._scale * self._scale_y) * self._interfacer.size
 		)
 
 	@property
@@ -380,7 +379,7 @@ class PNFText(WorldObject):
 	def scale_y(self, new_scale_y: "Numeric") -> None:
 		self._scale_y = new_scale_y
 		self._interfacer.set_data(
-			"scale", (self._scale * self._scale_x, self._scale * new_scale_y) * 4
+			"scale", (self._scale * self._scale_x, self._scale * new_scale_y) * self._interfacer.size
 		)
 
 	@property
@@ -392,7 +391,7 @@ class PNFText(WorldObject):
 		self._scale = new_scale
 		self._interfacer.set_data(
 			"scale",
-			(new_scale * self._scale_x, new_scale * self._scale_y) * 4,
+			(new_scale * self._scale_x, new_scale * self._scale_y) * self._interfacer.size,
 		)
 
 	# Scroll factor
@@ -404,7 +403,7 @@ class PNFText(WorldObject):
 	@scroll_factor.setter
 	def scroll_factor(self, new_sf: t.Tuple[float, float]) -> None:
 		self._scroll_factor = new_sf
-		self._interfacer.set_data("scroll_factor", new_sf * 4)
+		self._interfacer.set_data("scroll_factor", new_sf * self._interfacer.size)
 
 	# Width/Height
 

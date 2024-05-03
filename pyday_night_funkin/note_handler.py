@@ -10,6 +10,8 @@ from pyday_night_funkin.note import Note, NoteType, SustainStage
 
 if t.TYPE_CHECKING:
 	from pyglet.image import Texture
+	from pyday_night_funkin.core.camera import Camera
+	from pyday_night_funkin.core.scene_container import SceneLayer
 	from pyday_night_funkin.scenes import InGameScene
 
 # NOTE: Value extracted from width of first frame in the note spritesheet.
@@ -24,7 +26,7 @@ class AbstractNoteHandler:
 	def __init__(self, game_scene: "InGameScene", note_layer: str, note_camera: str) -> None:
 		raise NotImplementedError("Abstract class.")
 
-	def feed_song_data(self, song_data) -> None:
+	def set_song_data(self, song_data) -> None:
 		raise NotImplementedError("Abstract class.")
 
 	def update(self, dt: float) -> t.Any:
@@ -44,7 +46,12 @@ class NoteHandler(AbstractNoteHandler):
 		NoteType.RIGHT: Control.RIGHT,
 	}
 
-	def __init__(self, game_scene: "InGameScene", note_layer: str, note_camera: str) -> None:
+	def __init__(
+		self,
+		game_scene: "InGameScene",
+		note_layer: "SceneLayer",
+		note_camera: "Camera",
+	) -> None:
 		self.note_layer = note_layer
 		self.note_camera = note_camera
 
@@ -89,10 +96,10 @@ class NoteHandler(AbstractNoteHandler):
 			},
 		}
 
-	def feed_song_data(self, song_data) -> None:
+	def set_song_data(self, song_data) -> None:
 		"""
 		Supply the NoteHandler with song data which it needs to
-		generate the notes. This should happen before any calls
+		generate the notes. This must happen before any calls
 		to `update`!
 		"""
 		self.scroll_speed *= song_data["speed"]

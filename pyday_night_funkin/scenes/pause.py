@@ -18,14 +18,17 @@ class PauseScene(scenes.MusicBeatScene):
 	"""
 
 	def __init__(self, kernel: "SceneKernel") -> None:
-		super().__init__(kernel.fill(layers=("bg", "fg")))
+		super().__init__(kernel)
 
-		self.background = self.create_object("bg")
-		self.background.make_rect(to_rgba_tuple(CNST.BLACK), CNST.GAME_WIDTH, CNST.GAME_HEIGHT)
+		self.layer_bg = self.create_layer()
+		self.layer_fg = self.create_layer()
+
+		self.background = self.create_object(self.layer_bg)
+		self.background.make_rect(to_rgba_tuple(CNST.BLACK), *self.game.dimensions)
 		self.background.opacity = 0
 		self.effects.tween(self.background, {"opacity": 153}, 0.4, in_out_quart)
 
-		self.add(TextLine("<PAUSED>", bold=True, x=910, y=650), "fg")
+		self.add(TextLine("<PAUSED>", bold=True, x=910, y=650), self.layer_fg)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)

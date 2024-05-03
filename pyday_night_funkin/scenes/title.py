@@ -15,13 +15,20 @@ if t.TYPE_CHECKING:
 class TitleScene(scenes.MusicBeatScene):
 	def __init__(self, kernel: "SceneKernel") -> None:
 		super().__init__(kernel.fill(
-			layers = ("main", "title_text", "flash"),
 			# Checks out as in fnf only the title screen sets the default transitions, so it
 			# appears without one. Not that anyone would notice considering it's all full black
 			transition = (None, scenes.FNFTransitionScene),
 		))
 
-		self.gf = self.create_object("main", x=CNST.GAME_WIDTH * 0.4, y=CNST.GAME_HEIGHT * 0.07)
+		self.lyr_main = self.create_layer()
+		self.lyr_title_text = self.create_layer()
+		self.lyr_flash = self.create_layer()
+
+		self.gf = self.create_object(
+			self.lyr_main,
+			x = self.game.dimensions[0] * 0.4,
+			y = self.game.dimensions[1] * 0.07,
+		)
 		self.gf.frames = load_frames("preload/images/gfDanceTitle.xml")
 		self.gf.animation.add_by_indices("dance_left", "gfDance", [*range(15)], 24, False)
 		self.gf.animation.add_by_indices("dance_right", "gfDance", [*range(15, 30)], 24, False)
@@ -29,13 +36,15 @@ class TitleScene(scenes.MusicBeatScene):
 
 		self.gf_dance_left = False
 
-		self.logo = self.create_object("main", x=-150, y=-100)
+		self.logo = self.create_object(self.lyr_main, x=-150, y=-100)
 		self.logo.frames = load_frames("preload/images/logoBumpin.xml")
 		self.logo.animation.add_by_prefix("bump", "logo bumpin", 24, False)
 		self.logo.animation.play("bump")
 		self.logo.visible = False
 
-		self.title_text = self.create_object("title_text", x=100, y=CNST.GAME_HEIGHT * 0.8)
+		self.title_text = self.create_object(
+			self.lyr_title_text, x=100, y=self.game.dimensions[1] * 0.8
+		)
 		self.title_text.frames = load_frames("preload/images/titleEnter.xml")
 		self.title_text.animation.add_by_prefix("idle", "Press Enter to Begin", 24)
 		self.title_text.animation.add_by_prefix("enter", "ENTER PRESSED", 24)
@@ -43,7 +52,9 @@ class TitleScene(scenes.MusicBeatScene):
 		self.title_text.visible = False
 
 		ng_logo = load_image("preload/images/newgrounds_logo.png")
-		self.ng_logo = self.create_object("main", image=ng_logo, y=CNST.GAME_HEIGHT * 0.52)
+		self.ng_logo = self.create_object(
+			self.lyr_main, image=ng_logo, y=self.game.dimensions[1] * 0.52
+		)
 		self.ng_logo.set_scale_and_repos(.8)
 		self.ng_logo.screen_center(CNST.GAME_DIMENSIONS, y=False)
 		self.ng_logo.visible = False
@@ -95,9 +106,9 @@ class TitleScene(scenes.MusicBeatScene):
 				y = len(self.text_lines) * 60 + 200,
 			)
 
-			container.screen_center(CNST.GAME_DIMENSIONS, y=False)
+			container.screen_center(self.game.dimensions, y=False)
 			self.text_lines.append(container)
-			self.add(container, "title_text")
+			self.add(container, self.lyr_title_text)
 
 	def _delete_text(self):
 		for container in self.text_lines:

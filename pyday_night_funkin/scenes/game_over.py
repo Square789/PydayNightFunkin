@@ -13,9 +13,14 @@ if t.TYPE_CHECKING:
 
 class GameOverScene(scenes.MusicBeatScene):
 	def __init__(self, kernel: "SceneKernel", bf: "PNFSprite") -> None:
-		super().__init__(kernel.fill(cameras=("main",), layers=("bg", "main")))
+		super().__init__(kernel)
+
 		self.update_passthrough = False
 		self.draw_passthrough = False
+
+		self.lyr_main = self.create_layer()
+
+		self.main_camera = self.create_camera()
 
 		self.conductor.bpm = 100
 
@@ -26,7 +31,7 @@ class GameOverScene(scenes.MusicBeatScene):
 
 		self.bf = bf
 
-		self.add(bf, "main", "main")
+		self.add(bf, self.lyr_main, self.main_camera)
 		bf.animation.play("game_over_ini")
 		self._camera_locked_on = False
 
@@ -53,7 +58,7 @@ class GameOverScene(scenes.MusicBeatScene):
 			self.bf.animation.get_current_frame_index() >= 12
 		):
 			self._camera_locked_on = True
-			self.cameras["main"].set_follow_target(self.bf.get_midpoint(), 0.01)
+			self.main_camera.set_follow_target(self.bf.get_midpoint(), 0.01)
 
 		if (
 			self.bf.animation.current_name == "game_over_ini" and

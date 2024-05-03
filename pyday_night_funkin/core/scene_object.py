@@ -3,39 +3,81 @@ import typing as t
 
 from pyglet.math import Vec2
 
-from pyday_night_funkin.core.scene_context import SceneContext
+from pyday_night_funkin.core.camera import Camera
+from pyday_night_funkin.core.graphics import PNFGroup
+from pyday_night_funkin.core.scene_context import CamSceneContext, SceneContext
 
 if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.camera import SimpleCamera
 	from pyday_night_funkin.core.types import CoordIndexable, Numeric
 
 
-class SceneObject:
+SceneContextT = t.TypeVar("SceneContextT", bound=SceneContext)
+
+
+# So, SceneObjects have a SceneContext. There's two scene context types.
+# The base one and the CamSceneContext which comes with cameras.
+# Each SceneObject subtype has one of these contexts, however have both setters.
+#
+# SceneObject
+# Container
+# Scene       set_cam_context -> set_context.
+# These types do not have a graphical representation, no cameras, and reject cameras softly
+# by just pretending the CamSceneContext is a standard SceneContext
+#
+# WorldObject
+# PNFSprite
+# PNFText
+# PNFSpriteContainer...
+# These types do have graphical representation (or at least in the sprite container's case
+# propagate it,) so their set_context actually calls into set_cam_context with their current
+# context's cameras applied.
+
+# NOTE: Only way i could figure out how to have ``SceneObject._context`` resolve to a SceneContext
+# and ``WorldObject._context`` to a CamSceneContext.
+# In order to not run Generic.__new__ all the time, perform TYPE_CHECKING awfulness.
+# Since this only has to be repeated for ``WorldObject`` and ``Container``, it's an okay
+# micro-optimization probably.
+
+class SceneObject(t.Generic[SceneContextT] if t.TYPE_CHECKING else object):
 	"""
 	Standard object that can be registered to a scene hierarchy.
 	Similar to FlxBasic.
 	"""
 
-	_context = None
+	def __init__(self, context: SceneContextT) -> None:
+		self._context: SceneContextT = context
 
-	def __init__(self) -> None:
-		raise NotImplementedError("You shouldn't init a SceneObject directly!")
+	def set_context(self, new_context: SceneContext) -> None:
+		"""
+		Sets this ``SceneObject``'s ``SceneContext``.
+		Typically called when it is added to a scene/its parent's
+		context undergoes a radical change.
 
-	def set_context(self, parent_context: SceneContext) -> None:
+		If this SceneObject is a drawable, this method must add it to
+		the given context's batch.
 		"""
-		Called when object is added to a scene/the parent context
-		changes.
-		Should set up group hierarchy/context based on the given parent
-		context's batch and group.
+		raise NotImplementedError()
+
+	def set_cam_context(self, new_cam_context: CamSceneContext) -> None:
+		raise NotImplementedError()
+
+	def set_context_group(self, new_parent: t.Optional[PNFGroup]) -> None:
 		"""
+		Modifies only a ``SceneObject``'s context's group.
+
+		Default implementation generates an entirely new ``SceneContext``
+		and passes that to ``set_context``.
+		"""
+		self.set_context(SceneContext(self._context.batch, new_parent))
 
 	def invalidate_context(self) -> None:
 		"""
-		Called when object is removed from a scene.
+		Called when this ``SceneObject`` is removed from a scene.
 		Should clear all possible references to the context.
 		By default, will set the context to an empty context.
 		"""
-		self.set_context(SceneContext())
+		self.set_context(SceneContext.create_empty())
 
 	def delete(self) -> None:
 		"""
@@ -54,13 +96,20 @@ class SceneObject:
 		"""
 
 
-class WorldObject(SceneObject):
+class WorldObject(SceneObject[CamSceneContext] if t.TYPE_CHECKING else SceneObject):
 	"""
 	A scene object occupying two-dimensional geometry, intended to be
 	drawn.
 	"""
 
-	def __init__(self, x: "Numeric" = 0, y: "Numeric" = 0) -> None:
+	def __init__(
+		self,
+		x: "Numeric" = 0,
+		y: "Numeric" = 0,
+		context: t.Optional[CamSceneContext] = None,
+	) -> None:
+		super().__init__(CamSceneContext.create_empty() if context is None else context)
+
 		self._x = x
 		self._y = y
 		self._width: "Numeric" = 0
@@ -70,6 +119,38 @@ class WorldObject(SceneObject):
 		self._scale_x = 1.0
 		self._scale_y = 1.0
 		self._scroll_factor = (1.0, 1.0)
+
+	def set_context(self, new_context: SceneContext) -> None:
+		self.set_cam_context(
+			CamSceneContext(new_context.batch, new_context.group, self._context.cameras)
+		)
+
+	def set_cam_context(self, new_context: CamSceneContext) -> None:
+		"""
+		Sets this ``WorldObject``'s ``CamSceneContext``.
+
+		Prefer this method for ``WorldObject``s.
+		On those, ``set_context`` creates a new ``CamSceneContext`` with
+		the current cameras and then calls into this method, which is a bit
+		wasteful!
+		"""
+		raise NotImplementedError()
+
+	def set_context_cameras(self, new_cameras: t.Union[Camera, t.Iterable[Camera]]) -> None:
+		"""
+		Modifies only a ``WorldObject``'s context's cameras.
+
+		Default implementation generates an entirely new ``CamSceneContext``
+		and passes that to ``set_cam_context``.
+		"""
+		if isinstance(new_cameras, Camera):
+			cameras = (new_cameras,)
+		else:
+			cameras = new_cameras
+
+		self.set_cam_context(
+			CamSceneContext(self._context.batch, self._context.group, cameras),
+		)
 
 	# NOTE: I would add a bunch of x, y, position, rotation etc. properties
 	# here. Unfortunately, when it comes to inheriting properties is where
@@ -117,44 +198,3 @@ class WorldObject(SceneObject):
 		shaders and rotation.
 		"""
 		return Vec2(self.x - (cam.x * cam.zoom), self.y - (cam.y * cam.zoom))
-
-
-class Container(SceneObject):
-	"""
-	A glorified list wrapper that contains multiple SceneObjects
-	and can apply operations to them.
-	A container should never have any sort of graphical
-	representation, it only serves as a building block of the scene
-	hierarchy.
-	"""
-
-	def __init__(self) -> None:
-		self._members: t.List[SceneObject] = list()
-
-	def add(self, object: SceneObject):
-		"""
-		Add something to this container.
-		"""
-		self._members.append(object)
-		if self._context is not None:
-			object.set_context(self._context)
-
-	def remove(self, object: SceneObject):
-		"""
-		Remove something from this container.
-		"""
-		self._members.remove(object)
-		object.invalidate_context()
-
-	def set_context(self, parent_context: SceneContext) -> None:
-		self._context = parent_context.inherit()
-		for m in self._members:
-			m.set_context(self._context)
-
-	def delete(self) -> None:
-		for m in self._members:
-			m.delete()
-
-	def update(self, dt: float) -> None:
-		for m in self._members:
-			m.update(dt)

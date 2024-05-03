@@ -9,9 +9,9 @@ from pyglet import gl
 from pyglet.window.key import LEFT, UP, DOWN, RIGHT, X, Z
 
 import pyday_night_funkin.core.graphics.state as st
-from pyday_night_funkin.core.scene import BaseScene, OrderedLayer, SceneKernel
-from pyday_night_funkin.core.scene_context import SceneContext
-from pyday_night_funkin.core.scene_object import SceneObject
+from pyday_night_funkin.core.scene import BaseScene, SceneKernel
+from pyday_night_funkin.core.scene_context import CamSceneContext
+from pyday_night_funkin.core.scene_object import WorldObject
 from pyday_night_funkin.core.shaders import ShaderContainer
 
 if t.TYPE_CHECKING:
@@ -73,19 +73,18 @@ void main() {
 
 """
 
-class Triangle(SceneObject):
+class Triangle(WorldObject):
 	shader_container = ShaderContainer(vertex_shader, fragment_shader)
 
 	def __init__(self, context, x, y) -> None:
-		self._x = x
-		self._y = y
-
-		self._context = context.inherit()
+		super().__init__(x, y, context)
 
 		self._create_interfacer()
 
-	def set_context(self, parent_context: SceneContext) -> None:
-		self._context = parent_context.inherit()
+	def set_cam_context(self, new_cam_context: CamSceneContext) -> None:
+		self._context = new_cam_context
+		self._interfacer.delete()
+		self._create_interfacer()
 
 	def _build_gl_state(self, cubo):
 		return st.GLState.from_state_parts(
@@ -130,24 +129,26 @@ class Triangle(SceneObject):
 
 class TriangleScene(BaseScene):
 	def __init__(self, kernel: "SceneKernel") -> None:
-		super().__init__(kernel.fill(layers=(OrderedLayer("main"),)))
+		super().__init__(kernel)
 
-		self.tri0 = Triangle(self.get_context("main"), 0, 0.7)
-		self.tri1 = Triangle(self.get_context("main"), -20, 60)
-		self.tri2 = Triangle(self.get_context("main"), 200, 100)
+		self.camera = self.create_camera()
+
+		self.tri0 = Triangle(self.get_context(), 0, 0.7)
+		self.tri1 = Triangle(self.get_context(), -20, 60)
+		self.tri2 = self.create_object(object_class=Triangle, x=200, y=100)
 
 	def update(self, dt: float) -> None:
 		super().update(dt)
 
 		if self.game.raw_key_handler[LEFT]:
-			self.default_camera.x -= 10
+			self.camera.x -= 10
 		if self.game.raw_key_handler[RIGHT]:
-			self.default_camera.x += 10
+			self.camera.x += 10
 		if self.game.raw_key_handler[DOWN]:
-			self.default_camera.y += 10
+			self.camera.y += 10
 		if self.game.raw_key_handler[UP]:
-			self.default_camera.y -= 10
+			self.camera.y -= 10
 		if self.game.raw_key_handler[Z]:
-			self.default_camera.zoom += .01
+			self.camera.zoom += .01
 		if self.game.raw_key_handler[X]:
-			self.default_camera.zoom -= .01
+			self.camera.zoom -= .01

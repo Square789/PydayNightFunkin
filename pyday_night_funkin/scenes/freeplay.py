@@ -26,17 +26,21 @@ class StickySprite(PNFSprite):
 
 class FreeplayScene(scenes.MusicBeatScene):
 	def __init__(self, kernel) -> None:
-		super().__init__(kernel.fill(layers=("bg", "fg", "textfg")))
+		super().__init__(kernel)
+
+		self.lyr_bg = self.create_layer()
+		self.lyr_fg = self.create_layer()
+		self.lyr_text_fg = self.create_layer()
 
 		if not self.game.player.playing:
 			self.game.player.set(load_sound("preload/music/freakyMenu.ogg"))
 
-		self.bg = self.create_object("bg", image=load_image("preload/images/menuBGBlue.png"))
+		self.bg = self.create_object(self.lyr_bg, image=load_image("preload/images/menuBGBlue.png"))
 
 		self.score_text = self.create_object(
-			"textfg",
+			self.lyr_text_fg,
 			object_class = PNFText,
-			x = CNST.GAME_WIDTH * .7,
+			x = self.game.dimensions[0] * .7,
 			y = 5,
 			font_name = "VCR OSD Mono",
 			font_size = 32,
@@ -44,7 +48,7 @@ class FreeplayScene(scenes.MusicBeatScene):
 			align = TextAlignment.RIGHT,
 		)
 		self.diff_text = self.create_object(
-			"textfg",
+			self.lyr_text_fg,
 			object_class = PNFText,
 			x = self.score_text.x,
 			y = self.score_text.y + 36,
@@ -52,8 +56,8 @@ class FreeplayScene(scenes.MusicBeatScene):
 			font_size = 24,
 		)
 
-		score_bg = self.create_object("fg", x=self.score_text.x - 6, y=0)
-		score_bg.make_rect(to_rgba_tuple(CNST.BLACK), CNST.GAME_WIDTH * .35, 66)
+		score_bg = self.create_object(self.lyr_fg, x=self.score_text.x - 6, y=0)
+		score_bg.make_rect(to_rgba_tuple(CNST.BLACK), self.game.dimensions[0] * .35, 66)
 		score_bg.opacity = 153
 
 		self.displayed_songs = [lvl for week in self.game.weeks for lvl in week.levels]
@@ -75,11 +79,11 @@ class FreeplayScene(scenes.MusicBeatScene):
 			)
 			m.opacity = 153
 			self._text_lines.append(m)
-			self.add(m, "fg")
+			self.add(m, self.lyr_fg)
 
 			opp_icon = self.game.character_registry[lvl.opponent_character].icon_name
 			self.create_object(
-				"fg",
+				self.lyr_fg,
 				object_class = StickySprite,
 				stickee = m,
 				image = fetch_character_icons(opp_icon)[0],

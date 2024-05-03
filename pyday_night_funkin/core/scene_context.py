@@ -1,5 +1,6 @@
 
 import typing as t
+from pyday_night_funkin.core.camera import SimpleCamera
 
 from pyday_night_funkin.core.graphics import PNFBatch, PNFGroup, get_default_batch
 
@@ -9,48 +10,48 @@ if t.TYPE_CHECKING:
 
 class SceneContext:
 	"""
-	A scene context, which is fancy talk for a batch, a group and
-	cameras in a slotted container class. Basically a bundling class
-	for the things needed to interact with the graphics backend.
+	A scene contex is fancy talk for a batch and a group in a slotted
+	container class.
+	Basically a bundling class for the things needed to interact with
+	the graphics backend.
 
-	This thing is in a way passed down the entire hierarchy of a
-	scene. Each drawable/container requires its own group, (which
-	is usually just created as a child group to the group of the
-	received context), but the other two are references to the same
-	object.
+	See ``CamSceneContext`` which additionally contains cameras to
+	draw to.
+
+	Context is passed down the entire hierarchy of a scene.
+	Each drawable/container requires its own group, (which is usually
+	just created as a child group to the group of the received context),
+	but the others are usually references to the same object.
 	"""
 
-	__slots__ = ("batch", "cameras", "group")
+	# TODO docstrings all wrong fix once stableee
+
+	__slots__ = ("batch", "group")
 
 	def __init__(
 		self,
-		batch: t.Optional["PNFBatch"] = None,
-		group: t.Optional["PNFGroup"] = None,
-		cameras: t.Optional[t.Iterable["SimpleCamera"]] = None,
+		batch: "PNFBatch",
+		group: t.Optional["PNFGroup"],
 	) -> None:
 		"""
 		Creates a new context.
-		If no `batch` is given, it will be set to be the default batch.
-		If no `group` is given, it will be set to an empty group with
-		no parent.
-		If no `cameras` are given, will be set to no camera at all.
 		"""
 
-		self.batch = batch or get_default_batch()
+		self.batch = batch
 		"""The scene's batch."""
 
-		self.group = group or PNFGroup()
+		self.group = group
 		"""Group that defines a position/order in the scene tree."""
 
-		self.cameras = tuple(cameras or ())
+	@classmethod
+	def create_empty(cls):
 		"""
-		The cameras the owning drawable should be drawn with.
-		I am not happy with how these are in here since they don't
-		really have much to do with the scene, but hey, nothing is
-		perfect.
+		Creates an empty SceneContext using the default batch and an
+		empty group.
 		"""
+		return cls(get_default_batch(), PNFGroup())
 
-	def inherit(self) -> "SceneContext":
+	def inherit(self, order: int = 0) -> "SceneContext":
 		"""
 		Returns a new context which shares this context's batch and
 		cameras and has a new PNFGroup whose parent is this context's
@@ -58,4 +59,36 @@ class SceneContext:
 		Convenience method, as this has to be done in drawable setup
 		relatively often.
 		"""
-		return SceneContext(self.batch, PNFGroup(self.group), self.cameras)
+		return SceneContext(self.batch, PNFGroup(self.group, order))
+
+
+class CamSceneContext(SceneContext):
+	"""
+	Scene context subclass which includes cameras.
+
+	This subclass is required to be passed to drawables which use the cameras
+	to specify which cameras they want to be drawn to. It is not required by
+	container-like ``SceneObject``s that lack graphical representation.
+	"""
+
+	__slots__ = ("cameras",)
+
+	def __init__(
+		self,
+		batch: PNFBatch,
+		group: t.Optional[PNFGroup],
+		cameras: t.Iterable[SimpleCamera],
+	) -> None:
+		super().__init__(batch, group)
+
+		self.cameras = tuple(cameras)
+		"""
+		The cameras the owning drawable should be drawn with.
+		"""
+
+	@classmethod
+	def create_empty(cls):
+		return cls(get_default_batch(), PNFGroup(), ())
+
+	def inherit(self, order: int = 0) -> "CamSceneContext":
+		return CamSceneContext(self.batch, PNFGroup(self.group, order), self.cameras)

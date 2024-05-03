@@ -12,6 +12,8 @@ from pyday_night_funkin.health_bar import HealthBar
 from pyday_night_funkin.note import NoteType, Rating
 
 if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.camera import Camera
+	from pyday_night_funkin.core.scene import SceneLayer
 	from pyday_night_funkin.core.pnf_sprite import PNFSprite
 	from pyday_night_funkin.scenes import InGameScene
 
@@ -21,21 +23,15 @@ class HUD:
 	HUD class containing a bunch of HUD sprites and functions
 	to modify them.
 	"""
-	def __init__(
-		self,
-		scene: "InGameScene",
-		camera: str,
-		layer: str,
-		arrow_layer: str,
-		health_bar_layers: t.Tuple[str, str, str],
-		combo_layer: str,
-	) -> None:
+	def __init__(self, scene: "InGameScene", camera: "Camera", layer: "SceneLayer") -> None:
 		self._scene = scene
 		self.camera = camera
 		self.layer = layer
-		self.arrow_layer = arrow_layer
-		self.health_bar_layers = health_bar_layers
-		self.combo_layer = combo_layer
+
+		self.lyr_combo = scene.create_layer(True, layer)
+		self.lyr_arrows = scene.create_layer(False, layer)
+		self.lyr_notes = scene.create_layer(False, layer)
+		self.lyr_health_bar = scene.create_layer(True, layer)
 
 		self.countdown_textures = (
 			None,
@@ -65,7 +61,7 @@ class HUD:
 		for i, note_type in product((0, 1), NoteType):
 			atlas_names = note_type.get_atlas_names()
 			arrow_sprite = self._scene.create_object(
-				self.arrow_layer,
+				self.lyr_arrows,
 				self.camera,
 				x = 50 + (CNST.GAME_WIDTH // 2) * i + (note_type.get_order() * CNST.NOTE_WIDTH),
 				y = CNST.STATIC_ARROW_Y,
@@ -87,11 +83,11 @@ class HUD:
 			self.camera,
 			char_reg[self._scene.level_data.opponent_character].icon_name,
 			char_reg[self._scene.level_data.player_character].icon_name,
-			self.health_bar_layers,
+			self.lyr_health_bar,
 		)
 
 		self.score_text = scene.create_object(
-			self.combo_layer,
+			self.lyr_combo,
 			self.camera,
 			PNFText,
 			x = self.health_bar.background.x + self.health_bar.background.width - 190,
@@ -101,6 +97,10 @@ class HUD:
 			font_name = "VCR OSD Mono",
 			align = TextAlignment.RIGHT,
 		)
+
+	def get_note_layer(self) -> "SceneLayer":
+		# TODO ducttape method, will try and separate processing/drawing later
+		return self.lyr_notes
 
 	def update_health(self, health: float) -> None:
 		self.health_bar.update(health)
@@ -116,7 +116,7 @@ class HUD:
 		scene = self._scene
 
 		combo_sprite = scene.create_object(
-			self.combo_layer,
+			self.lyr_combo,
 			self.camera,
 			image = self.note_rating_textures[rating],
 		)
@@ -140,7 +140,7 @@ class HUD:
 
 		for i, digit in enumerate(f"{combo:>03}"):
 			sprite = scene.create_object(
-				self.combo_layer,
+				self.lyr_combo,
 				self.camera,
 				image = self.number_textures[int(digit)],
 			)
@@ -169,7 +169,7 @@ class HUD:
 		scene = self._scene
 		tex = self.countdown_textures[countdown_stage]
 		if tex is not None:
-			sprite = scene.create_object(self.combo_layer, self.camera, image=tex)
+			sprite = scene.create_object(self.lyr_combo, self.camera, image=tex)
 			sprite.screen_center(CNST.GAME_DIMENSIONS)
 			scene.effects.tween(
 				sprite,
