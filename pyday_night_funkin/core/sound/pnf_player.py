@@ -498,7 +498,7 @@ class PNFPlayer(EventDispatcher):
 
 	# PNF additions
 
-	def set(self, source: t.Union[Source, t.Iterable[Source]]) -> None:
+	def set(self, source: t.Union[Source, t.Iterable[Source]], play: bool = True) -> None:
 		"""
 		Stops all running playbacks, clears the playlist and
 		immediatedly causes the player to start playing the newly
@@ -506,7 +506,8 @@ class PNFPlayer(EventDispatcher):
 		"""
 		self.stop()
 		self.queue(source)
-		self._set_play_desire(True)
+		if play:
+			self._set_play_desire(True)
 
 	def stop(self) -> None:
 		"""
