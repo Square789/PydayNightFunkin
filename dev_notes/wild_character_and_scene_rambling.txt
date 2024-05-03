@@ -44,9 +44,9 @@ blammed            770,450    400,130    100,400^   600,0^    -100,-100   150,-1
 satin-panties     1030,230'   400,130    100,100              -400,-100'  150,-100   .9
 high              1030,230'   400,130    100,100              -400,-100'  150,-100   .9
 milf              1030,230'   400,130    100,100              -400,-100'  150,-100   .9
-cocoa              970,450'   400,130   -400,400^             -100,-300'  150,-100   .8!
-eggnog             970,450'   400,130   -400,400^             -100,-300'  150,-100   .8!
-winter-horrorland 1090,450'   400,130    100,150'             -400,-100   150,-100  1.05!
+cocoa              970,450'   400,130   -400,100^             -100,-300'  150,-100   .8!
+eggnog             970,450'   400,130   -400,100^             -100,-300'  150,-100   .8!
+winter-horrorland 1090,450'   400,130    100,150'             -100,-100   150,-100  1.05!
 senpai             970,670'   580,430'   250,510^  300,0$^    -300,-300'  -430,100^ 1.05!
 roses              970,670'   580,430'   250,510^  300,0$^    -300,-300'  -430,100^ 1.05!
 thorns             970,670'   580,430'   -50,200^  300,0$^    -300,-300'  -430,100^ 1.05!
@@ -323,7 +323,7 @@ Decision needs to be made:
   it is unlikely anyone was gonna use that anyways.
 Decision made: get_kernel. I find it pretty annoying to create a lambda every time you want to
 create a scene; though you could certainly argue `get_kernel` is just as weird.
- 
+
 Decision needs to be made:
  Have the SceneKernel call `setup` in `create_scene` for a two-stage setup?
  Pros:
