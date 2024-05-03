@@ -17,6 +17,7 @@
   - *opengl-registry* ([Github](https://github.com/moderngl/opengl-registry))
 
 ## Why would you want this?
+ [Good question](https://i.kym-cdn.com/entries/icons/original/000/029/317/shrek.jpg).
  You probably don't! Here's some pros and cons:
 ### Pros and Features
  - **Starts quickly**: Changes to Python files are visible far more quickly than changes
@@ -24,11 +25,13 @@
  - **Significantly cleaner code** than most engines i have seen so far due to an attempt at
    documentation and logically separating stages instead of mashing them together into a
    5000 line long file.
+ - **Threaded loading**: Valuable seconds of lifetime saved!
  - **Smart\* asset eviction**: Most FNF engines' memory management is "wipe all unused assets
    on PlayState creation". PNF unloads unused assets once a memory usage limit is overstepped,
    starting with a hybrid of least-recently used and largest.  
    This leads to lower loading times between songs that reuse large backgrounds/character
-   sheets and tries to strike an okay balance between memory usage and staring at a black screen.  
+   sheets. Probably strikes a good balance between low memory usage and little time spent
+   staring at a black screen.  
    *(\* about as smart as a paperclip)*
  - **Homegrown batch implementation**: Fancy sprite batching that deals well with strict
    ordering and gets by with a small amount of draw calls. Strumline, arrows and combo sprites
@@ -37,9 +40,9 @@
  - **Runs slowly**: due to Python's interpreted nature, PNF runs ~20-50 times slower than
    FNF's compiled C++ code and ~1-4 times slower than html5 builds, but still fast enough to
    not scrape the fabled 16ms 60FPS ceiling.
- - **Does not run in a web browser**: The OpenGL variants that can be used in a browser are
-   quite different from what i get, and pyglet does not target them. PNF is intended to be run
-   directly on your system.
+ - **Does not run in a web browser**: The OpenGL variant used in browsers is quite different
+   and running Python in a browser is something i don't want to deal with.  
+   PNF is a desktop program to be run directly on your system.
  - This is a **complete hobby project**. In development, rapidly breaks stuff and so on.
  - **Still lacks many many things**: Save data, options, a chart editor (not planned
    tbh, use another engine's), any kind of comprehensive modding frontend, an accuracy system and
