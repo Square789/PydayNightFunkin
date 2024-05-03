@@ -372,6 +372,8 @@ class GirlfriendCar(HairLoopMixin, FlipIdleCharacter):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
+		self.scroll_factor = (0.95, 0.95)
+
 		self.load_frames()
 		self.load_offsets()
 
