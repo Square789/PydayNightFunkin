@@ -102,9 +102,9 @@ class FNFTransitionScene(TransitionScene):
 		self.gradient.recalculate_positioning()
 		self.gradient.scroll_factor = (0.0, 0.0)
 
-		time = 1.0 if is_in else 0.7
+		time = 0.5 if is_in else 0.35
 		if self.game.debug:
-			time *= 0.3
+			time *= 0.75
 
 		self.effects.tween(
 			self.gradient,
