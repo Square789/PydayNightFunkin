@@ -102,7 +102,7 @@ class TestScene(MusicBeatScene):
 			self.lyr_foreground,
 			object_class = PNFText,
 			x = 8,
-			y = 500,
+			y = 600,
 			text = (
 				"WASD+- to interact with the test sprite\n"
 				"Hold C to spam smaller test sprites\n"
