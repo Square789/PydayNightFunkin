@@ -339,7 +339,7 @@ class PNFSprite(WorldObject):
 			self._interfacer.change_group_and_or_gl_state(new_group, new_states)
 
 	def set_context_cameras(self, new_cameras) -> None:
-		self._context.cameras = new_cameras
+		self._context.cameras = tuple(new_cameras)
 		self._interfacer.change_group_and_or_gl_state(
 			None,
 			{cam: self._build_gl_state(cam.ubo) for cam in new_cameras},

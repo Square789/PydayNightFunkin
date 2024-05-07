@@ -136,20 +136,15 @@ class WorldObject(SceneObject[CamSceneContext] if t.TYPE_CHECKING else SceneObje
 		"""
 		raise NotImplementedError()
 
-	def set_context_cameras(self, new_cameras: t.Union[Camera, t.Iterable[Camera]]) -> None:
+	def set_context_cameras(self, new_cameras: t.Sequence[Camera]) -> None:
 		"""
 		Modifies only a ``WorldObject``'s context's cameras.
 
 		Default implementation generates an entirely new ``CamSceneContext``
 		and passes that to ``set_cam_context``.
 		"""
-		if isinstance(new_cameras, Camera):
-			cameras = (new_cameras,)
-		else:
-			cameras = new_cameras
-
 		self.set_cam_context(
-			CamSceneContext(self._context.batch, self._context.group, cameras),
+			CamSceneContext(self._context.batch, self._context.group, new_cameras),
 		)
 
 	# NOTE: I would add a bunch of x, y, position, rotation etc. properties
