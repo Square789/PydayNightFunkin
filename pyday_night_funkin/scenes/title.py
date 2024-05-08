@@ -102,7 +102,7 @@ class TitleScene(scenes.MusicBeatScene):
 			container = TextLine(
 				line,
 				bold = True,
-				color = (255,) * 3,
+				color = (255, 255, 255),
 				y = len(self.text_lines) * 60 + 200,
 			)
 

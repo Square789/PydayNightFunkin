@@ -57,7 +57,7 @@ class FreeplayScene(scenes.MusicBeatScene):
 		)
 
 		score_bg = self.create_object(self.lyr_fg, x=self.score_text.x - 6, y=0)
-		score_bg.make_rect(to_rgba_tuple(CNST.BLACK), self.game.dimensions[0] * .35, 66)
+		score_bg.make_rect(to_rgba_tuple(CNST.BLACK), int(self.game.dimensions[0] * .35), 66)
 		score_bg.opacity = 153
 
 		self.displayed_songs = [lvl for week in self.game.weeks for lvl in week.levels]
