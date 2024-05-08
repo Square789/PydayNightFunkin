@@ -1290,6 +1290,9 @@ class LoadingProcedure:
 					self._unreported_libraries.append(lib_name)
 					self._library_requests[lib_name] = _LibraryRequestProgressInfo()
 
+		self._determine_finality()
+
+	def _determine_finality(self) -> None:
 		# Finality can be guaranteed once there's no more pending completion callbacks
 		# and all the libraries have been loaded.
 		# Kind of relies on the logic of the AssetSystemManager, but that's fine.
@@ -1324,8 +1327,7 @@ class LoadingProcedure:
 			self._loaded += 1
 			self._last_loaded_asset = f"{asset_request.asset_type_name}:{name}"
 
-			comp_tag = asset_request.completion_tag
-			if comp_tag is None:
+			if (comp_tag := asset_request.completion_tag) is None:
 				return
 
 			self._completion_tags[comp_tag].assets[asset_request.completion_tag_idx] = asset
@@ -1345,6 +1347,29 @@ class LoadingProcedure:
 
 			self._add_more_requests(new_requests)
 
+	# TODO: The distinction between loaded assets/called callbacks and
+	# failed assets/retracted callbacks is lacking, but good enough for PNF's usecases
+	def _asset_failed_loading(
+		self, asset_request: _ProcessedAssetRequest, exc: BaseException
+	) -> None:
+		"""
+		An asset that was requested to be loaded, through
+		``_get_new_asset_requests``, failed to load with the given exception.
+		"""
+		# We have to throw away any completion callbacks that may have depended on this asset
+		with self._lock:
+			self._asset_requests[asset_request].loaded = True
+
+			self._loaded += 1
+
+			if (comp_tag := asset_request.completion_tag) is None:
+				return
+
+			for cb in self._completion_tags[comp_tag].dependant_callbacks:
+				self._on_load_callbacks[cb].called = True
+
+			self._determine_finality()
+
 	def _library_available(self, lib_name: str, lib_request: LoadingRequest) -> None:
 		"""
 		A library previously returned through ``_get_new_library_requests``
@@ -1354,6 +1379,11 @@ class LoadingProcedure:
 			self._library_requests[lib_name].loaded = True
 			self._last_loaded_asset = f"lib:{lib_name}"
 			self._add_more_requests((lib_request,))
+
+	def _library_failed_loading(self, lib_name, exc: BaseException) -> None:
+		with self._lock:
+			self._library_requests[lib_name].loaded = True
+			self._determine_finality()
 
 	def _get_new_asset_requests(self) -> t.List[_ProcessedAssetRequest]:
 		"""
@@ -2314,8 +2344,8 @@ class AssetSystemManager:
 			return
 
 		if (exc := future.exception()) is not None:
-			# TODO: Failure will cause the loading procedure to never finish, figure this out
 			logger.error(f"Threaded asset load: {exc}")
+			lproc._asset_failed_loading(asset_request, exc)
 			return
 
 		# Tell the LoadingProcedure of the asset, then get possibly new ones and schedule
@@ -2342,6 +2372,7 @@ class AssetSystemManager:
 
 		if (exc := future.exception()) is not None:
 			logger.error(f"Threaded library load: {exc}")
+			lproc._library_failed_loading(lib_name, exc)
 			return
 
 		lproc._library_available(lib_name, self._libraries_to_subrequest((lib_name,)))
