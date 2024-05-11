@@ -412,7 +412,7 @@ class MommyMearest(HairLoopMixin, Character):
 # Both were probably found by trial-and-error, so good enough (TM)
 def note_arrow_frame_collection_post_load_hacker(fcol: FrameCollection) -> FrameCollection:
 	for frame in fcol.frames:
-		if re.search(r"confirm instance \d+$", frame.name) is not None:
+		if frame.name is not None and re.search(r"confirm instance \d+$", frame.name) is not None:
 			frame.offset -= Vec2(39, 39)
 	return fcol
 
