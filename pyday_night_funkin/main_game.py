@@ -25,12 +25,12 @@ from pyday_night_funkin.scenes import FreeplayScene, StoryMenuScene, TestScene, 
 
 if t.TYPE_CHECKING:
 	from loguru import Record
-	from pyday_night_funkin.character import CharacterData
+	from pyday_night_funkin.character import CharacterKernel
 	from pyday_night_funkin.content_pack import ContentPack, WeekData
 	from pyday_night_funkin.core.superscene import SuperScene
 
 
-__version__ = "0.0.56"
+__version__ = "0.0.57"
 
 
 SOUND_GRANULARITY = 10
@@ -232,7 +232,7 @@ class Game(SceneManager):
 		sounds independent of scenes.
 		"""
 
-		self.character_registry: Registry["CharacterData"] = Registry()
+		self.character_registry: Registry["CharacterKernel"] = Registry()
 		self.weeks: t.List["WeekData"] = []
 		self._registered_packs: t.Dict[t.Hashable, t.List[int]] = {}
 		"""

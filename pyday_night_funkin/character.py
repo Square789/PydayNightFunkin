@@ -1,19 +1,31 @@
 
+# TODO: Ugly merge between a system that wants to express a very generic character and the
+# standard base game with a sprite atlas + hardcoded offset text file in here.
+# Fix eventually.
+
+from __future__ import annotations
+
 from dataclasses import dataclass
 import re
 import typing as t
 
 from pyglet.math import Vec2
 
-from pyday_night_funkin.core.asset_system import load_frames, load_text
+from pyday_night_funkin.core.asset_system import (
+	AssetRequest, LoadingRequest, load_frames, load_text
+)
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.enums import AnimationTag
 
 if t.TYPE_CHECKING:
+	from pyday_night_funkin.core.camera import Camera
+	from pyday_night_funkin.core.scene import SceneLayer
+	from pyday_night_funkin.core.types import Numeric
+	from pyday_night_funkin.main_game import Game
+	from pyday_night_funkin.note import Note, NoteType
 	from pyday_night_funkin.scenes import MusicBeatScene
 
-# This could be replaced with `Self`, but that's a 3.11 thing
-CharacterDataT = t.TypeVar("CharacterDataT", bound="CharacterData")
+
 T = t.TypeVar("T")
 
 
@@ -42,6 +54,7 @@ AnimationDataTuple = t.Union[
 ]
 # yeah, this is a great idea.
 
+
 class StoryMenuCharacterData:
 	__slots__ = ("image", "animations", "offset")
 
@@ -49,20 +62,83 @@ class StoryMenuCharacterData:
 		self,
 		image: str,
 		animations: t.Sequence[AnimationDataTuple],
-		offset: t.Optional[t.Tuple[float, float]] = None,
+		offset: t.Tuple[float, float] | None = None,
 	) -> None:
 		self.image = image
 		self.animations = animations
 		self.offset = offset
 
 
+# class CharacterProtocol(t.Protocol):
+# 	def dance(self) -> None: ...
+
+# 	def get_focus_point(self) -> Vec2: ...
+
+# 	@property
+# 	def x(self) -> Numeric: ...
+# 	@x.setter
+# 	def x(self, _: Numeric) -> None: ...
+
+# 	@property
+# 	def y(self) -> Numeric: ...
+# 	@y.setter
+# 	def y(self, _: Numeric) -> None: ...
+
+# 	@property
+# 	def position(self) -> t.Tuple[Numeric, Numeric]: ...
+# 	@position.setter
+# 	def position(self, _: t.Tuple[Numeric, Numeric]): ...
+	
+# 	@property
+# 	def width(self) -> Numeric: ...
+# 	@property
+# 	def height(self) -> Numeric: ...
+
+
+class CharacterKernel(t.Generic[T]):
+	"""
+	A character kernel stores a lot of information to later
+	instantiate a character. Wowee.
+	"""
+
+	def __init__(self, *args, **kwargs) -> None:
+		self.args = args
+		self.kwargs = kwargs
+
+	def get_loading_hints(self, game: Game) -> LoadingRequest:
+		return LoadingRequest({})
+
+	def get_icon_name(self) -> str:
+		raise NotImplementedError()
+
+	def get_story_menu_data(self) -> StoryMenuCharacterData | None:
+		raise NotImplementedError()
+
+	def supports_direct_creation(self) -> bool:
+		return False
+
+	def create(self, scene: MusicBeatScene, *args, **kwargs) -> T:
+		raise NotImplementedError()
+
+	def create_direct(
+		self,
+		scene: MusicBeatScene,
+		layer: SceneLayer | None,
+		cameras: t.Iterable[Camera] | Camera | None,
+		*args,
+		**kwargs,
+	) -> T:
+		raise NotImplementedError()
+
+
 class CharacterDataDict(t.TypedDict, total=False):
 	type: t.Type["Character"]
 	icon_name: str
 	hold_timeout: float
-	game_over_fallback: t.Optional[t.Hashable]
-	story_menu_data: t.Optional[StoryMenuCharacterData]
-	offset_id: t.Optional[str]
+	game_over_fallback: t.Hashable | None
+	story_menu_data: StoryMenuCharacterData | None
+	offset_id: str | None
+
 
 @dataclass
 class CharacterData:
@@ -87,7 +163,7 @@ class CharacterData:
 	idle pose after singing. Default is `4.0`.
 	"""
 
-	game_over_fallback: t.Optional[t.Hashable] = None
+	game_over_fallback: t.Hashable | None = None
 	"""
 	The id of a character that should instead be used in order to
 	display the doomed variant on the game-over screen.
@@ -96,7 +172,7 @@ class CharacterData:
 	If `None`, no such replacement will occur.
 	"""
 
-	story_menu_data: t.Optional[StoryMenuCharacterData] = None
+	story_menu_data: StoryMenuCharacterData | None = None
 	"""
 	How/what the character should display in the story menu.
 	If `None`, will hide the accompanying sprite.
@@ -104,10 +180,12 @@ class CharacterData:
 	# NOTE: Maybe refurbish this some more cause as it stands it's a pretty
 	# primitive and unfinished solution. But good enough.
 
-	offset_id: t.Optional[str] = None
+	offset_id: str | None = None
 	"""
-	The base game's ID for this character. Used to access other stuff
-	in its assets such as offset files.
+	Another ID for this character. Usually the one used by the base game
+	(Week 7 / 0.2.8). Used to build paths to access related files such as
+	offset files.
+	Set to ``icon_name`` if not otherwise defined.
 	"""
 
 	# positioning: t.Optional[PositioningStrategy] = None
@@ -148,7 +226,7 @@ class Character(PNFSprite):
 	additionally is coupled to a scene.
 	"""
 
-	def __init__(self, scene: "MusicBeatScene", data: CharacterData, *args, **kwargs) -> None:
+	def __init__(self, scene: MusicBeatScene, data: CharacterData, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
 		self.scene = scene
@@ -176,8 +254,8 @@ class Character(PNFSprite):
 			self.hold_timer += dt
 
 		if (
-			self.hold_timer >= self._hold_timeout * self.scene.conductor.step_duration * 0.001 and
-			not self.dont_idle
+			not self.dont_idle and
+			self.hold_timer > self._hold_timeout * self.scene.conductor.step_duration * 0.001
 		):
 			self.hold_timer = 0.0
 			self.dance(True)
@@ -213,6 +291,38 @@ class Character(PNFSprite):
 		if force or self.should_dance():
 			self.animation.play("idle")
 
+	def on_notes_hit(self, notes: t.Sequence[Note]) -> None:
+		"""
+		The character has hit the given notes.
+		By default, plays an animation named ``sing_{x}`` where ``x`` is the
+		last note's type name, lowercased.
+		"""
+		hit_note = notes[-1]
+		self.hold_timer = 0.0
+		self.animation.play(f"sing_{hit_note.type.name.lower()}", True)
+
+	def on_notes_missed(self, notes: t.Sequence[Note]) -> None:
+		"""
+		Typically not called on non-player controlled characters.
+
+		The character has missed the given notes by letting them pass the hit
+		window.
+		By default, plays an animation named ``miss_{x}`` where ``x`` is the
+		last note's type name, lowercased.
+		"""
+		fail_note = notes[-1]
+		self.animation.play(f"miss_{fail_note.type.name.lower()}", True)
+
+	def on_misinput(self, note_type: NoteType) -> None:
+		"""
+		Typically not called on non-player controlled characters.
+
+		The character has hit a note direction without any note being present.
+		By default, plays an animation named ``miss_{x}`` where ``x`` is the
+		note's type name, lowercased.
+		"""
+		self.animation.play(f"miss_{note_type.name.lower()}", True)
+
 	def load_frames(self) -> None:
 		"""
 		Load this character's spritesheet via a call to ``load_frames``.
@@ -223,7 +333,7 @@ class Character(PNFSprite):
 		ssn = self.character_data.sprite_sheet_name
 		self.frames = load_frames(f"shared/images/characters/{ssn}.xml")
 
-	def load_offsets(self, remapper: t.Optional[t.Dict[str, str]] = None) -> None:
+	def load_offsets(self, remapper: t.Dict[str, str] | None = None) -> None:
 		"""
 		Attempts to load this character's offsets file into
 		`self.animation_offsets`.
@@ -257,7 +367,7 @@ class Character(PNFSprite):
 		fps: float = 24.0,
 		loop: bool = False,
 		tags: t.Sequence[AnimationTag] = (),
-		offset_override: t.Optional[t.Tuple[float, float]] = None,
+		offset_override: t.Tuple[float, float] | None = None,
 	) -> None:
 		"""
 		Convenience method that will call
@@ -280,7 +390,7 @@ class Character(PNFSprite):
 		fps: float = 24.0,
 		loop: bool = False,
 		tags: t.Sequence[AnimationTag] = (),
-		offset_override: t.Optional[t.Tuple[float, float]] = None,
+		offset_override: t.Tuple[float, float] | None = None,
 	) -> None:
 		"""
 		Convenience method that will call
@@ -303,17 +413,57 @@ class FlipIdleCharacter(Character):
 	and `idle_right` each invocation.
 	"""
 
-	_dance_right = False
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+		self._dance_right = False
 
 	def dance(self, force: bool = False) -> None:
 		if force or self.should_dance():
 			self._dance_right = not self._dance_right
 			self.animation.play("idle_right" if self._dance_right else "idle_left")
 
-# TODO: May be expanded into data-driven character setup by adding SimpleCharacterSetupData
-# to the registry as an optional entry and populating from it accordingly, but i'll only care
-# enough when the entire base game is in i think.
 
-# class SimpleCharacterSetupDataDict(t.TypedDict, total=False):
-# 	animations: t.Dict[str, AnimationDataDict]
-# 	load_offsets: bool
+class BaseGameCharacterKernel(CharacterKernel[Character]):
+	def __init__(self, character_data: CharacterData, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+		self._char_data = character_data
+
+	def get_loading_hints(self, game: Game) -> LoadingRequest:
+		p = f"shared/images/characters/{self._char_data.sprite_sheet_name}.xml"
+		p2 = f"shared/images/characters/{self._char_data.offset_id}Offsets.txt"
+
+		lreq = LoadingRequest(
+			{
+				"frames": [AssetRequest((p,))],
+				"text": [AssetRequest((p2,), may_fail=True)],
+			}
+		)
+		if self._char_data.game_over_fallback is not None:
+			lreq.add_subrequest(
+				game.character_registry[self._char_data.game_over_fallback].get_loading_hints(game)
+			)
+
+		return lreq
+
+	def get_icon_name(self) -> str:
+		return self._char_data.icon_name
+
+	def get_story_menu_data(self) -> StoryMenuCharacterData | None:
+		return self._char_data.story_menu_data
+
+	def supports_direct_creation(self) -> bool:
+		return True
+
+	def create(self, scene: MusicBeatScene, *args, **kwargs) -> Character:
+		return self._char_data.type(scene, self._char_data, *args, **kwargs)
+
+	def create_direct(self,
+		scene: MusicBeatScene,
+		layer: SceneLayer | None,
+		cameras: t.Iterable[Camera] | Camera | None,
+		*args,
+		**kwargs,
+	) -> Character:
+		return scene.create_object(
+			layer, cameras, self._char_data.type, scene, self._char_data, *args, **kwargs
+		)

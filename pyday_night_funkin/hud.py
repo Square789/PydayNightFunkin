@@ -81,8 +81,8 @@ class HUD:
 		self.health_bar = HealthBar(
 			scene,
 			self.camera,
-			char_reg[self._scene.level_data.opponent_character].icon_name,
-			char_reg[self._scene.level_data.player_character].icon_name,
+			char_reg[self._scene.level_data.opponent_character].get_icon_name(),
+			char_reg[self._scene.level_data.player_character].get_icon_name(),
 			self.lyr_health_bar,
 		)
 

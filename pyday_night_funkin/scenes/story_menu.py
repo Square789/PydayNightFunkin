@@ -1,8 +1,11 @@
 
+from __future__ import annotations
+
 import typing as t
 
 import pyday_night_funkin.constants as CNST
 from pyday_night_funkin.base_game_pack import fetch_week_header
+from pyday_night_funkin.core.animation import Animation
 from pyday_night_funkin.core.asset_system import load_frames, load_sound
 from pyday_night_funkin.core.pnf_sprite import PNFSprite
 from pyday_night_funkin.core.pnf_text import TextAlignment, PNFText
@@ -29,7 +32,14 @@ class _WeekChar(PNFSprite):
 		self.displayed_char = displayed_char
 		self.displayed_image = ""
 
-	def add_animations(self, sm_data: "StoryMenuCharacterData") -> None:
+	def add_animations(self, sm_data: StoryMenuCharacterData | None) -> None:
+		if sm_data is None:
+			self.visible = False
+			self.make_rect((0, 0, 0, 0))
+			self.animation.add("story_menu", Animation([0]))
+
+		self.visible = True
+
 		if sm_data.image != self.displayed_image:
 			self.frames = load_frames(sm_data.image)
 			self.displayed_image = sm_data.image
@@ -37,7 +47,11 @@ class _WeekChar(PNFSprite):
 		for n, a in zip(("story_menu", "story_menu_confirm"), sm_data.animations):
 			self.animation.add_by_prefix(n, *a)
 
-	def display_new_char(self, char_id: t.Hashable, sm_data: "StoryMenuCharacterData") -> None:
+	def display_new_char(
+		self,
+		char_id: t.Hashable,
+		sm_data: StoryMenuCharacterData | None,
+	) -> None:
 		if self.displayed_char == char_id:
 			return
 
@@ -54,7 +68,7 @@ class _WeekChar(PNFSprite):
 
 
 class StoryMenuScene(scenes.MusicBeatScene):
-	def __init__(self, kernel: "SceneKernel") -> None:
+	def __init__(self, kernel: SceneKernel) -> None:
 		super().__init__(kernel)
 
 		self.lyr_bg = self.create_layer()
@@ -85,7 +99,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 				x = (CNST.GAME_WIDTH * 0.25 * (i + 1)) - 150 - (80 * (i == 1)),
 				y = 70,
 			)
-			spr.add_animations(self.game.character_registry[char_id].story_menu_data)
+			spr.add_animations(self.game.character_registry[char_id].get_story_menu_data())
 			spr.animation.play("story_menu")
 			spr.set_scale_and_repos(0.9 if i == 1 else 0.5)
 
@@ -166,7 +180,6 @@ class StoryMenuScene(scenes.MusicBeatScene):
 			color = to_rgba_tuple(0xFFFFFFB3),
 		)
 
-		# Menus
 		self.week_menu = Menu(
 			self.game.key_handler, len(self._weeks), self._on_week_select, self._on_confirm
 		)
@@ -198,7 +211,7 @@ class StoryMenuScene(scenes.MusicBeatScene):
 
 		for i, week_char_display_sprite in enumerate(self.week_chars):
 			new_char_id = self._weeks[index].story_menu_chars[i]
-			new_char_sm_data = self.game.character_registry[new_char_id].story_menu_data
+			new_char_sm_data = self.game.character_registry[new_char_id].get_story_menu_data()
 			week_char_display_sprite.display_new_char(new_char_id, new_char_sm_data)
 
 	def _on_diff_select(self, index: int, state: bool) -> None:

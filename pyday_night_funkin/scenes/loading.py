@@ -69,7 +69,7 @@ class LoadingScene(BaseScene):
 
 		self._start_time = perf_counter()
 
-		loading_request = self.target_kernel.get_loading_hints()
+		loading_request = self.target_kernel.get_loading_hints(self.game)
 		self.loading_tracker = self.game.assets.start_threaded_load(loading_request)
 
 	@classmethod
@@ -77,8 +77,8 @@ class LoadingScene(BaseScene):
 		return LoadingKernel(cls, game, target_kernel)
 
 	@classmethod
-	def load_or_set(cls, game: "Game", target_kernel: SceneKernel):
-		if game.assets.requires_loading_process(target_kernel.get_loading_hints()):
+	def load_or_set(cls, game: "Game", target_kernel: SceneKernel) -> None:
+		if game.assets.requires_loading_process(target_kernel.get_loading_hints(game)):
 			game.set_scene(cls.get_kernel(game, target_kernel))
 		else:
 			game.set_scene(target_kernel)

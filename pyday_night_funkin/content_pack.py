@@ -2,13 +2,12 @@
 Defines structures to share content the game can receive and include
 in itself.
 """
-# Should become the gateway to mods soon, maybe.
 
 from dataclasses import dataclass
 import typing as t
 
 if t.TYPE_CHECKING:
-	from pyday_night_funkin.character import CharacterData
+	from pyday_night_funkin.character import CharacterKernel
 	from pyday_night_funkin.scenes.in_game import InGameScene
 
 
@@ -100,5 +99,5 @@ class WeekData:
 @dataclass
 class ContentPack:
 	pack_id: t.Hashable
-	characters: t.Dict[t.Hashable, "CharacterData"]
+	characters: t.Dict[t.Hashable, "CharacterKernel"]
 	weeks: t.Sequence["WeekData"]

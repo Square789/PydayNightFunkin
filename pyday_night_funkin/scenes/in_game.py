@@ -33,7 +33,7 @@ class AnchorAlignment:
 
 
 class Anchor:
-	__slots__ = ("position", "alignment", "layer", "cameras")
+	__slots__ = ("position", "alignment")
 
 	def __init__(
 		self,
@@ -131,15 +131,25 @@ class InGameSceneKernel(SceneKernel):
 			"default_cam_zoom", "player_anchor", "girlfriend_anchor", "opponent_anchor"
 		)
 
-	def get_loading_hints(self) -> "LoadingRequest":
+	def get_loading_hints(self, game: "Game") -> "LoadingRequest":
 		"""
 		Generates asset requests for a typical InGameScene.
-		This duplicates some code to load a level's character's
-		spritesheets as well as the song, nothing else.
+		Duplicates some code to load the level's song's assets.
 		"""
-		# TODO: Load songs/characters of an entire week
+		# TODO: Load songs/characters of an entire week?
 
-		def _on_song_data_load(json_data):
+		char_lreq = LoadingRequest({})
+		for char_id in (
+			self._level_data.player_character,
+			self._level_data.girlfriend_character,
+			self._level_data.opponent_character,
+		):
+			if char_id is None:
+				continue
+
+			char_lreq.add_subrequest(self.game.character_registry[char_id].get_loading_hints(game))
+
+		def _on_song_data_load(json_data: t.Dict) -> LoadingRequest:
 			song_dir = load_pyobj("PATH_SONGS") / self._level_data.song_name
 
 			return_hits = {"sound": [AssetRequest((song_dir / "Inst.ogg",))]}
@@ -148,22 +158,7 @@ class InGameSceneKernel(SceneKernel):
 
 			return LoadingRequest(return_hits)
 
-		# TODO: hardcoded path, maybe improve later (TM)
-		frame_collection_requests = []
-		for c_id in (
-			self._level_data.player_character,
-			self._level_data.girlfriend_character,
-			self._level_data.opponent_character,
-		):
-			if c_id is None:
-				continue
-
-			ssn = self.game.character_registry[c_id].sprite_sheet_name
-			frame_collection_requests.append(
-				AssetRequest((f"shared/images/characters/{ssn}.xml",))
-			)
-
-		return LoadingRequest(
+		req = LoadingRequest(
 			{
 				"_pnf_song_data": (
 					AssetRequest(
@@ -171,11 +166,14 @@ class InGameSceneKernel(SceneKernel):
 						completion_tag = "song_data.0",
 					),
 				),
-				"frames": tuple(frame_collection_requests),
 			},
 			{"song_data": _on_song_data_load},
 			self._level_data.libraries or [],
 		)
+
+		req.add_subrequest(char_lreq)
+
+		return req
 
 	def fill(self, arg_dict: t.Optional[_InGameSceneArgDict] = None, **kwargs):
 		return super().fill(arg_dict, **kwargs)
@@ -403,16 +401,19 @@ class InGameScene(scenes.MusicBeatScene):
 		layer: t.Optional["SceneLayer"],
 		cameras: t.Optional[t.Union[t.Iterable["Camera"], "Camera"]],
 	) -> Character:
-		data = self.game.character_registry[char_id]
-		char = self.create_object(layer, cameras, data.type, self, data)
+		k = self.game.character_registry[char_id]
+
+		if k.supports_direct_creation():
+			char = k.create_direct(self, layer, cameras)
+		else:
+			logger.warning("This is a not-thought-out code path. Good luck!")
+			char = k.create(self)
+
 		char.position = (
 			anchor.position.x + char.width * anchor.alignment.x,
 			anchor.position.y + char.height * anchor.alignment.y,
 		)
-		# print(
-		# 	f"Created character {char.character_data.type} @ {char.position}. "
-		# 	f"Spans {char.width}, {char.height}"
-		# )
+
 		return char
 
 	def ready(self) -> None:
@@ -446,6 +447,20 @@ class InGameScene(scenes.MusicBeatScene):
 		self.conductor.song_position = self.conductor.beat_duration * -5
 		self.sync_conductor_from_dt()
 		self.clock.schedule_interval(self.countdown, self.conductor.beat_duration * 0.001)
+
+	def countdown(self, _dt: float) -> None:
+		if self._countdown_stage >= 4:
+			self.start_song()
+			self.clock.unschedule(self.countdown)
+			return
+
+		self.hud.countdown_popup(self._countdown_stage)
+
+		for dancer, info in self.dancers.items():
+			if info.during_countdown and (self._countdown_stage % info.frequency == info.offset):
+				dancer.dance()
+
+		self._countdown_stage += 1
 
 	def resync(self) -> None:
 		logger.info("Resyncing...")
@@ -530,24 +545,24 @@ class InGameScene(scenes.MusicBeatScene):
 		Keyboard input should be handled here.
 		"""
 		key_handler = self.game.key_handler
-		pressed = {
+
+		# Unheld note types aren't in the dict, held ones are mapped to False,
+		# just pressed ones are mapped to True
+		held = {
 			type_: key_handler.just_pressed(control)
 			for type_, control in self.note_handler.NOTE_TO_CONTROL_MAP.items()
 			if key_handler[control]
 		}
-		opponent_hit, player_missed, player_res = self.note_handler.update(pressed)
+		opponent_hit, player_missed, player_res = self.note_handler.update(held)
 
 		if opponent_hit:
-			op_note = opponent_hit[-1]
-			self.opponent.hold_timer = 0.0
-			self.opponent.animation.play(f"sing_{op_note.type.name.lower()}", True)
+			self.opponent.on_notes_hit(opponent_hit)
 			self.zoom_cams = True
 
 		if player_missed:
+			self.boyfriend.on_notes_missed(player_missed)
 			for note in player_missed:
 				self.on_note_miss(note)
-			fail_note = player_missed[-1]
-			self.boyfriend.animation.play(f"miss_{fail_note.type.name.lower()}", True)
 
 		for type_ in NoteType:
 			if type_ not in player_res:
@@ -556,17 +571,16 @@ class InGameScene(scenes.MusicBeatScene):
 			elif player_res[type_] is None:
 				# Note was pressed but player missed
 				self.hud.arrow_pressed(type_)
-				if pressed[type_]: # Just pressed
+				if held[type_]: # Just pressed
 					self.on_misinput(type_)
 			else:
 				# Note was pressed and player hit
+				n = player_res[type_]
 				self.hud.arrow_confirm(type_)
-				self.on_note_hit(player_res[type_])
-				# TODO extract to on_note_hit etc, rework this yada yada
-				self.score += 100
-				self.hud.update_score(self.score)
+				self.boyfriend.on_notes_hit((n,))
+				self.on_note_hit(n)
 
-		self.boyfriend.dont_idle = bool(pressed)
+		self.boyfriend.dont_idle = bool(held)
 
 		handler_called = False
 		if self.game.debug:
@@ -588,11 +602,11 @@ class InGameScene(scenes.MusicBeatScene):
 	def on_note_hit(self, note: Note) -> None:
 		"""
 		Called whenever a note is hit.
-		By default, causes BF to play an appropiate animation, causes
-		combo popups and adjusts health.
+		By default, notifies the HUD, causing a combo popup,
+		increments score and grants health.
 		"""
-		self.boyfriend.hold_timer = 0.0
-		self.boyfriend.animation.play(f"sing_{note.type.name.lower()}", True)
+		self.score += 100
+		self.hud.update_score(self.score)
 
 		health = 0.004
 		if note.sustain_stage is SustainStage.NONE:
@@ -616,7 +630,7 @@ class InGameScene(scenes.MusicBeatScene):
 		By default, plays a miss animation on bf, breaks the combo and
 		reduces health.
 		"""
-		self.boyfriend.animation.play(f"miss_{type_.name.lower()}", True)
+		self.boyfriend.on_misinput(type_)
 		if self.combo > 5 and self.girlfriend.animation.exists("sad"):
 			self.girlfriend.animation.play("sad")
 
@@ -630,20 +644,6 @@ class InGameScene(scenes.MusicBeatScene):
 		"""
 		self.health = min(new_health, 1.0)
 		self.hud.update_health(new_health)
-
-	def countdown(self, _dt: float) -> None:
-		if self._countdown_stage >= 4:
-			self.start_song()
-			self.clock.unschedule(self.countdown)
-			return
-
-		self.hud.countdown_popup(self._countdown_stage)
-
-		for dancer, info in self.dancers.items():
-			if info.during_countdown and (self._countdown_stage % info.frequency == info.offset):
-				dancer.dance()
-
-		self._countdown_stage += 1
 
 	def on_beat_hit(self) -> None:
 		super().on_beat_hit()
@@ -695,8 +695,8 @@ class InGameScene(scenes.MusicBeatScene):
 		self.state = GameState.ENDED
 
 		if self.boyfriend.character_data.game_over_fallback is not None:
-			cd = self.game.character_registry[self.boyfriend.character_data.game_over_fallback]
-			game_over_bf = cd.type(self, cd)
+			kern = self.game.character_registry[self.boyfriend.character_data.game_over_fallback]
+			game_over_bf = kern.create(self)
 		else:
 			# Definitely do not want to add him to two scenes
 			game_over_bf = self.boyfriend

@@ -5,6 +5,8 @@ Contains a good chunk of FNF logic implemented in various `load_` and
 `fetch_` methods.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 import re
 import typing as t
@@ -12,14 +14,14 @@ import typing as t
 from pyglet.math import Vec2
 from schema import Schema, SchemaError, And, Or, Optional
 
-from pyday_night_funkin.core.asset_system import (
-	AssetProvider, AssetRouter, AssetRouterEntry, LibrarySpecPattern, JSONAssetProvider,
-	load_image, load_json, load_pyobj, load_sound,
-)
 from pyday_night_funkin.content_pack import ContentPack, LevelData, WeekData
+from pyday_night_funkin.core.asset_system import (
+	AssetProvider, AssetRouter, AssetRouterEntry, JSONAssetProvider, LibrarySpecPattern,
+	load_image, load_json, load_pyobj, load_sound
+)
 from pyday_night_funkin.core.animation import FrameCollection
 from pyday_night_funkin.character import (
-	Character, CharacterData, FlipIdleCharacter, StoryMenuCharacterData
+	BaseGameCharacterKernel, Character, CharacterData, FlipIdleCharacter, StoryMenuCharacterData
 )
 from pyday_night_funkin.enums import AnimationTag, Difficulty
 
@@ -60,8 +62,9 @@ SONG_SCHEMA = Schema(
 					Optional("changeBPM"): bool,
 					"mustHitSection": bool,
 					"sectionNotes": [SeqValidator(Or(int, float), int, Or(int, float))],
+					Optional("altAnim"): bool,
 					# Keys I've seen that are ignored:
-					# altAnim, typeOfSection.
+					# typeOfSection.
 					Optional(str): object,
 				},
 				lambda d: ("changeBPM" in d) <= ("bpm" in d),
@@ -83,7 +86,7 @@ SONG_SCHEMA = Schema(
 )
 
 
-def fetch_character_icons(character: str) -> t.Tuple["TextureRegion", "TextureRegion"]:
+def fetch_character_icons(character: str) -> t.Tuple[TextureRegion, TextureRegion]:
 	"""
 	Loads a 300x150 image of two character icons and returns its two
 	health icons as TextureRegions.
@@ -102,7 +105,7 @@ def fetch_character_icons(character: str) -> t.Tuple["TextureRegion", "TextureRe
 	return (icon_texture.get_region(0, 0, 150, 150), icon_texture.get_region(150, 0, 150, 150))
 
 
-def fetch_week_header(name: str) -> "Texture":
+def fetch_week_header(name: str) -> Texture:
 	"""
 	Retrieves the week header image of the given name.
 	The directory this is loaded from is dependant on the
@@ -111,10 +114,7 @@ def fetch_week_header(name: str) -> "Texture":
 	return load_image(load_pyobj("PATH_WEEK_HEADERS") / name)
 
 
-def fetch_song(
-	song_name: str,
-	difficulty: "Difficulty",
-) -> t.Tuple["Source", t.Optional["Source"], t.Dict]:
+def fetch_song(song_name: str, difficulty: Difficulty) -> t.Tuple[Source, Source | None, t.Dict]:
 	"""
 	Loads song data for a standard FNF song.
 	Will load a three-tuple of (Source, Source | None, dict); being
@@ -131,7 +131,7 @@ def fetch_song(
 
 
 class SongDataAssetProvider(AssetProvider):
-	def load(self, song_name: str, difficulty: "Difficulty") -> t.Dict:
+	def load(self, song_name: str, difficulty: Difficulty) -> t.Dict:
 		chart_path = (
 			load_pyobj("PATH_DATA") /
 			song_name /
@@ -141,7 +141,7 @@ class SongDataAssetProvider(AssetProvider):
 
 		return SONG_SCHEMA.validate(raw)["song"]
 
-	def create_cache_key(self, song_name: str, difficulty: "Difficulty") -> t.Hashable:
+	def create_cache_key(self, song_name: str, difficulty: Difficulty) -> t.Hashable:
 		return (song_name, difficulty)
 
 	def get_estimated_asset_size(self, item) -> int:
@@ -151,7 +151,7 @@ class SongDataAssetProvider(AssetProvider):
 _g_load_song_data = None
 
 
-def load_song_data(song_name: str, difficulty: "Difficulty", *, cache: bool = True) -> t.Dict:
+def load_song_data(song_name: str, difficulty: Difficulty, *, cache: bool = True) -> t.Dict:
 	"""
 	Loads and validates the standard FNF chart of the given
 	difficutly for the given song.
@@ -163,7 +163,19 @@ def load_song_data(song_name: str, difficulty: "Difficulty", *, cache: bool = Tr
 	return _g_load_song_data(song_name, difficulty, cache=cache)
 
 
-class Boyfriend(Character):
+class BoyfriendBase(Character):
+	def update(self, dt: float) -> None:
+		super().update(dt)
+
+		# If le epic fail animation ended, return to idling at a specific frame for some reason
+		if self.animation.has_tag(AnimationTag.MISS) and not self.animation.current.playing:
+			self.animation.play("idle", True, 10)
+
+	def get_focus_point(self) -> Vec2:
+		return self.get_midpoint() + Vec2(-100.0, -100.0)
+
+
+class Boyfriend(BoyfriendBase):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
 
@@ -186,34 +198,6 @@ class Boyfriend(Character):
 		self.add_animation("game_over_end", "BF Dead confirm")
 
 		self.animation.play("idle")
-
-	def update(self, dt: float) -> None:
-		singing = self.animation.has_tag(AnimationTag.SING)
-		missing = self.animation.has_tag(AnimationTag.MISS)
-		if singing or missing:
-			self.hold_timer += dt
-		else:
-			self.hold_timer = 0
-
-		# If no keys are being held (dont_idle managed by the InGameScene) and the sing animation
-		# has been running for a while now, move back to idling.
-		if (
-			self.hold_timer > self.scene.conductor.beat_duration * 0.001 and
-			not self.dont_idle and singing
-		):
-			self.animation.play("idle")
-
-		# If le epic fail animation ended, return to idling at a specific frame for some reason
-		if missing and not self.animation.current.playing:
-			self.animation.play("idle", True, 10)
-
-		# Skip `Character.update` because it ruins everything
-		# TODO: Maybe, juuust maybe class OpponentCharacter(Character) and move it out
-		# there good god
-		super(Character, self).update(dt)
-
-	def get_focus_point(self) -> Vec2:
-		return self.get_midpoint() + Vec2(-100.0, -100.0)
 
 
 class Girlfriend(FlipIdleCharacter):
@@ -315,6 +299,7 @@ class Monster(Character):
 
 		self.animation.play("idle")
 
+
 class Pico(Character):
 	def __init__(self, *args, **kwargs) -> None:
 		super().__init__(*args, **kwargs)
@@ -346,10 +331,9 @@ class HairLoopMixin(Character if t.TYPE_CHECKING else object):
 			self.animation.play("idle_hair")
 
 
-class BoyfriendCar(HairLoopMixin, Boyfriend):
+class BoyfriendCar(HairLoopMixin, BoyfriendBase):
 	def __init__(self, *args, **kwargs) -> None:
-		# Skip Boyfriend.__init__
-		super(Boyfriend, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 
 		self.load_frames()
 		self.load_offsets()
@@ -422,14 +406,13 @@ def note_arrow_frame_collection_post_load_hacker(fcol: FrameCollection) -> Frame
 # Honestly i don't know how to handle this. HaxeFlixel simply ignores this the imagePath
 # and always loads the same two files with their extensions modified, but lol lmao.
 # I'll be damned if i don't show off my shitty overengineered asset system.
-def main_menu_path_post_load_hacker(et: "ElementTree") -> "ElementTree":
+def main_menu_path_post_load_hacker(et: ElementTree) -> ElementTree:
 	et.getroot().set("imagePath", "main_menu.png")
 	return et
 
 
-
 class BaseGameAssetRouter(AssetRouter):
-	def __init__(self, asset_directory: t.Union[Path, str]) -> None:
+	def __init__(self, asset_directory: Path | str) -> None:
 		# Throw most UI sprites into the same atlas, should improve rendering of it
 		# somewhat
 		_entry = AssetRouterEntry(options={"atlas_hint": 0})
@@ -506,7 +489,7 @@ class BaseGameAssetRouter(AssetRouter):
 		)
 
 
-def load(game: "Game") -> ContentPack:
+def load(game: Game) -> ContentPack:
 	"""
 	Loads everything required to run the base game into the asset
 	system and returns the base game's content pack.
@@ -579,28 +562,35 @@ def load(game: "Game") -> ContentPack:
 	# week6_libs = ("shared", "week6")
 	# week7_libs = ("shared", "week7")
 
+
 	return ContentPack(
 		pack_id = "_pnf_base",
 		characters = {
-			"boyfriend":      CharacterData(Boyfriend, "bf", "BOYFRIEND", story_menu_data=bf_smcd),
-			"girlfriend":     CharacterData(
+			"boyfriend":      BaseGameCharacterKernel(CharacterData(
+				Boyfriend, "bf", "BOYFRIEND", story_menu_data=bf_smcd
+			)),
+			"girlfriend":     BaseGameCharacterKernel(CharacterData(
 				Girlfriend, "gf", "GF_assets", story_menu_data=gf_smcd
-			),
-			"daddy_dearest":  CharacterData(
+			)),
+			"daddy_dearest":  BaseGameCharacterKernel(CharacterData(
 				DaddyDearest, "dad", "DADDY_DEAREST", 6.1, story_menu_data=dad_smcd
-			),
-			"skid_n_pump":    CharacterData(
+			)),
+			"skid_n_pump":    BaseGameCharacterKernel(CharacterData(
 				SkidNPump, "spooky", "spooky_kids_assets", story_menu_data=snp_smcd
-			),
-			"monster":        CharacterData(Monster, "monster", "Monster_Assets"),
-			"pico":           CharacterData(
+			)),
+			"monster":        BaseGameCharacterKernel(CharacterData(
+				Monster, "monster", "Monster_Assets"
+			)),
+			"pico":           BaseGameCharacterKernel(CharacterData(
 				Pico, "pico", "Pico_FNF_assetss", story_menu_data=pico_smcd
-			),
-			"boyfriend_car":  CharacterData(
+			)),
+			"boyfriend_car":  BaseGameCharacterKernel(CharacterData(
 				BoyfriendCar, "bf", "bfCar", game_over_fallback="boyfriend", offset_id="bf-car"
-			),
-			"girlfriend_car": CharacterData(GirlfriendCar, "gf", "gfCar", offset_id="gf-car"),
-			"mommy_mearest":  CharacterData(
+			)),
+			"girlfriend_car": BaseGameCharacterKernel(CharacterData(
+				GirlfriendCar, "gf", "gfCar", offset_id="gf-car"
+			)),
+			"mommy_mearest":  BaseGameCharacterKernel(CharacterData(
 				MommyMearest, "mom", "momCar", story_menu_data=mom_smcd, offset_id="mom-car"
 			),
 		},

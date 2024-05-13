@@ -111,7 +111,7 @@ class SceneKernel:
 				f"{next(iter(self._uninitialized_kernel_params))}"
 			)
 
-	def get_loading_hints(self) -> "LoadingRequest":
+	def get_loading_hints(self, game: "Game") -> "LoadingRequest":
 		"""
 		Returns a ``LoadingRequest``, describing assets that, when loaded
 		into the asset system cache will have the scene start without stalling

@@ -81,7 +81,7 @@ class FreeplayScene(scenes.MusicBeatScene):
 			self._text_lines.append(m)
 			self.add(m, self.lyr_fg)
 
-			opp_icon = self.game.character_registry[lvl.opponent_character].icon_name
+			opp_icon = self.game.character_registry[lvl.opponent_character].get_icon_name()
 			self.create_object(
 				self.lyr_fg,
 				object_class = StickySprite,

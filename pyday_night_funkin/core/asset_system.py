@@ -873,14 +873,42 @@ class CacheStats:
 
 
 class AssetRequest:
+	"""
+	Expresses a request for an asset.
+	These only make sense when tied to an asset type.
+	"""
+
+	# TODO: The ``may_fail`` thing should be expanded by an option for asset routers
+	# to index their content. As of now, we can only test for an asset's existence by trying
+	# to load it and then catching any error, making it fragile to distinguish between
+	# "failed to load" and "does not exist"
 	def __init__(
 		self,
 		args: t.Optional[t.Tuple[t.Any, ...]] = None,
 		kwargs: t.Optional[t.Dict[str, t.Any]] = None,
 		completion_tag: t.Optional[str] = None,
+		may_fail: bool = False,
 	) -> None:
-		self._args = () if args is None else args
-		self._kwargs = {} if kwargs is None else kwargs
+		"""
+
+		Args:
+			args: The arguments to be passed into an asset type's
+				loader function.
+			kwargs: The keyword arguments to be passed into an asset type's
+				loader funciton.
+			completion_tag: An completion tag is used to connect this
+				``AssetRequest`` to functions that may use the resulting
+				asset to construct more asset requests.
+			may_fail: ``AssetRequest``s with this flag set to ``True`` will
+				be considered optional, the reason for failure assumed to be
+				some kind of file missing.
+				This has no effect on actual ``LoadingProcedure``s, but will
+				affect functions that determine whether assets need to be
+				loaded.
+		"""
+		self.args = () if args is None else args
+		self.kwargs = {} if kwargs is None else kwargs
+		self.may_fail = may_fail
 
 		if completion_tag is not None:
 			sct = completion_tag.split(".")
@@ -903,10 +931,11 @@ class AssetRequest:
 class _ProcessedAssetRequest:
 	def __init__(self, asset_type_name: str, base_request: AssetRequest) -> None:
 		self.asset_type_name = asset_type_name
-		self.args = base_request._args
-		self.kwargs = base_request._kwargs
+		self.args = base_request.args
+		self.kwargs = base_request.kwargs
 		self.completion_tag = base_request.completion_tag
 		self.completion_tag_idx = base_request.completion_tag_idx
+		self.may_fail = base_request.may_fail
 
 
 class LoadingRequest:
@@ -2344,7 +2373,8 @@ class AssetSystemManager:
 			return
 
 		if (exc := future.exception()) is not None:
-			logger.error(f"Threaded asset load: {exc}")
+			if not asset_request.may_fail:
+				logger.error(f"Threaded asset load: {exc}")
 			lproc._asset_failed_loading(asset_request, exc)
 			return
 
@@ -2422,14 +2452,14 @@ class AssetSystemManager:
 
 		fake_proc = LoadingProcedure(None, self, request)
 
-		did_something = True
-		while did_something:
-			did_something = False
+		procedure_might_be_drainable = True
+		while procedure_might_be_drainable:
+			procedure_might_be_drainable = False
 
 			new_libs = fake_proc._get_new_libraries()
 			for lib_name in new_libs:
 				if lib_name in self._resolved_libraries:
-					did_something = True
+					procedure_might_be_drainable = True
 					fake_proc._library_available(
 						lib_name, self._libraries_to_subrequest((lib_name,))
 					)
@@ -2440,10 +2470,13 @@ class AssetSystemManager:
 			for areq in new_areqs:
 				ck = self._asset_request_check_cache(areq)
 				if ck[0]:
-					did_something = True
+					procedure_might_be_drainable = True
 					fake_proc._asset_available(areq, ck[1])
 				else:
-					return True
+					if areq.may_fail:
+						fake_proc._asset_failed_loading(areq, RuntimeError())
+					else:
+						return True
 
 		return False
 
