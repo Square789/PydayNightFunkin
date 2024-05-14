@@ -113,6 +113,12 @@ class SimpleCamera:
 		zoom 1.0.
 		"""
 
+		self.visible = True
+		"""
+		Simple bool to tell whatever is responsible for drawing the camera
+		whether it should be drawn.
+		"""
+
 		self._width = w
 		self._height = h
 

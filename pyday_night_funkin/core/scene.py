@@ -298,6 +298,9 @@ class BaseScene(Container):
 		# opengl-blending-with-previous-contents-of-framebuffer
 
 		for camera in self._cameras:
+			if not camera.visible:
+				continue
+
 			camera.framebuffer.bind()
 			# While the viewport is nice to shrink the game, it also affects all draw
 			# operations on the cameras, which crams the sprites into their fb's corners.
