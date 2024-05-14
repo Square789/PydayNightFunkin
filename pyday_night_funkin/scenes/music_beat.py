@@ -117,7 +117,7 @@ class MusicBeatScene(BaseScene):
 			if tween_step != self._last_step + 1:
 				logger.warning(
 					f"New step ({tween_step}) was not strictly 1 higher than "
-					f"last step! ({self._last_step})"
+					f"last step ({self._last_step})!"
 				)
 			self.cur_step = tween_step
 			self.cur_beat = tween_step // 4
