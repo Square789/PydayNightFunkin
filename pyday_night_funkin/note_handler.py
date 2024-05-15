@@ -104,23 +104,29 @@ class NoteHandler(AbstractNoteHandler):
 		"""
 		self.scroll_speed *= song_data["speed"]
 		for section in song_data["notes"]:
-			for time_, type_, sustain in section["sectionNotes"]:
-				singer = int(section["mustHitSection"]) # 0: opponent, 1: bf
-				if type_ >= len(NoteType): # Note is sung by other character
-					type_ %= len(NoteType)
-					singer ^= 1
-				type_ = NoteType(type_)
+			singer = int(section["mustHitSection"])  # 0: opponent, 1: bf
+			alt_anim = section.get("altAnim", False)
 
-				self.notes.append(Note(singer, time_, type_, sustain, SustainStage.NONE))
+			for time_, type_int, sustain in section["sectionNotes"]:
+				s = singer
+				if type_int >= len(NoteType): # Note is sung by other character
+					type_int %= len(NoteType)
+					s ^= 1
+
+				type_ = NoteType(type_int)
+
+				self.notes.append(Note(s, time_, type_, sustain, SustainStage.NONE, alt_anim))
 				trail_notes = math.ceil(sustain / self.game_scene.conductor.step_duration)
 				for i in range(trail_notes): # 0 and effectless for non-sustain notes.
 					self.notes.append(Note(
-						singer,
+						s,
 						time_ + (self.game_scene.conductor.step_duration * (i + 1)),
 						type_,
 						sustain,
 						SustainStage.END if i == trail_notes - 1 else SustainStage.TRAIL,
+						alt_anim,
 					))
+
 		self.notes.sort()
 
 	def update(

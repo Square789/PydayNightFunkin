@@ -53,7 +53,8 @@ _NOTE_TYPE_SHEET_REMAP = {
 
 class Note:
 	__slots__ = (
-		"singer", "time", "type", "sustain", "sustain_stage", "sprite", "rating", "playable"
+		"singer", "time", "type", "sustain", "sustain_stage", "sprite", "rating", "playable",
+		"alt_animation"
 	)
 
 	def __init__(
@@ -63,12 +64,14 @@ class Note:
 		type_: NoteType,
 		sustain: float,
 		sustain_stage: SustainStage,
+		alt_animation: bool,
 	) -> None:
 		self.singer = singer
 		self.time = time
 		self.type = type_
 		self.sustain = sustain
 		self.sustain_stage = sustain_stage
+		self.alt_animation = alt_animation
 		self.sprite: t.Optional["PNFSprite"] = None
 		self.rating = None
 		self.playable = False
