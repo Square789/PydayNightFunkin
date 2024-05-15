@@ -198,7 +198,7 @@ class CharacterData:
 		# 	self.positioning = PositioningStrategy()
 
 
-_ANIMATION_NAME_REMAP = {
+ANIMATION_NAME_REMAP = {
 	"danceLeft": "idle_left",
 	"danceRight": "idle_right",
 	"idleHair": "idle_hair",
@@ -352,7 +352,7 @@ class Character(PNFSprite):
 		except FileNotFoundError:
 			return
 
-		remapper = _ANIMATION_NAME_REMAP if remapper is None else remapper
+		remapper = ANIMATION_NAME_REMAP if remapper is None else remapper
 		res = {}
 		for line in raw.split("\n"):
 			if (match := RE_OFFSETS_LINE.match(line)) is not None:
