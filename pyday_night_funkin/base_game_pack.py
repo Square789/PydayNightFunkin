@@ -21,7 +21,8 @@ from pyday_night_funkin.core.asset_system import (
 )
 from pyday_night_funkin.core.animation import FrameCollection
 from pyday_night_funkin.character import (
-	BaseGameCharacterKernel, Character, CharacterData, FlipIdleCharacter, StoryMenuCharacterData
+	ANIMATION_NAME_REMAP, BaseGameCharacterKernel, Character, CharacterData, FlipIdleCharacter,
+	StoryMenuCharacterData
 )
 from pyday_night_funkin.enums import AnimationTag, Difficulty
 
@@ -30,6 +31,7 @@ if t.TYPE_CHECKING:
 	from pyglet.image import Texture, TextureRegion
 	from pyglet.media import Source
 	from pyday_night_funkin.main_game import Game
+	from pyday_night_funkin.note import Note
 
 
 class SeqValidator:
@@ -390,6 +392,105 @@ class MommyMearest(HairLoopMixin, Character):
 		self.animation.play("idle")
 
 
+class ParentsChristmas(Character):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		offset_remap = ANIMATION_NAME_REMAP.copy()
+		offset_remap.update({
+			"singUP-alt":    "sing_up_alt",
+			"singDOWN-alt":  "sing_down_alt",
+			"singLEFT-alt":  "sing_left_alt",
+			"singRIGHT-alt": "sing_right_alt",
+		})
+
+		self.load_frames()
+		self.load_offsets(offset_remap)
+
+		# These are unusually well-named
+		self.add_animation("idle", "Parent Christmas Idle", tags=(AnimationTag.IDLE,))
+		self.add_animation("sing_up", "Parent Up Note Dad", tags=(AnimationTag.SING,))
+		self.add_animation("sing_down", "Parent Down Note Dad", tags=(AnimationTag.SING,))
+		self.add_animation("sing_left", "Parent Left Note Dad", tags=(AnimationTag.SING,))
+		self.add_animation("sing_right", "Parent Right Note Dad", tags=(AnimationTag.SING,))
+
+		self.add_animation("sing_up_alt", "Parent Up Note Mom", tags=(AnimationTag.SING,))
+		self.add_animation("sing_down_alt", "Parent Down Note Mom", tags=(AnimationTag.SING,))
+		self.add_animation("sing_left_alt", "Parent Left Note Mom", tags=(AnimationTag.SING,))
+		self.add_animation("sing_right_alt", "Parent Right Note Mom", tags=(AnimationTag.SING,))
+
+		self.animation.play("idle")
+
+	def on_notes_hit(self, notes: t.Sequence[Note]) -> None:
+		n = notes[-1]
+		self.animation.play(f"sing_{n.type.name.lower()}{'_alt' if n.alt_animation else ''}")
+
+
+class BoyfriendChristmas(BoyfriendBase):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.load_frames()
+		self.load_offsets()
+
+		self.add_animation("idle", "BF idle dance", tags=(AnimationTag.IDLE,))
+		self.add_animation("sing_up", "BF NOTE UP0", tags=(AnimationTag.SING,))
+		self.add_animation("sing_left", "BF NOTE LEFT0", tags=(AnimationTag.SING,))
+		self.add_animation("sing_right", "BF NOTE RIGHT0", tags=(AnimationTag.SING,))
+		self.add_animation("sing_down", "BF NOTE DOWN0", tags=(AnimationTag.SING,))
+		self.add_animation("miss_up", "BF NOTE UP MISS", tags=(AnimationTag.MISS,))
+		self.add_animation("miss_left", "BF NOTE LEFT MISS", tags=(AnimationTag.MISS,))
+		self.add_animation("miss_right", "BF NOTE RIGHT MISS", tags=(AnimationTag.MISS,))
+		self.add_animation("miss_down", "BF NOTE DOWN MISS", tags=(AnimationTag.MISS,))
+		self.add_animation("hey", "BF HEY", tags=(AnimationTag.SPECIAL,))
+
+		self.animation.play("idle")
+
+
+class GirlfriendChristmas(FlipIdleCharacter):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.scroll_factor = (0.95, 0.95)
+
+		self.load_frames()
+		self.load_offsets()
+
+		self.add_animation("cheer", "GF Cheer", tags=(AnimationTag.SPECIAL,))
+		self.add_animation("sing_up", "GF Up Note", tags=(AnimationTag.SING,))
+		self.add_animation("sing_down", "GF Down Note", tags=(AnimationTag.SING,))
+		self.add_animation("sing_left", "GF left note", tags=(AnimationTag.SING,))
+		self.add_animation("sing_right", "GF Right Note", tags=(AnimationTag.SING,))
+
+		self.add_indexed_animation("sad", "gf sad", range(13))
+		self.add_indexed_animation(
+			"idle_left", "GF Dancing Beat", range(15), tags=(AnimationTag.IDLE,)
+		)
+		self.add_indexed_animation(
+			"idle_right", "GF Dancing Beat", range(15, 30), tags=(AnimationTag.IDLE,)
+		)
+
+		self.add_animation("scared", "GF FEAR", loop=True)
+
+		self.animation.play("idle_right")
+
+
+class MonsterChristmas(Character):
+	def __init__(self, *args, **kwargs) -> None:
+		super().__init__(*args, **kwargs)
+
+		self.load_frames()
+		self.load_offsets()
+
+		self.add_animation("idle", "monster idle", tags=(AnimationTag.IDLE,))
+		self.add_animation("sing_up", "monster up note", tags=(AnimationTag.SING,))
+		self.add_animation("sing_down", "monster down", tags=(AnimationTag.SING,))
+		self.add_animation("sing_left", "Monster left note", tags=(AnimationTag.SING,))
+		self.add_animation("sing_right", "Monster Right note", tags=(AnimationTag.SING,))
+
+		self.animation.play("idle")
+
+
 # HACK: This manipulates the cached note asset frame collection, since notes have
 # botched offsets that are fixed with a hardcoded center->subtract in the main loop.
 # Nobody wants that, so we hack in some offsets right here.
@@ -482,7 +583,7 @@ class BaseGameAssetRouter(AssetRouter):
 				"week2": (LibrarySpecPattern("week2", exclude=("*.fla", "*.mp3")),),
 				"week3": (LibrarySpecPattern("week3", exclude=("*.fla", "*.mp3")),),
 				"week4": (LibrarySpecPattern("week4", exclude=("*.fla", "*.mp3")),),
-				# "week5": (LibrarySpecPattern("week5", exclude=("*.fla", "*.mp3")),),
+				"week5": (LibrarySpecPattern("week5", exclude=("*.fla", "*.mp3")),),
 				# "week6": (LibrarySpecPattern("week6", exclude=("*.fla", "*.mp3")),),
 				# "week7": (LibrarySpecPattern("week7", exclude=("*.fla", "*.mp3")),),
 			},
@@ -504,14 +605,14 @@ def load(game: Game) -> ContentPack:
 	game.assets.set_default_asset_directory(asset_dir)
 	game.assets.add_asset_router(BaseGameAssetRouter(asset_dir))
 
-	# Deferred import, yuck! Quickest way to fix the circular import rn,
-	# could possibly split the levels and characters into a basegame submodule later.
+	# Deferred import, unlucky
 	from pyday_night_funkin.stages import (
 		TutorialStage,
 		Week1Stage, BopeeboStage, FreshStage,
 		Week2Stage, MonsterStage,
 		Week3Stage,
 		Week4Stage, MILFStage,
+		Week5Stage, EggnogStage, WinterHorrorlandStage,
 	)
 
 	# Characters do not have IDs like gf; gf-pixel; gf-car; bf; bf-pixel; bf-car; mom; mom-car
@@ -553,12 +654,17 @@ def load(game: Game) -> ContentPack:
 		(("Mom Idle BLACK LINES", 24, True),),
 		(100.0, 200.0),
 	)
+	parents_smcd = StoryMenuCharacterData(
+		"preload/images/campaign_menu_UI_characters.xml",
+		(("Parent Christmas Idle Black Lines", 24, True),),
+		(200.0, 200.0),
+	)
 
 	week1_libs = ("shared", "week1")
 	week2_libs = ("shared", "week2")
 	week3_libs = ("shared", "week3")
 	week4_libs = ("shared", "week4")
-	# week5_libs = ("shared", "week5")
+	week5_libs = ("shared", "week5")
 	# week6_libs = ("shared", "week6")
 	# week7_libs = ("shared", "week7")
 
@@ -592,7 +698,27 @@ def load(game: Game) -> ContentPack:
 			)),
 			"mommy_mearest":  BaseGameCharacterKernel(CharacterData(
 				MommyMearest, "mom", "momCar", story_menu_data=mom_smcd, offset_id="mom-car"
-			),
+			)),
+			"boyfriend_xmas": BaseGameCharacterKernel(CharacterData(
+				BoyfriendChristmas,
+				"bf",
+				"bfChristmas",
+				game_over_fallback = "boyfriend",
+				offset_id = "bf-christmas",
+			)),
+			"girlfriend_xmas": BaseGameCharacterKernel(CharacterData(
+				GirlfriendChristmas, "gf", "gfChristmas", offset_id="gf-christmas"
+			)),
+			"parents_xmas": BaseGameCharacterKernel(CharacterData(
+				ParentsChristmas,
+				"parents",
+				"mom_dad_christmas_assets",
+				story_menu_data = parents_smcd,
+				offset_id = "parents-christmas",
+			)),
+			"monster_xmas": BaseGameCharacterKernel(CharacterData(
+				MonsterChristmas, "monster", "monsterChristmas", offset_id="monster-christmas"
+			)),
 		},
 		weeks = (
 			WeekData(
@@ -747,16 +873,40 @@ def load(game: Game) -> ContentPack:
 				),
 				"week4.png",
 			),
-			# WeekData(
-			# 	"RED SNOW",
-			# 	("parents-christmas", "boyfriend", "girlfriend"),
-			# 	(
-			# 		LevelData(),
-			# 		LevelData(),
-			# 		LevelData(),
-			# 	),
-			# 	"week5.png",
-			# ),
+			WeekData(
+				"RED SNOW",
+				("parents_xmas", "boyfriend", "girlfriend"),
+				(
+					LevelData(
+						"cocoa",
+						"Cocoa",
+						Week5Stage,
+						"boyfriend_xmas",
+						"girlfriend_xmas",
+						"parents_xmas",
+						week5_libs,
+					),
+					LevelData(
+						"eggnog",
+						"Eggnog",
+						EggnogStage,
+						"boyfriend_xmas",
+						"girlfriend_xmas",
+						"parents_xmas",
+						week5_libs,
+					),
+					LevelData(
+						"winter-horrorland",
+						"Winter-Horrorland",
+						WinterHorrorlandStage,
+						"boyfriend_xmas",
+						"girlfriend_xmas",
+						"monster_xmas",
+						week5_libs,
+					),
+				),
+				"week5.png",
+			),
 			# WeekData(
 			# 	"hating simulator ft. moawling",
 			# 	("senpai", "boyfriend", "girlfriend"),
