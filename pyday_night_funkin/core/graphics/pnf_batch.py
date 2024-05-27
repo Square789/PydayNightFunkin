@@ -237,7 +237,7 @@ class DrawList:
 
 		# AT THIS POINT the chains can be flattened.
 
-		cur_state = GLState.from_state_parts()
+		cur_state = GLState.empty()
 		draw_list = []
 		indices = []
 		# Vertex layout is dictated by vertex domain and a group's program.

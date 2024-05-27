@@ -269,8 +269,6 @@ class PNFSprite(WorldObject):
 			s.UBOBindingStatePart(cam_ubo),
 			s.TextureUnitStatePart(gl.GL_TEXTURE0),
 			s.TextureStatePart(self._texture),
-			# Insanely unneccessary as uniforms are initialized to 0 anyways
-			# s.UniformStatePart("sprite_texture", 0),
 			s.EnableStatePart(gl.GL_BLEND),
 			s.SeparateBlendFuncStatePart(
 				self._blend_src, self._blend_dest, gl.GL_ONE, self._blend_dest

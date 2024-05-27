@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 from functools import partial
 import typing as t
@@ -6,19 +7,15 @@ from pyglet.gl import gl
 from pyglet.graphics import shader
 
 if t.TYPE_CHECKING:
+	import ctypes
 	from pyglet.graphics.shader import ShaderProgram, UniformBufferObject
 
 
 class StatePart:
+	# `cost` and `required` are ignored for now and probably for a long future
 	cost: int = -1
-	gl_func: t.Optional[t.Callable] = None
-	required: t.Sequence[t.Union[
-		t.Type["StatePart"],
-		t.Tuple[t.Type["StatePart"], t.Tuple],
-	]] = ()
-	# conflicts: t.Sequence["StatePart"] = ()
-	# # NOTE: Something to consider for glEnable / glDisable.
-	# Never using glDisable, so meh.
+	gl_func: t.Callable | None = None
+	required: t.Sequence[t.Type[StatePart] | t.Tuple[t.Type[StatePart], t.Tuple]] = ()
 	only_one: bool = True
 
 	def __init__(self) -> None:
@@ -43,40 +40,42 @@ class ProgramStatePart(StatePart):
 	cost = 333
 	gl_func = gl.glUseProgram
 
-	def __init__(self, program: "ShaderProgram") -> None:
-		# NOTE: Not using program.use will cause program's internal `_active` variable to not be
-		# set which makes all other functions on it unusable/insecure.
+	def __init__(self, program: ShaderProgram) -> None:
 		self.program = program
 		self.args = (program.id,)
 
 
-# I was having pretty heavy misunderstandings of uniforms when writing this code.
-# The part is currently unused and may honestly just be removed as uniform values are
-# not the business of OpenGL rendering state.
+# Uniform values are technically not directly the business of OpenGL rendering state.
+# But there's no other convenient way to have different drawables communicate
+# when they want to modify their shader object's values.
 class UniformStatePart(StatePart):
 	cost = 5
-	required = (ProgramStatePart,)
 	only_one = False
 
-	def __init__(self, name: str, value: t.Any) -> None:
-		self._name = name
-		self.value = value
-		self._c_array = None
+	def __init__(self, type_: int, location: int, value: ctypes.Array) -> None:
+		self._fn = shader._uniform_setters[type_][1]
+		self._count = shader._uniform_setters[type_][3]
+		self._type = type_
+		self._location = location
+		self._c_array = value
 
-	def concretize(self, program_sp: ProgramStatePart) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
+	@classmethod
+	def from_name_and_value(cls, p: ShaderProgram, n: str, v):
 		# NOTE: Ye olde private pyglet access
-		uniform = program_sp.program._uniforms[self._name]
-		gl_type, gl_func, _, count = shader._uniform_setters[uniform.type]
-		loc = uniform.location
-		self._c_array = (gl_type * uniform.length)()
-		if uniform.length == 1:
-			self._c_array[0] = self.value
+		uniform = p._uniforms[n]
+		type_ = uniform.type
+		gl_type, _, _, count = shader._uniform_setters[type_]
+		if count == 1:
+			_c_array = (gl_type * count)(v)
 		else:
-			self._c_array[:] = self.value
+			_c_array = (gl_type * count)(*v)
 
+		return cls(type_, uniform.location, _c_array)
+
+	def concretize(self) -> t.Tuple[t.Tuple, t.Callable[[], None]]:
 		return (
-			(loc, count, hash(self.value)),
-			partial(gl_func, loc, count, self._c_array),
+			(self._location, self._type, bytes(self._c_array)),
+			partial(self._fn, self._location, self._count, self._c_array),
 		)
 
 
@@ -105,7 +104,7 @@ class UBOBindingStatePart(StatePart):
 	gl_func = gl.glBindBufferBase
 	only_one = False
 
-	def __init__(self, ubo: "UniformBufferObject") -> None:
+	def __init__(self, ubo: UniformBufferObject) -> None:
 		self._binding_idx = ubo.index
 		self._buf_id = ubo.buffer.id
 
@@ -128,7 +127,6 @@ class EnableStatePart(StatePart):
 class BlendFuncStatePart(StatePart):
 	cost = 1
 	gl_func = gl.glBlendFunc
-	required = ((EnableStatePart, (gl.GL_BLEND,)),)
 
 	def __init__(self, src, dest) -> None:
 		self.args = (src, dest)
@@ -141,7 +139,6 @@ class BlendFuncStatePart(StatePart):
 class SeparateBlendFuncStatePart(StatePart):
 	cost = 1
 	gl_func = gl.glBlendFuncSeparate
-	required = ((EnableStatePart, (gl.GL_BLEND,)),)
 
 	def __init__(self, srcc, destc, srca, desta) -> None:
 		self.args = (srcc, destc, srca, desta)
@@ -159,54 +156,58 @@ class GLState:
 
 	def __init__(
 		self,
-		parts: t.List[t.Tuple[StateIdentifier, t.Callable[[], t.Any]]],
-		program: t.Optional["ShaderProgram"] = None,
+		parts: t.Sequence[t.Tuple[StateIdentifier, t.Callable[[], t.Any]]],
+		program: ShaderProgram | None = None,
 	) -> None:
 		self.parts = parts
 		self.part_set: t.FrozenSet[StateIdentifier] = frozenset(ident for ident, _ in parts)
 		self.program = program
 
 	@classmethod
-	def from_state_parts(cls, *state_parts: StatePart):
+	def empty(cls):
+		return cls((), None)
+
+	@classmethod
+	def from_state_parts(cls, program_sp: ProgramStatePart | None, *state_parts: StatePart):
 		"""
 		Initializes a GLState from the given StateParts.
 		Note that a GLState must have a ProgramStatePart to be
 		renderable.
 		"""
-		program: t.Optional["ShaderProgram"] = None
+		program: ShaderProgram | None = None if program_sp is None else program_sp.program
 		parts: t.List[t.Tuple[StateIdentifier, t.Callable[[], t.Any]]] = []
-		tmp_parts: t.Dict[t.Union[t.Type[StatePart], StateIdentifier], StatePart] = {}
+		tmp_parts: t.Dict[t.Type[StatePart] | StateIdentifier, StatePart] = {}
+		if program_sp is None:
+			program = None
+		else:
+			program = program_sp.program
+			i, f = program_sp.concretize()
+			parts.append(((ProgramStatePart, i), f))
+			tmp_parts[ProgramStatePart] = program_sp
 
 		for part in state_parts:
 			part_t = type(part)
-			conc_args = []
 
-			for reqp in part.required:
-				if reqp not in tmp_parts:
-					raise ValueError(
-						f"StatePart {part} required StatePart {reqp} which was not found. "
-						f"Add it to the GLState or check your StateParts' order."
-					)
-				conc_args.append(tmp_parts[reqp])
+			if isinstance(part, ProgramStatePart):
+				raise ValueError("Only one program per state.")
 
 			if part.only_one:
 				if part_t in tmp_parts:
 					raise ValueError(f"Duplicate StatePart for {part_t}; may only exist once!")
-				ident, func = part.concretize(*conc_args)
+				# ident, func = part.concretize(*conc_args)
+				ident, func = part.concretize()
 				tmpkey = part_t
 			else:
-				ident, func = part.concretize(*conc_args)
+				# ident, func = part.concretize(*conc_args)
+				ident, func = part.concretize()
 				tmpkey = (part_t, ident)
 
 			parts.append(((part_t, ident), func))
 			tmp_parts[tmpkey] = part
 
-			if isinstance(part, ProgramStatePart):
-				program = part.program
-
 		return cls(parts, program)
 
-	def switch(self, new_state: "GLState") -> t.List[t.Callable[[], t.Any]]:
+	def switch(self, new_state: GLState) -> t.List[t.Callable[[], t.Any]]:
 		"""
 		Emits all functions that need to be called for morphing the
 		OpenGL state from this state into the new one.

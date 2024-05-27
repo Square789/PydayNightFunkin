@@ -58,12 +58,14 @@ class GradientSprite(PNFSprite):
 		super().__init__(*args, **kwargs)
 
 	def _build_gl_state(self, cam_ubo: "UniformBufferObject") -> s.GLState:
+		p = self.shader_container.get_program()
+
 		return s.GLState.from_state_parts(
-			s.ProgramStatePart(self.shader_container.get_program()),
+			s.ProgramStatePart(p),
 			s.UBOBindingStatePart(cam_ubo),
 			s.TextureUnitStatePart(gl.GL_TEXTURE0),
 			s.TextureStatePart(self._texture),
-			s.UniformStatePart("gradient_width", self._gradient_width),
+			s.UniformStatePart.from_name_and_value(p, "gradient_width", self._gradient_width),
 			s.EnableStatePart(gl.GL_BLEND),
 			s.SeparateBlendFuncStatePart(
 				self._blend_src, self._blend_dest, gl.GL_ONE, self._blend_dest
