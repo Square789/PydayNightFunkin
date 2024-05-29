@@ -196,12 +196,13 @@ class PNFText(WorldObject):
 		return state.GLState.from_state_parts(
 			state.ProgramStatePart(self.shader_container.get_program()),
 			state.TextureUnitStatePart(gl.GL_TEXTURE0),
+			state.SamplerBindingState(0, 0),
 			state.TextureStatePart(ftex),
 			state.UBOBindingStatePart(cam.ubo),
 			state.EnableStatePart(gl.GL_BLEND),
 			state.SeparateBlendFuncStatePart(
 				gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA, gl.GL_ONE, gl.GL_ONE_MINUS_SRC_ALPHA
-			)
+			),
 		)
 
 	def _create_interfacer(self) -> None:

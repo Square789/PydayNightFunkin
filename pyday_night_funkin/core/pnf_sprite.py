@@ -8,6 +8,7 @@ from pyglet.math import Vec2
 
 from pyday_night_funkin.core.animation import AnimationController
 from pyday_night_funkin.core.animation.frames import AnimationFrame, FrameCollection
+from pyday_night_funkin.core.graphics.samplers import get_sampler
 import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.scene_context import CamSceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
@@ -215,10 +216,35 @@ class PNFSprite(WorldObject):
 		y: "Numeric" = 0,
 		blend_src = gl.GL_SRC_ALPHA,
 		blend_dest = gl.GL_ONE_MINUS_SRC_ALPHA,
+		nearest_sampling: bool = False,
 		usage: t.Literal["dynamic", "stream", "static"] = "dynamic",
 		subpixel: bool = False,
 		context: t.Optional[CamSceneContext] = None,
 	) -> None:
+		"""
+		Initializes a sprite.
+
+		Args:
+			image: An image to use for the sprite. When ``None``, will be
+				instead set to ``get_error_tex``.
+			x: X position.
+			y: Y position.
+			blend_src: The source GL blend mode. This is set to a standard
+				blend mode layering sprites with their alpha channel as you'd
+				expect.
+			blend_dest: The destination GL blend mode. See ``blend_src``.
+			nearest_sampling: Whether to use the ``GL_NEAREST`` sampling mode,
+				a.k.a. determines whether your image goes smooth or pixelly
+				when scaling the sprite.
+			usage: Usage hint to OpenGL. Must be one of ``"dynamic"``
+				(default), ``"stream"`` or ``"static"``. Should probably be
+				removed soon.
+			subpixel: When ``False``, will cause the position values uploaded
+				to the GPU to be floored to the nearest integer.
+				Does **not** floor the value found in ``position``.
+			context: An optional scene context to initialize the sprite with.
+				Used when created through a scene's ``create_object`` method.
+		"""
 		super().__init__(x, y, CamSceneContext.create_empty() if context is None else context)
 
 		image = get_error_tex() if image is None else image
@@ -256,6 +282,7 @@ class PNFSprite(WorldObject):
 
 		self._usage = usage
 		self._subpixel = subpixel
+		self._nearest_sampling = nearest_sampling
 		self._blend_src = blend_src
 		self._blend_dest = blend_dest
 
@@ -268,6 +295,7 @@ class PNFSprite(WorldObject):
 			s.ProgramStatePart(self.shader_container.get_program()),
 			s.UBOBindingStatePart(cam_ubo),
 			s.TextureUnitStatePart(gl.GL_TEXTURE0),
+			s.SamplerBindingState(0, get_sampler(self._nearest_sampling)),
 			s.TextureStatePart(self._texture),
 			s.EnableStatePart(gl.GL_BLEND),
 			s.SeparateBlendFuncStatePart(
@@ -733,6 +761,19 @@ class PNFSprite(WorldObject):
 	@visible.setter
 	def visible(self, visible: bool) -> None:
 		self._interfacer.set_visibility(visible)
+
+	@property
+	def nearest_sampling(self) -> bool:
+		return self._nearest_sampling
+
+	@nearest_sampling.setter
+	def nearest_sampling(self, nearest_sampling: bool) -> None:
+		if nearest_sampling != self._nearest_sampling:
+			self._nearest_sampling = nearest_sampling
+			self._interfacer.change_group_and_or_gl_state(
+				None,
+				{cam: self._build_gl_state(cam.ubo) for cam in self._context.cameras},
+			)
 
 	@property
 	def flip_x(self) -> bool:

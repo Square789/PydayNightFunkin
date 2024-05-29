@@ -49,8 +49,10 @@ class TestScene(MusicBeatScene):
 			spr.scroll_factor = (0.25 * i, 0.25 * i)
 			self.scroll_factor_tests.append(spr)
 
-		self.test_sprite = self.create_object(self.lyr_background, y=200)
+		self.test_sprite = self.create_object(self.lyr_background, x=40, y=200)
 		self.test_sprite.scale = 4
+		other_sprite = self.create_object(self.lyr_background, x=40, y=280, nearest_sampling=True)
+		other_sprite.scale = 4
 
 		self.conductor.bpm = 123
 

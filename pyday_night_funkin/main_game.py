@@ -30,7 +30,7 @@ if t.TYPE_CHECKING:
 	from pyday_night_funkin.core.superscene import SuperScene
 
 
-__version__ = "0.0.58"
+__version__ = "0.0.59"
 
 
 SOUND_GRANULARITY = 10

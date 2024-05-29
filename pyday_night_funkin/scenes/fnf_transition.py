@@ -4,6 +4,7 @@ import typing as t
 from pyglet.gl import gl
 from pyglet.image import ImageData
 
+from pyday_night_funkin.core.graphics.samplers import get_sampler
 from pyday_night_funkin.core.graphics import state as s
 from pyday_night_funkin.core.pnf_sprite import PNFSprite, PNFSpriteVertexShader
 from pyday_night_funkin.core.shaders import ShaderContainer
@@ -64,12 +65,13 @@ class GradientSprite(PNFSprite):
 			s.ProgramStatePart(p),
 			s.UBOBindingStatePart(cam_ubo),
 			s.TextureUnitStatePart(gl.GL_TEXTURE0),
+			s.SamplerBindingState(0, get_sampler(self._nearest_sampling)),
 			s.TextureStatePart(self._texture),
 			s.UniformStatePart.from_name_and_value(p, "gradient_width", self._gradient_width),
 			s.EnableStatePart(gl.GL_BLEND),
 			s.SeparateBlendFuncStatePart(
 				self._blend_src, self._blend_dest, gl.GL_ONE, self._blend_dest
-			)
+			),
 		)
 
 	def delete(self):

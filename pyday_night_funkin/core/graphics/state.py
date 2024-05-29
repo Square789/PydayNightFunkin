@@ -8,6 +8,7 @@ from pyglet.graphics import shader
 
 if t.TYPE_CHECKING:
 	import ctypes
+	from pyglet.image import Texture
 	from pyglet.graphics.shader import ShaderProgram, UniformBufferObject
 
 
@@ -91,8 +92,16 @@ class TextureStatePart(StatePart):
 	cost = 66
 	gl_func = gl.glBindTexture
 
-	def __init__(self, texture) -> None:
+	def __init__(self, texture: Texture) -> None:
 		self.args = (texture.target, texture.id)
+
+
+class SamplerBindingState(StatePart):
+	cost = 5
+	gl_func = gl.glBindSampler
+
+	def __init__(self, target_unit_idx: int, sampler_name: int) -> None:
+		self.args = (target_unit_idx, sampler_name)
 
 
 # This thing sets up the binding from a uniform block buffer to the python UBO's

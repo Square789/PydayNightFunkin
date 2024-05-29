@@ -17,6 +17,7 @@ from pyglet.math import Vec2
 
 from pyday_night_funkin.core.animation import AnimationController
 from pyday_night_funkin.core.animation.frames import AnimationFrame, FrameCollection
+from pyday_night_funkin.core.graphics.samplers import get_sampler
 import pyday_night_funkin.core.graphics.state as s
 from pyday_night_funkin.core.scene_context import CamSceneContext
 from pyday_night_funkin.core.scene_object import WorldObject
@@ -139,6 +140,7 @@ class PNFMatrixSprite(WorldObject):
 		matrix: t.Tuple[float, ...] = (1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0),
 		blend_src = gl.GL_SRC_ALPHA,
 		blend_dest = gl.GL_ONE_MINUS_SRC_ALPHA,
+		nearest_sampling: bool = False,
 		usage: t.Literal["dynamic", "stream", "static"] = "dynamic",
 		subpixel: bool = False,
 		context: t.Optional[CamSceneContext] = None,
@@ -173,6 +175,7 @@ class PNFMatrixSprite(WorldObject):
 
 		self._usage = usage
 		self._subpixel = subpixel
+		self._nearest_sampling = nearest_sampling
 		self._blend_src = blend_src
 		self._blend_dest = blend_dest
 
@@ -185,6 +188,7 @@ class PNFMatrixSprite(WorldObject):
 			s.ProgramStatePart(self.shader_container.get_program()),
 			s.UBOBindingStatePart(cam_ubo),
 			s.TextureUnitStatePart(gl.GL_TEXTURE0),
+			s.SamplerBindingState(0, get_sampler(self._nearest_sampling)),
 			s.TextureStatePart(self._texture),
 			s.EnableStatePart(gl.GL_BLEND),
 			s.SeparateBlendFuncStatePart(
@@ -437,3 +441,16 @@ class PNFMatrixSprite(WorldObject):
 	@visible.setter
 	def visible(self, visible: bool) -> None:
 		self._interfacer.set_visibility(visible)
+
+	@property
+	def nearest_sampling(self) -> bool:
+		return self._nearest_sampling
+
+	@nearest_sampling.setter
+	def nearest_sampling(self, nearest_sampling: bool) -> None:
+		if nearest_sampling != self._nearest_sampling:
+			self._nearest_sampling = nearest_sampling
+			self._interfacer.change_group_and_or_gl_state(
+				None,
+				{cam: self._build_gl_state(cam.ubo) for cam in self._context.cameras},
+			)
