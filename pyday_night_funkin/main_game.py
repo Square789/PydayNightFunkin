@@ -217,7 +217,7 @@ class Game(SceneManager):
 
 		self.sound = SoundController(SOUND_GRANULARITY)
 		if self.debug:
-			self.sound.change_volume(-SOUND_GRANULARITY // 2)
+			self.sound.change_volume(-int(SOUND_GRANULARITY * (2/3)))
 
 		self.player = self.sound.create_player()
 		"""
