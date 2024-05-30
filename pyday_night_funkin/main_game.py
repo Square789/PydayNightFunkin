@@ -302,7 +302,7 @@ class Game(SceneManager):
 
 		pyglet.clock.schedule_interval(self.update, 1 / 60)
 		pyglet.clock.schedule_interval(self.window.draw, 1 / 60)
-		pyglet.clock.schedule(self._tick_asset_system_clock)
+		pyglet.clock.schedule_interval(self._tick_asset_system_clock, 1 / 30)
 		pyglet.app.run(None)
 
 	def update(self, dt: float) -> None:
