@@ -17,6 +17,7 @@ from schema import Schema, SchemaError, And, Or, Optional
 from pyday_night_funkin.content_pack import ContentPack, LevelData, WeekData
 from pyday_night_funkin.core.asset_system import (
 	AssetProvider, AssetRouter, AssetRouterEntry, JSONAssetProvider, LibrarySpecPattern,
+	PostLoadProcessor,
 	load_image, load_json, load_pyobj, load_sound
 )
 from pyday_night_funkin.core.animation import FrameCollection
@@ -44,7 +45,7 @@ class SeqValidator:
 	def __init__(self, *types: t.Any) -> None:
 		self.schemas = tuple(x if isinstance(x, Schema) else Schema(x) for x in types)
 
-	def validate(self, v: t.Any) -> t.Tuple:
+	def validate(self, v: t.Any) -> tuple:
 		if not isinstance(v, (list, tuple)):
 			raise SchemaError("Value is not a tuple or list.")
 		if len(v) != len(self.schemas):
@@ -58,7 +59,7 @@ SONG_SCHEMA = Schema(
 		"song": {
 			"song": str,
 			"notes": [And(
-				{
+				Schema({
 					"lengthInSteps": int,
 					Optional("bpm"): Or(int, float),
 					Optional("changeBPM"): bool,
@@ -68,7 +69,7 @@ SONG_SCHEMA = Schema(
 					# Keys I've seen that are ignored:
 					# typeOfSection.
 					Optional(str): object,
-				},
+				}),
 				lambda d: ("changeBPM" in d) <= ("bpm" in d),
 			)],
 			"bpm": Or(int, float),
@@ -88,7 +89,7 @@ SONG_SCHEMA = Schema(
 )
 
 
-def fetch_character_icons(character: str) -> t.Tuple[TextureRegion, TextureRegion]:
+def fetch_character_icons(character: str) -> tuple[TextureRegion, TextureRegion]:
 	"""
 	Loads a 300x150 image of two character icons and returns its two
 	health icons as TextureRegions.
@@ -116,7 +117,7 @@ def fetch_week_header(name: str) -> Texture:
 	return load_image(load_pyobj("PATH_WEEK_HEADERS") / name)
 
 
-def fetch_song(song_name: str, difficulty: Difficulty) -> t.Tuple[Source, Source | None, t.Dict]:
+def fetch_song(song_name: str, difficulty: Difficulty) -> tuple[Source, Source | None, dict]:
 	"""
 	Loads song data for a standard FNF song.
 	Will load a three-tuple of (Source, Source | None, dict); being
@@ -133,7 +134,7 @@ def fetch_song(song_name: str, difficulty: Difficulty) -> t.Tuple[Source, Source
 
 
 class SongDataAssetProvider(AssetProvider):
-	def load(self, song_name: str, difficulty: Difficulty) -> t.Dict:
+	def load(self, song_name: str, difficulty: Difficulty) -> dict:
 		chart_path = (
 			load_pyobj("PATH_DATA") /
 			song_name /
@@ -153,7 +154,7 @@ class SongDataAssetProvider(AssetProvider):
 _g_load_song_data = None
 
 
-def load_song_data(song_name: str, difficulty: Difficulty, *, cache: bool = True) -> t.Dict:
+def load_song_data(song_name: str, difficulty: Difficulty, *, cache: bool = True) -> dict:
 	"""
 	Loads and validates the standard FNF chart of the given
 	difficutly for the given song.
@@ -510,6 +511,24 @@ def note_arrow_frame_collection_post_load_hacker(fcol: FrameCollection) -> Frame
 def main_menu_path_post_load_hacker(et: ElementTree) -> ElementTree:
 	et.getroot().set("imagePath", "main_menu.png")
 	return et
+
+
+# NOTE: Unused, maybe helpful eventually
+class PreloadRouter(AssetRouter):
+	"""
+	I overlooked the fact that lime (?) mashes the preload directory from the
+	assets in dev space directly into the assets in distributions.
+	PNF's base game implementation is maladjusted and assumes a
+	development asset layout.
+	So, this thing will take paths with a `/preload` directory and trim it out.
+	"""
+	# NOTE: Could go the other way around and add on another great feature
+	# where the asset loaders will try multiple paths until one fails.
+
+	def has_asset(
+		self, path: str, asset_type_name: str, options: dict[str, t.Any]
+	) -> tuple[bool, str, dict[str, t.Any] | None, PostLoadProcessor | None] | None:
+		return (False, path.replace("/preload", "", 1), None, None)
 
 
 class BaseGameAssetRouter(AssetRouter):
